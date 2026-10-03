@@ -142,14 +142,6 @@
   font-weight: 700;
   min-width: 0;
 }
-/* Con 3 o 4 jugadores, sin avatar y letra algo menor para que quepan los nombres. */
-.team-people.many .person {
-  padding: 8px 10px;
-  font-size: 15px;
-}
-.team-people.many .avatar {
-  display: none;
-}
 .person span:last-child {
   white-space: nowrap;
   overflow: hidden;
@@ -969,7 +961,7 @@
   pointer-events: none;
   z-index: 0;
 }
-.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-fx):not(.modal-backdrop) {
+.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-fx):not(.goal-show):not(.modal-backdrop) {
   position: relative;
   z-index: 1;
 }
@@ -981,4 +973,406 @@
   object-fit: cover;
   opacity: 0.45;
   pointer-events: none;
+}
+
+/* ---------- Pantalla completa de gol (tras la animación) ---------- */
+/* Aparece a los 0,85 s del gol y se apaga a los ~2,9 s, antes de que acabe el bloqueo de 3 s. */
+.goal-show {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  animation: gs-life 2.05s 0.85s both;
+}
+@keyframes gs-life {
+  0% {
+    opacity: 0;
+    visibility: visible;
+  }
+  8%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.gs-white {
+  background: radial-gradient(circle at 50% 42%, #ffffff, #dbe9f8 55%, #8fb0d3);
+  color: #0d4f8f;
+  --gs-glow: rgba(23, 109, 188, 0.45);
+  --gs-accent: #176dbc;
+}
+.gs-blue {
+  background: radial-gradient(circle at 50% 42%, #3aa2f2, #176dbc 55%, #06274a);
+  color: #ffffff;
+  --gs-glow: rgba(98, 214, 255, 0.7);
+  --gs-accent: #62d6ff;
+}
+.gs-deco {
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+}
+.gs-word {
+  position: relative;
+  z-index: 1;
+  font-size: 180px;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow: 0 0 28px var(--gs-glow);
+}
+.gs-word span {
+  display: inline-block;
+}
+.gs-team {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  padding-left: 0.3em;
+  animation: gs-rise 0.45s 1.05s both;
+}
+.gs-label {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.gs-people {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 18px;
+  margin-top: 16px;
+}
+.gs-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: gs-rise 0.45s calc(1.15s + var(--d, 0s)) both;
+}
+.gs-person:nth-child(2) {
+  --d: 0.08s;
+}
+.gs-person:nth-child(3) {
+  --d: 0.16s;
+}
+.gs-person:nth-child(4) {
+  --d: 0.24s;
+}
+.gs-photo {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 3px solid currentColor;
+  background: rgba(7, 16, 28, 0.35);
+  box-shadow: 0 0 18px var(--gs-glow);
+  font-size: 28px;
+  font-weight: 900;
+}
+.gs-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gs-name {
+  font-size: 17px;
+  font-weight: 800;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes gs-rise {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+}
+
+/* 1 · Zoom: el ¡GOL! cae desde muy grande. */
+.gs-v-zoom .gs-word {
+  animation: gs-zoom 0.5s 0.85s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes gs-zoom {
+  from {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* 2 · Barrido: franjas diagonales y el texto entra de lado. */
+.gs-v-slide .gs-deco {
+  background: repeating-linear-gradient(115deg, transparent 0 60px, var(--gs-glow) 60px 90px);
+  opacity: 0.5;
+  animation: gs-stripes 2s 0.85s linear both;
+}
+@keyframes gs-stripes {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(10%);
+  }
+}
+.gs-v-slide .gs-word {
+  animation: gs-slide-in 0.45s 0.85s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.gs-v-slide .gs-team {
+  animation: gs-slide-in-r 0.45s 1s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes gs-slide-in {
+  from {
+    transform: translateX(-130%) skewX(-20deg);
+  }
+}
+@keyframes gs-slide-in-r {
+  from {
+    transform: translateX(130%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+/* 3 · Neón: letras huecas que parpadean al encenderse. */
+.gs-v-neon {
+  background: radial-gradient(circle at 50% 42%, #0d2340, #050b14 70%);
+}
+.gs-v-neon.gs-white {
+  color: #eef6ff;
+}
+.gs-v-neon.gs-blue {
+  color: #62d6ff;
+}
+.gs-v-neon .gs-word {
+  color: transparent;
+  -webkit-text-stroke: 4px;
+  text-shadow: none;
+  filter: drop-shadow(0 0 10px var(--neon)) drop-shadow(0 0 26px var(--neon));
+}
+.gs-v-neon.gs-white .gs-word {
+  --neon: #eef6ff;
+  -webkit-text-stroke-color: #eef6ff;
+}
+.gs-v-neon.gs-blue .gs-word {
+  --neon: #62d6ff;
+  -webkit-text-stroke-color: #62d6ff;
+}
+.gs-v-neon .gs-word,
+.gs-v-neon .gs-team {
+  animation: gs-flicker 0.7s 0.85s steps(1) both;
+}
+@keyframes gs-flicker {
+  0%,
+  12%,
+  30%,
+  44% {
+    opacity: 0;
+  }
+  6%,
+  20%,
+  38%,
+  52%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 4 · Sello: golpe ladeado con temblor de pantalla. */
+.gs-v-stamp {
+  animation:
+    gs-life 2.05s 0.85s both,
+    gs-shake 0.35s 1.1s both;
+}
+.gs-v-stamp .gs-word {
+  padding: 0 24px;
+  border: 10px solid currentColor;
+  border-radius: 24px;
+  transform: rotate(-8deg);
+  animation: gs-stamp 0.3s 0.85s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+.gs-v-stamp .gs-team {
+  margin-top: 30px;
+}
+@keyframes gs-stamp {
+  from {
+    transform: scale(2.6) rotate(-20deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-8deg);
+    opacity: 1;
+  }
+}
+@keyframes gs-shake {
+  25% {
+    transform: translate(-8px, 4px);
+  }
+  50% {
+    transform: translate(7px, -5px);
+  }
+  75% {
+    transform: translate(-4px, 3px);
+  }
+}
+
+/* 5 · Apertura: se abre desde una línea central. */
+.gs-v-split .gs-deco {
+  inset: 0;
+  background: linear-gradient(currentColor, currentColor) center / 100% 6px no-repeat;
+  opacity: 0.6;
+  animation: gs-line-open 0.5s 0.85s ease-out both;
+}
+@keyframes gs-line-open {
+  from {
+    background-size: 0% 6px;
+  }
+}
+.gs-v-split .gs-word {
+  animation: gs-split 0.55s 1s ease-out both;
+}
+@keyframes gs-split {
+  from {
+    clip-path: inset(50% 0 50% 0);
+    transform: scaleY(0.4);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* 6 · Letras: caen una a una con rebote. */
+.gs-v-letters .gs-word span {
+  animation: gs-drop 0.55s calc(0.85s + var(--i) * 0.09s) cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes gs-drop {
+  from {
+    transform: translateY(-140%) rotate(-25deg);
+    opacity: 0;
+  }
+}
+
+/* 7 · Rayos: abanico de luz girando detrás. */
+.gs-v-rays .gs-deco {
+  background: repeating-conic-gradient(from 0deg, var(--gs-glow) 0deg 9deg, transparent 9deg 22deg);
+  opacity: 0.55;
+  animation: gs-spin 2.2s 0.85s linear both;
+}
+@keyframes gs-spin {
+  from {
+    transform: rotate(0deg) scale(0.6);
+  }
+  to {
+    transform: rotate(70deg) scale(1);
+  }
+}
+.gs-v-rays .gs-word {
+  animation: gs-pop 0.45s 0.85s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes gs-pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* 8 · Interferencia: el texto tiembla con desdoble de color. */
+.gs-v-glitch .gs-word {
+  animation: gs-glitch 0.6s 0.85s steps(1) both;
+  text-shadow:
+    5px 0 rgba(255, 60, 90, 0.85),
+    -5px 0 rgba(60, 230, 255, 0.85);
+}
+@keyframes gs-glitch {
+  0% {
+    opacity: 0;
+    transform: translate(0);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-14px, 4px) skewX(12deg);
+    clip-path: inset(10% 0 55% 0);
+  }
+  25% {
+    transform: translate(12px, -3px) skewX(-8deg);
+    clip-path: inset(45% 0 10% 0);
+  }
+  40% {
+    transform: translate(-6px, 2px);
+    clip-path: inset(0 0 30% 0);
+  }
+  55% {
+    transform: translate(8px, 0);
+    clip-path: inset(25% 0 0 0);
+  }
+  70%,
+  100% {
+    transform: translate(0);
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+/* 9 · ¡GOOOOL!: palabra larga que ondula. */
+.gs-v-gooool .gs-word {
+  font-size: 118px;
+}
+.gs-v-gooool .gs-word span {
+  animation:
+    gs-pop 0.35s calc(0.85s + var(--i) * 0.05s) ease-out both,
+    gs-wave 0.9s calc(1.2s + var(--i) * 0.07s) ease-in-out infinite;
+}
+@keyframes gs-wave {
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
+/* Efectos reducidos: sin parpadeos ni temblores, solo aparece y se apaga. */
+.goal-show.reduced {
+  animation: gs-life 2.05s 0.85s both;
+}
+.goal-show.reduced * {
+  animation: none !important;
+}
+
+/* ---------- Fichas de jugador del marcador: con foto bien visible ---------- */
+.person {
+  gap: 8px;
+  padding: 3px 14px 3px 3px;
+  flex: 0 1 auto;
+}
+.person .avatar {
+  border: 2px solid currentColor;
+}
+.side-white .person {
+  border-color: rgba(238, 246, 255, 0.55);
+}
+.side-blue .person {
+  border-color: rgba(98, 214, 255, 0.6);
+}
+/* Con 3 o 4 jugadores: foto algo menor y nombre más pequeño, pero la foto siempre se ve. */
+.team-people.many .person {
+  padding: 3px 10px 3px 3px;
+  font-size: 14px;
+  gap: 6px;
 }

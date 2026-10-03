@@ -26,7 +26,7 @@ import { sound } from '../../services/sound/sound';
 import { formatDuration, headToHead } from '../../services/statistics';
 import { Avatar, MODE_LABEL, Modal, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
-import { GoalEffect } from '../components/GoalEffect';
+import { GoalEffect, GoalShow } from '../components/GoalEffect';
 import { Banner, Confetti, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { useMatchController, type MatchController } from './useMatchController';
@@ -123,6 +123,20 @@ export function MatchScreen({
           level={prefs.effects}
           seed={ctl.lastGoal.id}
           label={ctl.goalLabel}
+        />
+      )}
+      {/* Tras la animación: pantalla completa «¡GOL! · EQUIPO …» (varía en cada gol). */}
+      {ctl.lastGoal && state.phase !== 'penalties' && state.phase !== 'finished' && (
+        <GoalShow
+          key={`show-${ctl.lastGoal.id}`}
+          team={ctl.lastGoal.team!}
+          level={prefs.effects}
+          seed={ctl.lastGoal.id}
+          label={ctl.goalLabel}
+          people={state.participants
+            .filter((p) => p.team === ctl.lastGoal!.team)
+            .sort((a, b) => a.slot - b.slot)
+            .map((p) => ({ id: p.playerId, name: p.nameSnapshot, photo: photos.get(p.playerId) }))}
         />
       )}
 
@@ -238,7 +252,7 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
           <div className={`team-people ${people.length >= 3 ? 'many' : ''}`}>
             {people.map((p) => (
               <span key={p.playerId} className="person">
-                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={36} />
+                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={people.length >= 3 ? 46 : 56} />
                 <span>{p.nameSnapshot}</span>
               </span>
             ))}

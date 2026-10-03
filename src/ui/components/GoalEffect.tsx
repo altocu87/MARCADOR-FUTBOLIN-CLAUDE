@@ -6,6 +6,7 @@
 import { useMemo, type CSSProperties } from 'react';
 import type { Team } from '../../match-engine';
 import type { EffectsLevel } from '../../services/persistence';
+import { initials } from '../../services/players';
 
 export function GoalEffect({ team, level, seed, label }: { team: Team; level: EffectsLevel; seed: string; label?: string | null }) {
   const particles = useMemo(() => {
@@ -58,6 +59,61 @@ export function GoalEffect({ team, level, seed, label }: { team: Team; level: Ef
         ¡GOL!
       </div>
       {label && <div className="fx-moment">{label}</div>}
+    </div>
+  );
+}
+
+/** Variantes de la pantalla completa de gol; se elige una según el gol. */
+export const GOAL_SHOW_VARIANTS = ['zoom', 'slide', 'neon', 'stamp', 'split', 'letters', 'rays', 'glitch', 'gooool'] as const;
+export type GoalShowVariant = (typeof GOAL_SHOW_VARIANTS)[number];
+
+export function pickGoalShowVariant(seed: string): GoalShowVariant {
+  let x = 7;
+  for (const ch of seed) x = (x * 33 + ch.charCodeAt(0)) % 100_003;
+  return GOAL_SHOW_VARIANTS[x % GOAL_SHOW_VARIANTS.length];
+}
+
+/**
+ * Pantalla completa «¡GOL! · EQUIPO …» que aparece justo después de la animación
+ * del gol y se apaga antes de que termine el bloqueo de 3 s. Solo CSS (sin
+ * temporizadores) y sin capturar toques.
+ */
+export function GoalShow({
+  team,
+  level,
+  seed,
+  label,
+  people,
+}: {
+  team: Team;
+  level: EffectsLevel;
+  seed: string;
+  label?: string | null;
+  people: { id: string; name: string; photo?: string }[];
+}) {
+  if (level === 'off') return null;
+  const variant = pickGoalShowVariant(seed);
+  const word = variant === 'gooool' ? '¡GOOOOL!' : '¡GOL!';
+  return (
+    <div className={`goal-show gs-${team} gs-v-${variant} ${level === 'reduced' ? 'reduced' : ''}`} aria-hidden="true">
+      <div className="gs-deco" />
+      <div className="gs-word" data-text={word}>
+        {[...word].map((ch, i) => (
+          <span key={i} style={{ '--i': i } as CSSProperties}>
+            {ch}
+          </span>
+        ))}
+      </div>
+      <div className="gs-team">EQUIPO {team === 'white' ? 'BLANCO' : 'AZUL'}</div>
+      {label && <div className="gs-label">{label}</div>}
+      <div className="gs-people">
+        {people.map((p) => (
+          <div key={p.id} className="gs-person">
+            <span className="gs-photo">{p.photo ? <img src={p.photo} alt="" draggable={false} /> : initials(p.name)}</span>
+            <span className="gs-name">{p.name}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
