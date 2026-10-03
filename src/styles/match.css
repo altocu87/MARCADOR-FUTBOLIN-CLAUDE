@@ -228,7 +228,16 @@
   color: var(--text);
 }
 .overlay-pause {
-  bottom: 66px;
+  gap: 14px;
+}
+/* Continuar de la pausa: botón muy grande, fácil de pulsar desde la mesa. */
+.overlay-pause .overlay-cta {
+  min-width: 520px;
+  min-height: 140px;
+  font-size: 44px;
+  letter-spacing: 0.1em;
+  border-radius: 24px;
+  margin: 6px 0 10px;
 }
 .overlay-countdown {
   cursor: pointer;
