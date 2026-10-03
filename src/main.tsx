@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/screens.css';
 import './styles/match.css';
+import './styles/celebrations.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
