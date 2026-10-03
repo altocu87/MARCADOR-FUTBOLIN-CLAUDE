@@ -61,11 +61,15 @@ export const CHAOS_LAST_MINUTE_MS = 60_000;
 
 export type JokerState = 'available' | 'armed' | 'used';
 
+/** Máximo de jugadores por equipo. */
+export const MAX_PER_TEAM = 4;
+export type Slot = 1 | 2 | 3 | 4;
+
 export interface ParticipantRef {
   playerId: string;
   team: Team;
-  /** 1 o 2: plaza BLANCO 1, AZUL 1, BLANCO 2, AZUL 2. */
-  slot: 1 | 2;
+  /** Plaza dentro del equipo: 1 a 4 (BLANCO 1…4, AZUL 1…4). */
+  slot: Slot;
   /** Snapshot del nombre en el momento del partido. */
   nameSnapshot: string;
 }

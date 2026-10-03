@@ -140,6 +140,14 @@ describe('A02 · configuraciones y selecciones inválidas', () => {
     expect(createMatch('x', cfg(), P2, 0).phase).toBe('countdown');
     expect(createMatch('x', cfg(), P4, 0).participants).toHaveLength(4);
   });
+  it('acepta hasta 4 contra 4 y rechaza 5 por equipo', () => {
+    const team = (t: 'white' | 'blue', n: number) =>
+      Array.from({ length: n }, (_, i) => ({ playerId: `${t}${i}`, team: t, slot: (i + 1) as 1 | 2 | 3 | 4, nameSnapshot: `${t}${i}` }));
+    expect(createMatch('x', cfg(), [...team('white', 3), ...team('blue', 3)], 0).participants).toHaveLength(6);
+    expect(createMatch('x', cfg(), [...team('white', 4), ...team('blue', 4)], 0).participants).toHaveLength(8);
+    expect(() => createMatch('x', cfg(), [...team('white', 3), ...team('blue', 1)], 0)).toThrow(EngineError);
+    expect(() => createMatch('x', cfg(), [...team('white', 5), ...team('blue', 5)], 0)).toThrow(EngineError);
+  });
 });
 
 describe('A03 · POR GOLES', () => {

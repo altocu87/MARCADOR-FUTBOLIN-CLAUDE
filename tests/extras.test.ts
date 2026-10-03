@@ -45,6 +45,14 @@ describe('Sorteo de equipos', () => {
     const s = randomTeams(['a', 'b', 'c', 'd'], () => 0.3);
     expect(new Set([...s.white, ...s.blue]).size).toBe(4);
   });
+  it('equilibra también 4 contra 4', () => {
+    const elo: Record<string, number> = { a: 1800, b: 1700, c: 1300, d: 1200, e: 1100, f: 1000, g: 900, h: 800 };
+    const s = balancedTeams(Object.keys(elo), (id) => elo[id]);
+    expect(s.white).toHaveLength(4);
+    expect(s.blue).toHaveLength(4);
+    expect(new Set([...s.white, ...s.blue]).size).toBe(8);
+    expect(s.diff).toBe(0);
+  });
 });
 
 describe('Torneos', () => {

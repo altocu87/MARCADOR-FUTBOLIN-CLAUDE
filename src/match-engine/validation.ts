@@ -1,4 +1,4 @@
-import type { MatchConfig, ParticipantRef, Team } from './types';
+import { MAX_PER_TEAM, type MatchConfig, type ParticipantRef, type Team } from './types';
 
 /** Rangos de referencia del simulador (ajustables, no límites definitivos del producto). */
 export const CONFIG_LIMITS = {
@@ -47,14 +47,14 @@ export function validateConfig(config: MatchConfig): string[] {
 }
 
 /**
- * Exactamente 2 (1v1) o 4 (2v2) jugadores, sin duplicados,
- * con equipos completos y plazas coherentes.
+ * De 1 contra 1 a 4 contra 4: mismo número de jugadores en cada equipo,
+ * sin duplicados y con plazas coherentes.
  */
 export function validateParticipants(participants: ParticipantRef[]): string[] {
   const errors: string[] = [];
   const n = participants.length;
-  if (n !== 2 && n !== 4) {
-    errors.push('Selecciona 2 jugadores (1 contra 1) o 4 jugadores (2 contra 2).');
+  if (n < 2 || n > MAX_PER_TEAM * 2 || n % 2 !== 0) {
+    errors.push(`Cada equipo necesita de 1 a ${MAX_PER_TEAM} jugadores, el mismo número en los dos.`);
     return errors;
   }
   const ids = new Set(participants.map((p) => p.playerId));

@@ -307,90 +307,289 @@
 }
 
 /* ---------- Selección de jugadores ---------- */
+/* Primero elige el BLANCO y después el AZUL; el fondo cambia según el turno. */
+.select-screen {
+  --tc: var(--white-team);
+}
+.select-blue {
+  --tc: #4fb0ff;
+}
+.select-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.select-bg.is-on {
+  opacity: 0.75;
+}
+.select-screen > :not(.select-bg) {
+  position: relative;
+  z-index: 1;
+}
+.select-screen .screen-header,
+.select-screen .screen-footer {
+  background: rgba(7, 11, 18, 0.6);
+}
+.select-screen .screen-title {
+  color: var(--tc);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tc) 60%, transparent);
+}
+.select-screen .screen-body {
+  padding: 8px 12px;
+}
+.select-status {
+  margin-right: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Selector de jugadores por equipo (1 a 4). */
+.team-size {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.team-size-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+  margin-right: 2px;
+}
+.team-size-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(17, 34, 59, 0.85);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.team-size-btn[aria-pressed='true'] {
+  border-color: var(--tc);
+  color: var(--tc);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tc) 50%, transparent);
+}
 .select-layout {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 170px 1fr 170px;
+  grid-template-columns: 140px 1fr 140px;
   gap: 10px;
 }
-.slot-col {
+/* Columna de un equipo con sus plazas; la del turno se ilumina. */
+.team-col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.slot {
-  position: relative;
-  flex: 1;
+  gap: 6px;
+  min-height: 0;
+  padding: 6px;
   border-radius: var(--radius);
-  border: 2px dashed var(--line);
-  background: rgba(17, 34, 59, 0.5);
-}
-.slot-main {
-  width: 100%;
-  height: 100%;
-  background: none;
-  border: none;
+  border: 2px solid transparent;
+  background: rgba(7, 16, 28, 0.55);
+  opacity: 0.6;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  text-align: left;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
 }
-.slot-label {
-  font-size: 12px;
+.team-col.is-active {
+  opacity: 1;
+}
+.team-col-white.is-active {
+  border-color: var(--white-team);
+  box-shadow: 0 0 16px rgba(238, 246, 255, 0.4);
+}
+.team-col-blue.is-active {
+  border-color: #4fb0ff;
+  box-shadow: 0 0 16px rgba(79, 176, 255, 0.5);
+}
+.team-col-label {
+  font-size: 13px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
+  text-align: center;
 }
-.slot-white .slot-label {
+.team-col-white .team-col-label {
   color: var(--white-team);
 }
-.slot-blue .slot-label {
+.team-col-blue .team-col-label {
   color: #6fb6f5;
 }
-.slot.is-active {
-  border-style: solid;
-  border-color: var(--accent);
-  box-shadow: var(--glow);
-}
-.slot-white.is-active {
-  border-color: var(--white-team);
-}
-.slot-blue.is-active {
-  border-color: var(--blue-team);
-  box-shadow: 0 0 18px rgba(23, 109, 188, 0.5);
-}
-.slot-player {
+.team-slot {
+  position: relative;
+  flex: 1;
+  max-height: 90px;
+  min-height: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line);
+  background: rgba(17, 34, 59, 0.6);
 }
-.slot-name {
+.team-slot.filled {
+  border-style: solid;
+}
+.team-slot-name {
+  flex: 1;
+  min-width: 0;
   font-weight: 800;
-  font-size: 16px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.slot-empty {
+.team-slot-empty {
+  width: 100%;
+  text-align: center;
   color: var(--text-3);
-  font-size: 14px;
+  font-size: 12px;
 }
-.slot-clear {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 44px;
-  height: 44px;
+.team-slot-clear {
+  flex: none;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: transparent;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   color: var(--text-2);
   cursor: pointer;
+}
+/* Fichas de jugador: la imagen llena la tarjeta y debajo el nombre y los datos. */
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  /* Cada ficha mantiene su altura completa (foto + datos) y la lista se desplaza. */
+  grid-auto-rows: max-content;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  padding-right: 2px;
+}
+.pick-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--line);
+  background: rgba(10, 22, 40, 0.92);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+}
+.pick-card:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.pick-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #1d3a63, #0f2140);
+}
+.pick-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pick-initials {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--text-2);
+}
+.pick-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 4px 5px;
+  min-width: 0;
+}
+.pick-name {
+  max-width: 100%;
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pick-meta {
+  font-size: 10px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.pick-title {
+  max-width: 100%;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ranked);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Elegido por el equipo que está eligiendo. */
+.pick-card.picked-white {
+  border-color: var(--white-team);
+  box-shadow: 0 0 12px rgba(238, 246, 255, 0.55);
+}
+.pick-card.picked-blue {
+  border-color: #4fb0ff;
+  box-shadow: 0 0 12px rgba(79, 176, 255, 0.6);
+}
+.pick-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+.picked-white .pick-badge {
+  background: var(--white-team);
+  color: #0a1626;
+}
+.picked-blue .pick-badge {
+  background: var(--blue-team);
+  color: #fff;
+}
+/* Ya está en el otro equipo: desactivado. */
+.pick-card.taken {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.pick-taken {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 0;
+  background: rgba(7, 11, 18, 0.8);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
 }
 .pgrid {
   display: grid;
