@@ -15,8 +15,23 @@ function hash(seed: string): number {
 }
 
 /** Variantes de la pantalla completa de gol; se elige una según el gol. */
-export const GOAL_SHOW_VARIANTS = ['zoom', 'slide', 'neon', 'stamp', 'split', 'letters', 'rays', 'glitch', 'gooool'] as const;
+/** Cada variante tiene su propio color (no el del equipo) para no repetir siempre azul. */
+export const GOAL_SHOW_VARIANTS = [
+  'zoom',
+  'slide',
+  'neon',
+  'stamp',
+  'split',
+  'letters',
+  'rays',
+  'glitch',
+  'gooool',
+  'confetti',
+  'flip',
+] as const;
 export type GoalShowVariant = (typeof GOAL_SHOW_VARIANTS)[number];
+
+const CONFETTI = ['#ffe14d', '#3dff7a', '#ff5fa2', '#4fd8ff', '#ffffff', '#ff8a1f'];
 
 export function pickGoalShowVariant(seed: string): GoalShowVariant {
   return GOAL_SHOW_VARIANTS[hash(seed) % GOAL_SHOW_VARIANTS.length];
@@ -44,7 +59,28 @@ export function GoalShow({
   const word = variant === 'gooool' ? '¡GOOOOL!' : '¡GOL!';
   return (
     <div className={`goal-show gs-${team} gs-v-${variant} ${level === 'reduced' ? 'reduced' : ''}`} aria-hidden="true">
-      <div className="gs-deco" />
+      <div className="gs-deco">
+        {variant === 'confetti' &&
+          Array.from({ length: 34 }, (_, i) => {
+            const r = (hash(`${seed}-${i}`) % 1000) / 1000;
+            const r2 = (hash(`${i}-${seed}`) % 1000) / 1000;
+            return (
+              <span
+                key={i}
+                className="gs-confetti"
+                style={
+                  {
+                    left: `${r * 100}%`,
+                    '--c': CONFETTI[i % CONFETTI.length],
+                    '--delay': `${r2 * 0.6}s`,
+                    '--spin': `${(r - 0.5) * 900}deg`,
+                    '--drift': `${(r2 - 0.5) * 160}px`,
+                  } as CSSProperties
+                }
+              />
+            );
+          })}
+      </div>
       <div className="gs-word" data-text={word}>
         {[...word].map((ch, i) => (
           <span key={i} style={{ '--i': i } as CSSProperties}>

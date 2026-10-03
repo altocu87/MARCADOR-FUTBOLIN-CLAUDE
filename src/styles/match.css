@@ -1199,6 +1199,194 @@
   }
 }
 
+/* ---- Colores propios de cada variante (texto siempre en contraste). ----
+   El equipo se distingue por la etiqueta «EQUIPO …», que mantiene su color. */
+.goal-show.gs-v-zoom {
+  background: radial-gradient(circle at 50% 42%, #b6ff5c, #3ccf3c 55%, #0d5c1a);
+  color: #072a0c;
+  --gs-glow: rgba(255, 255, 255, 0.55);
+}
+.goal-show.gs-v-slide {
+  background: linear-gradient(180deg, #ffe95c, #ffc400 60%, #e08a00);
+  color: #1a1100;
+  --gs-glow: rgba(0, 0, 0, 0.35);
+}
+.goal-show.gs-v-slide .gs-deco {
+  background: repeating-linear-gradient(115deg, transparent 0 60px, rgba(20, 14, 0, 0.9) 60px 90px);
+  opacity: 0.22;
+}
+.goal-show.gs-v-neon {
+  background: radial-gradient(circle at 50% 42%, #2a0a2e, #0a020c 70%);
+  color: #ff4fd8;
+  --gs-glow: rgba(255, 79, 216, 0.7);
+}
+.goal-show.gs-v-neon .gs-word {
+  --neon: #ff4fd8;
+  -webkit-text-stroke-color: #ff4fd8;
+}
+.goal-show.gs-v-stamp {
+  background: radial-gradient(circle at 50% 42%, #ffb15c, #ff7a1a 55%, #a83a00);
+  color: #ffffff;
+  --gs-glow: rgba(90, 30, 0, 0.6);
+}
+.goal-show.gs-v-split {
+  background: radial-gradient(circle at 50% 42%, #ff9cc8, #ff3d8b 55%, #9c0f4f);
+  color: #ffffff;
+  --gs-glow: rgba(120, 0, 50, 0.6);
+}
+.goal-show.gs-v-letters {
+  background: radial-gradient(circle at 50% 42%, #8affe6, #19d3b4 55%, #066b5c);
+  color: #032720;
+  --gs-glow: rgba(255, 255, 255, 0.5);
+}
+/* Rayos: atardecer, de amarillo a fucsia. */
+.goal-show.gs-v-rays {
+  background: radial-gradient(circle at 50% 50%, #fff36b, #ff9a1f 35%, #ff3d6e 70%, #6a0f4a);
+  color: #ffffff;
+  --gs-glow: rgba(255, 255, 255, 0.6);
+}
+.goal-show.gs-v-rays .gs-word {
+  -webkit-text-stroke: 3px #4a0a2e;
+}
+.goal-show.gs-v-rays .gs-deco {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.35) 0deg 9deg, transparent 9deg 22deg);
+}
+/* Interferencia: negro con texto amarillo ácido. */
+.goal-show.gs-v-glitch {
+  background: #050505;
+  color: #e8ff3a;
+  --gs-glow: rgba(232, 255, 58, 0.5);
+}
+.goal-show.gs-v-glitch .gs-deco {
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 5px);
+}
+.goal-show.gs-v-glitch .gs-word {
+  text-shadow:
+    6px 0 rgba(255, 0, 140, 0.9),
+    -6px 0 rgba(0, 255, 200, 0.9);
+}
+/* ¡GOOOOL!: arcoíris que va girando de color. */
+.goal-show.gs-v-gooool {
+  background: linear-gradient(120deg, #ff3d8b, #ff9a1f, #ffe14d, #3dff7a, #4fd8ff, #a259ff, #ff3d8b);
+  background-size: 300% 300%;
+  color: #ffffff;
+  --gs-glow: rgba(0, 0, 0, 0.45);
+  animation:
+    gs-life 3.2s 0s both,
+    gs-rainbow 3.2s linear both;
+}
+.goal-show.gs-v-gooool .gs-word {
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35), 0 0 24px rgba(0, 0, 0, 0.35);
+}
+@keyframes gs-rainbow {
+  to {
+    background-position: 100% 100%;
+  }
+}
+
+/* 10 · Confeti: lluvia de papelitos de colores sobre violeta. */
+.goal-show.gs-v-confetti {
+  background: radial-gradient(circle at 50% 42%, #b98cff, #7c3aed 55%, #2e1065);
+  color: #ffffff;
+  --gs-glow: rgba(255, 225, 77, 0.6);
+}
+.gs-v-confetti .gs-deco {
+  inset: 0;
+}
+.gs-confetti {
+  position: absolute;
+  top: -20px;
+  width: 12px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--c);
+  animation: gs-fall 2.4s var(--delay) cubic-bezier(0.3, 0.6, 0.6, 1) both;
+}
+.gs-confetti:nth-child(3n) {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+@keyframes gs-fall {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--drift), 560px) rotate(var(--spin));
+  }
+}
+.gs-v-confetti .gs-word {
+  animation: gs-pop 0.45s 0s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+/* 11 · Volteo: bandera de meta a cuadros y el ¡GOL! gira en 3D. */
+.goal-show.gs-v-flip {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55) 75%),
+    repeating-conic-gradient(#f4f4f4 0 25%, #151515 0 50%) 0 0 / 80px 80px;
+  color: #ffd400;
+  --gs-glow: rgba(0, 0, 0, 0.8);
+  perspective: 700px;
+}
+.gs-v-flip .gs-word {
+  -webkit-text-stroke: 5px #111;
+  paint-order: stroke fill;
+  animation: gs-flip 0.8s 0s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.gs-v-flip .gs-deco {
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: gs-shine 1.6s 0.3s ease-in-out both;
+}
+@keyframes gs-flip {
+  from {
+    transform: rotateX(-110deg) scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes gs-shine {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Textos pequeños legibles sobre fondos claros o a cuadros. */
+.goal-show.gs-v-gooool .gs-word {
+  -webkit-text-stroke: 3px #3a0a4a;
+  paint-order: stroke fill;
+}
+.goal-show.gs-v-gooool .gs-label,
+.goal-show.gs-v-gooool .gs-name,
+.goal-show.gs-v-flip .gs-label,
+.goal-show.gs-v-flip .gs-name {
+  color: #ffffff;
+  text-shadow: 0 0 3px #000, 0 0 8px #000, 0 2px 2px #000;
+}
+.goal-show.gs-v-flip .gs-photo {
+  border-color: #ffd400;
+}
+
+/* La etiqueta del equipo conserva su color para saber quién ha marcado. */
+.goal-show .gs-team {
+  padding: 4px 26px 4px calc(26px + 0.3em);
+  border-radius: 999px;
+  text-shadow: none;
+}
+.goal-show.gs-white .gs-team {
+  background: #eef6ff;
+  color: #0d4f8f;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.6);
+}
+.goal-show.gs-blue .gs-team {
+  background: #176dbc;
+  color: #ffffff;
+  box-shadow: 0 0 18px rgba(23, 109, 188, 0.7);
+}
+
 /* Efectos reducidos: sin parpadeos ni temblores, solo aparece y se apaga. */
 .goal-show.reduced {
   animation: gs-life 3.2s 0s both;
