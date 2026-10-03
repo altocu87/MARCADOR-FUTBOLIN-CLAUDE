@@ -310,7 +310,7 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
             <SevenSegment
               className="clock"
               text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
-              height={74}
+              height={104}
               ghost={false}
               color={clockColor}
               label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}

@@ -149,7 +149,13 @@
 }
 /* Reloj sobre un panel oscuro para que destaque; el brillo toma el color del tiempo. */
 .clock-panel {
-  padding: 8px 12px;
+  /* Ocupa también el hueco libre sobre los botones de anular, hasta ~2 mm de las tarjetas:
+     hueco entre columnas (10 px) + botón de anular (58 px) − 8 px de margen. */
+  align-self: stretch;
+  margin: 0 -60px;
+  display: flex;
+  justify-content: center;
+  padding: 8px 10px;
   border-radius: 14px;
   background: rgba(2, 6, 12, 0.82);
   border: 1px solid color-mix(in srgb, var(--clock) 35%, transparent);
