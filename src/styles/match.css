@@ -1432,27 +1432,31 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  /* El botón de anular queda abajo, a un tercio del alto: el resto del lado es todo tarjeta. */
+  align-items: flex-end;
+}
+.score-row .score-btn {
+  align-self: stretch;
 }
 .score-row .score-btn {
   min-width: 0;
   container-type: inline-size;
 }
 .side-white .score-row .score-btn {
-  border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
 .side-blue .score-row .score-btn {
-  border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 .annul-btn {
   flex: none;
-  width: 54px;
+  width: 58px;
+  height: 33.333%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   border: 2px solid rgba(255, 90, 110, 0.65);
   background: linear-gradient(180deg, rgba(120, 10, 28, 0.9), rgba(70, 4, 16, 0.92));
   color: #ff8794;
@@ -1468,11 +1472,11 @@
   border-radius: 22px 0 0 22px;
 }
 .annul-btn span {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 900;
-  letter-spacing: 0.16em;
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-align: center;
 }
 .annul-btn:active:not(:disabled) {
   background: rgba(200, 20, 45, 0.95);

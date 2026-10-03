@@ -215,7 +215,7 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
   const team = (t: Team) => {
     const people = state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
     const joker = state.jokers?.[t];
-    // Anular gol: tira roja pegada al lado interior de la tarjeta de su equipo.
+    // Anular gol: botón rojo pegado abajo, en el lado interior de la tarjeta (un tercio de su alto).
     const minus = (
       <button
         className={`annul-btn annul-${t}`}
@@ -223,11 +223,15 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
         disabled={!canCorrect || periodScore[t] === 0}
         aria-label={`Anular un gol de ${TEAM_LABEL[t]}`}
       >
-        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
           <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
         </svg>
-        <span>ANULAR GOL</span>
+        <span>
+          ANULAR
+          <br />
+          GOL
+        </span>
       </button>
     );
     const jokerBtn = joker && (
