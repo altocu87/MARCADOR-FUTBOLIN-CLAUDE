@@ -349,40 +349,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Selector de jugadores por equipo (1 a 4). */
-.team-size {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.team-size-label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  color: var(--text-2);
-  margin-right: 2px;
-}
-.team-size-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: rgba(17, 34, 59, 0.85);
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 900;
-  cursor: pointer;
-}
-.team-size-btn[aria-pressed='true'] {
-  border-color: var(--tc);
-  color: var(--tc);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--tc) 50%, transparent);
-}
 .select-layout {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 140px 1fr 140px;
+  grid-template-columns: 156px 1fr 156px;
   gap: 10px;
 }
 /* Columna de un equipo con sus plazas; la del turno se ilumina. */
@@ -455,7 +426,7 @@
 }
 .team-slot-clear {
   flex: none;
-  width: 32px;
+  width: 26px;
   height: 32px;
   border-radius: 50%;
   background: transparent;

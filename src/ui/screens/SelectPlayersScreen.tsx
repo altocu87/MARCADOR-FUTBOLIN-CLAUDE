@@ -10,9 +10,6 @@ import { PlayerEditor } from '../components/PlayerEditor';
 
 const TEAM_NAME: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
 const OTHER: Record<Team, Team> = { white: 'blue', blue: 'white' };
-const SIZES = Array.from({ length: MAX_PER_TEAM }, (_, i) => i + 1);
-/** Lo más habitual en la mesa: 2 contra 2. */
-const DEFAULT_SIZE = 2;
 
 type Teams = Record<Team, string[]>;
 
@@ -23,19 +20,15 @@ function fromParticipants(parts?: ParticipantRef[]): Teams {
 }
 
 /**
- * Selección por turnos: primero elige el equipo BLANCO y después el AZUL.
- * Cada equipo lleva de 1 a 4 jugadores (por defecto 2); un jugador elegido
- * por un equipo aparece desactivado para el otro.
+ * Selección por turnos: primero elige el equipo BLANCO y, con «Siguiente», el AZUL.
+ * Cada equipo elige de 1 a 4 jugadores, sin tener que ser los mismos (1 contra 2,
+ * 2 contra 3…). Un jugador elegido por un equipo aparece desactivado para el otro.
  */
 export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; initial?: ParticipantRef[] }) {
   const { players, navigate, progression, demoMode, toast } = useApp();
   const [teams, setTeams] = useState<Teams>(() => fromParticipants(initial));
-  const [size, setSize] = useState(() => {
-    const n = fromParticipants(initial).white.length;
-    return n >= 1 && n <= MAX_PER_TEAM ? n : DEFAULT_SIZE;
-  });
   // Si se vuelve con los dos equipos hechos, se abre en el turno del azul (listo para continuar).
-  const [step, setStep] = useState<Team>(() => (fromParticipants(initial).white.length >= size ? 'blue' : 'white'));
+  const [step, setStep] = useState<Team>(() => (fromParticipants(initial).blue.length > 0 ? 'blue' : 'white'));
   const [creating, setCreating] = useState(false);
 
   const available = useMemo(() => sortPlayers(players.filter((p) => p.active)), [players]);
@@ -52,25 +45,16 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       return;
     }
     if (teams[OTHER[step]].includes(playerId)) return;
-    if (current.length >= size) {
-      toast(`El equipo ${TEAM_NAME[step]} ya tiene ${size} jugador${size === 1 ? '' : 'es'}`);
+    if (current.length >= MAX_PER_TEAM) {
+      toast(`El equipo ${TEAM_NAME[step]} ya tiene ${MAX_PER_TEAM} jugadores (máximo)`);
       return;
     }
-    const next = { ...teams, [step]: [...current, playerId] };
-    setTeams(next);
-    // Al completar el blanco, pasa solo al turno del azul.
-    if (step === 'white' && next.white.length === size) setStep('blue');
+    setTeams({ ...teams, [step]: [...current, playerId] });
   };
 
   const remove = (team: Team, playerId: string) => {
     setTeams({ ...teams, [team]: teams[team].filter((id) => id !== playerId) });
     setStep(team);
-  };
-
-  const changeSize = (n: number) => {
-    setSize(n);
-    setTeams({ white: teams.white.slice(0, n), blue: teams.blue.slice(0, n) });
-    if (teams.white.length < n) setStep('white');
   };
 
   const participants: ParticipantRef[] = (['white', 'blue'] as Team[]).flatMap((team) =>
@@ -81,17 +65,20 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       nameSnapshot: byId.get(id)?.name ?? '?',
     })),
   );
-  const whiteFull = teams.white.length === size;
-  const allFull = whiteFull && teams.blue.length === size;
-  const valid = allFull && validateParticipants(participants).length === 0;
-  const missing = size - teams[step].length;
-  const status = valid
-    ? `${size} contra ${size} listo`
-    : missing > 0
-      ? `Equipo ${TEAM_NAME[step]}: elige ${missing} jugador${missing === 1 ? '' : 'es'} más`
-      : 'Completa el otro equipo';
+  const whiteReady = teams.white.length > 0;
+  const valid = whiteReady && teams.blue.length > 0 && validateParticipants(participants).length === 0;
+  const count = teams[step].length;
+  const status =
+    step === 'blue' && valid
+      ? `${teams.white.length} contra ${teams.blue.length} listo`
+      : count === 0
+        ? `Equipo ${TEAM_NAME[step]}: elige de 1 a ${MAX_PER_TEAM} jugadores`
+        : `Equipo ${TEAM_NAME[step]}: ${count} de ${MAX_PER_TEAM} jugadores`;
+  // Equilibrar/Aleatorio reparten a partes iguales: solo con 4, 6 u 8 elegidos.
+  const chosenCount = teams.white.length + teams.blue.length;
+  const canSplit = step === 'blue' && valid && chosenCount >= 4 && chosenCount % 2 === 0;
 
-  // Sorteo con todos los elegidos (2v2 en adelante).
+  // Sorteo con todos los elegidos, a partes iguales.
   const applySplit = (kind: 'balanced' | 'random') => {
     const chosen = [...teams.white, ...teams.blue];
     const split =
@@ -117,7 +104,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       aria-label={`Elegir jugadores del equipo ${TEAM_NAME[team]}`}
     >
       <div className="team-col-label">{TEAM_NAME[team]}</div>
-      {Array.from({ length: size }, (_, i) => {
+      {Array.from({ length: MAX_PER_TEAM }, (_, i) => {
         const id = teams[team][i];
         const p = id ? byId.get(id) : undefined;
         return (
@@ -138,7 +125,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
                 </button>
               </>
             ) : (
-              <span className="team-slot-empty">Plaza {i + 1}</span>
+              <span className="team-slot-empty">{i === 0 ? 'Plaza 1' : `Plaza ${i + 1} · opcional`}</span>
             )}
           </div>
         );
@@ -192,14 +179,6 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       right={
         <>
           {demoMode && <TestModeBadge />}
-          <div className="team-size" role="group" aria-label="Jugadores por equipo">
-            <span className="team-size-label">POR EQUIPO</span>
-            {SIZES.map((n) => (
-              <button key={n} className="team-size-btn" aria-pressed={size === n} onClick={() => changeSize(n)}>
-                {n}
-              </button>
-            ))}
-          </div>
           <button className="btn btn-sm" onClick={() => setCreating(true)}>
             + Nuevo
           </button>
@@ -210,7 +189,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
           <span className={`notice ${valid ? '' : 'warn'} select-status`} role="status">
             {status}
           </span>
-          {step === 'blue' && allFull && size >= 2 && (
+          {canSplit && (
             <>
               <button className="btn btn-sm" onClick={() => applySplit('balanced')} title="Reparte por ELO para que los equipos estén igualados">
                 ⚖ Equilibrar
@@ -221,7 +200,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
             </>
           )}
           {step === 'white' ? (
-            <button className="btn btn-primary btn-lg" disabled={!whiteFull} onClick={() => setStep('blue')}>
+            <button className="btn btn-primary btn-lg" disabled={!whiteReady} onClick={() => setStep('blue')}>
               Siguiente: Azul
             </button>
           ) : (

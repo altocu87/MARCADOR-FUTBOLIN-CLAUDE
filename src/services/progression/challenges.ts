@@ -39,7 +39,7 @@ export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
   { id: 'comeback', text: 'Remonta {n} partido(s) tras ir 2 abajo', daily: 1, weekly: 1, progress: (m, t) => (won(m, t) && comebackSize(m) >= 2 ? 1 : 0) },
   { id: 'big_win', text: 'Gana {n} partido(s) por 3 o más', daily: 1, weekly: 3, progress: (m, t) => (won(m, t) && m.result.score[t] - m.result.score[opp(t)] >= 3 ? 1 : 0) },
   { id: 'chaos', text: 'Juega {n} Partidos Caos', daily: 2, weekly: 5, progress: (m) => (m.config.mode === 'chaos' ? 1 : 0) },
-  { id: 'duo', text: 'Gana {n} partidos de 2 contra 2', daily: 1, weekly: 4, progress: (m, t) => (won(m, t) && m.participants.length === 4 ? 1 : 0) },
+  { id: 'duo', text: 'Gana {n} partidos de 2 contra 2', daily: 1, weekly: 4, progress: (m, t) => (won(m, t) && m.participants.filter((p) => p.team === 'white').length === 2 && m.participants.filter((p) => p.team === 'blue').length === 2 ? 1 : 0) },
 ];
 
 export const CHALLENGE_XP: Record<ChallengeScope, number> = { daily: 40, weekly: 100 };

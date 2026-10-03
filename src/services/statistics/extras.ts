@@ -107,13 +107,18 @@ export function personalGoalsInMatch(m: StoredMatch, playerId: string): number {
   return validGoalsFromEvents(m.events).filter((g) => m.scorers![g.id] === playerId).length;
 }
 
-/** En 1v1 cada gol es del único jugador del equipo: se asigna automáticamente. */
+/** Si un equipo tiene un solo jugador (1v1, 1v2…), sus goles son suyos: se asignan automáticamente. */
 export function autoScorers(m: StoredMatch): Record<string, string> | undefined {
-  if (m.participants.length !== 2) return m.scorers;
+  const solo = (team: string) => {
+    const members = m.participants.filter((p) => p.team === team);
+    return members.length === 1 ? members[0].playerId : undefined;
+  };
+  if (!solo('white') && !solo('blue')) return m.scorers;
   const out: Record<string, string> = { ...(m.scorers ?? {}) };
   for (const g of m.events) {
     if (g.type !== 'GOAL' || !g.team) continue;
-    out[g.id] = m.participants.find((p) => p.team === g.team)!.playerId;
+    const pid = solo(g.team);
+    if (pid) out[g.id] = pid;
   }
   return out;
 }

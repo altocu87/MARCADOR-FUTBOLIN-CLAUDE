@@ -126,9 +126,8 @@ describe('A02 · configuraciones y selecciones inválidas', () => {
     expect(() => createMatch('x', cfg({ minutesPerPeriod: 31 }), P2, 0)).toThrow(EngineError);
     expect(() => createMatch('x', cfg({ minutesPerPeriod: 1.5 }), P2, 0)).toThrow(EngineError);
   });
-  it('rechaza 1, 3 o 5 jugadores y duplicados', () => {
+  it('rechaza equipos vacíos, plazas repetidas y duplicados', () => {
     expect(() => createMatch('x', cfg(), P2.slice(0, 1), 0)).toThrow(EngineError);
-    expect(() => createMatch('x', cfg(), P4.slice(0, 3), 0)).toThrow(EngineError);
     const five = [...P4, { playerId: 'e', team: 'white' as const, slot: 2 as const, nameSnapshot: 'E' }];
     expect(() => createMatch('x', cfg(), five, 0)).toThrow(EngineError);
     const dup = [P2[0], { ...P2[1], playerId: 'a' }];
@@ -140,12 +139,13 @@ describe('A02 · configuraciones y selecciones inválidas', () => {
     expect(createMatch('x', cfg(), P2, 0).phase).toBe('countdown');
     expect(createMatch('x', cfg(), P4, 0).participants).toHaveLength(4);
   });
-  it('acepta hasta 4 contra 4 y rechaza 5 por equipo', () => {
+  it('acepta de 1 a 4 por equipo, también desiguales, y rechaza 5', () => {
     const team = (t: 'white' | 'blue', n: number) =>
       Array.from({ length: n }, (_, i) => ({ playerId: `${t}${i}`, team: t, slot: (i + 1) as 1 | 2 | 3 | 4, nameSnapshot: `${t}${i}` }));
     expect(createMatch('x', cfg(), [...team('white', 3), ...team('blue', 3)], 0).participants).toHaveLength(6);
     expect(createMatch('x', cfg(), [...team('white', 4), ...team('blue', 4)], 0).participants).toHaveLength(8);
-    expect(() => createMatch('x', cfg(), [...team('white', 3), ...team('blue', 1)], 0)).toThrow(EngineError);
+    expect(createMatch('x', cfg(), [...team('white', 3), ...team('blue', 1)], 0).participants).toHaveLength(4);
+    expect(createMatch('x', cfg(), P4.slice(0, 3), 0).participants).toHaveLength(3);
     expect(() => createMatch('x', cfg(), [...team('white', 5), ...team('blue', 5)], 0)).toThrow(EngineError);
   });
 });

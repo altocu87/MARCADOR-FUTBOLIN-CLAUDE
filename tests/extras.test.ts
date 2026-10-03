@@ -141,6 +141,11 @@ describe('Estadísticas ampliadas', () => {
     const withScorers = { ...m, scorers: autoScorers(m) };
     expect(personalGoals([withScorers]).get('a')).toBe(2);
   });
+  it('1 contra 2: los goles del jugador solo se le asignan; los de la pareja, no', () => {
+    const m = makeMatch({ white: ['a'], blue: ['b', 'c'], goals: 'WWB' });
+    const scorers = autoScorers(m)!;
+    expect(Object.values(scorers)).toEqual(['a', 'a']);
+  });
   it('pronosticadores', () => {
     const m = { ...makeMatch({ white: ['a'], blue: ['b'], goals: 'W' }), picks: [{ playerId: 'c', team: 'white' as const }, { playerId: 'd', team: 'blue' as const }] };
     const s = pickerStats([m]);

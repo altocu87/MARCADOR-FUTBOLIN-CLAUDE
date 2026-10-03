@@ -47,25 +47,22 @@ export function validateConfig(config: MatchConfig): string[] {
 }
 
 /**
- * De 1 contra 1 a 4 contra 4: mismo número de jugadores en cada equipo,
- * sin duplicados y con plazas coherentes.
+ * Cada equipo lleva de 1 a 4 jugadores; no hace falta que sean los mismos
+ * (se puede jugar 1 contra 2 o 2 contra 3). Sin duplicados y con plazas coherentes.
  */
 export function validateParticipants(participants: ParticipantRef[]): string[] {
   const errors: string[] = [];
-  const n = participants.length;
-  if (n < 2 || n > MAX_PER_TEAM * 2 || n % 2 !== 0) {
-    errors.push(`Cada equipo necesita de 1 a ${MAX_PER_TEAM} jugadores, el mismo número en los dos.`);
-    return errors;
-  }
   const ids = new Set(participants.map((p) => p.playerId));
-  if (ids.size !== n) errors.push('Un jugador no puede ocupar dos plazas.');
-  const perTeam = n / 2;
+  if (ids.size !== participants.length) errors.push('Un jugador no puede ocupar dos plazas.');
   for (const team of ['white', 'blue'] as Team[]) {
     const members = participants.filter((p) => p.team === team);
-    if (members.length !== perTeam) errors.push('Los equipos deben estar completos y equilibrados.');
+    if (members.length < 1 || members.length > MAX_PER_TEAM) {
+      errors.push(`Cada equipo necesita de 1 a ${MAX_PER_TEAM} jugadores.`);
+      continue;
+    }
     const slots = new Set(members.map((m) => m.slot));
     if (slots.size !== members.length) errors.push('Plazas repetidas en un equipo.');
-    for (const m of members) if (m.slot > perTeam) errors.push('Plaza no válida.');
+    for (const m of members) if (m.slot < 1 || m.slot > members.length) errors.push('Plaza no válida.');
   }
   return [...new Set(errors)];
 }
