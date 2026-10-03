@@ -235,10 +235,10 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
         <div className="team-bottom">
           {t === 'white' && minus}
           {t === 'white' && jokerBtn}
-          <div className="team-people">
+          <div className={`team-people ${people.length >= 3 ? 'many' : ''}`}>
             {people.map((p) => (
               <span key={p.playerId} className="person">
-                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={26} />
+                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={36} />
                 <span>{p.nameSnapshot}</span>
               </span>
             ))}
@@ -275,7 +275,7 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
           <SevenSegment
             className="clock"
             text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
-            height={58}
+            height={74}
             color={clock.remainingMs !== null && clock.remainingMs <= 10_000 && playing ? '#FF5A6E' : '#62D6FF'}
             label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}
           />
@@ -284,10 +284,16 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               A {state.config.goalsPerPeriod} goles
             </div>
           )}
-          <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
-            {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
-          </div>
+          {/* Pausa grande justo bajo el reloj y Deshacer debajo, en el centro. */}
           <div className="center-actions">
+            <button
+              className="btn pause-btn"
+              onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
+              disabled={!canCorrect}
+              aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
+            >
+              {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
+            </button>
             <button
               className="btn btn-sm"
               onClick={() => send({ type: 'UNDO' })}
@@ -295,14 +301,9 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
             >
               ↶ Deshacer
             </button>
-            <button
-              className="btn btn-sm"
-              onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
-              disabled={!canCorrect}
-              aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
-            >
-              {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
-            </button>
+          </div>
+          <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
+            {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
           </div>
         </div>
         {team('blue')}

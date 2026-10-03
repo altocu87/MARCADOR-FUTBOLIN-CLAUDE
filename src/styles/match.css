@@ -31,7 +31,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 190px 1fr;
+  grid-template-columns: 1fr 210px 1fr;
   gap: 10px;
 }
 .team-side {
@@ -83,15 +83,15 @@
   opacity: 0.75;
 }
 .score-num {
-  font-size: 250px;
-  line-height: 1;
+  font-size: 315px;
+  line-height: 0.82;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
-  margin-top: 14px;
+  margin-top: 18px;
 }
 .score-num.two {
-  font-size: 190px;
+  font-size: 220px;
 }
 .lock-bar {
   position: absolute;
@@ -109,8 +109,9 @@
   background: currentColor;
   opacity: 0.6;
 }
+/* Fila de jugadores más alta: la tarjeta queda menos alta y los nombres se ven mejor. */
 .team-bottom {
-  height: 48px;
+  height: 70px;
   flex: none;
   display: flex;
   align-items: center;
@@ -133,14 +134,21 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px 3px 3px;
+  padding: 4px 12px 4px 4px;
   border-radius: 999px;
   background: rgba(17, 34, 59, 0.85);
   border: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   min-width: 0;
-  max-width: 50%;
+}
+/* Con 3 o 4 jugadores, sin avatar y letra algo menor para que quepan los nombres. */
+.team-people.many .person {
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.team-people.many .avatar {
+  display: none;
 }
 .person span:last-child {
   white-space: nowrap;
@@ -149,8 +157,8 @@
 }
 /* −1 discreto, con zona de toque suficiente (48 × 48). */
 .minus-btn {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   flex: none;
   border-radius: 12px;
   border: 1px solid rgba(255, 90, 110, 0.55);
@@ -204,14 +212,20 @@
   }
 }
 .center-actions {
-  margin-top: auto;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 .center-actions .btn {
   width: 100%;
+}
+/* Pausa: el botón más grande del centro. */
+.pause-btn {
+  min-height: 88px;
+  font-size: 24px;
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Superposiciones ---------- */
@@ -659,7 +673,7 @@
   z-index: 3;
 }
 .joker-btn {
-  height: 48px;
+  height: 56px;
   min-width: 56px;
   flex: none;
   border-radius: 12px;
