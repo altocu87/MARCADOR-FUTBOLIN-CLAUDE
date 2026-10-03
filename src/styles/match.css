@@ -1731,3 +1731,242 @@
   color: var(--text);
   opacity: 0.9;
 }
+
+/* ---------- Final del partido (pantalla única) ---------- */
+.overlay-victory {
+  justify-content: flex-start;
+  padding: 12px 18px 12px;
+  gap: 8px;
+}
+.vic-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.overlay-victory .victory-kicker {
+  font-size: 15px;
+  color: var(--ranked);
+  letter-spacing: 0.2em;
+}
+.overlay-victory .victory-title {
+  font-size: 76px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.vic-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
+  gap: 12px;
+}
+.vic-body.with-ach {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+.vic-players,
+.vic-ach {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 2px;
+}
+.vic-note {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(7, 16, 28, 0.8);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 14px;
+  text-align: center;
+}
+.vic-note.warn {
+  border-color: var(--danger);
+  color: #ffb3bc;
+}
+/* Fila de jugador con su progreso. */
+.vic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 14px;
+  background: rgba(7, 16, 28, 0.82);
+  border: 1px solid var(--line);
+  animation: gs-rise 0.45s var(--d, 0s) both;
+}
+.vic-row.is-winner {
+  border: 2px solid var(--ranked);
+  box-shadow: 0 0 16px rgba(242, 201, 76, 0.35);
+}
+.vic-row.is-winner .avatar {
+  border: 2px solid var(--ranked);
+}
+.vic-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vic-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vic-name {
+  font-size: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vic-xp {
+  font-size: 14px;
+  font-weight: 900;
+  color: #3dff7a;
+}
+.vic-elo {
+  font-size: 13px;
+  font-weight: 900;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.vic-elo.up {
+  color: #3dff7a;
+}
+.vic-elo.down {
+  color: #ff8794;
+}
+.vic-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--ranked);
+}
+/* Barra de nivel. */
+.vic-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vic-lv {
+  flex: none;
+  min-width: 52px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text-2);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+.vic-lv.leveled {
+  color: var(--ranked);
+  transform: scale(1.15);
+}
+.vic-bar {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.vic-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2fb8ec, #3dff7a);
+  box-shadow: 0 0 10px rgba(61, 255, 122, 0.6);
+}
+.vic-bar.flash span {
+  background: linear-gradient(90deg, #ffd43b, #fff3a8);
+  box-shadow: 0 0 18px rgba(255, 212, 59, 0.9);
+}
+.vic-levelup {
+  flex: none;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--ranked);
+  text-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
+  animation: pop-in 0.4s ease-out both;
+}
+/* Logros: cada uno explicado (qué es y quién lo ha conseguido). */
+.vic-ach-title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--ranked);
+}
+.vic-ach-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  background: rgba(7, 16, 28, 0.85);
+  border: 1px solid var(--line);
+  animation: pop-in 0.4s var(--d, 0s) both;
+}
+.vic-ach-card.rarity-rare {
+  border-color: #6fb6f5;
+}
+.vic-ach-card.rarity-epic {
+  border-color: #e07bff;
+  box-shadow: 0 0 14px rgba(224, 123, 255, 0.35);
+}
+.vic-ach-text {
+  min-width: 0;
+}
+.vic-ach-name {
+  font-size: 15px;
+  font-weight: 900;
+}
+.vic-ach-rarity {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-left: 4px;
+}
+.vic-ach-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.25;
+}
+.vic-ach-who {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ranked);
+}
+/* Botones del final. */
+.vic-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.vic-btn {
+  min-height: 62px;
+  font-size: 18px;
+  padding: 0 22px;
+}
+.vic-actions .vic-btn:first-child {
+  font-size: 26px;
+  padding: 0 18px;
+}
+.vic-main {
+  min-width: 220px;
+  font-size: 20px;
+}

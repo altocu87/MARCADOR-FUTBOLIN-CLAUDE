@@ -1167,76 +1167,7 @@
   border-color: #4fa3f0;
 }
 
-/* ---------- Celebración de progreso ---------- */
-.celebration {
-  z-index: 60;
-}
-.celebration-card {
-  position: relative;
-  z-index: 2;
-  width: min(600px, 92%);
-  max-height: 90%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px;
-  border-radius: 20px;
-  border: 2px solid var(--ranked);
-  background: linear-gradient(180deg, rgba(242, 201, 76, 0.16), var(--surface) 40%);
-  box-shadow: 0 0 40px rgba(242, 201, 76, 0.35);
-  animation: victory-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
-}
-.celebration-title {
-  text-align: center;
-  font-size: 34px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: 0.14em;
-  color: var(--ranked);
-  text-shadow: 0 0 20px rgba(242, 201, 76, 0.7);
-}
-.celebration-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-}
-.celebration-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(17, 34, 59, 0.8);
-}
-.celebration-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.cel-level,
-.cel-rank,
-.cel-ach {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-}
-.cel-rank {
-  background: var(--ranked-soft);
-  border-color: var(--ranked);
-  color: var(--ranked);
-}
-.cel-ach {
-  background: rgba(214, 92, 255, 0.14);
-  border-color: var(--chaos);
-}
+/* ---------- Iconos de logro ---------- */
 .ach-icon.locked {
   opacity: 0.5;
 }

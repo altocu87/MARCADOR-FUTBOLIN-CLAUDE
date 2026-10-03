@@ -54,6 +54,8 @@ export interface MatchProgressEntry {
   eloDelta?: number;
   k?: number;
   xpGained: number;
+  /** XP total del jugador justo después de este partido (antes = xpAfter − xpGained). */
+  xpAfter: number;
   xpBreakdown: XpLine[];
   levelBefore: number;
   levelAfter: number;
@@ -312,6 +314,7 @@ export function computeProgression(
         eloDelta: change?.delta,
         k: change?.k,
         xpGained,
+        xpAfter: p.xp,
         xpBreakdown: lines,
         levelBefore,
         levelAfter: p.level,

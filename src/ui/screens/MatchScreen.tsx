@@ -21,13 +21,13 @@ import {
   type Period,
   type Team,
 } from '../../match-engine';
-import { displayTitle } from '../../services/progression';
 import { sound } from '../../services/sound/sound';
 import { formatDuration, headToHead } from '../../services/statistics';
 import { Avatar, MODE_LABEL, Modal, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
 import { AnnulShow, GoalShow } from '../components/GoalEffect';
-import { Banner, Confetti, CountdownRing, NeonGoal } from '../components/graphics';
+import { VictoryScreen, swapSides } from '../components/VictoryScreen';
+import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { useMatchController, type MatchController } from './useMatchController';
 
@@ -157,7 +157,19 @@ export function MatchScreen({
         </div>
       )}
       {state.phase === 'periodEnd' && <PeriodEndOverlay ctl={ctl} />}
-      {state.phase === 'finished' && <VictoryOverlay state={state} save={save} onContinue={goSummary} />}
+      {state.phase === 'finished' && (
+        <VictoryScreen
+          state={state}
+          matchId={state.id}
+          save={save}
+          inTournament={!!extras?.tournament}
+          onStats={goSummary}
+          onRematch={() => navigate({ name: 'match', config: state.config, participants: swapSides(state.participants), extras: undefined })}
+          onNewMatch={() => navigate({ name: 'setup', mode: state.config.mode })}
+          onTournament={() => extras?.tournament && navigate({ name: 'tournamentDetail', id: extras.tournament.id })}
+          onHome={() => navigate({ name: 'home' })}
+        />
+      )}
 
       {confirmExit && (
         <Modal
@@ -416,49 +428,6 @@ function PeriodEndOverlay({ ctl }: { ctl: MatchController }) {
 }
 
 /** Pantalla de victoria: confeti, ganadores con foto y título, y melodía del jugador. */
-function VictoryOverlay({ state, save, onContinue }: { state: MatchState; save: SaveStatus | null; onContinue: () => void }) {
-  const { players, progression, prefs } = useApp();
-  const r = state.result!;
-  const winners = state.participants.filter((p) => p.team === r.winner).sort((a, b) => a.slot - b.slot);
-  // Melodía del primer ganador (una vez, al aparecer la pantalla).
-  const [anthem] = useState(() => players.find((p) => p.id === winners[0]?.playerId)?.anthem);
-  useEffect(() => {
-    const id = window.setTimeout(() => sound.playAnthem(anthem), 900);
-    return () => window.clearTimeout(id);
-  }, [anthem]);
-  const line = r.penaltyScore
-    ? `${r.score.white}–${r.score.blue} · Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue}`
-    : r.reason === 'golden_goal'
-      ? `${r.score.white}–${r.score.blue} · Gol de oro`
-      : `${r.score.white}–${r.score.blue}`;
-  return (
-    <div className={`overlay overlay-victory victory-${r.winner}`} aria-live="assertive">
-      {prefs.effects !== 'off' && <Confetti count={prefs.effects === 'full' ? 80 : 30} />}
-      <AssetImage name="modo-clasificatorio" className="victory-bg" fallback={null} />
-      <div className="victory-rays" aria-hidden="true" />
-      <div className="victory-kicker">FINAL DEL PARTIDO</div>
-      <div className="victory-title">VICTORIA {TEAM_LABEL[r.winner]}</div>
-      <div className="victory-score">{line}</div>
-      <div className="victory-people">
-        {winners.map((w) => {
-          const player = players.find((p) => p.id === w.playerId);
-          const title = displayTitle(progression?.players.get(w.playerId), player?.titleId);
-          return (
-            <div key={w.playerId} className="victory-person">
-              <Avatar name={w.nameSnapshot} photo={player?.photo} size={84} />
-              <strong>{w.nameSnapshot}</strong>
-              {title && <span className="player-title">{title}</span>}
-            </div>
-          );
-        })}
-      </div>
-      <button className="btn btn-primary btn-lg overlay-cta" onClick={onContinue} disabled={!save}>
-        {save ? 'VER RESUMEN' : 'GUARDANDO…'}
-      </button>
-    </div>
-  );
-}
-
 function PenaltiesView({ ctl }: { ctl: MatchController }) {
   const { demoMode } = useApp();
   const { state, send } = ctl;
