@@ -285,7 +285,8 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
   return (
     <>
       <header className="match-top">
-        <span className="period-chip">{periodLabel(state)}</span>
+        {/* Tipo de partido, grande, a la izquierda de la cabecera. */}
+        <span className={`match-mode mode-chip-${state.config.mode}`}>{MODE_LABEL[state.config.mode]}</span>
         {state.period === 'overtime' && <span className="badge badge-ranked">GOL DE ORO</span>}
         {ctl.matchPoint.length > 0 && state.period !== 'overtime' && (
           <span className="badge badge-danger match-point-badge">
@@ -293,17 +294,14 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
           </span>
         )}
         {lastMinute && <span className="badge badge-chaos">ÚLTIMO MINUTO · GOLES x2</span>}
-        <span className="dim match-cond">{conditionText(state.config)}</span>
         <span style={{ flex: 1 }} />
         {(demoMode || state.config.testMode) && <TestModeBadge />}
-        <span className={`badge ${state.config.mode === 'chaos' ? 'badge-chaos' : state.config.mode === 'ranked' ? 'badge-ranked' : 'badge-accent'}`}>
-          {MODE_LABEL[state.config.mode]}
-        </span>
       </header>
       <div className="match-main">
         {team('white')}
         <div className="center-col">
-          <div className="label">{clock.remainingMs !== null ? 'Restante' : 'Tiempo'}</div>
+          {/* Parte en juego (1ª parte, 2ª parte, prórroga…) encima del reloj. */}
+          <div className="center-period">{periodLabel(state)}</div>
           <div className="clock-panel" style={{ '--clock': clockColor } as CSSProperties}>
             <SevenSegment
               className="clock"
@@ -330,6 +328,8 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
             </button>
           </div>
+          {/* Cómo se gana el partido, legible bajo la Pausa. */}
+          <div className="center-cond">{conditionText(state.config)}</div>
           <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
             {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
           </div>

@@ -12,7 +12,7 @@
   background: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(242, 201, 76, 0.1), transparent 70%);
 }
 .match-top {
-  height: 34px;
+  height: 38px;
   flex: none;
   display: flex;
   align-items: center;
@@ -23,9 +23,6 @@
   font-weight: 900;
   letter-spacing: 0.12em;
   color: var(--text);
-}
-.match-cond {
-  font-size: 12px;
 }
 .match-main {
   flex: 1;
@@ -1484,4 +1481,46 @@
 .annul-btn:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+/* Cabecera: tipo de partido grande, del color de su modo. */
+.match-mode {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--mc);
+  color: var(--mc);
+  background: rgba(7, 16, 28, 0.75);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--mc) 60%, transparent);
+  white-space: nowrap;
+}
+.mode-chip-quick {
+  --mc: var(--accent);
+}
+.mode-chip-chaos {
+  --mc: var(--chaos);
+}
+.mode-chip-ranked {
+  --mc: var(--ranked);
+}
+/* Parte en juego, encima del reloj. */
+.center-period {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+/* Cómo se gana, bajo la Pausa. */
+.center-cond {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text);
+  opacity: 0.9;
 }
