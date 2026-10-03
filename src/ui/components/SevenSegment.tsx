@@ -34,9 +34,11 @@ interface Props {
   color?: string;
   className?: string;
   label?: string;
+  /** Pintar tenues los segmentos apagados (aspecto de display real). */
+  ghost?: boolean;
 }
 
-export function SevenSegment({ text, height, color = 'currentColor', className, label }: Props) {
+export function SevenSegment({ text, height, color = 'currentColor', className, label, ghost = true }: Props) {
   const chars = text.split('');
   let x = 0;
   const parts = chars.map((ch, i) => {
@@ -53,9 +55,11 @@ export function SevenSegment({ text, height, color = 'currentColor', className, 
     const on = SEGMENTS[ch] ?? '';
     const g = (
       <g key={i} transform={`translate(${x},0)`}>
-        {Object.entries(POLYS).map(([seg, pts]) => (
-          <polygon key={seg} points={pts} fill={color} opacity={on.includes(seg) ? 1 : 0.07} />
-        ))}
+        {Object.entries(POLYS)
+          .filter(([seg]) => ghost || on.includes(seg))
+          .map(([seg, pts]) => (
+            <polygon key={seg} points={pts} fill={color} opacity={on.includes(seg) ? 1 : 0.07} />
+          ))}
       </g>
     );
     x += 66;

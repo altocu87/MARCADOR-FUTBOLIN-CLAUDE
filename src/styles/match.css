@@ -142,11 +142,6 @@
   font-weight: 700;
   min-width: 0;
 }
-.person span:last-child {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 /* −1 discreto, con zona de toque suficiente (48 × 48). */
 .minus-btn {
   width: 56px;
@@ -171,8 +166,18 @@
   gap: 6px;
   padding-top: 18px;
 }
+/* Reloj sobre un panel oscuro para que destaque; el brillo toma el color del tiempo. */
+.clock-panel {
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(2, 6, 12, 0.82);
+  border: 1px solid color-mix(in srgb, var(--clock) 35%, transparent);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.6), 0 0 16px color-mix(in srgb, var(--clock) 20%, transparent);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
 .clock {
-  filter: drop-shadow(0 0 8px rgba(98, 214, 255, 0.45));
+  display: block;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--clock, #62d6ff) 55%, transparent));
 }
 .period-goals {
   font-size: 13px;
@@ -441,133 +446,6 @@
   background: var(--blue-team);
 }
 
-/* ---------- Efectos de gol ---------- */
-.goal-fx {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 50%;
-  z-index: 20;
-  pointer-events: none;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.goal-fx-white {
-  left: 0;
-}
-.goal-fx-blue {
-  right: 0;
-}
-.fx-flash {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.55), transparent 70%);
-  animation: fx-flash 0.45s ease-out forwards;
-}
-@keyframes fx-flash {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-.fx-ring {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 6px solid;
-  animation: fx-ring 0.9s ease-out forwards;
-  opacity: 0;
-}
-.fx-ring-2 {
-  animation-delay: 0.15s;
-}
-@keyframes fx-ring {
-  0% {
-    transform: scale(0.3);
-    opacity: 0.95;
-  }
-  100% {
-    transform: scale(5);
-    opacity: 0;
-  }
-}
-.fx-burst {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-.fx-burst span {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0;
-  box-shadow: 0 0 10px currentColor;
-  animation: fx-particle 0.9s ease-out forwards;
-}
-@keyframes fx-particle {
-  0% {
-    transform: rotate(var(--a)) translateX(0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(var(--a)) translateX(var(--d)) scale(0.3);
-    opacity: 0;
-  }
-}
-.fx-lines span {
-  position: absolute;
-  left: -40%;
-  width: 40%;
-  height: 3px;
-  border-radius: 2px;
-  opacity: 0;
-  animation: fx-line 0.5s ease-out forwards;
-}
-@keyframes fx-line {
-  0% {
-    transform: translateX(0);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateX(350%);
-    opacity: 0;
-  }
-}
-.fx-text {
-  position: absolute;
-  top: 18%;
-  font-size: 56px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 18px rgba(98, 214, 255, 0.7);
-  animation: fx-text 1.1s ease-out forwards;
-  opacity: 0;
-}
-@keyframes fx-text {
-  0% {
-    transform: scale(0.4);
-    opacity: 0;
-  }
-  20% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-  75% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0;
-  }
-}
-.goal-fx.reduced .fx-text {
-  text-shadow: none;
-}
-
 /* ---------- Paneles de cristal y avisos ---------- */
 .score-btn {
   isolation: isolate;
@@ -781,19 +659,6 @@
   }
 }
 
-/* ---------- Texto de momento del gol ---------- */
-.fx-moment {
-  position: absolute;
-  bottom: 22%;
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  color: var(--ranked);
-  text-shadow: 0 0 16px rgba(242, 201, 76, 0.8);
-  animation: fx-text 1.6s ease-out forwards;
-  opacity: 0;
-}
-
 /* ---------- Victoria ---------- */
 .overlay-victory {
   background: radial-gradient(ellipse at center, rgba(15, 40, 70, 0.95), rgba(4, 8, 15, 0.97) 70%);
@@ -961,7 +826,7 @@
   pointer-events: none;
   z-index: 0;
 }
-.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-fx):not(.goal-show):not(.modal-backdrop) {
+.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-show):not(.annul-show):not(.modal-backdrop) {
   position: relative;
   z-index: 1;
 }
@@ -976,7 +841,7 @@
 }
 
 /* ---------- Pantalla completa de gol (tras la animación) ---------- */
-/* Aparece a los 0,85 s del gol y dura 2,5 s: se apaga a los ~3,35 s, ya pasado el bloqueo de 3 s. */
+/* Aparece nada más marcar y dura 3,2 s: se apaga justo pasado el bloqueo de 3 s. */
 .goal-show {
   position: absolute;
   inset: 0;
@@ -988,7 +853,7 @@
   justify-content: center;
   overflow: hidden;
   opacity: 0;
-  animation: gs-life 2.5s 0.85s both;
+  animation: gs-life 3.2s 0s both;
 }
 @keyframes gs-life {
   0% {
@@ -1042,7 +907,7 @@
   font-weight: 900;
   letter-spacing: 0.3em;
   padding-left: 0.3em;
-  animation: gs-rise 0.45s 1.05s both;
+  animation: gs-rise 0.45s 0.2s both;
 }
 .gs-label {
   position: relative;
@@ -1066,7 +931,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  animation: gs-rise 0.45s calc(1.15s + var(--d, 0s)) both;
+  animation: gs-rise 0.45s calc(0.3s + var(--d, 0s)) both;
 }
 .gs-person:nth-child(2) {
   --d: 0.08s;
@@ -1112,7 +977,7 @@
 
 /* 1 · Zoom: el ¡GOL! cae desde muy grande. */
 .gs-v-zoom .gs-word {
-  animation: gs-zoom 0.5s 0.85s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: gs-zoom 0.5s 0s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 @keyframes gs-zoom {
   from {
@@ -1125,7 +990,7 @@
 .gs-v-slide .gs-deco {
   background: repeating-linear-gradient(115deg, transparent 0 60px, var(--gs-glow) 60px 90px);
   opacity: 0.5;
-  animation: gs-stripes 2.5s 0.85s linear both;
+  animation: gs-stripes 3.2s 0s linear both;
 }
 @keyframes gs-stripes {
   from {
@@ -1136,10 +1001,10 @@
   }
 }
 .gs-v-slide .gs-word {
-  animation: gs-slide-in 0.45s 0.85s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation: gs-slide-in 0.45s 0s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 .gs-v-slide .gs-team {
-  animation: gs-slide-in-r 0.45s 1s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation: gs-slide-in-r 0.45s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 @keyframes gs-slide-in {
   from {
@@ -1179,7 +1044,7 @@
 }
 .gs-v-neon .gs-word,
 .gs-v-neon .gs-team {
-  animation: gs-flicker 0.7s 0.85s steps(1) both;
+  animation: gs-flicker 0.7s 0s steps(1) both;
 }
 @keyframes gs-flicker {
   0%,
@@ -1200,15 +1065,15 @@
 /* 4 · Sello: golpe ladeado con temblor de pantalla. */
 .gs-v-stamp {
   animation:
-    gs-life 2.5s 0.85s both,
-    gs-shake 0.35s 1.1s both;
+    gs-life 3.2s 0s both,
+    gs-shake 0.35s 0.25s both;
 }
 .gs-v-stamp .gs-word {
   padding: 0 24px;
   border: 10px solid currentColor;
   border-radius: 24px;
   transform: rotate(-8deg);
-  animation: gs-stamp 0.3s 0.85s cubic-bezier(0.5, 0, 0.75, 0) both;
+  animation: gs-stamp 0.3s 0s cubic-bezier(0.5, 0, 0.75, 0) both;
 }
 .gs-v-stamp .gs-team {
   margin-top: 30px;
@@ -1240,7 +1105,7 @@
   inset: 0;
   background: linear-gradient(currentColor, currentColor) center / 100% 6px no-repeat;
   opacity: 0.6;
-  animation: gs-line-open 0.5s 0.85s ease-out both;
+  animation: gs-line-open 0.5s 0s ease-out both;
 }
 @keyframes gs-line-open {
   from {
@@ -1248,7 +1113,7 @@
   }
 }
 .gs-v-split .gs-word {
-  animation: gs-split 0.55s 1s ease-out both;
+  animation: gs-split 0.55s 0.15s ease-out both;
 }
 @keyframes gs-split {
   from {
@@ -1262,7 +1127,7 @@
 
 /* 6 · Letras: caen una a una con rebote. */
 .gs-v-letters .gs-word span {
-  animation: gs-drop 0.55s calc(0.85s + var(--i) * 0.09s) cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation: gs-drop 0.55s calc(0s + var(--i) * 0.09s) cubic-bezier(0.3, 1.6, 0.5, 1) both;
 }
 @keyframes gs-drop {
   from {
@@ -1275,7 +1140,7 @@
 .gs-v-rays .gs-deco {
   background: repeating-conic-gradient(from 0deg, var(--gs-glow) 0deg 9deg, transparent 9deg 22deg);
   opacity: 0.55;
-  animation: gs-spin 2.6s 0.85s linear both;
+  animation: gs-spin 3.3s 0s linear both;
 }
 @keyframes gs-spin {
   from {
@@ -1286,7 +1151,7 @@
   }
 }
 .gs-v-rays .gs-word {
-  animation: gs-pop 0.45s 0.85s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  animation: gs-pop 0.45s 0s cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 @keyframes gs-pop {
   from {
@@ -1297,7 +1162,7 @@
 
 /* 8 · Interferencia: el texto tiembla con desdoble de color. */
 .gs-v-glitch .gs-word {
-  animation: gs-glitch 0.6s 0.85s steps(1) both;
+  animation: gs-glitch 0.6s 0s steps(1) both;
   text-shadow:
     5px 0 rgba(255, 60, 90, 0.85),
     -5px 0 rgba(60, 230, 255, 0.85);
@@ -1338,8 +1203,8 @@
 }
 .gs-v-gooool .gs-word span {
   animation:
-    gs-pop 0.35s calc(0.85s + var(--i) * 0.05s) ease-out both,
-    gs-wave 0.9s calc(1.2s + var(--i) * 0.07s) ease-in-out infinite;
+    gs-pop 0.35s calc(0s + var(--i) * 0.05s) ease-out both,
+    gs-wave 0.9s calc(0.35s + var(--i) * 0.07s) ease-in-out infinite;
 }
 @keyframes gs-wave {
   50% {
@@ -1349,7 +1214,7 @@
 
 /* Efectos reducidos: sin parpadeos ni temblores, solo aparece y se apaga. */
 .goal-show.reduced {
-  animation: gs-life 2.5s 0.85s both;
+  animation: gs-life 3.2s 0s both;
 }
 .goal-show.reduced * {
   animation: none !important;
@@ -1375,4 +1240,216 @@
   padding: 3px 10px 3px 3px;
   font-size: 14px;
   gap: 6px;
+}
+
+/* Deshacer: icono grande. */
+.undo-btn {
+  min-height: 64px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Ficha de jugador: foto arriba y nombre debajo, a todo el ancho de la ficha. La letra
+   se reduce lo necesario (según el ancho y la longitud del nombre) para que se lea entero. */
+.team-bottom {
+  height: 86px;
+}
+.person,
+.team-people.many .person {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 150px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px 3px;
+  border-radius: 14px;
+}
+.person-name {
+  align-self: stretch;
+  min-width: 0;
+  container-type: inline-size;
+  text-align: center;
+}
+.person-name > span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.15;
+  font-size: max(10px, min(16px, calc(100cqi / (var(--n) * 0.72))));
+}
+
+/* ---------- Gol anulado (rojo, pantalla completa) ---------- */
+.annul-show {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #fff;
+  background: radial-gradient(circle at 50% 45%, #b3122a, #5c0614 60%, #1c0206);
+  animation: gs-life 2.4s 0s both;
+}
+.an-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.an-word {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 900;
+  line-height: 0.92;
+  text-shadow: 0 0 26px rgba(255, 60, 80, 0.8);
+}
+.an-word span:first-child {
+  font-size: 96px;
+  letter-spacing: 0.12em;
+  padding-left: 0.12em;
+}
+.an-word span:last-child {
+  font-size: 120px;
+  letter-spacing: 0.04em;
+}
+.an-team {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 120, 130, 0.7);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  animation: gs-rise 0.4s 0.35s both;
+}
+
+/* A · Aspa: una gran X roja se dibuja sobre el texto. */
+.an-cross {
+  position: absolute;
+  inset: 12% 22%;
+  width: 56%;
+  height: 76%;
+  z-index: 2;
+  overflow: visible;
+}
+.an-cross line {
+  stroke: #ff3b55;
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  filter: drop-shadow(0 0 10px #ff3b55);
+  animation: an-draw 0.35s 0.35s ease-out forwards;
+}
+.an-cross line + line {
+  animation-delay: 0.6s;
+}
+@keyframes an-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.an-v-cross .an-word {
+  animation: gs-zoom 0.4s 0s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* B · Sello: «ANULADO» cae de golpe, ladeado, y la pantalla tiembla. */
+.an-v-stamp {
+  animation:
+    gs-life 2.4s 0s both,
+    gs-shake 0.35s 0.25s both;
+}
+.an-v-stamp .an-word {
+  padding: 6px 28px;
+  border: 10px solid #fff;
+  border-radius: 22px;
+  transform: rotate(-7deg);
+  animation: an-stamp 0.28s 0s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+@keyframes an-stamp {
+  from {
+    transform: scale(2.6) rotate(-20deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-7deg);
+    opacity: 1;
+  }
+}
+
+/* C · Interferencia: la pantalla «falla» en rojo y el texto se desdobla. */
+.an-v-glitch .an-deco {
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0 3px, transparent 3px 6px);
+  animation: an-scan 0.6s 0s steps(4) 3;
+}
+@keyframes an-scan {
+  50% {
+    transform: translateY(6px);
+    opacity: 0.6;
+  }
+}
+.an-v-glitch .an-word {
+  text-shadow:
+    6px 0 rgba(255, 0, 60, 0.9),
+    -6px 0 rgba(255, 200, 200, 0.6);
+  animation: gs-glitch 0.7s 0s steps(1) both;
+}
+
+/* D · VAR: «REVISIÓN VAR» parpadea y después aparece el veredicto. */
+.an-var {
+  position: absolute;
+  top: 16%;
+  z-index: 1;
+  padding: 6px 20px;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a0a1d;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  animation: an-var 0.9s 0s steps(1) both;
+}
+@keyframes an-var {
+  0%,
+  40%,
+  80% {
+    opacity: 1;
+  }
+  20%,
+  60% {
+    opacity: 0.25;
+  }
+}
+.an-v-var .an-word {
+  animation: an-verdict 0.4s 0.8s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.an-v-var .an-team {
+  animation-delay: 1s;
+}
+@keyframes an-verdict {
+  from {
+    transform: scaleX(0.1);
+    opacity: 0;
+  }
+}
+
+.annul-show.reduced {
+  animation: gs-life 2.4s 0s both;
+}
+.annul-show.reduced * {
+  animation: none !important;
+}
+.annul-show.reduced .an-cross line {
+  stroke-dashoffset: 0;
 }

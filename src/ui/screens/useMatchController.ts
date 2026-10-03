@@ -60,6 +60,8 @@ export interface MatchController {
   send(command: EngineCommand): CommandOutcome;
   /** Último gol aceptado (para efectos). */
   lastGoal: MatchEvent | null;
+  /** Último gol anulado (−1 o deshacer), para su animación en rojo. */
+  annulled: { id: string; team: Team } | null;
   /** Texto especial del último gol (empate, remontada…). */
   goalLabel: string | null;
   /** Rótulo animado en curso (inicio de parte, muerte súbita…). */
@@ -84,6 +86,7 @@ export function useMatchController(
   const [now, setNow] = useState(() => Date.now());
   const [lastGoal, setLastGoal] = useState<MatchEvent | null>(null);
   const [goalLabel, setGoalLabel] = useState<string | null>(null);
+  const [annulled, setAnnulled] = useState<{ id: string; team: Team } | null>(null);
   const [banner, setBanner] = useState<Celebration | null>(null);
   const [lockFlashAt, setLockFlashAt] = useState(0);
   const stateRef = useRef(state);
@@ -121,6 +124,17 @@ export function useMatchController(
       const prev = stateRef.current;
       stateRef.current = next;
       setState(next);
+      // Gol anulado: el marcador de un equipo baja en la misma parte (−1 o deshacer un gol).
+      if (prev.period === next.period) {
+        const before = getScore(prev);
+        const after = getScore(next);
+        const down = (['white', 'blue'] as Team[]).find((tm) => after[tm] < before[tm]);
+        if (down) {
+          setLastGoal(null);
+          setAnnulled({ id: newId('a'), team: down });
+          sound.play('error');
+        }
+      }
       for (const e of events) {
         if (e.type === 'GOAL' && e.team) {
           setLastGoal(e);
@@ -246,5 +260,5 @@ export function useMatchController(
     [send],
   );
 
-  return { state, now, send, lastGoal, goalLabel, banner, lockFlashAt, matchPoint: matchPointTeams(state) };
+  return { state, now, send, lastGoal, goalLabel, annulled, banner, lockFlashAt, matchPoint: matchPointTeams(state) };
 }

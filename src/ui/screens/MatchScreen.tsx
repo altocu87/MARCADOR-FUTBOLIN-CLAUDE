@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp } from '../../app/AppContext';
 import { persistFinishedMatch, toStoredMatch, type SaveStatus } from '../../app/matchFinalizer';
 import type { MatchExtras } from '../../app/routes';
@@ -26,7 +26,7 @@ import { sound } from '../../services/sound/sound';
 import { formatDuration, headToHead } from '../../services/statistics';
 import { Avatar, MODE_LABEL, Modal, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
-import { GoalEffect, GoalShow } from '../components/GoalEffect';
+import { AnnulShow, GoalShow } from '../components/GoalEffect';
 import { Banner, Confetti, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { useMatchController, type MatchController } from './useMatchController';
@@ -39,6 +39,10 @@ export const PERIOD_LABEL: Record<Period, string> = {
 };
 
 const TEAM_LABEL: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
+const CLOCK_GREEN = '#3DFF7A';
+const CLOCK_YELLOW = '#FFD43B';
+const CLOCK_RED = '#FF4D5E';
+const CLOCK_MINT = '#7DFFD8';
 
 /** Ilustración de cada modalidad, usada como fondo muy tenue del partido. */
 const MODE_ART: Record<MatchConfig['mode'], string> = {
@@ -116,16 +120,7 @@ export function MatchScreen({
         <ScoreboardView ctl={ctl} photos={photos} />
       )}
 
-      {ctl.lastGoal && state.phase !== 'penalties' && (
-        <GoalEffect
-          key={ctl.lastGoal.id}
-          team={ctl.lastGoal.team!}
-          level={prefs.effects}
-          seed={ctl.lastGoal.id}
-          label={ctl.goalLabel}
-        />
-      )}
-      {/* Tras la animación: pantalla completa «¡GOL! · EQUIPO …» (varía en cada gol). */}
+      {/* Al marcar: pantalla completa «¡GOL! · EQUIPO …» (varía en cada gol). */}
       {ctl.lastGoal && state.phase !== 'penalties' && state.phase !== 'finished' && (
         <GoalShow
           key={`show-${ctl.lastGoal.id}`}
@@ -138,6 +133,10 @@ export function MatchScreen({
             .sort((a, b) => a.slot - b.slot)
             .map((p) => ({ id: p.playerId, name: p.nameSnapshot, photo: photos.get(p.playerId) }))}
         />
+      )}
+      {/* Al restar (−1) o deshacer un gol: «GOL ANULADO» en rojo. */}
+      {ctl.annulled && state.phase !== 'penalties' && (
+        <AnnulShow key={ctl.annulled.id} team={ctl.annulled.team} level={prefs.effects} seed={ctl.annulled.id} />
       )}
 
       {ctl.banner && state.phase !== 'finished' && (
@@ -197,6 +196,15 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
   const periodScore = getPeriodScore(state);
   const canCorrect = state.phase === 'playing' || state.phase === 'paused';
   const streak = goalStreak(state);
+  // Color del reloj: menta en la prórroga; con cuenta atrás, verde → amarillo (último minuto) → rojo (últimos 20 s).
+  const clockColor =
+    state.period === 'overtime'
+      ? CLOCK_MINT
+      : clock.remainingMs !== null && clock.remainingMs <= 20_000
+        ? CLOCK_RED
+        : clock.remainingMs !== null && clock.remainingMs <= 60_000
+          ? CLOCK_YELLOW
+          : CLOCK_GREEN;
   const lastMinute =
     state.config.mode === 'chaos' &&
     state.config.chaos?.doubleLastMinute &&
@@ -252,8 +260,11 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
           <div className={`team-people ${people.length >= 3 ? 'many' : ''}`}>
             {people.map((p) => (
               <span key={p.playerId} className="person">
-                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={people.length >= 3 ? 46 : 56} />
-                <span>{p.nameSnapshot}</span>
+                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={people.length >= 3 ? 44 : 52} />
+                {/* El tamaño de letra se ajusta al hueco disponible para que el nombre se lea entero. */}
+                <span className="person-name" style={{ '--n': Math.max(4, p.nameSnapshot.length) } as CSSProperties}>
+                  <span>{p.nameSnapshot}</span>
+                </span>
               </span>
             ))}
           </div>
@@ -286,13 +297,16 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
         {team('white')}
         <div className="center-col">
           <div className="label">{clock.remainingMs !== null ? 'Restante' : 'Tiempo'}</div>
-          <SevenSegment
-            className="clock"
-            text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
-            height={74}
-            color={clock.remainingMs !== null && clock.remainingMs <= 10_000 && playing ? '#FF5A6E' : '#62D6FF'}
-            label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}
-          />
+          <div className="clock-panel" style={{ '--clock': clockColor } as CSSProperties}>
+            <SevenSegment
+              className="clock"
+              text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
+              height={74}
+              ghost={false}
+              color={clockColor}
+              label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}
+            />
+          </div>
           {state.config.endCondition !== 'time' && state.period !== 'overtime' && (
             <div className="period-goals">
               A {state.config.goalsPerPeriod} goles
@@ -309,11 +323,16 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
             </button>
             <button
-              className="btn btn-sm"
+              className="btn undo-btn"
               onClick={() => send({ type: 'UNDO' })}
               disabled={!canCorrect || state.undoStack.length === 0}
+              aria-label="Deshacer"
+              title="Deshacer"
             >
-              ↶ Deshacer
+              <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
           <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
