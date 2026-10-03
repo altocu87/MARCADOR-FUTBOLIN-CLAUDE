@@ -68,8 +68,7 @@ select {
 .viewport {
   position: fixed;
   inset: 0;
-  /* Respeta muescas y barras del sistema en móviles. */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Las muescas y barras del sistema las respeta Stage.tsx al colocar el lienzo. */
   display: grid;
   place-items: center;
   background: radial-gradient(ellipse at center, #0b1424 0%, #000 75%);
@@ -77,8 +76,6 @@ select {
 
 .stage {
   position: absolute;
-  left: 50%;
-  top: 50%;
   transform-origin: center center;
   overflow: hidden;
   background:

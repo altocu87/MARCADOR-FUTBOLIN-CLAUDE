@@ -45,6 +45,43 @@ function viewportSize(): [number, number] {
   return [vv?.width ?? window.innerWidth, vv?.height ?? window.innerHeight];
 }
 
+/** Margen mínimo junto al borde superior del móvil (barra de notificaciones), aunque el sistema no lo indique. */
+const MIN_TOP_MARGIN = 14;
+
+interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** Zonas reservadas por el sistema (muesca, barra de estado, barra de gestos) en píxeles. */
+function safeInsets(): Insets {
+  const el = document.createElement('div');
+  el.style.cssText =
+    'position:fixed;visibility:hidden;pointer-events:none;' +
+    'padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(el);
+  const cs = getComputedStyle(el);
+  const insets = {
+    top: parseFloat(cs.paddingTop) || 0,
+    right: parseFloat(cs.paddingRight) || 0,
+    bottom: parseFloat(cs.paddingBottom) || 0,
+    left: parseFloat(cs.paddingLeft) || 0,
+  };
+  el.remove();
+  return { ...insets, top: Math.max(insets.top, MIN_TOP_MARGIN) };
+}
+
+/** Hueco útil: la pantalla menos las zonas del sistema, y su centro. */
+function usableArea(): { w: number; h: number; cx: number; cy: number } {
+  const [vw, vh] = viewportSize();
+  const i = safeInsets();
+  const w = Math.max(1, vw - i.left - i.right);
+  const h = Math.max(1, vh - i.top - i.bottom);
+  return { w, h, cx: i.left + w / 2, cy: i.top + h / 2 };
+}
+
 function readRotated(): boolean {
   try {
     return sessionStorage.getItem('mfv3:rotated') === '1';
@@ -55,7 +92,8 @@ function readRotated(): boolean {
 
 export function Stage({ children }: { children: (size: StageSize) => ReactNode }) {
   const [rotated, setRotated] = useState(readRotated);
-  const [size, setSize] = useState<StageSize>(() => computeStage(...viewportSize(), rotated));
+  const [area, setArea] = useState(usableArea);
+  const size = computeStage(area.w, area.h, rotated);
 
   const chooseRotated = (value: boolean) => {
     try {
@@ -67,7 +105,7 @@ export function Stage({ children }: { children: (size: StageSize) => ReactNode }
   };
 
   useEffect(() => {
-    const update = () => setSize(computeStage(...viewportSize(), rotated));
+    const update = () => setArea(usableArea());
     update();
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
@@ -77,7 +115,7 @@ export function Stage({ children }: { children: (size: StageSize) => ReactNode }
       window.removeEventListener('orientationchange', update);
       window.visualViewport?.removeEventListener('resize', update);
     };
-  }, [rotated]);
+  }, []);
 
   const turn = size.portrait && rotated;
 
@@ -86,6 +124,9 @@ export function Stage({ children }: { children: (size: StageSize) => ReactNode }
       <div
         className="stage"
         style={{
+          // Centrado en el hueco útil (fuera de la barra de notificaciones y la muesca).
+          left: area.cx,
+          top: area.cy,
           width: size.width,
           height: size.height,
           transform: `translate(-50%, -50%) ${turn ? 'rotate(90deg) ' : ''}scale(${size.scale})`,
