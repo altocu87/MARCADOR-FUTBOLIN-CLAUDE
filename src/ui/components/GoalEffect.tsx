@@ -75,7 +75,7 @@ export function pickGoalShowVariant(seed: string): GoalShowVariant {
 
 /**
  * Pantalla completa «¡GOL! · EQUIPO …» que aparece justo después de la animación
- * del gol y se apaga antes de que termine el bloqueo de 3 s. Solo CSS (sin
+ * del gol y dura 2,5 s, hasta pasado el bloqueo de 3 s. Solo CSS (sin
  * temporizadores) y sin capturar toques.
  */
 export function GoalShow({

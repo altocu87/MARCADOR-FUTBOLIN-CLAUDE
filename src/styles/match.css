@@ -976,7 +976,7 @@
 }
 
 /* ---------- Pantalla completa de gol (tras la animación) ---------- */
-/* Aparece a los 0,85 s del gol y se apaga a los ~2,9 s, antes de que acabe el bloqueo de 3 s. */
+/* Aparece a los 0,85 s del gol y dura 2,5 s: se apaga a los ~3,35 s, ya pasado el bloqueo de 3 s. */
 .goal-show {
   position: absolute;
   inset: 0;
@@ -988,7 +988,7 @@
   justify-content: center;
   overflow: hidden;
   opacity: 0;
-  animation: gs-life 2.05s 0.85s both;
+  animation: gs-life 2.5s 0.85s both;
 }
 @keyframes gs-life {
   0% {
@@ -1125,7 +1125,7 @@
 .gs-v-slide .gs-deco {
   background: repeating-linear-gradient(115deg, transparent 0 60px, var(--gs-glow) 60px 90px);
   opacity: 0.5;
-  animation: gs-stripes 2s 0.85s linear both;
+  animation: gs-stripes 2.5s 0.85s linear both;
 }
 @keyframes gs-stripes {
   from {
@@ -1200,7 +1200,7 @@
 /* 4 · Sello: golpe ladeado con temblor de pantalla. */
 .gs-v-stamp {
   animation:
-    gs-life 2.05s 0.85s both,
+    gs-life 2.5s 0.85s both,
     gs-shake 0.35s 1.1s both;
 }
 .gs-v-stamp .gs-word {
@@ -1275,7 +1275,7 @@
 .gs-v-rays .gs-deco {
   background: repeating-conic-gradient(from 0deg, var(--gs-glow) 0deg 9deg, transparent 9deg 22deg);
   opacity: 0.55;
-  animation: gs-spin 2.2s 0.85s linear both;
+  animation: gs-spin 2.6s 0.85s linear both;
 }
 @keyframes gs-spin {
   from {
@@ -1349,7 +1349,7 @@
 
 /* Efectos reducidos: sin parpadeos ni temblores, solo aparece y se apaga. */
 .goal-show.reduced {
-  animation: gs-life 2.05s 0.85s both;
+  animation: gs-life 2.5s 0.85s both;
 }
 .goal-show.reduced * {
   animation: none !important;
