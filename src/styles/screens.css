@@ -2107,13 +2107,14 @@
   text-shadow: 0 0 8px rgba(47, 184, 236, 0.6);
 }
 .cond-box .num {
-  font-size: min(82cqh, 62cqw);
+  /* Cifras grandes: ocupan casi todo el alto libre del recuadro, por encima de la leyenda. */
+  font-size: min(108cqh, 70cqw);
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.76;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: #9fb3c8;
-  margin-bottom: 6cqh;
+  margin-bottom: 12cqh;
   /* Margen lateral para que el degradado (recortado al texto) no corte el borde de la cifra. */
   padding: 0 0.08em;
 }
