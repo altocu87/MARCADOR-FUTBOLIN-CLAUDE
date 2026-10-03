@@ -1910,7 +1910,7 @@
 .continue-btn {
   position: relative;
   width: 250px;
-  height: 54px;
+  height: 74px;
   padding: 0;
   border: 0;
   background: none;
@@ -1930,7 +1930,7 @@
 }
 .continue-btn span {
   position: relative;
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2106,13 +2106,16 @@
   text-shadow: 0 0 8px rgba(47, 184, 236, 0.6);
 }
 .cond-box .num {
-  font-size: min(82cqh, 62cqw);
+  /* Cifras altas: casi todo el alto del recuadro (la leyenda queda en la esquina). */
+  font-size: min(100cqh, 66cqw);
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.82;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: #9fb3c8;
-  margin-bottom: 6cqh;
+  margin-bottom: 4cqh;
+  /* Margen lateral para que el degradado (recortado al texto) no corte el borde de la cifra. */
+  padding: 0 0.08em;
 }
 .cond.on .cond-box .num {
   background: linear-gradient(180deg, #ffffff 15%, #8fe3ff 60%, #2fb8ec);
