@@ -9,7 +9,7 @@ import {
   type MatchMode,
 } from '../../match-engine';
 import { AssetImage } from '../components/assets';
-import { MODE_LABEL, ScreenFrame, TestModeBadge, Toggle } from '../components/common';
+import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
 import { SevenSegment } from '../components/SevenSegment';
 
 /** Las dos tarjetas activas a la vez equivalen a «ambas». */
@@ -142,7 +142,8 @@ export function SetupScreen({ mode, initial }: { mode: MatchMode; initial?: Matc
         penaltyFirstTeam: prefs.penaltyFirstTeam,
         // Todos los partidos se guardan; en modo prueba van a los datos de prueba.
         testMode: false,
-        ...(mode === 'chaos' ? { chaos: { ...prefs.chaosRules } } : {}),
+        // Caos lleva siempre sus reglas especiales: no se eligen en esta pantalla.
+        ...(mode === 'chaos' ? { chaos: { jokers: true, doubleLastMinute: true } } : {}),
       },
   );
   const set = (patch: Partial<MatchConfig>) => setConfig((c) => ({ ...c, ...patch }));
@@ -183,25 +184,6 @@ export function SetupScreen({ mode, initial }: { mode: MatchMode; initial?: Matc
         </>
       }
     >
-      {mode === 'chaos' && config.chaos && (
-        <div className="card chaos-rules">
-          <div className="label" style={{ color: 'var(--chaos)' }}>Reglas Caos (propuesta caos-1)</div>
-          <div style={{ display: 'flex', gap: 18 }}>
-            <Toggle
-              checked={config.chaos.jokers}
-              onChange={(v) => set({ chaos: { ...config.chaos!, jokers: v } })}
-              label="Comodín"
-              description="Un uso por equipo: su siguiente gol vale doble."
-            />
-            <Toggle
-              checked={config.chaos.doubleLastMinute}
-              onChange={(v) => set({ chaos: { ...config.chaos!, doubleLastMinute: v } })}
-              label="Último minuto x2"
-              description="Con tiempo: los goles del último minuto valen doble."
-            />
-          </div>
-        </div>
-      )}
       <div className="grid-2 setup-conditions">
         <ConditionCard
           title="Goles para ganar"

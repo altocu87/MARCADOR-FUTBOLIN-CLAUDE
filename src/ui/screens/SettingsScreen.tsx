@@ -171,21 +171,6 @@ function General() {
         </div>
       </div>
       <div className="card">
-        <div className="label">Reglas Caos por defecto (propuesta caos-1)</div>
-        <Toggle
-          checked={prefs.chaosRules.jokers}
-          onChange={(v) => update({ chaosRules: { ...prefs.chaosRules, jokers: v } })}
-          label="Comodín x2"
-          description="Un uso por equipo y partido."
-        />
-        <Toggle
-          checked={prefs.chaosRules.doubleLastMinute}
-          onChange={(v) => update({ chaosRules: { ...prefs.chaosRules, doubleLastMinute: v } })}
-          label="Último minuto x2"
-          description="Solo en partidos con tiempo."
-        />
-      </div>
-      <div className="card">
         <div className="label">Temporadas y retos</div>
         <div className="segmented" style={{ margin: '6px 0' }}>
           <button className="seg seg-compact" aria-pressed={prefs.seasonLength === 'month'} onClick={() => update({ seasonLength: 'month' })}>
