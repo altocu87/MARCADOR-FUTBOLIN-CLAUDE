@@ -1735,8 +1735,12 @@
 /* ---------- Final del partido (pantalla única) ---------- */
 .overlay-victory {
   justify-content: flex-start;
-  padding: 12px 18px 12px;
-  gap: 8px;
+  padding: 10px 16px 10px;
+  gap: 6px;
+}
+/* Fondo de la copa más apagado para que el texto se lea bien. */
+.overlay-victory .victory-bg {
+  opacity: 0.22;
 }
 .vic-head {
   position: relative;
@@ -1744,77 +1748,147 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-.overlay-victory .victory-kicker {
-  font-size: 15px;
-  color: var(--ranked);
-  letter-spacing: 0.2em;
+  gap: 2px;
 }
 .overlay-victory .victory-title {
-  font-size: 76px;
+  font-size: 54px;
   line-height: 1;
   white-space: nowrap;
 }
+.victory-white .victory-title {
+  text-shadow: 0 0 26px rgba(238, 246, 255, 0.7), 0 4px 0 rgba(0, 0, 0, 0.6);
+}
+.victory-blue .victory-title {
+  text-shadow: 0 0 26px rgba(23, 109, 188, 0.9), 0 4px 0 rgba(0, 0, 0, 0.6);
+}
+/* Marcador grande estilo televisión. */
+.vic-score {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 22px;
+  border-radius: 14px;
+  background: rgba(4, 8, 15, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  animation: pop-in 0.4s 0.3s both;
+}
+.vic-score-team {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  opacity: 0.55;
+}
+.vic-score-team.won {
+  opacity: 1;
+}
+.vic-col-white {
+  color: var(--white-team);
+}
+.vic-col-blue {
+  color: #6fb6f5;
+}
+.vic-score-num {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.vic-score-num.won {
+  color: var(--ranked);
+  text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
+}
+.vic-score-sep {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--text-3);
+}
+.vic-facts {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--ranked);
+  text-shadow: 0 1px 3px #000;
+}
+.vic-note {
+  position: relative;
+  z-index: 2;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: rgba(7, 16, 28, 0.85);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 13px;
+}
+.vic-note.warn {
+  border-color: var(--danger);
+  color: #ffb3bc;
+}
+/* Cuerpo: los dos equipos en columnas y, debajo, los logros. */
 .vic-body {
   position: relative;
   z-index: 2;
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 1100px;
-  display: grid;
-  grid-template-columns: minmax(0, 620px);
-  justify-content: center;
-  gap: 12px;
-}
-.vic-body.with-ach {
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-}
-.vic-players,
-.vic-ach {
+  max-width: 1150px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-height: 0;
+  gap: 8px;
   padding: 2px;
 }
-.vic-note {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(7, 16, 28, 0.8);
-  border: 1px solid var(--line);
-  color: var(--text-2);
-  font-size: 14px;
-  text-align: center;
+.vic-teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
 }
-.vic-note.warn {
-  border-color: var(--danger);
-  color: #ffb3bc;
+.vic-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
 }
-/* Fila de jugador con su progreso. */
+.vic-col.is-loser {
+  opacity: 0.85;
+}
+.vic-col-label {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-shadow: 0 1px 3px #000;
+}
+/* Fila de jugador con su progreso (se puede tocar para ver el desglose de XP). */
 .vic-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 12px 6px 6px;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 10px 3px 4px;
   border-radius: 14px;
-  background: rgba(7, 16, 28, 0.82);
+  background: rgba(7, 16, 28, 0.9);
   border: 1px solid var(--line);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
   animation: gs-rise 0.45s var(--d, 0s) both;
 }
 .vic-row.is-winner {
   border: 2px solid var(--ranked);
-  box-shadow: 0 0 16px rgba(242, 201, 76, 0.35);
+  box-shadow: 0 0 14px rgba(242, 201, 76, 0.3);
 }
 .vic-row.is-winner .avatar {
   border: 2px solid var(--ranked);
+}
+.vic-row.open {
+  background: rgba(14, 28, 48, 0.95);
 }
 .vic-row-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
 }
 .vic-row-top {
   display: flex;
@@ -1823,7 +1897,7 @@
   flex-wrap: wrap;
 }
 .vic-name {
-  font-size: 17px;
+  font-size: 15px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1832,9 +1906,10 @@
   font-size: 14px;
   font-weight: 900;
   color: #3dff7a;
+  font-variant-numeric: tabular-nums;
 }
 .vic-elo {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   padding: 1px 8px;
   border-radius: 999px;
@@ -1850,11 +1925,15 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   color: var(--ranked);
 }
-/* Barra de nivel. */
+.vic-row-achs {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
 .vic-level {
   display: flex;
   align-items: center;
@@ -1862,7 +1941,7 @@
 }
 .vic-lv {
   flex: none;
-  min-width: 52px;
+  min-width: 44px;
   font-size: 13px;
   font-weight: 900;
   color: var(--text-2);
@@ -1875,7 +1954,8 @@
 .vic-bar {
   position: relative;
   flex: 1;
-  height: 14px;
+  min-width: 60px;
+  height: 11px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1894,26 +1974,57 @@
 }
 .vic-levelup {
   flex: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
   color: var(--ranked);
   text-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
   animation: pop-in 0.4s ease-out both;
 }
-/* Logros: cada uno explicado (qué es y quién lo ha conseguido). */
+.vic-need {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vic-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+  animation: gs-rise 0.25s both;
+}
+.vic-bd-item {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.vic-bd-item b {
+  color: #3dff7a;
+}
+/* Logros: tarjetas en fila con qué es y quién lo ha conseguido. */
 .vic-ach-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.16em;
   color: var(--ranked);
+  text-shadow: 0 1px 3px #000;
+  margin-bottom: 3px;
+}
+.vic-ach-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px;
 }
 .vic-ach-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px 6px 6px;
+  gap: 8px;
+  padding: 3px 8px 3px 4px;
   border-radius: 12px;
-  background: rgba(7, 16, 28, 0.85);
+  background: rgba(7, 16, 28, 0.9);
   border: 1px solid var(--line);
   animation: pop-in 0.4s var(--d, 0s) both;
 }
@@ -1928,7 +2039,7 @@
   min-width: 0;
 }
 .vic-ach-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
 }
 .vic-ach-rarity {
@@ -1940,16 +2051,16 @@
   margin-left: 4px;
 }
 .vic-ach-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-2);
-  line-height: 1.25;
+  line-height: 1.15;
 }
 .vic-ach-who {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--ranked);
 }
-/* Botones del final. */
+/* Botones del final: Revancha destacada. */
 .vic-actions {
   position: relative;
   z-index: 2;
@@ -1958,15 +2069,12 @@
   justify-content: center;
 }
 .vic-btn {
-  min-height: 62px;
-  font-size: 18px;
-  padding: 0 22px;
-}
-.vic-actions .vic-btn:first-child {
-  font-size: 26px;
+  min-height: 54px;
+  font-size: 16px;
   padding: 0 18px;
 }
 .vic-main {
-  min-width: 220px;
-  font-size: 20px;
+  min-width: 240px;
+  font-size: 24px;
+  letter-spacing: 0.08em;
 }
