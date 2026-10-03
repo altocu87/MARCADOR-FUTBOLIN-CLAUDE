@@ -215,14 +215,19 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
   const team = (t: Team) => {
     const people = state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
     const joker = state.jokers?.[t];
+    // Anular gol: tira roja pegada al lado interior de la tarjeta de su equipo.
     const minus = (
       <button
-        className="minus-btn"
+        className={`annul-btn annul-${t}`}
         onClick={() => send({ type: 'MINUS_ONE', team: t })}
         disabled={!canCorrect || periodScore[t] === 0}
-        aria-label={`Restar un gol a ${TEAM_LABEL[t]}`}
+        aria-label={`Anular un gol de ${TEAM_LABEL[t]}`}
       >
-        −1
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
+          <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        </svg>
+        <span>ANULAR GOL</span>
       </button>
     );
     const jokerBtn = joker && (
@@ -237,25 +242,28 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
     );
     return (
       <div className={`team-side side-${t}`}>
-        <button
-          className={`score-btn score-${t} ${lock > 0 ? 'locked' : ''} ${ctl.matchPoint.includes(t) ? 'match-point' : ''} ${joker === 'armed' ? 'joker-armed' : ''}`}
-          onClick={() => send({ type: 'GOAL', team: t, source: 'touch' })}
-          disabled={!playing}
-          aria-label={`Gol ${TEAM_LABEL[t]}. Marcador ${score[t]}`}
-        >
-          <span className="score-sheen" aria-hidden="true" />
-          <span className="score-team">{TEAM_LABEL[t]}</span>
-          {streak && streak.team === t && streak.count >= 3 && <span className="streak-badge">🔥 x{streak.count}</span>}
-          {joker === 'armed' && <span className="joker-tag">COMODÍN x2</span>}
-          <span className={`score-num ${score[t] >= 10 ? 'two' : ''}`}>{score[t]}</span>
-          {lock > 0 && (
-            <span className="lock-bar" aria-hidden="true">
-              <span style={{ width: `${(lock / GOAL_LOCK_MS) * 100}%` }} />
-            </span>
-          )}
-        </button>
-        <div className="team-bottom">
+        <div className="score-row">
+          {t === 'blue' && minus}
+          <button
+            className={`score-btn score-${t} ${lock > 0 ? 'locked' : ''} ${ctl.matchPoint.includes(t) ? 'match-point' : ''} ${joker === 'armed' ? 'joker-armed' : ''}`}
+            onClick={() => send({ type: 'GOAL', team: t, source: 'touch' })}
+            disabled={!playing}
+            aria-label={`Gol ${TEAM_LABEL[t]}. Marcador ${score[t]}`}
+          >
+            <span className="score-sheen" aria-hidden="true" />
+            <span className="score-team">{TEAM_LABEL[t]}</span>
+            {streak && streak.team === t && streak.count >= 3 && <span className="streak-badge">🔥 x{streak.count}</span>}
+            {joker === 'armed' && <span className="joker-tag">COMODÍN x2</span>}
+            <span className={`score-num ${score[t] >= 10 ? 'two' : ''}`}>{score[t]}</span>
+            {lock > 0 && (
+              <span className="lock-bar" aria-hidden="true">
+                <span style={{ width: `${(lock / GOAL_LOCK_MS) * 100}%` }} />
+              </span>
+            )}
+          </button>
           {t === 'white' && minus}
+        </div>
+        <div className="team-bottom">
           {t === 'white' && jokerBtn}
           <div className={`team-people ${people.length >= 3 ? 'many' : ''}`}>
             {people.map((p) => (
@@ -269,7 +277,6 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
             ))}
           </div>
           {t === 'blue' && jokerBtn}
-          {t === 'blue' && minus}
         </div>
       </div>
     );
@@ -312,7 +319,7 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               A {state.config.goalsPerPeriod} goles
             </div>
           )}
-          {/* Pausa grande justo bajo el reloj y Deshacer debajo, en el centro. */}
+          {/* Pausa grande justo bajo el reloj. */}
           <div className="center-actions">
             <button
               className="btn pause-btn"
@@ -321,18 +328,6 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
             >
               {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
-            </button>
-            <button
-              className="btn undo-btn"
-              onClick={() => send({ type: 'UNDO' })}
-              disabled={!canCorrect || state.undoStack.length === 0}
-              aria-label="Deshacer"
-              title="Deshacer"
-            >
-              <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-              </svg>
             </button>
           </div>
           <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">

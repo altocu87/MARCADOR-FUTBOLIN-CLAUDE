@@ -83,7 +83,8 @@
   opacity: 0.75;
 }
 .score-num {
-  font-size: 315px;
+  /* Se adapta al ancho de la tarjeta para que nunca se salga. */
+  font-size: min(315px, 150cqi);
   line-height: 0.82;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -91,7 +92,7 @@
   margin-top: 18px;
 }
 .score-num.two {
-  font-size: 220px;
+  font-size: min(220px, 78cqi);
 }
 .lock-bar {
   position: absolute;
@@ -141,23 +142,6 @@
   font-size: 17px;
   font-weight: 700;
   min-width: 0;
-}
-/* −1 discreto, con zona de toque suficiente (48 × 48). */
-.minus-btn {
-  width: 56px;
-  height: 56px;
-  flex: none;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 90, 110, 0.55);
-  background: rgba(255, 90, 110, 0.1);
-  color: var(--danger);
-  font-weight: 900;
-  font-size: 17px;
-  cursor: pointer;
-}
-.minus-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
 }
 .center-col {
   display: flex;
@@ -1242,14 +1226,6 @@
   gap: 6px;
 }
 
-/* Deshacer: icono grande. */
-.undo-btn {
-  min-height: 64px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-}
-
 /* Ficha de jugador: foto arriba y nombre debajo, a todo el ancho de la ficha. La letra
    se reduce lo necesario (según el ancho y la longitud del nombre) para que se lea entero. */
 .team-bottom {
@@ -1259,7 +1235,7 @@
 .team-people.many .person {
   flex: 1 1 0;
   min-width: 0;
-  max-width: 150px;
+  max-width: 170px;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
@@ -1452,4 +1428,60 @@
 }
 .annul-show.reduced .an-cross line {
   stroke-dashoffset: 0;
+}
+
+/* Tarjeta del marcador + botón de anular gol pegado a su lado interior (hacia el centro). */
+.score-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.score-row .score-btn {
+  min-width: 0;
+  container-type: inline-size;
+}
+.side-white .score-row .score-btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.side-blue .score-row .score-btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.annul-btn {
+  flex: none;
+  width: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid rgba(255, 90, 110, 0.65);
+  background: linear-gradient(180deg, rgba(120, 10, 28, 0.9), rgba(70, 4, 16, 0.92));
+  color: #ff8794;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(255, 60, 80, 0.25);
+}
+.annul-white {
+  border-left: none;
+  border-radius: 0 22px 22px 0;
+}
+.annul-blue {
+  border-right: none;
+  border-radius: 22px 0 0 22px;
+}
+.annul-btn span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+.annul-btn:active:not(:disabled) {
+  background: rgba(200, 20, 45, 0.95);
+  color: #fff;
+}
+.annul-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
