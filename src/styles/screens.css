@@ -640,9 +640,15 @@
   left: 50%;
   transform: translate(-50%, -55%);
   z-index: 2;
-  padding: 0 12px;
-  border-radius: 6px;
+  padding: 2px 16px;
+  border-radius: 10px;
   background: rgba(6, 12, 24, 0.92);
+  /* Marco de neón del color del equipo, igual que el de la tarjeta. */
+  border: 2px solid var(--neon);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--neon) 70%, transparent),
+    0 0 24px color-mix(in srgb, var(--neon) 30%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--neon) 22%, transparent);
   font-size: 30px;
   font-weight: 900;
   letter-spacing: 0.2em;
