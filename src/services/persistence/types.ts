@@ -32,12 +32,6 @@ export interface Player {
   anthem?: string;
 }
 
-/** Pronóstico amistoso (sin dinero) de un espectador antes del partido. */
-export interface MatchPick {
-  playerId: string;
-  team: Team;
-}
-
 /** Partido terminado y guardado. Permite reconstruir el encuentro completo. */
 export interface StoredMatch {
   formatVersion: number;
@@ -55,7 +49,6 @@ export interface StoredMatch {
   penalties: PenaltyKick[];
   /** Goleador opcional por gol: id de evento GOAL → id de jugador. */
   scorers?: Record<string, string>;
-  picks?: MatchPick[];
   tournament?: { id: string; fixtureId: string };
 }
 
@@ -155,8 +148,8 @@ export interface ActiveMatchSnapshot {
   formatVersion: number;
   savedAt: number;
   state: MatchState;
-  /** Torneo y pronósticos asociados al partido en curso. */
-  extras?: { tournament?: { id: string; fixtureId: string }; picks?: MatchPick[] };
+  /** Torneo asociado al partido en curso. */
+  extras?: { tournament?: { id: string; fixtureId: string } };
 }
 
 export interface PlayerRepository {

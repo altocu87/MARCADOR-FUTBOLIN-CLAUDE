@@ -15,7 +15,6 @@ import {
   pairStats,
   periodDigest,
   personalGoals,
-  pickerStats,
   seasonKey,
   sideStats,
   weekKey,
@@ -145,14 +144,6 @@ describe('Estadísticas ampliadas', () => {
     const m = makeMatch({ white: ['a'], blue: ['b', 'c'], goals: 'WWB' });
     const scorers = autoScorers(m)!;
     expect(Object.values(scorers)).toEqual(['a', 'a']);
-  });
-  it('pronosticadores', () => {
-    const m = { ...makeMatch({ white: ['a'], blue: ['b'], goals: 'W' }), picks: [{ playerId: 'c', team: 'white' as const }, { playerId: 'd', team: 'blue' as const }] };
-    const s = pickerStats([m]);
-    expect(s[0]).toMatchObject({ playerId: 'c', correct: 1 });
-    const prog = computeProgression(['a', 'b', 'c', 'd'], [m], DEFAULT_PROGRESSION, { challenges: false });
-    expect(prog.players.get('c')!.achievements.map((x) => x.id)).toContain('seer_debut');
-    expect(prog.players.get('d')!.achievements).toHaveLength(0);
   });
   it('resumen del periodo', () => {
     const ms = [makeMatch({ white: ['a'], blue: ['b'], goals: 'WWWWB', at: 10 }), makeMatch({ white: ['a'], blue: ['b'], goals: 'WB B', at: 20 })];

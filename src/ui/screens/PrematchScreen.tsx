@@ -1,9 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchExtras } from '../../app/routes';
-import type { MatchPick } from '../../services/persistence';
-import { sortPlayers } from '../../services/players';
-import { headToHead } from '../../services/statistics';
+import { computePlayerStats, headToHead } from '../../services/statistics';
 import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
 import { predict } from '../../services/progression';
 import { Avatar, FormChips, ScreenFrame, TestModeBadge } from '../components/common';
@@ -18,17 +16,11 @@ export function PrematchScreen({
   extras?: MatchExtras;
 }) {
   const { navigate, matches, progression, players, demoMode } = useApp();
-  // Pronósticos amistosos (sin dinero) de quien no juega: toque = Blanco → Azul → nada.
-  const [picks, setPicks] = useState<MatchPick[]>([]);
-  const spectators = sortPlayers(players.filter((p) => p.active && !participants.some((x) => x.playerId === p.id)));
-  const cyclePick = (playerId: string) =>
-    setPicks((prev) => {
-      const cur = prev.find((p) => p.playerId === playerId);
-      const rest = prev.filter((p) => p.playerId !== playerId);
-      if (!cur) return [...rest, { playerId, team: 'white' }];
-      if (cur.team === 'white') return [...rest, { playerId, team: 'blue' }];
-      return rest;
-    });
+  // Forma reciente de cada jugador: sus últimos 5 clasificatorios.
+  const forms = useMemo(() => {
+    const ranked = matches.filter((m) => m.config.mode === 'ranked');
+    return new Map(participants.map((p) => [p.playerId, computePlayerStats(p.playerId, ranked).form]));
+  }, [participants, matches]);
   const rivalry = useMemo(() => {
     const ids = (team: Team) => participants.filter((p) => p.team === team).map((p) => p.playerId);
     const h = headToHead(matches, ids('white'), ids('blue'), false);
@@ -57,17 +49,14 @@ export function PrematchScreen({
                 <div className="muted" style={{ fontSize: 12 }}>
                   {prog ? `ELO ${prog.elo} · ${prog.category.name} · Nv ${prog.level}` : 'Progresión pendiente'}
                 </div>
+                {/* Forma reciente del jugador: últimos 5 clasificatorios (G/E/P). */}
+                <div className="pre-form">
+                  <FormChips form={forms.get(p.playerId) ?? []} empty="Sin clasificatorios" />
+                </div>
               </div>
             </div>
           );
         })}
-      <div style={{ marginTop: 'auto' }}>
-        <div className="label" style={{ marginBottom: 4 }}>Forma reciente</div>
-        <FormChips
-          form={(team === 'white' ? prediction?.whiteForm : prediction?.blueForm) ?? []}
-          empty="Sin clasificatorios"
-        />
-      </div>
     </div>
   );
 
@@ -78,7 +67,7 @@ export function PrematchScreen({
       onBack={() => (extras?.tournament ? navigate({ name: 'tournamentDetail', id: extras.tournament.id }) : navigate({ name: 'select', config, participants }))}
       right={demoMode ? <TestModeBadge /> : undefined}
       footer={
-        <button className="btn btn-primary btn-lg" onClick={() => navigate({ name: 'match', config, participants, extras: { ...extras, picks } })}>
+        <button className="btn btn-primary btn-lg" onClick={() => navigate({ name: 'match', config, participants, extras })}>
           Empezar partido
         </button>
       }
@@ -114,23 +103,7 @@ export function PrematchScreen({
               ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
             </div>
           )}
-          {spectators.length > 0 && (
-            <div style={{ marginTop: 'auto' }}>
-              <div className="label" style={{ marginBottom: 4 }}>Pronósticos (toca: Blanco → Azul → nada)</div>
-              <div className="pick-list">
-                {spectators.map((s) => {
-                  const pick = picks.find((p) => p.playerId === s.id);
-                  return (
-                    <button key={s.id} className={`pick-chip ${pick ? `pick-${pick.team}` : ''}`} onClick={() => cyclePick(s.id)}>
-                      {s.name}
-                      {pick && <strong> · {pick.team === 'white' ? 'B' : 'A'}</strong>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <div className="dim" style={{ fontSize: 10, marginTop: spectators.length ? 0 : 'auto' }}>
+          <div className="dim" style={{ fontSize: 10, marginTop: 'auto' }}>
             Estimación, nunca una certeza. Fórmula propuesta pendiente de aprobación.
           </div>
         </div>

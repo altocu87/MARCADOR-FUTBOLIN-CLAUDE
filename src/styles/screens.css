@@ -585,6 +585,10 @@
   align-items: center;
   gap: 10px;
 }
+/* Forma reciente del jugador, bajo su ELO. */
+.pre-form {
+  margin-top: 4px;
+}
 .pre-center {
   display: flex;
   flex-direction: column;
@@ -1140,13 +1144,6 @@
   background: linear-gradient(180deg, rgba(214, 92, 255, 0.14), var(--card));
   padding: 8px 12px;
 }
-.pick-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  max-height: 96px;
-  overflow-y: auto;
-}
 .pick-chip {
   min-height: 44px;
   padding: 0 10px;
@@ -1156,11 +1153,6 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-}
-.pick-chip.pick-white {
-  background: var(--white-team);
-  color: var(--white-ink);
-  border-color: var(--white-team);
 }
 .pick-chip.pick-blue {
   background: var(--blue-team);

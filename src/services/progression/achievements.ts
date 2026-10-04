@@ -133,14 +133,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   A({ id: 'early_bird', name: 'Al alba', description: 'Juega un partido antes de las 9:00.', category: 'especiales', rarity: 'common', secret: true, icon: '🌅', check: (c) => c.hour >= 5 && c.hour < 9 }),
   A({ id: 'marathon_day', name: 'Día de maratón', description: 'Juega 10 partidos en un mismo día.', category: 'especiales', rarity: 'rare', secret: true, icon: '🏃', check: (c) => c.matchesToday >= 10 }),
   A({ id: 'secret_marathon', name: 'Maratón', description: 'Juega un partido de más de 20 minutos.', category: 'especiales', rarity: 'rare', secret: true, icon: '⌛', check: (c) => c.match.result.totalTimeMs >= 20 * 60_000 }),
-  A({ id: 'seer', name: 'Vidente', description: 'Acierta 10 pronósticos como espectador.', category: 'especiales', rarity: 'rare', icon: '🔮', title: 'El Vidente', check: () => false }),
-  A({ id: 'seer_debut', name: 'Ojo clínico', description: 'Acierta tu primer pronóstico.', category: 'especiales', rarity: 'common', icon: '👁', check: () => false }),
-];
-
-/** Logros de espectador: se comprueban con el recuento de pronósticos acertados. */
-export const SPECTATOR_ACHIEVEMENTS: { id: string; minCorrect: number }[] = [
-  { id: 'seer_debut', minCorrect: 1 },
-  { id: 'seer', minCorrect: 10 },
 ];
 
 export const achievementById = (id: string) => ACHIEVEMENTS.find((a) => a.id === id);

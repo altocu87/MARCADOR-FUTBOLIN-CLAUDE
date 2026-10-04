@@ -8,7 +8,7 @@ import type { ProgressionSettings, StoredMatch, Tournament } from '../persistenc
 import { dayKey } from '../statistics/calendar';
 import { personalGoalsInMatch } from '../statistics/extras';
 import { comebackSize, sortMatches } from '../statistics/statistics';
-import { ACHIEVEMENTS, RARITY_XP, SPECTATOR_ACHIEVEMENTS, achievementById } from './achievements';
+import { ACHIEVEMENTS, RARITY_XP, achievementById } from './achievements';
 import { activeChallenges } from './challenges';
 import {
   ELO_MODES,
@@ -79,7 +79,6 @@ interface Counters {
   rankedWins: number;
   chaosWins: number;
   personalGoals: number;
-  picksCorrect: number;
   teammates: Set<string>;
   rivals: Set<string>;
   teammateWins: Map<string, number>;
@@ -135,7 +134,6 @@ export function computeProgression(
         rankedWins: 0,
         chaosWins: 0,
         personalGoals: 0,
-        picksCorrect: 0,
         teammates: new Set(),
         rivals: new Set(),
         teammateWins: new Map(),
@@ -324,21 +322,6 @@ export function computeProgression(
       });
     }
 
-    // Pronósticos de espectadores (no participantes).
-    for (const pick of match.picks ?? []) {
-      if (match.participants.some((x) => x.playerId === pick.playerId)) continue;
-      const p = ensure(pick.playerId);
-      const c = counters.get(pick.playerId)!;
-      if (pick.team !== winner) continue;
-      c.picksCorrect += 1;
-      for (const sa of SPECTATOR_ACHIEVEMENTS) {
-        if (c.picksCorrect < sa.minCorrect || p.achievements.some((a) => a.id === sa.id)) continue;
-        const def = achievementById(sa.id)!;
-        p.achievements.push({ id: sa.id, matchId: match.id, at: match.finishedAt });
-        p.xp += RARITY_XP[def.rarity];
-        p.level = levelForXp(p.xp);
-      }
-    }
     byMatch.set(match.id, entries);
   }
 
