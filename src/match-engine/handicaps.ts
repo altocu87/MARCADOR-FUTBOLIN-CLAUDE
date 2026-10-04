@@ -5,8 +5,8 @@
  * mínima). El sorteo recibe el generador de azar para que las pruebas sean reproducibles; lo
  * que se sortea queda guardado en el evento HANDICAP_START, así el partido se puede repasar.
  */
-import { getScore, otherTeam } from './engine';
-import type { Bar, Handicap, HandicapKind, MatchState, ParticipantRef, Team } from './types';
+import { getClock, getScore, goalTarget, otherTeam, periodTimeLimitMs } from './engine';
+import type { Bar, Handicap, HandicapKind, MatchState, ParticipantRef, Team, Visitor } from './types';
 
 export const HANDICAP_MIN_GAP_MS = 30_000;
 export const HANDICAP_MAX_GAP_MS = 60_000;
@@ -219,4 +219,86 @@ export function handicapEndText(h: Handicap): string {
   if (h.kind === 'transfer') return 'Fin del traspaso: cada uno a su equipo.';
   const title = handicapText(h, []).title.replace(/[¡!]/g, '');
   return `Se acabó: ${title.charAt(0)}${title.slice(1).toLowerCase()}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Visitas de animales (agujero de gusano)
+// ---------------------------------------------------------------------------
+
+/** Como mucho dos visitas de animales por partido. */
+export const MAX_VISITS = 2;
+/** Probabilidad de que tras un hándicap se programe una visita. */
+export const VISIT_CHANCE = 0.35;
+const MINUTE = 60_000;
+
+export const ANIMAL_NAME: Record<Visitor['animal'], string> = {
+  squirrel: 'la ardilla ladrona',
+  snail: 'el caracol',
+  cat: 'el gato del futuro',
+};
+
+/**
+ * Momento de la próxima visita: entre el final del hándicap recién anunciado y el siguiente,
+ * dejando al menos 8 s a cada lado. Devuelve undefined si no cabe o si ya hubo dos.
+ */
+export function scheduleVisitAtMs(
+  state: MatchState,
+  handicapStartTotalMs: number,
+  handicapDurationMs: number | null,
+  nextHandicapAtMs: number,
+  rnd: () => number,
+): number | undefined {
+  const visits = state.events.filter((e) => e.type === 'VISIT').length;
+  if (visits >= MAX_VISITS || rnd() >= VISIT_CHANCE) return undefined;
+  const from = handicapStartTotalMs + (handicapDurationMs ?? 0) + 8_000;
+  const to = nextHandicapAtMs - 8_000;
+  if (to <= from) return undefined;
+  return from + Math.floor(rnd() * (to - from));
+}
+
+/** Elige el animal y su travesura sin decidir el partido; null si ninguno puede salir ahora. */
+export function pickVisitor(state: MatchState, id: string, now: number, rnd: () => number = Math.random): Visitor | null {
+  const score = getScore(state);
+  const target = goalTarget(state);
+  const timed = periodTimeLimitMs(state.config, state.period) !== null;
+  const remaining = getClock(state, now).remainingMs;
+  const options: Visitor[] = [];
+
+  // Ardilla: roba a un equipo con goles (mejor al que va ganando), sin hacer ganar al otro.
+  const victims = (['white', 'blue'] as Team[]).filter((t) => {
+    if (score[t] === 0) return false;
+    const thief = otherTeam(t);
+    return timed && state.config.endCondition === 'time' ? true : score[thief] + 1 < target;
+  });
+  if (victims.length) {
+    const leader = score.white === score.blue ? null : score.white > score.blue ? 'white' : 'blue';
+    const from = leader && victims.includes(leader) && rnd() < 0.75 ? leader : victims[Math.floor(rnd() * victims.length)];
+    options.push({ id, animal: 'squirrel', from });
+  }
+  // Caracol: alarga (tiempo o meta), como mucho dos veces.
+  const snails = state.events.filter((e) => e.type === 'VISIT' && e.visitor?.animal === 'snail').length;
+  if (snails < 2) options.push(timed ? { id, animal: 'snail', timeMs: MINUTE } : { id, animal: 'snail', goals: 1 });
+  // Gato del futuro: acorta, pero nunca hasta decidir el partido.
+  if (timed && remaining !== null && remaining > 90_000) options.push({ id, animal: 'cat', timeMs: -MINUTE });
+  if (!timed && target - 1 > Math.max(score.white, score.blue) && target - 1 >= 2) options.push({ id, animal: 'cat', goals: -1 });
+
+  if (!options.length) return null;
+  return options[Math.floor(rnd() * options.length) % options.length];
+}
+
+/** Lo que dice la voz y el rótulo al hacer la travesura. */
+export function visitorText(v: Visitor): { title: string; detail: string } {
+  if (v.animal === 'squirrel') {
+    const to = v.from === 'white' ? 'Azul' : 'Blanco';
+    const from = v.from === 'white' ? 'Blanco' : 'Azul';
+    return { title: '¡LA ARDILLA LADRONA!', detail: `Le roba un gol al equipo ${from.toLowerCase()} y se lo da al ${to.toLowerCase()}.` };
+  }
+  if (v.animal === 'snail') {
+    return v.timeMs
+      ? { title: '¡EL CARACOL!', detail: 'Atrasa el reloj: un minuto más de partido.' }
+      : { title: '¡EL CARACOL!', detail: 'Sube la meta: ahora hace falta un gol más para ganar.' };
+  }
+  return v.timeMs
+    ? { title: '¡EL GATO DEL FUTURO!', detail: 'Adelanta el reloj: un minuto menos de partido.' }
+    : { title: '¡EL GATO DEL FUTURO!', detail: 'Baja la meta: ahora hace falta un gol menos para ganar.' };
 }

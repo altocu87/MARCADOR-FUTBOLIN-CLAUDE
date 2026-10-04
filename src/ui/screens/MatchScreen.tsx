@@ -11,6 +11,7 @@ import {
   getPeriodScore,
   getScore,
   goalLockRemaining,
+  goalTarget,
   HANDICAP_ICON,
   handicapRemaining,
   handicapText,
@@ -36,6 +37,7 @@ import { VictoryScreen, swapSides } from '../components/VictoryScreen';
 import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { HandicapOverlay } from '../components/HandicapOverlay';
+import { VisitorOverlay } from '../components/VisitorOverlay';
 import { useMatchController, type MatchController } from './useMatchController';
 
 export const PERIOD_LABEL: Record<Period, string> = {
@@ -63,10 +65,10 @@ function goalsText(n: number): string {
   return `${n} ${n === 1 ? 'gol' : 'goles'}`;
 }
 
-function conditionText(config: MatchConfig): string {
-  if (config.endCondition === 'goals') return `Gana quien llegue a ${goalsText(config.goalsPerPeriod)}`;
+function conditionText(config: MatchConfig, target = config.goalsPerPeriod): string {
+  if (config.endCondition === 'goals') return `Gana quien llegue a ${goalsText(target)}`;
   if (config.endCondition === 'time') return `2 partes de ${config.minutesPerPeriod} min`;
-  return `A ${goalsText(config.goalsPerPeriod)} o 2 partes de ${config.minutesPerPeriod} min`;
+  return `A ${goalsText(target)} o 2 partes de ${config.minutesPerPeriod} min`;
 }
 
 /** Rótulo del periodo: por goles no hay partes, es «PARTIDO». */
@@ -171,6 +173,7 @@ export function MatchScreen({
       )}
       {state.phase === 'periodEnd' && <PeriodEndOverlay ctl={ctl} />}
       {state.phase === 'handicap' && <HandicapOverlay ctl={ctl} />}
+      {state.phase === 'visit' && state.visit && <VisitorOverlay key={state.visit.spec.id} visitor={state.visit.spec} />}
       {state.phase === 'finished' && (
         <VictoryScreen
           state={state}
@@ -236,7 +239,7 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
   // Bajo el tipo de partido: la parte en juego (si hay varias) y a cuántos goles se juega.
   const info = [
     isSinglePeriod(state.config) && state.period === 'first' ? null : PERIOD_LABEL[state.period],
-    state.config.endCondition !== 'time' && state.period !== 'overtime' ? `A ${goalsText(state.config.goalsPerPeriod)}` : null,
+    state.config.endCondition !== 'time' && state.period !== 'overtime' ? `A ${goalsText(goalTarget(state))}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -385,7 +388,7 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
           {minus('blue')}
         </div>
         {/* Cómo se gana el partido, legible bajo la Pausa. */}
-        <div className="center-cond">{conditionText(state.config)}</div>
+        <div className="center-cond">{conditionText(state.config, goalTarget(state))}</div>
         <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
           {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
         </div>

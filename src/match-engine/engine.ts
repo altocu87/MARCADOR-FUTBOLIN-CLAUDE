@@ -126,12 +126,34 @@ function sumGoals(goals: MatchEvent[]): Score {
   return { white: Math.max(0, score.white), blue: Math.max(0, score.blue) };
 }
 
+/** Goles robados por la ardilla (Partido Loco): +1 al que recibe, −1 al robado. */
+function applyVisits(score: Score, events: MatchEvent[], period?: Period): Score {
+  for (const e of events) {
+    if (e.type !== 'VISIT' || e.visitor?.animal !== 'squirrel' || !e.visitor.from) continue;
+    if (period && e.period !== period) continue;
+    score[e.visitor.from] -= 1;
+    score[otherTeam(e.visitor.from)] += 1;
+  }
+  return { white: Math.max(0, score.white), blue: Math.max(0, score.blue) };
+}
+
 export function getScore(state: MatchState): Score {
-  return sumGoals(validGoals(state));
+  return applyVisits(sumGoals(validGoals(state)), state.events);
 }
 
 export function getPeriodScore(state: MatchState, period: Period = state.period): Score {
-  return sumGoals(validGoals(state).filter((g) => g.period === period));
+  return applyVisits(sumGoals(validGoals(state).filter((g) => g.period === period)), state.events, period);
+}
+
+/** Meta de goles para ganar (el caracol y el gato del Partido Loco la cambian). */
+export function goalTarget(state: MatchState): number {
+  return state.config.goalsPerPeriod + (state.goalTargetAdjust ?? 0);
+}
+
+/** Límite de tiempo de la parte actual, contando lo que añadan o quiten los animales. */
+function stateTimeLimitMs(state: MatchState): number | null {
+  const base = periodTimeLimitMs(state.config, state.period);
+  return base === null ? null : base + (state.timeAdjustMs ?? 0);
 }
 
 /** Partido Loco: los hándicaps solo existen en el modo 'chaos'. */
@@ -169,7 +191,7 @@ export function periodTimeLimitMs(config: MatchConfig, period: Period): number |
 export function periodElapsed(state: MatchState, now: number): number {
   const running = state.runningSince !== undefined ? Math.max(0, now - state.runningSince) : 0;
   const elapsed = state.periodElapsedMs + running;
-  const limit = periodTimeLimitMs(state.config, state.period);
+  const limit = stateTimeLimitMs(state);
   return limit !== null ? Math.min(elapsed, limit) : elapsed;
 }
 
@@ -183,7 +205,7 @@ export interface ClockView {
 
 export function getClock(state: MatchState, now: number): ClockView {
   const elapsed = periodElapsed(state, now);
-  const limit = periodTimeLimitMs(state.config, state.period);
+  const limit = stateTimeLimitMs(state);
   return {
     periodElapsedMs: elapsed,
     remainingMs: limit !== null ? Math.max(0, limit - elapsed) : null,
@@ -259,7 +281,7 @@ export function advance(state: MatchState, now: number): { state: MatchState; ev
       continue;
     }
     if (s.phase === 'playing' && s.runningSince !== undefined) {
-      const limit = periodTimeLimitMs(s.config, s.period);
+      const limit = stateTimeLimitMs(s);
       const periodEndWall = limit !== null ? s.runningSince + (limit - s.periodElapsedMs) : Infinity;
       // Fin de un hándicap con duración (si llega antes que el final de la parte).
       const h = s.handicap;
@@ -464,6 +486,7 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
         periodElapsedMs: elapsed,
         runningSince: undefined,
         nextHandicapAtMs: command.nextAtMs,
+        nextVisitAtMs: command.visitAtMs,
         handicap: { spec: command.handicap, stage: 'announce', ...(replaced ? { replaced } : {}) },
       };
       const team = command.handicap.team === 'white' || command.handicap.team === 'blue' ? command.handicap.team : undefined;
@@ -499,6 +522,43 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       const goalId = next.events[next.events.length - 1].id;
       next = { ...next, lastGoalAt: now, undoStack: [...next.undoStack, goalId] };
       return accept(checkGoalEnd(next, events, now));
+    }
+
+    case 'VISIT_START': {
+      // Partido Loco: el reloj se para mientras el animal está en pantalla.
+      if (!handicapsEnabled(s.config)) return reject('rule_disabled');
+      if (s.phase !== 'playing') return reject('invalid_state');
+      const elapsed = periodElapsed(s, now);
+      return accept({
+        ...s,
+        phase: 'visit',
+        periodElapsedMs: elapsed,
+        runningSince: undefined,
+        nextVisitAtMs: undefined,
+        visit: { spec: command.visitor, applied: false },
+      });
+    }
+
+    case 'VISIT_APPLY': {
+      if (s.phase !== 'visit' || !s.visit || s.visit.applied) return reject('invalid_state');
+      const v = s.visit.spec;
+      let next: MatchState = { ...s, visit: { spec: v, applied: true } };
+      if (v.timeMs) next = { ...next, timeAdjustMs: (next.timeAdjustMs ?? 0) + v.timeMs };
+      if (v.goals) next = { ...next, goalTargetAdjust: (next.goalTargetAdjust ?? 0) + v.goals };
+      next = pushEvent(next, events, now, { type: 'VISIT', visitor: v, ...(v.from ? { team: otherTeam(v.from) } : {}) });
+      rescoreLast(next);
+      return accept(next);
+    }
+
+    case 'VISIT_END': {
+      if (s.phase !== 'visit') return reject('invalid_state');
+      let next: MatchState = { ...s, phase: 'playing', runningSince: now, visit: undefined };
+      // El gol robado o la meta nueva pueden decidir el partido (las reglas del sorteo lo evitan).
+      next = checkGoalEnd(next, events, now);
+      // Con el tiempo quitado, la parte puede haber terminado ya.
+      const after = advance(next, now);
+      events.push(...after.events);
+      return accept(after.state);
     }
 
     case 'UNDO_PENALTY': {
@@ -585,6 +645,8 @@ function beginCountdown(state: MatchState, now: number, period: Period): MatchSt
 function startPeriodClock(state: MatchState, events: MatchEvent[], at: number): MatchState {
   const next: MatchState = {
     ...state,
+    // El tiempo que añadió o quitó un animal solo vale para su parte.
+    timeAdjustMs: undefined,
     phase: 'playing',
     countdownEndsAt: undefined,
     periodElapsedMs: 0,
@@ -604,7 +666,7 @@ function checkGoalEnd(state: MatchState, events: MatchEvent[], now: number): Mat
   if (state.config.endCondition === 'time') return state;
   // Por goles (y en «ambas»): gana el primer equipo que llega al objetivo, sin esperar al final de la parte.
   const score = getScore(state);
-  if (Math.max(score.white, score.blue) >= state.config.goalsPerPeriod) return endPeriod(state, events, now, 'goals');
+  if (Math.max(score.white, score.blue) >= goalTarget(state)) return endPeriod(state, events, now, 'goals');
   return state;
 }
 
