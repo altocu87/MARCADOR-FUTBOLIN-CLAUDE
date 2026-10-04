@@ -5,6 +5,7 @@ import type { MatchExtras } from '../../app/routes';
 import type { MatchState } from '../../match-engine';
 import { buildBackup, type StoredMatch } from '../../services/persistence';
 import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
+import { AssetImage } from '../components/assets';
 import { downloadJson } from '../components/download';
 import { MatchReport } from '../components/MatchReport';
 import { swapSides } from '../components/VictoryScreen';
@@ -46,6 +47,7 @@ export function SummaryScreen({
   return (
     <ScreenFrame
       className="rep-screen"
+      background={<AssetImage name="fondo-estadisticas" className="rep-bg" fallback={null} />}
       // Tipo de partido grande y centrado; los botones, arriba a la izquierda (abajo no queda franja).
       title={<span className={`match-mode mode-chip-${match.config.mode}`}>{MODE_LABEL[match.config.mode]}</span>}
       left={

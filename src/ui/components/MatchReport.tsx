@@ -55,7 +55,7 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
           ]}
         />
         <div className="rep-big-score" aria-label={`Resultado ${r.score.white} a ${r.score.blue}`}>
-          <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`}>{r.score.white}</span>
+          <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`} title={r.winner === 'white' ? 'Ganador' : undefined}>{r.score.white}</span>
           <span className="rep-big-sep">–</span>
           <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
         </div>

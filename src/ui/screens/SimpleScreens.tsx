@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
+import { AssetImage } from '../components/assets';
 import { MatchReport } from '../components/MatchReport';
 import { MODE_LABEL, Modal, ScreenFrame } from '../components/common';
 
@@ -19,6 +20,7 @@ export function MatchDetailScreen({ matchId }: { matchId: string }) {
   return (
     <ScreenFrame
       className="rep-screen"
+      background={<AssetImage name="fondo-estadisticas" className="rep-bg" fallback={null} />}
       title={match ? <span className={`match-mode mode-chip-${match.config.mode}`}>{MODE_LABEL[match.config.mode]}</span> : 'Detalle del partido'}
       onBack={() => navigate({ name: 'ranking', tab: 'history' })}
       right={
