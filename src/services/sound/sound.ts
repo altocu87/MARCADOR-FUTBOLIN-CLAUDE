@@ -16,7 +16,8 @@ export type SoundName =
   | 'special'
   | 'whoosh'
   | 'levelUp'
-  | 'matchPoint';
+  | 'matchPoint'
+  | 'siren';
 
 interface Note {
   freq: number;
@@ -104,6 +105,15 @@ const PATTERNS: Record<Exclude<SoundName, 'goal'>, Note[]> = {
   special: [{ freq: 300, start: 0, dur: 0.5, type: 'sawtooth', gain: 0.35, slideTo: 1200 }],
   whoosh: [{ freq: 120, start: 0, dur: 0.35, type: 'sawtooth', gain: 0.2, slideTo: 900 }],
   levelUp: melody([[523, 1], [659, 1], [784, 1], [1047, 1], [1319, 3]], 0.09, 'square'),
+  // Sirena de alarma (sube y baja) durante el robo de la ardilla, unos 4,5 s.
+  siren: Array.from({ length: 12 }, (_, i) => ({
+    freq: i % 2 ? 1150 : 620,
+    start: i * 0.38,
+    dur: 0.4,
+    type: 'sawtooth' as OscillatorType,
+    gain: 0.22,
+    slideTo: i % 2 ? 620 : 1150,
+  })),
   matchPoint: [
     { freq: 880, start: 0, dur: 0.12, type: 'square', gain: 0.35 },
     { freq: 880, start: 0.18, dur: 0.12, type: 'square', gain: 0.35 },

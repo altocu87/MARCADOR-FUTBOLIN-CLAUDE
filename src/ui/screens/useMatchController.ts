@@ -339,8 +339,8 @@ export function useMatchController(
             const out = dispatch(s, { type: 'VISIT_START', visitor }, t);
             if (out.accepted) {
               commit(out.state, out.events, t);
-              sound.play('whoosh');
-              voice.say(visitorText(visitor).title.replace(/[¡!]/g, ''));
+              sound.play(visitor.animal === 'squirrel' ? 'siren' : 'whoosh');
+              voice.say(visitor.animal === 'squirrel' ? '¡Robo en marcha! ¡Cuidado con la ardilla!' : visitorText(visitor).title.replace(/[¡!]/g, ''));
               const timing = VISIT_TIMING[visitor.animal];
               const step = (cmd: 'VISIT_APPLY' | 'VISIT_END') => {
                 const now2 = Date.now();

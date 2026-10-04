@@ -742,76 +742,60 @@
   width: 100%;
   height: 100%;
 }
-.sq-run {
+.sq-img {
   position: absolute;
   left: 50%;
   bottom: 0;
   height: 100%;
   transform: translateX(-50%);
+  transform-origin: 50% 100%;
 }
-/* De pie: cola detrás que se mueve, cuerpo y cabeza con expresión. */
-.sq-stand .sq-body {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  height: 92%;
-  transform: translateX(-50%);
+/* Cada postura entra con un pequeño rebote y luego respira. */
+.sq:not(.sq-run):not(.sq-carry) .sq-img {
+  animation:
+    sq-in 0.22s cubic-bezier(0.3, 1.6, 0.5, 1) both,
+    sq-breathe 0.5s 0.22s ease-in-out infinite alternate;
 }
-.sq-stand .sq-tail {
-  position: absolute;
-  left: -14%;
-  bottom: 6%;
+.sq-pop .sq-img {
+  animation: sq-in 0.22s cubic-bezier(0.3, 1.6, 0.5, 1) both, sq-shake 0.12s 0.2s linear infinite;
+}
+.sq-mock .sq-img {
+  animation: sq-in 0.22s cubic-bezier(0.3, 1.6, 0.5, 1) both, sq-laugh 0.16s 0.2s ease-in-out infinite alternate;
+}
+.sq-ball .sq-img {
   height: 62%;
-  transform-origin: 85% 90%;
-  animation: sq-wag 0.5s ease-in-out infinite alternate;
-}
-.sq-stand .sq-head {
-  position: absolute;
-  left: 52%;
-  top: -5%;
-  width: 61%;
-  transform: translateX(-50%);
-  animation: sq-bob 0.6s ease-in-out infinite alternate;
-}
-.sq-hand {
-  position: absolute;
-  right: 4%;
-  top: 40%;
-  width: 26%;
-  animation: sq-grab 0.35s ease-in-out infinite alternate;
-}
-.sq-hand.win {
-  top: 30%;
   animation: none;
-  transform: rotate(-12deg);
 }
-.pose-pop .sq-stand .sq-head {
-  animation: sq-shock 0.25s ease-in-out infinite alternate;
+.sq-dive .sq-img {
+  animation: none;
 }
-@keyframes sq-wag {
+@keyframes sq-in {
   from {
-    transform: rotate(-10deg);
-  }
-  to {
-    transform: rotate(8deg);
+    transform: translateX(-50%) scale(0.86, 1.12);
   }
 }
-@keyframes sq-bob {
+@keyframes sq-breathe {
   to {
-    transform: translateX(-50%) translateY(-3%) rotate(-3deg);
+    transform: translateX(-50%) scale(1.02, 0.98);
   }
 }
-@keyframes sq-shock {
-  to {
-    transform: translateX(-50%) scale(1.06);
+@keyframes sq-shake {
+  25% {
+    transform: translateX(-52%) rotate(-2deg);
+  }
+  75% {
+    transform: translateX(-48%) rotate(2deg);
   }
 }
-@keyframes sq-grab {
+@keyframes sq-laugh {
   to {
-    transform: translateY(-8%) rotate(-10deg);
+    transform: translateX(-50%) translateY(-3%) scale(1.03, 0.97);
   }
 }
-/* El gol robado: una bola de neón con el «1» sobre la cabeza. */
+/* El gol robado: una bola de neón con el «1» sobre la cabeza (o entre las manos al levantarlo). */
+.sq-lift .sq-token {
+  top: -14%;
+}
 .sq-token {
   position: absolute;
   left: 50%;
@@ -868,10 +852,12 @@
 .visit-pop {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: clamp(34px, 9vh, 80px);
+  font-size: clamp(64px, 18vh, 150px);
   font-weight: 900;
   white-space: nowrap;
-  animation: visit-pop 1.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  z-index: 3;
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.55);
+  animation: visit-pop 1.8s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
 .visit-pop.plus {
   color: #3dff7a;
@@ -913,5 +899,65 @@
   to {
     transform: scale(1.03) rotate(-1deg);
     filter: brightness(1.25);
+  }
+}
+
+/* Alarma de robo (ardilla): bordes rojos que parpadean y rótulo de neón pasando arriba. */
+.alarm-frame {
+  position: absolute;
+  inset: 0;
+  border: 10px solid #ff1f3d;
+  box-shadow: inset 0 0 50px 14px rgba(255, 31, 61, 0.7), 0 0 40px rgba(255, 31, 61, 0.8);
+  animation: alarm-blink 0.38s steps(1) infinite;
+}
+@keyframes alarm-blink {
+  50% {
+    border-color: rgba(255, 31, 61, 0.15);
+    box-shadow: inset 0 0 18px 4px rgba(255, 31, 61, 0.25);
+  }
+}
+.alarm-ticker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12px;
+  height: 64px;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(40, 0, 6, 0.9), rgba(70, 0, 10, 0.92) 50%, rgba(40, 0, 6, 0.9));
+  border-top: 2px solid #ff1f3d;
+  border-bottom: 2px solid #ff1f3d;
+  box-shadow: 0 0 22px rgba(255, 31, 61, 0.7);
+  animation: alarm-in 0.3s ease-out both;
+}
+.alarm-track {
+  display: flex;
+  width: max-content;
+  animation: alarm-scroll 4.5s linear infinite;
+}
+.alarm-text {
+  padding: 0 40px;
+  line-height: 60px;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: #fff3f5;
+  text-shadow: 0 0 8px #ff1f3d, 0 0 20px #ff1f3d, 0 0 40px #ff1f3d;
+  animation: alarm-flicker 0.38s steps(1) infinite;
+}
+@keyframes alarm-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes alarm-flicker {
+  50% {
+    color: #ff8796;
+    text-shadow: 0 0 6px #ff1f3d;
+  }
+}
+@keyframes alarm-in {
+  from {
+    transform: translateY(-120%);
   }
 }

@@ -21,7 +21,7 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
 - `ardilla-*`: la ardilla ladrona del Partido Loco, recortada de sus hojas de personaje: `ardilla-carrera-0…5`
   (ciclo de carrera de perfil), `ardilla-cuerpo-34` y `ardilla-cuerpo-perfil` (sin cola), `ardilla-cola-1…5`,
   `ardilla-mano-*` y `ardilla-cara-*` (picara, risa, guino, ladrona, sorpresa, enfado, satisfecha, burla).
-  Pendiente la hoja de 8 posturas de cuerpo entero. El caracol y el gato aún no tienen imágenes (provisionales).
+  `ardilla-pose-*` (pie, sorpresa, sigilosa, brazos-arriba, burla, victoria, salto, bola). El caracol y el gato aún no tienen imágenes (provisionales).
 - `fondo-estadisticas`: fondo de las estadísticas del partido y del detalle del historial (1280×720 .webp, ya desenfocado).
 - `fondo-equipo-blanco` y `fondo-equipo-azul`: fondos de la selección de jugadores; se ve uno u otro según el
   equipo que está eligiendo (1280×720 .webp).

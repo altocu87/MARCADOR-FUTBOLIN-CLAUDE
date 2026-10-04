@@ -12,8 +12,18 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { VISIT_TIMING, otherTeam, type Visitor } from '../../match-engine';
 import { assetUrl } from './assets';
 
-type Pose = 'hidden' | 'pop' | 'run' | 'grab' | 'carry' | 'wink' | 'dive';
-type Face = 'sorpresa' | 'ladrona' | 'picara' | 'guino' | 'risa' | 'burla';
+type Pose = 'hidden' | 'pop' | 'run' | 'sneak' | 'lift' | 'carry' | 'mock' | 'wink' | 'dive' | 'ball' | 'grab';
+
+/** Postura de cuerpo entero de la ardilla para cada momento de la escena. */
+const SQUIRREL_POSE: Partial<Record<Pose, string>> = {
+  pop: 'ardilla-pose-sorpresa',
+  sneak: 'ardilla-pose-sigilosa',
+  lift: 'ardilla-pose-brazos-arriba',
+  mock: 'ardilla-pose-burla',
+  wink: 'ardilla-pose-victoria',
+  dive: 'ardilla-pose-salto',
+  ball: 'ardilla-pose-bola',
+};
 
 interface Pt {
   x: number;
@@ -38,7 +48,6 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   const actor = useRef<HTMLDivElement>(null);
   const portal = useRef<HTMLDivElement>(null);
   const [pose, setPose] = useState<Pose>('hidden');
-  const [face, setFace] = useState<Face>('sorpresa');
   const [facing, setFacing] = useState<1 | -1>(1);
   const [frame, setFrame] = useState(0);
   const [pops, setPops] = useState<{ id: number; x: number; y: number; text: string; tone: 'plus' | 'minus' }[]>([]);
@@ -99,55 +108,55 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
       const V: Pt = { x: victim.x + victim.w * (from === 'white' ? 0.66 : 0.34), y: victim.y + victim.h * 0.98 };
       const B: Pt = { x: target.x + target.w * (to === 'white' ? 0.66 : 0.34), y: target.y + target.h * 0.98 };
       const drop = timing.apply;
+      // 0 sale del portal sorprendida · 1.3 corre · 2.4 se acerca sigilosa · 2.8 levanta el gol con los
+      // brazos en alto · 3.3 corre con él · 4.55 lo suelta y se burla · 5.2 guiña · 5.9 vuelve corriendo
+      // · 7.0 se lanza de cabeza · 7.4 hecha una bola entra girando en el portal.
       move([
         { t: 0, p: P, s: 0.1, o: 0 },
-        { t: 650, p: P, s: 0.15 },
-        { t: 1000, p: { x: P.x, y: P.y - H * 0.18 }, s: 1.05 },
-        { t: 1350, p: P, s: 1 },
-        { t: 2550, p: V },
-        { t: 2950, p: V },
+        { t: 600, p: P, s: 0.2 },
+        { t: 950, p: { x: P.x, y: P.y - H * 0.2 }, s: 1.05 },
+        { t: 1300, p: P, s: 1 },
+        { t: 2400, p: { x: V.x + (V.x < P.x ? 70 : -70), y: V.y } },
+        { t: 2800, p: V },
+        { t: 3300, p: V },
         { t: drop - 150, p: B },
-        { t: drop + 1100, p: B },
-        { t: T - 800, p: P },
-        { t: T - 400, p: { x: P.x, y: P.y + 10 }, s: 0.4, r: 25 },
-        { t: T, p: { x: P.x, y: P.y + 20 }, s: 0.05, r: 60, o: 0 },
+        { t: drop + 1350, p: B },
+        { t: T - 800, p: { x: P.x, y: P.y - 10 } },
+        { t: T - 450, p: { x: P.x, y: P.y - H * 0.16 }, r: 0 },
+        { t: T - 150, p: { x: P.x, y: P.y + 10 }, s: 0.5, r: 360 },
+        { t: T, p: { x: P.x, y: P.y + 20 }, s: 0.05, r: 540, o: 0 },
       ]);
       const dir = (a: Pt, b: Pt) => (b.x >= a.x ? 1 : -1);
-      at(0, () => {
-        setPose('pop');
-        setFace('sorpresa');
-      });
-      at(1350, () => {
+      at(0, () => setPose('pop'));
+      at(1300, () => {
         setPose('run');
         setFacing(dir(P, V));
       });
-      at(2550, () => {
-        setPose('grab');
-        setFace('ladrona');
+      at(2400, () => setPose('sneak'));
+      at(2800, () => {
+        setPose('lift');
         setGlow(from);
         pop({ x: victim.x + victim.w / 2, y: victim.y + victim.h * 0.35 }, '−1', 'minus');
       });
-      at(2950, () => {
+      at(3300, () => {
         setPose('carry');
         setFacing(dir(V, B));
         setGlow(null);
       });
       at(drop - 150, () => {
-        setPose('wink');
-        setFace('guino');
+        setPose('mock');
+        setFacing(dir(B, P));
         setGlow(to);
         pop({ x: target.x + target.w / 2, y: target.y + target.h * 0.35 }, '+1', 'plus');
       });
-      at(drop + 500, () => setFace('burla'));
-      at(drop + 1100, () => {
+      at(drop + 500, () => setPose('wink'));
+      at(drop + 1350, () => {
         setPose('run');
         setFacing(dir(B, P));
         setGlow(null);
       });
-      at(T - 800, () => {
-        setPose('dive');
-        setFace('risa');
-      });
+      at(T - 800, () => setPose('dive'));
+      at(T - 450, () => setPose('ball'));
     } else {
       // Caracol o gato: van a la meta (por goles) o al reloj (por tiempo).
       const goal = visitor.goals !== undefined ? rectOf(root, '.period-goals') : rectOf(root, '.clock-panel');
@@ -192,7 +201,22 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   }, [visitor, timing]);
 
   return (
-    <div className={`visit-layer ${glow ? `glow-${glow}` : ''}`} ref={box} aria-live="polite">
+    <div className={`visit-layer visit-${visitor.animal} ${glow ? `glow-${glow}` : ''}`} ref={box} aria-live="polite">
+      {/* Ardilla: alarma de robo con los bordes en rojo y un rótulo de neón que pasa arriba. */}
+      {visitor.animal === 'squirrel' && (
+        <>
+          <span className="alarm-frame" aria-hidden="true" />
+          <div className="alarm-ticker" role="status">
+            <span className="alarm-track">
+              {Array.from({ length: 4 }, (_, i) => (
+                <span key={i} className="alarm-text">
+                  🚨 ¡ROBO EN MARCHA! · ¡CUIDADO CON LA ARDILLA! 🐿
+                </span>
+              ))}
+            </span>
+          </div>
+        </>
+      )}
       <div className="wh-portal" ref={portal} aria-hidden="true">
         <span className="wh-ring" />
         <span className="wh-ring r2" />
@@ -200,7 +224,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
         <span className="wh-beam" />
       </div>
       <div className={`visit-actor animal-${visitor.animal} pose-${pose}`} ref={actor}>
-        {visitor.animal === 'squirrel' ? <Squirrel pose={pose} face={face} facing={facing} frame={frame} /> : <Provisional animal={visitor.animal} facing={facing} />}
+        {visitor.animal === 'squirrel' ? <Squirrel pose={pose} facing={facing} frame={frame} /> : <Provisional animal={visitor.animal} facing={facing} />}
       </div>
       {pops.map((p) => (
         <span key={p.id} className={`visit-pop ${p.tone}`} style={{ left: p.x, top: p.y }}>
@@ -211,25 +235,16 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   );
 }
 
-/** La ardilla montada con sus piezas. */
-function Squirrel({ pose, face, facing, frame }: { pose: Pose; face: Face; facing: 1 | -1; frame: number }) {
+/** La ardilla: carrera de 6 fotogramas o una de sus 8 posturas de cuerpo entero. */
+function Squirrel({ pose, facing, frame }: { pose: Pose; facing: 1 | -1; frame: number }) {
   if (pose === 'hidden') return null;
-  if (pose === 'run' || pose === 'carry') {
-    return (
-      <div className="sq" style={{ transform: `scaleX(${facing})` }}>
-        <img className="sq-run" src={assetUrl(`ardilla-carrera-${frame}`)} alt="" draggable={false} />
-        {pose === 'carry' && <span className="sq-token">1</span>}
-      </div>
-    );
-  }
-  // De pie: cola que se mueve detrás, cuerpo y cabeza con la expresión del momento.
+  const run = pose === 'run' || pose === 'carry';
+  const src = run ? `ardilla-carrera-${frame}` : SQUIRREL_POSE[pose];
   return (
-    <div className="sq sq-stand" style={{ transform: `scaleX(${facing})` }}>
-      <img className="sq-tail" src={assetUrl(pose === 'pop' ? 'ardilla-cola-5' : 'ardilla-cola-2')} alt="" draggable={false} />
-      <img className="sq-body" src={assetUrl('ardilla-cuerpo-34')} alt="" draggable={false} />
-      <img className="sq-head" src={assetUrl(`ardilla-cara-${face}`)} alt="" draggable={false} />
-      {pose === 'grab' && <img className="sq-hand" src={assetUrl('ardilla-mano-agarra')} alt="" draggable={false} />}
-      {pose === 'wink' && <img className="sq-hand win" src={assetUrl('ardilla-mano-victoria')} alt="" draggable={false} />}
+    <div className={`sq sq-${pose}`} style={{ transform: `scaleX(${facing})` }}>
+      <img key={run ? 'run' : pose} className="sq-img" src={src ? assetUrl(src) : undefined} alt="" draggable={false} />
+      {/* El gol robado: bola de neón sobre las manos (al levantarlo) o sobre la cabeza (corriendo). */}
+      {(pose === 'lift' || pose === 'carry') && <span className="sq-token">1</span>}
     </div>
   );
 }
