@@ -120,8 +120,9 @@ export function VictoryScreen({
     filter === null ? undefined : entries?.get(playerId)?.unlocked.includes(filter) ? 'hl' : 'dim';
 
   const column = (team: Team, list: ParticipantRef[], winner: boolean, offset: number) => (
-    <div className="vic-col">
-      <div className={`vic-col-label vic-col-${team}`}>
+    // Cada equipo en un marco de neón (blanco o celeste) con su nombre encajado en el borde de arriba.
+    <div className={`vic-col vic-frame vic-frame-${team}`}>
+      <div className="vic-frame-name">
         {TEAM_LABEL[team]}
         {winner && ' 🏆'}
       </div>
