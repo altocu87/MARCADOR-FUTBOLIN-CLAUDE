@@ -81,7 +81,6 @@ export function VictoryScreen({
   const r = state.result!;
   const byTeam = (t: Team) => state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
   const winners = byTeam(r.winner);
-  const losers = byTeam(OTHER[r.winner]);
   const byId = new Map(players.map((p) => [p.id, p]));
 
   // Melodía del primer ganador (una vez, al aparecer la pantalla).
@@ -188,8 +187,9 @@ export function VictoryScreen({
 
       <div className="vic-body scroll">
         <div className="vic-teams">
-          {column(r.winner, winners, true, 0)}
-          {column(OTHER[r.winner], losers, false, winners.length)}
+          {/* Siempre Blanco a la izquierda y Azul a la derecha; los ganadores aparecen primero. */}
+          {column('white', byTeam('white'), r.winner === 'white', r.winner === 'white' ? 0 : winners.length)}
+          {column('blue', byTeam('blue'), r.winner === 'blue', r.winner === 'blue' ? 0 : winners.length)}
         </div>
         {achievements.length > 0 && (
           <div className="vic-ach">
