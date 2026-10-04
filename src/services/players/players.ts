@@ -2,7 +2,8 @@
 import { newId } from '../ids';
 import type { Player } from '../persistence';
 
-export const NAME_MAX = 20;
+/** Máximo de caracteres del nombre: así cabe entero en marcador, fichas y pantalla final. */
+export const NAME_MAX = 10;
 export const ALIAS_MAX = 16;
 
 export interface PlayerDraft {

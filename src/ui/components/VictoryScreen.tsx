@@ -303,6 +303,7 @@ function PlayerProgressRow({
       <span className="vic-row-main">
         <span className="vic-row-top">
           <strong className="vic-name">{name}</strong>
+          {/* XP en columna fija: queda alineada en todas las filas. */}
           {entry && <span className="vic-xp">+{shownXp} XP</span>}
           {entry?.eloDelta !== undefined && (
             <span className={`vic-elo ${entry.eloDelta >= 0 ? 'up' : 'down'}`}>
@@ -310,7 +311,6 @@ function PlayerProgressRow({
               {entry.eloDelta}
             </span>
           )}
-          {levelReached && <span className="vic-levelup">⬆ ¡NIVEL {entry!.levelAfter}!</span>}
           {rankUp && (
             <span className="vic-rank">
               <CategoryBadge category={entry!.categoryAfter} size={20} /> ¡{entry!.categoryAfter.name}!
@@ -329,7 +329,7 @@ function PlayerProgressRow({
           <>
             <span className="vic-level">
               <span className={`vic-lv ${levelReached ? 'leveled' : ''}`}>NV {span.level}</span>
-              <span className={`vic-bar ${phase === 'up' ? 'flash' : ''}`}>
+              <span className={`vic-bar ${phase === 'up' ? 'flash' : ''} ${levelReached ? 'leveled' : ''}`}>
                 <span
                   className="vic-bar-fill"
                   style={{
@@ -339,7 +339,20 @@ function PlayerProgressRow({
                   }}
                 />
                 {/* XP dentro del nivel, sobre la propia barra. */}
-                <span className="vic-bar-text">{span.need > 0 ? `${span.have}/${span.need}` : 'MÁX'}</span>
+                {levelReached && <span className="vic-bar-shine" aria-hidden="true" />}
+                <span className="vic-bar-text">
+                  {/* Al subir de nivel, el aviso va dentro de la propia barra. */}
+                  {levelReached ? (
+                    <>
+                      <b className="vic-bar-up">⬆ ¡NIVEL {entry.levelAfter}!</b>
+                      {span.need > 0 && <span className="vic-bar-xp">{span.have}/{span.need}</span>}
+                    </>
+                  ) : span.need > 0 ? (
+                    `${span.have}/${span.need}`
+                  ) : (
+                    'MÁX'
+                  )}
+                </span>
               </span>
             </span>
           </>

@@ -1888,12 +1888,17 @@
   flex-wrap: wrap;
 }
 .vic-name {
+  /* Ancho fijo (10 caracteres como máximo) para que la XP quede alineada. */
+  flex: none;
+  width: 7.4em;
   font-size: 17px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .vic-xp {
+  flex: none;
+  width: 5.6em;
   font-size: 14px;
   font-weight: 900;
   color: #3dff7a;
@@ -1963,19 +1968,60 @@
   background: linear-gradient(90deg, #ffd43b, #fff3a8);
   box-shadow: 0 0 18px rgba(255, 212, 59, 0.9);
 }
-.vic-levelup {
-  flex: none;
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--ranked);
-  text-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
+.vic-bar.leveled .vic-bar-text {
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 0 4px #000;
+}
+.vic-bar-up {
+  color: #ffffff;
+  letter-spacing: 0.06em;
   animation: pop-in 0.4s ease-out both;
+}
+.vic-bar-xp {
+  opacity: 0.85;
+}
+/* Barra que ha subido de nivel: dorada, con brillo que la recorre y pulso suave. */
+.vic-bar.leveled {
+  border-color: rgba(255, 212, 59, 0.9);
+  box-shadow: 0 0 12px rgba(255, 212, 59, 0.55);
+  animation: bar-pulse 1.4s ease-in-out 3;
+}
+.vic-bar.leveled .vic-bar-fill {
+  background: linear-gradient(90deg, #f2a900, #ffd43b 60%, #fff3a8);
+  box-shadow: 0 0 14px rgba(255, 212, 59, 0.9);
+}
+.vic-bar-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: bar-shine 1.2s ease-in-out 3;
+  pointer-events: none;
+}
+@keyframes bar-shine {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@keyframes bar-pulse {
+  50% {
+    box-shadow: 0 0 22px rgba(255, 212, 59, 0.95);
+  }
 }
 .vic-bar-text {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   font-size: 12px;
   font-weight: 900;
   color: #ffffff;
