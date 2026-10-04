@@ -561,6 +561,8 @@
 .pre-layout {
   flex: 1;
   min-height: 0;
+  /* Hueco arriba para el nombre del equipo, que sobresale del borde. */
+  padding-top: 10px;
   display: grid;
   /* Los equipos se llevan más ancho: el centro solo necesita la previsión y los enfrentamientos. */
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.3fr);
@@ -571,7 +573,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 12px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
@@ -617,7 +619,10 @@
 .pre-team.pre-white,
 .pre-team.pre-blue {
   --neon: #ffffff;
-  background: rgba(6, 12, 24, 0.42);
+  position: relative;
+  overflow: visible;
+  /* Fondo del color del equipo al 20 % (deja ver el fondo de la pantalla). */
+  background: color-mix(in srgb, var(--neon) 20%, transparent);
   backdrop-filter: blur(6px);
   border: 2px solid var(--neon);
   box-shadow:
@@ -628,20 +633,105 @@
 .pre-team.pre-blue {
   --neon: #62d6ff;
 }
-/* Nombre del equipo, grande y en neón. */
+/* Nombre del equipo, grande y en neón, encajado en el borde superior de la tarjeta. */
 .pre-team-name {
-  font-size: 26px;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  z-index: 2;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: rgba(6, 12, 24, 0.92);
+  font-size: 30px;
   font-weight: 900;
   letter-spacing: 0.2em;
-  line-height: 1;
+  line-height: 1.1;
+  white-space: nowrap;
   color: var(--neon);
   text-shadow: 0 0 10px color-mix(in srgb, var(--neon) 80%, transparent);
 }
+/* Porcentaje del pronóstico de este equipo y su barra. */
+.pre-team-pct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.pre-pct {
+  flex: none;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--neon);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--neon) 70%, transparent);
+}
+/* Barra por segmentos: se encienden tantos como el porcentaje; un brillo la recorre. */
+.pre-tbar {
+  position: relative;
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+  background: rgba(6, 12, 24, 0.6);
+  overflow: hidden;
+}
+.pre-tbar-track {
+  position: absolute;
+  inset: 3px;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  background: color-mix(in srgb, var(--neon) 14%, transparent);
+}
+.pre-tbar-fill {
+  display: block;
+  height: 100%;
+  width: var(--p);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--neon) 55%, #0b1626), var(--neon));
+}
+.pre-tbar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: sheen 4s ease-in-out infinite;
+  pointer-events: none;
+}
 /* Fichas dentro del equipo: cristal oscuro con un toque del color del equipo. */
+.pre-team.pre-sm .pre-player {
+  padding: 4px 8px 4px 4px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: rgba(7, 16, 28, 0.6);
+}
 .pre-team.pre-white .pre-player-big,
 .pre-team.pre-blue .pre-player-big {
   background: rgba(7, 16, 28, 0.6);
   border-color: color-mix(in srgb, var(--neon) 35%, transparent);
+}
+/* Pantallas bajas (≈480 px): fotos, porcentaje y botón algo más pequeños para que quepa todo. */
+@media (max-height: 520px) {
+  .pre-lg .rank-frame {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  .pre-pct {
+    font-size: 28px;
+  }
+  .pre-tbar {
+    height: 20px;
+  }
+  .pre-team-name {
+    font-size: 24px;
+  }
+  .pre-start {
+    min-height: 80px;
+  }
+  .pre-lg .pre-name {
+    font-size: 18px;
+  }
 }
 /* Columna central: tarjeta de la previsión y, debajo, el botón de empezar. */
 .pre-center-col {
@@ -653,6 +743,7 @@
 .pre-center-col .pre-center {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   /* Opaca para que el fondo no estorbe al leer. */
   background: linear-gradient(180deg, rgba(40, 33, 10, 0.94), rgba(14, 14, 20, 0.94));
 }
@@ -688,8 +779,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: 14px;
   background: rgba(7, 16, 28, 0.55);
   border: 1px solid var(--line);
@@ -728,7 +819,10 @@
 .pre-start {
   flex: none;
   width: 100%;
-  font-size: 18px;
+  /* Botón grande: ocupa el pie de la columna central. */
+  min-height: 120px;
+  padding: 0 8px;
+  font-size: clamp(15px, 1.9vw, 20px);
   white-space: nowrap;
 }
 /* Empezar partido en verde. */
@@ -936,278 +1030,6 @@
   box-shadow: 0 0 6px #62d6ff;
 }
 .pre-center {
-  flex: 1;
-  min-height: 0;
-  /* Opaca para que el fondo no estorbe al leer. */
-  background: linear-gradient(180deg, rgba(40, 33, 10, 0.94), rgba(14, 14, 20, 0.94));
-}
-.pre-player {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.pre-info {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.pre-name {
-  font-weight: 800;
-  font-size: 17px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Forma reciente del jugador, bajo sus datos. */
-.pre-form {
-  margin-top: 2px;
-}
-
-/* Fichas grandes (1 o 2 jugadores por equipo): repartidas a lo alto de la columna. */
-.pre-lg .pre-player-big,
-.pre-xl .pre-player-big {
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 14px;
-  background: rgba(7, 16, 28, 0.55);
-  border: 1px solid var(--line);
-}
-.pre-player-top {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-.pre-player-top .pre-info {
-  flex: 1;
-}
-/* 1 jugador por equipo: foto enorme arriba y los datos debajo, centrados. */
-.pre-xl .pre-player-top {
-  flex-direction: column;
-  gap: 10px;
-}
-.pre-xl .pre-player-top .pre-info {
-  align-self: stretch;
-  align-items: center;
-  text-align: center;
-}
-.pre-player-bottom {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.pre-xl .pre-player-bottom {
-  align-items: center;
-}
-.pre-xl .pre-rankbar {
-  align-self: stretch;
-}
-/* Botón de empezar, al pie de la columna central. */
-.pre-start {
-  flex: none;
-  width: 100%;
-  font-size: 18px;
-  white-space: nowrap;
-}
-/* Empezar partido en verde. */
-.pre-start.btn-primary {
-  background: linear-gradient(180deg, #4ef0a6, #1fb874);
-  border-color: var(--ok);
-  color: #03170d;
-  box-shadow: 0 0 18px rgba(61, 220, 151, 0.55);
-}
-.pre-lg .pre-name {
-  font-size: 22px;
-}
-.pre-xl .pre-name {
-  font-size: 28px;
-}
-.pre-rank {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.pre-xl .pre-rank {
-  font-size: 19px;
-}
-.pre-rank > * {
-  flex: none;
-}
-.pre-elo {
-  font-size: 13px;
-  color: var(--text-2);
-  white-space: nowrap;
-}
-.pre-elo b {
-  color: var(--text);
-  font-size: 16px;
-}
-.pre-xl .pre-elo {
-  font-size: 16px;
-}
-.pre-xl .pre-elo b {
-  font-size: 20px;
-}
-/* Barra hacia el siguiente rango, del color del rango actual. */
-.pre-rankbar {
-  height: 7px;
-  margin-top: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-.pre-rankbar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--cat);
-  box-shadow: 0 0 8px var(--cat);
-}
-.pre-rankbar-text {
-  font-size: 11px;
-  color: var(--text-2);
-}
-.pre-record {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-2);
-}
-.pre-xl .pre-record,
-.pre-xl .pre-rankbar-text {
-  font-size: 14px;
-}
-
-/* ---- Marco de la foto según el rango (solo en el Clasificatorio) ---- */
-.rank-frame {
-  position: relative;
-  flex: none;
-  display: block;
-  padding: 4px;
-  border-radius: 16px;
-  background: var(--line);
-}
-.pre-sm .rank-frame {
-  padding: 3px;
-  border-radius: 12px;
-}
-.rank-photo {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #1d3a63, #0f2140);
-  color: #a6b7cf;
-  font-weight: 900;
-}
-.pre-sm .rank-photo {
-  border-radius: 9px;
-}
-.rank-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-/* Chatarra: chapa oxidada a franjas. */
-.rank-scrap {
-  background: repeating-linear-gradient(135deg, #5d564f 0 5px, #7d736a 5px 9px, #8a6a52 9px 12px);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
-}
-/* Madera: vetas. */
-.rank-wood {
-  background: repeating-linear-gradient(90deg, #7a4e26 0 3px, #a26d3a 3px 8px, #8b5a2c 8px 11px, #b5814a 11px 16px);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
-}
-/* Metales: degradado con brillo. */
-.rank-bronze {
-  background: linear-gradient(135deg, #7a4a22, #e0a46c 35%, #8c5a2e 55%, #d9965c 80%, #6e4220);
-}
-.rank-silver {
-  background: linear-gradient(135deg, #7d8794, #f4f7fb 35%, #9aa5b3 55%, #e6ebf2 80%, #6f7986);
-  box-shadow: 0 0 8px rgba(201, 211, 224, 0.35);
-}
-.rank-gold {
-  background: linear-gradient(135deg, #8a6a12, #ffe58a 35%, #c99a1e 55%, #fff0b3 80%, #8a6a12);
-  box-shadow: 0 0 12px rgba(242, 201, 76, 0.55);
-}
-.rank-platinum {
-  background: linear-gradient(135deg, #3f8f86, #d8fffa 30%, #7fe3d6 50%, #effffd 75%, #3f8f86);
-  box-shadow: 0 0 16px rgba(127, 227, 214, 0.6);
-}
-/* Diamante (máximo): cristal con brillo que gira. */
-.rank-diamond {
-  background: conic-gradient(from var(--spin, 0deg), #8ab8ff, #ffffff, #5a8cff, #d6e8ff, #8ab8ff, #ffffff, #5a8cff, #8ab8ff);
-  box-shadow: 0 0 18px rgba(138, 184, 255, 0.8), 0 0 36px rgba(138, 184, 255, 0.35);
-  animation: rank-spin 4s linear infinite;
-}
-@property --spin {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-@keyframes rank-spin {
-  to {
-    --spin: 360deg;
-  }
-}
-
-/* Últimos enfrentamientos, bajo la previsión. */
-.pre-meetings {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-}
-.pre-meeting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  border-radius: 10px;
-  background: rgba(7, 16, 28, 0.6);
-  border: 1px solid var(--line);
-  font-size: 13px;
-}
-.pre-meeting-date {
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-.pre-meeting-mode {
-  flex: 1;
-  min-width: 0;
-  font-size: 11px;
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pre-meeting-score {
-  display: flex;
-  gap: 6px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.pre-meeting-score b {
-  font-weight: 800;
-  color: var(--text-2);
-}
-.pre-meeting-score b.won {
-  color: var(--ranked);
-}
-.pre-center {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1260,72 +1082,6 @@
 .pre-info-panel .dim {
   font-size: 11px;
 }
-.pre-pcts {
-  display: flex;
-  justify-content: space-between;
-  font-size: 38px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-}
-.pre-pct-white {
-  color: #ffffff;
-  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
-}
-.pre-pct-blue {
-  color: #62d6ff;
-  text-shadow: 0 0 12px rgba(98, 214, 255, 0.7);
-}
-/* Barra de neón por segmentos: Blanco crece desde la izquierda, Azul desde la derecha, y en el
-   punto de corte una chispa. Un brillo la recorre de vez en cuando. */
-.pre-bar {
-  position: relative;
-  height: 18px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  overflow: hidden;
-}
-.pre-bar > span {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  /* Segmentos: huecos finos cada 8 px. */
-  -webkit-mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
-  mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
-}
-.pre-bar-white {
-  left: 2px;
-  width: calc(var(--p) - 3px);
-  background: linear-gradient(90deg, #9fb3c8, #ffffff);
-  filter: drop-shadow(0 0 4px #ffffff);
-}
-.pre-bar-blue {
-  right: 2px;
-  width: calc(100% - var(--p) - 3px);
-  background: linear-gradient(90deg, #62d6ff, #176dbc);
-  filter: drop-shadow(0 0 4px #62d6ff);
-}
-.pre-bar > .pre-bar-spark {
-  -webkit-mask: none;
-  mask: none;
-  top: -2px;
-  bottom: -2px;
-  left: calc(var(--p) - 2px);
-  width: 4px;
-  border-radius: 2px;
-  background: #fff8c4;
-  box-shadow: 0 0 8px #fff3a0, 0 0 16px var(--ranked);
-}
-.pre-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
-  background-size: 250% 100%;
-  animation: sheen 4s ease-in-out infinite;
-  pointer-events: none;
-}
-
 /* ---------- Informe / resumen ---------- */
 .report {
   flex: 1;

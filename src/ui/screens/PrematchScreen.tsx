@@ -68,7 +68,23 @@ export function PrematchScreen({
     const size = list.length === 1 ? 'xl' : list.length === 2 ? 'lg' : 'sm';
     return (
       <div className={`pre-team pre-${team} pre-${size}`}>
+        {/* Nombre del equipo sobre el borde superior de la tarjeta. */}
         <div className="pre-team-name">{team === 'white' ? 'BLANCO' : 'AZUL'}</div>
+        {/* Pronóstico de este equipo: porcentaje y barra de neón por segmentos. */}
+        {prediction?.available && (
+          <div className="pre-team-pct">
+            <span className="pre-pct">{team === 'white' ? prediction.whitePct : prediction.bluePct} %</span>
+            <span
+              className="pre-tbar"
+              style={{ '--p': `${team === 'white' ? prediction.whitePct : prediction.bluePct}%` } as CSSProperties}
+              aria-hidden="true"
+            >
+              <span className="pre-tbar-track">
+                <span className="pre-tbar-fill" />
+              </span>
+            </span>
+          </div>
+        )}
         {list.map((p) => (
           <PlayerCard
             key={p.playerId}
@@ -110,20 +126,7 @@ export function PrematchScreen({
             <div className="notice warn">Clasificación pendiente: la progresión está desactivada en Ajustes.</div>
           ) : !prediction.available ? (
             <div className="notice">{prediction.reason ?? 'Datos insuficientes.'} Puedes jugar igualmente.</div>
-          ) : (
-            <>
-              <div className="pre-pcts">
-                <span className="pre-pct-white">{prediction.whitePct} %</span>
-                <span className="pre-pct-blue">{prediction.bluePct} %</span>
-              </div>
-              {/* Barra de neón: Blanco a la izquierda, Azul a la derecha, con chispa en el punto de corte. */}
-              <div className="pre-bar" style={{ '--p': `${prediction.whitePct}%` } as CSSProperties} aria-hidden="true">
-                <span className="pre-bar-white" />
-                <span className="pre-bar-blue" />
-                <span className="pre-bar-spark" />
-              </div>
-            </>
-          )}
+          ) : null}
           {/* Últimos enfrentamientos entre estos mismos equipos. */}
           <div className="pre-meetings">
             <div className="label">Últimos enfrentamientos</div>
@@ -221,7 +224,7 @@ function RankPhoto({ name, photo, rank, size }: { name: string; photo?: string; 
   );
 }
 
-const PHOTO_SIZE = { xl: 128, lg: 92, sm: 48 } as const;
+const PHOTO_SIZE = { xl: 112, lg: 80, sm: 44 } as const;
 
 /**
  * Ficha de jugador de la Previsión. Grande (1 o 2 por equipo): foto con marco, rango con su
