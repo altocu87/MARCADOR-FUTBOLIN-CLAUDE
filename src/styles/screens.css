@@ -760,8 +760,9 @@
 }
 .pre-link-line {
   position: absolute;
-  left: -16px;
-  right: -16px;
+  /* Cruza justo el hueco entre columnas (12 px) y termina en el borde de cada tarjeta. */
+  left: -12px;
+  right: -12px;
   top: 50%;
   height: 3px;
   transform: translateY(-50%);
