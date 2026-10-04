@@ -340,6 +340,12 @@
   position: absolute;
   inset: 0;
   z-index: 50;
+}
+/* Algunas pantallas ponen «position: relative» a todos sus hijos directos (para el fondo):
+   la ventana tiene que seguir cubriendo toda la pantalla. */
+.screen > .modal-backdrop {
+  position: absolute !important;
+  z-index: 50 !important;
   background: rgba(3, 6, 12, 0.78);
   display: grid;
   place-items: center;

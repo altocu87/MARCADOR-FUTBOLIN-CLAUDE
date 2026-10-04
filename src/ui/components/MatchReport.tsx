@@ -1,11 +1,12 @@
 /** Informe de un partido terminado: resumen, cronología, evolución y progresión. */
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
-import { annulledGoalIdsFromEvents, isSinglePeriod, validGoalsFromEvents, type MatchEvent, type Period, type Team } from '../../match-engine';
+import { annulledGoalIdsFromEvents, isSinglePeriod, validGoalsFromEvents, type Period, type Team } from '../../match-engine';
 import type { StoredMatch } from '../../services/persistence';
 import { ACHIEVEMENTS } from '../../services/progression';
 import { formatDuration } from '../../services/statistics';
-import { Avatar, MODE_LABEL, ModeBadge, Tabs, formatDate } from './common';
+import { Avatar, Tabs, formatDate } from './common';
+import { TeamFrame } from './PlayerCards';
 import { ScoreChart } from './ScoreChart';
 
 const TEAM: Record<Team, string> = { white: 'Blanco', blue: 'Azul' };
@@ -26,46 +27,7 @@ function periodName(m: StoredMatch, period: Period): string {
   return period === 'first' && single ? 'Partido' : PERIOD[period];
 }
 
-function describeEvent(e: MatchEvent, byId: Map<string, MatchEvent>, name: (p: Period) => string): { text: string; kind: string } | null {
-  const t = `${name(e.period)} · ${formatDuration(e.periodTimeMs)}`;
-  const sc = `${e.scoreAfter.white}–${e.scoreAfter.blue}`;
-  switch (e.type) {
-    case 'GOAL':
-      return {
-        text: `${(e.value ?? 1) > 1 ? `Gol x${e.value} (${e.bonus?.map((b) => (b === 'joker' ? 'comodín' : 'último minuto')).join(' + ')})` : 'Gol'} ${TEAM[e.team!]} · ${t} · ${sc}`,
-        kind: 'goal',
-      };
-    case 'JOKER':
-      return { text: `Comodín ${TEAM[e.team!]} ${e.reason === 'armed' ? 'activado' : 'desactivado'} · ${t}`, kind: 'minor' };
-    case 'CORRECTION': {
-      const g = byId.get(e.refEventId ?? '');
-      return { text: `−1 ${TEAM[e.team!]}: anula gol de ${g ? formatDuration(g.periodTimeMs) : '?'} · ${t} · ${sc}`, kind: 'corr' };
-    }
-    case 'UNDO': {
-      const g = byId.get(e.refEventId ?? '');
-      const what = g?.type === 'GOAL' ? `anula gol ${TEAM[g.team!]}` : 'restaura gol corregido';
-      return { text: `Deshacer: ${what} · ${t} · ${sc}`, kind: 'corr' };
-    }
-    case 'PERIOD_START':
-      return { text: `Inicio ${name(e.period).toLowerCase()}`, kind: 'info' };
-    case 'PERIOD_END':
-      return { text: `Final ${name(e.period).toLowerCase()} (${e.reason === 'time' ? 'tiempo' : e.reason === 'golden_goal' ? 'gol de oro' : 'goles'}) · ${sc}`, kind: 'info' };
-    case 'PAUSE':
-      return { text: `Pausa · ${t}`, kind: 'minor' };
-    case 'RESUME':
-      return { text: `Continuar · ${t}`, kind: 'minor' };
-    case 'PENALTY':
-      return { text: `Penalti ${TEAM[e.team!]}: ${e.scored ? 'GOL' : 'FALLO'}`, kind: e.scored ? 'goal' : 'miss' };
-    case 'PENALTY_UNDO':
-      return { text: `Lanzamiento de ${TEAM[e.team!]} corregido`, kind: 'corr' };
-    case 'MATCH_END':
-      return { text: `Final del partido · gana ${TEAM[e.team!]}`, kind: 'info' };
-    default:
-      return null;
-  }
-}
-
-type ReportTab = 'summary' | 'timeline' | 'chart' | 'scorers' | 'progress';
+type ReportTab = 'summary' | 'chart' | 'scorers' | 'progress';
 
 export function MatchReport({ match: given }: { match: StoredMatch }) {
   const { progression, players, matches } = useApp();
@@ -77,98 +39,51 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
   const r = match.result;
   const progressEntries = progression?.byMatch.get(match.id);
 
-  const team = (t: Team) => (
-    <div className={`rep-team rep-${t} ${r.winner === t ? 'is-winner' : ''}`}>
-      <div className="label">{TEAM[t].toUpperCase()} {r.winner === t && <span className="win-tag">GANADOR</span>}</div>
-      <div className="rep-score">{r.score[t]}</div>
-      {match.participants
-        .filter((p) => p.team === t)
-        .sort((a, b) => a.slot - b.slot)
-        .map((p) => (
-          <div key={p.playerId} className="rep-person">
-            <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={26} />
-            {p.nameSnapshot}
-          </div>
-        ))}
-    </div>
-  );
-
-  const byId = new Map(match.events.map((e) => [e.id, e]));
-  const annulled = annulledGoalIdsFromEvents(match.events);
 
   return (
     <div className="report">
-      <Tabs
-        label="Secciones del resumen"
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'summary', label: 'Resumen' },
-          { id: 'timeline', label: 'Cronología' },
-          { id: 'chart', label: 'Evolución' },
-          { id: 'scorers', label: 'Goleadores' },
-          { id: 'progress', label: 'Progresión' },
-        ]}
-      />
+      {/* Fila de arriba: dos pestañas a cada lado y el marcador grande en el centro
+          (se ve en todas las pestañas). */}
+      <div className="rep-top">
+        <Tabs
+          label="Secciones del resumen"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'summary', label: 'Resumen' },
+            { id: 'chart', label: 'Evolución' },
+          ]}
+        />
+        <div className="rep-big-score" aria-label={`Resultado ${r.score.white} a ${r.score.blue}`}>
+          <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`} title={r.winner === 'white' ? 'Ganador' : undefined}>{r.score.white}</span>
+          <span className="rep-big-sep">–</span>
+          <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
+        </div>
+        <Tabs
+          label="Más secciones del resumen"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'scorers', label: 'Goleadores' },
+            { id: 'progress', label: 'Progresión' },
+          ]}
+        />
+      </div>
       {tab === 'summary' && (
         <div className="rep-summary">
-          {team('white')}
+          <TeamFrame team="white" participants={match.participants} compact />
           <div className="rep-center">
-            <div className="rep-line">{resultLine(match)}</div>
-            <div className="muted" style={{ fontSize: 13 }}>{REASON[r.reason]}</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <ModeBadge mode={match.config.mode} />
+            <div className="rep-sub">
+              {r.penaltyScore ? `Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · ` : ''}
+              {REASON[r.reason]} · {formatDuration(r.totalTimeMs)}
+              <span className="rep-date"> · {formatDate(match.finishedAt)}</span>
             </div>
-            <table className="rep-table">
-              <thead>
-                <tr>
-                  <th>Periodo</th>
-                  <th>Blanco</th>
-                  <th>Azul</th>
-                  <th>Duración</th>
-                </tr>
-              </thead>
-              <tbody>
-                {match.periods.map((p) => (
-                  <tr key={p.period}>
-                    <td>{periodName(match, p.period)}</td>
-                    <td>{p.score.white}</td>
-                    <td>{p.score.blue}</td>
-                    <td>{formatDuration(p.durationMs)}</td>
-                  </tr>
-                ))}
-                {r.penaltyScore && (
-                  <tr>
-                    <td>Penaltis</td>
-                    <td>{r.penaltyScore.white}</td>
-                    <td>{r.penaltyScore.blue}</td>
-                    <td>{match.penalties.length} lanz.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            <div className="dim" style={{ fontSize: 12 }}>
-              {formatDate(match.finishedAt)} · Duración {formatDuration(r.totalTimeMs)} · {MODE_LABEL[match.config.mode]}
-            </div>
+            {/* Cronología de goles: los de Blanco a la izquierda y los de Azul a la derecha;
+                los anulados, tachados en rojo. */}
+            <GoalTimeline match={match} name={(p) => periodName(match, p)} />
           </div>
-          {team('blue')}
+          <TeamFrame team="blue" participants={match.participants} compact />
         </div>
-      )}
-      {tab === 'timeline' && (
-        <ol className="timeline scroll">
-          {match.events.map((e) => {
-            const d = describeEvent(e, byId, (p) => periodName(match, p));
-            if (!d) return null;
-            const isAnnulled = e.type === 'GOAL' && annulled.has(e.id);
-            return (
-              <li key={e.id} className={`tl-${d.kind} ${isAnnulled ? 'annulled' : ''}`}>
-                <span className="tl-seq">#{e.seq}</span>
-                <span className="tl-text">{d.text}</span>
-                {isAnnulled && <span className="badge badge-danger">Anulado</span>}
-              </li>
-            );
-          })}
-        </ol>
       )}
       {tab === 'chart' && <ScoreChart events={match.events} totalTimeMs={r.totalTimeMs} />}
       {tab === 'scorers' && <ScorersEditor match={match} editable={!!saved} />}
@@ -274,5 +189,45 @@ function ScorersEditor({ match, editable }: { match: StoredMatch; editable: bool
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * Cronología de los goles del partido en el centro: cada gol sale hacia el lado de su equipo
+ * (Blanco a la izquierda, Azul a la derecha) con el minuto y el marcador. Los anulados aparecen
+ * tachados en rojo con «ANULADO».
+ */
+function GoalTimeline({ match, name }: { match: StoredMatch; name: (p: Period) => string }) {
+  const annulled = annulledGoalIdsFromEvents(match.events);
+  const goals = match.events.filter((e) => e.type === 'GOAL');
+  const multi = new Set(goals.map((g) => g.period)).size > 1;
+  if (goals.length === 0) return <div className="rep-tl-empty">Sin goles</div>;
+  return (
+    <ol className="rep-tl" aria-label="Cronología de goles">
+      {goals.map((g) => {
+        const off = annulled.has(g.id);
+        return (
+          <li key={g.id} className={`rep-tl-row ${g.team} ${off ? 'off' : ''}`}>
+            <span className="rep-tl-goal">
+              <span className="rep-tl-ball" aria-hidden="true">
+                {off ? '✕' : '⚽'}
+              </span>
+              <span className="rep-tl-time">
+                {multi ? `${name(g.period)} · ` : ''}
+                {formatDuration(g.periodTimeMs)}
+              </span>
+              {off ? (
+                <b className="rep-tl-tag">ANULADO</b>
+              ) : (
+                <b className="rep-tl-score">
+                  {g.scoreAfter.white}–{g.scoreAfter.blue}
+                  {(g.value ?? 1) > 1 && <span className="rep-tl-x"> x{g.value}</span>}
+                </b>
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
