@@ -1168,6 +1168,40 @@
   font-size: 11px;
 }
 /* ---------- Informe / resumen ---------- */
+/* Cabecera de las estadísticas: botones a la izquierda, tipo de partido grande en el centro. */
+.rep-screen .screen-header {
+  position: relative;
+  height: 64px;
+}
+.rep-screen .screen-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  flex: none;
+  overflow: visible;
+  padding: 0 !important;
+}
+.rep-screen .screen-title .match-mode {
+  display: inline-block;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+}
+.rep-screen .screen-header > :last-child:not(.screen-title) {
+  margin-left: auto;
+}
+.rep-actions {
+  display: flex;
+  gap: 8px;
+}
+.rep-actions .btn {
+  min-height: 46px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.rep-screen .report > .tabs {
+  justify-content: center;
+}
+
 .report {
   flex: 1;
   min-height: 0;
@@ -1263,13 +1297,14 @@
 .rep-big-score {
   display: flex;
   align-items: center;
-  gap: 12px;
-  line-height: 1;
+  gap: 14px;
+  line-height: 0.95;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
 .rep-big-num {
-  font-size: 56px;
+  /* Marcador grande: aprovecha el ancho del centro. */
+  font-size: clamp(64px, 11vw, 120px);
 }
 .rep-big-num.white {
   color: #ffffff;
@@ -1284,7 +1319,7 @@
   text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
 }
 .rep-big-sep {
-  font-size: 44px;
+  font-size: clamp(40px, 6vw, 70px);
   color: var(--text-3);
 }
 .rep-sub {

@@ -4,7 +4,7 @@ import { persistFinishedMatch, type SaveStatus } from '../../app/matchFinalizer'
 import type { MatchExtras } from '../../app/routes';
 import type { MatchState } from '../../match-engine';
 import { buildBackup, type StoredMatch } from '../../services/persistence';
-import { ScreenFrame, TestModeBadge } from '../components/common';
+import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
 import { downloadJson } from '../components/download';
 import { MatchReport } from '../components/MatchReport';
 import { swapSides } from '../components/VictoryScreen';
@@ -45,22 +45,11 @@ export function SummaryScreen({
 
   return (
     <ScreenFrame
-      title="Estadísticas del partido"
-      right={statusNode}
-      footer={
-        <>
-          {status.kind === 'error' && (
-            <span className="notice error" style={{ marginRight: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-              No guardado.
-              <button className="btn btn-sm" onClick={retry}>Reintentar</button>
-              <button className="btn btn-sm" onClick={exportUnsaved}>Exportar</button>
-            </span>
-          )}
-          {status.kind === 'test' && (
-            <span className="notice" style={{ marginRight: 'auto' }}>
-              Modo prueba: no se ha guardado.
-            </span>
-          )}
+      className="rep-screen"
+      // Tipo de partido grande y centrado; los botones, arriba a la izquierda (abajo no queda franja).
+      title={<span className={`match-mode mode-chip-${match.config.mode}`}>{MODE_LABEL[match.config.mode]}</span>}
+      left={
+        <div className="rep-actions">
           <button className="btn" onClick={() => navigate({ name: 'home' })}>
             Inicio
           </button>
@@ -69,20 +58,26 @@ export function SummaryScreen({
               Volver al torneo
             </button>
           ) : (
-            <>
-              <button
-                className="btn"
-                title="Mismos jugadores cambiando de lado"
-                onClick={() => navigate({ name: 'match', config: match.config, participants: swapSides(match.participants) })}
-              >
-                ⇄ Revancha
-              </button>
-              <button className="btn btn-primary" onClick={() => navigate({ name: 'setup', mode: match.config.mode })}>
-                Nuevo partido
-              </button>
-            </>
+            <button
+              className="btn"
+              title="Mismos jugadores cambiando de lado"
+              onClick={() => navigate({ name: 'match', config: match.config, participants: swapSides(match.participants) })}
+            >
+              ⇄ Revancha
+            </button>
           )}
-        </>
+        </div>
+      }
+      right={statusNode}
+      footer={
+        // Solo si no se pudo guardar: aviso con Reintentar y Exportar.
+        status.kind === 'error' && (
+          <span className="notice error" style={{ marginRight: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            No guardado.
+            <button className="btn btn-sm" onClick={retry}>Reintentar</button>
+            <button className="btn btn-sm" onClick={exportUnsaved}>Exportar</button>
+          </span>
+        )
       }
     >
       <MatchReport match={match} />

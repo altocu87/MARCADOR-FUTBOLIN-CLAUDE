@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { MatchReport } from '../components/MatchReport';
-import { Modal, ScreenFrame } from '../components/common';
+import { MODE_LABEL, Modal, ScreenFrame } from '../components/common';
 
 export function MatchDetailScreen({ matchId }: { matchId: string }) {
   const { matches, navigate, deleteMatch, toast } = useApp();
@@ -18,7 +18,8 @@ export function MatchDetailScreen({ matchId }: { matchId: string }) {
   };
   return (
     <ScreenFrame
-      title="Detalle del partido"
+      className="rep-screen"
+      title={match ? <span className={`match-mode mode-chip-${match.config.mode}`}>{MODE_LABEL[match.config.mode]}</span> : 'Detalle del partido'}
       onBack={() => navigate({ name: 'ranking', tab: 'history' })}
       right={
         match &&

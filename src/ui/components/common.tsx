@@ -9,6 +9,7 @@ export function ScreenFrame({
   title,
   subtitle,
   onBack,
+  left,
   right,
   children,
   footer,
@@ -18,6 +19,8 @@ export function ScreenFrame({
   title: ReactNode;
   subtitle?: ReactNode;
   onBack?: () => void;
+  /** Botones a la izquierda de la cabecera, tras el de volver. */
+  left?: ReactNode;
   right?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
@@ -36,6 +39,7 @@ export function ScreenFrame({
             </svg>
           </button>
         )}
+        {left}
         <h1 className="screen-title" style={{ margin: 0, paddingLeft: onBack ? 0 : 6 }}>
           {title}
           {subtitle && <small>{subtitle}</small>}
