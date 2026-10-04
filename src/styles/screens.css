@@ -1368,8 +1368,13 @@
   min-height: 0;
   align-self: stretch;
   margin: 4px 0 0;
-  padding: 2px 0;
   list-style: none;
+  /* Panel oscuro detrás para que se lea bien sobre el fondo. */
+  padding: 8px 6px;
+  border-radius: 14px;
+  background: rgba(4, 8, 15, 0.82);
+  border: 1px solid rgba(242, 201, 76, 0.25);
+  backdrop-filter: blur(4px);
   /* Si hay muchos goles, se desliza (con barra fina visible). */
   overflow-y: auto;
   scrollbar-width: thin;
@@ -1426,12 +1431,12 @@
 }
 .rep-tl-row.white .rep-tl-goal {
   flex-direction: row-reverse;
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(30, 36, 46, 0.95);
 }
 .rep-tl-row.blue .rep-tl-goal {
-  border-color: rgba(98, 214, 255, 0.7);
-  background: rgba(98, 214, 255, 0.14);
+  border-color: rgba(98, 214, 255, 0.8);
+  background: rgba(8, 36, 56, 0.95);
 }
 .rep-tl-time {
   color: var(--text-2);
@@ -1446,8 +1451,8 @@
 }
 /* Gol anulado: tachado y en rojo. */
 .rep-tl-row.off .rep-tl-goal {
-  border-color: rgba(255, 90, 110, 0.75);
-  background: rgba(255, 60, 80, 0.14);
+  border-color: rgba(255, 90, 110, 0.8);
+  background: rgba(60, 8, 16, 0.95);
 }
 .rep-tl-row.off .rep-tl-time {
   text-decoration: line-through;
