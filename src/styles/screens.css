@@ -1574,28 +1574,143 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
+/* Leyenda: cada equipo con su color de neón y su total. */
 .chart-legend {
+  flex: none;
   display: flex;
-  gap: 16px;
-  font-size: 12px;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-.chart-legend span {
+.chart-key {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--k);
+  background: rgba(4, 8, 15, 0.82);
+  color: var(--k);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--k) 40%, transparent);
 }
-.chart-legend i {
-  width: 14px;
+.chart-key b {
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.chart-key i {
+  width: 18px;
   height: 3px;
   border-radius: 2px;
-  display: inline-block;
+  background: var(--k);
+  box-shadow: 0 0 6px var(--k);
+}
+.chart-key.white {
+  --k: #ffffff;
+}
+.chart-key.blue {
+  --k: #62d6ff;
+}
+.chart-key.off {
+  --k: #ff5a6e;
 }
 .chart-tip {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(4, 8, 15, 0.82);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ranked);
+}
+/* Panel de cristal oscuro con borde de neón: la gráfica se lee sobre cualquier fondo. */
+.chart-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(98, 214, 255, 0.45);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(98, 214, 255, 0.08), transparent 60%),
+    rgba(4, 8, 15, 0.88);
+  box-shadow: 0 0 18px rgba(98, 214, 255, 0.2), inset 0 0 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+}
+.chart-panel svg {
+  display: block;
+}
+.chart-grid {
+  stroke: rgba(98, 214, 255, 0.12);
+  stroke-width: 1;
+}
+.chart-grid.v {
+  stroke-dasharray: 2 5;
+}
+.chart-tick {
+  stroke: rgba(98, 214, 255, 0.6);
+  stroke-width: 1.5;
+}
+.chart-base {
+  stroke: rgba(98, 214, 255, 0.55);
+  stroke-width: 1.5;
+}
+.chart-axis {
+  fill: #a6b7cf;
   font-size: 12px;
-  color: var(--text-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.chart-axis.end {
+  fill: var(--ranked);
+  font-size: 11px;
+}
+.chart-axis.unit {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: #5f7391;
+}
+.chart-axis.period {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  fill: var(--ranked);
+}
+.chart-period {
+  stroke: rgba(242, 201, 76, 0.6);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.chart-goal {
+  cursor: pointer;
+}
+.chart-guide {
+  stroke: rgba(242, 201, 76, 0.7);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.chart-off circle {
+  fill: #2a0610;
+  stroke: #ff5a6e;
+  stroke-width: 1.5;
+}
+.chart-off path {
+  stroke: #ff5a6e;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.chart-end {
+  font-size: 16px;
+  font-weight: 900;
+}
+.chart-end.white {
+  fill: #ffffff;
+}
+.chart-end.blue {
+  fill: #62d6ff;
 }
 
 /* ---------- Ranking ---------- */
