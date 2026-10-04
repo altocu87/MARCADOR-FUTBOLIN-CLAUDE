@@ -467,6 +467,21 @@ button.row:active {
   outline-offset: 1px;
   box-shadow: 0 0 8px rgba(242, 201, 76, 0.8);
 }
+/* El partido más reciente: el más nítido, con un brillo blanco. */
+.form-chip.newest {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 8px rgba(255, 255, 255, 0.5);
+}
+.form-chip.newest.same {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 8px rgba(242, 201, 76, 0.8);
+}
+/* En Azul las casillas empiezan junto al centro de la pantalla (izquierda); en Blanco, a la derecha. */
+.pre-recent-white {
+  justify-content: end;
+}
+.pre-form-white {
+  display: flex;
+  justify-content: flex-end;
+}
 
 .status-pill {
   display: inline-flex;

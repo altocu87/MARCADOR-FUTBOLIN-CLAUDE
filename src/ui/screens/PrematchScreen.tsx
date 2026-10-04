@@ -93,6 +93,7 @@ export function PrematchScreen({
             prog={progression?.players.get(p.playerId)}
             stats={stats.get(p.playerId)}
             recent={recent.get(p.playerId) ?? []}
+            team={team}
             size={size}
           />
         ))}
@@ -112,48 +113,52 @@ export function PrematchScreen({
       <div className="pre-layout">
         {teamCard('white')}
         <div className="pre-center-col">
-        <div className="pre-center">
-          <div className="pre-center-head">
-            <div className="label">Pronóstico</div>
-            {/* Detalles del cálculo, a la vista solo si se pulsa la «i». */}
-            {prediction?.available && (
-              <button className={`pre-info-btn ${info ? 'on' : ''}`} onClick={() => setInfo((v) => !v)} aria-expanded={info} aria-label="Cómo se calcula">
-                i
-              </button>
-            )}
+          {/* «Pronóstico» enlazado con una línea de neón a los porcentajes de los dos equipos. */}
+          <div className="pre-link">
+            <span className="pre-link-line" aria-hidden="true" />
+            <span className="pre-link-pill">
+              PRONÓSTICO
+              {prediction?.available && (
+                <button className={`pre-info-btn ${info ? 'on' : ''}`} onClick={() => setInfo((v) => !v)} aria-expanded={info} aria-label="Cómo se calcula">
+                  i
+                </button>
+              )}
+            </span>
           </div>
           {!prediction ? (
             <div className="notice warn">Clasificación pendiente: la progresión está desactivada en Ajustes.</div>
           ) : !prediction.available ? (
             <div className="notice">{prediction.reason ?? 'Datos insuficientes.'} Puedes jugar igualmente.</div>
           ) : null}
-          {/* Últimos enfrentamientos entre estos mismos equipos. */}
-          <div className="pre-meetings">
-            <div className="label">Últimos enfrentamientos</div>
-            {meetings.length === 0 ? (
-              <div className="dim" style={{ fontSize: 13 }}>Primer enfrentamiento entre estos equipos.</div>
-            ) : (
-              meetings.map((m) => (
-                <div key={m.match.id} className="pre-meeting" title={MODE_LABEL[m.match.config.mode]}>
-                  <span className="pre-meeting-date">
-                    {new Date(m.match.finishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                  </span>
-                  <span className="pre-meeting-score">
-                    <i className="pre-dot white" aria-label="Blanco" />
-                    <b className={m.winner === 'white' ? 'won' : ''}>{m.white}</b>
-                    <span className="dim">–</span>
-                    <b className={m.winner === 'blue' ? 'won' : ''}>{m.blue}</b>
-                    <i className="pre-dot blue" aria-label="Azul" />
-                  </span>
-                </div>
-              ))
+          {/* Tarjeta propia: últimos enfrentamientos entre estos mismos equipos. */}
+          <div className="pre-center">
+            <div className="pre-meetings">
+              <div className="label">Últimos enfrentamientos</div>
+              {meetings.length === 0 ? (
+                <div className="dim" style={{ fontSize: 13 }}>Primer enfrentamiento entre estos equipos.</div>
+              ) : (
+                meetings.map((m) => (
+                  <div key={m.match.id} className="pre-meeting" title={MODE_LABEL[m.match.config.mode]}>
+                    <span className="pre-meeting-date">
+                      {new Date(m.match.finishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </span>
+                    <span className="pre-meeting-score">
+                      <i className="pre-dot white" aria-label="Blanco" />
+                      <b className={m.winner === 'white' ? 'won' : ''}>{m.white}</b>
+                      <span className="dim">–</span>
+                      <b className={m.winner === 'blue' ? 'won' : ''}>{m.blue}</b>
+                      <i className="pre-dot blue" aria-label="Azul" />
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+            {rivalry && (
+              <div className="rivalry" style={{ fontSize: 12, alignSelf: 'center' }}>
+                ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
+              </div>
             )}
           </div>
-          {rivalry && (
-            <div className="rivalry" style={{ fontSize: 12, alignSelf: 'center' }}>
-              ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
-            </div>
-          )}
           {/* Panel de la «i»: confianza, cómo se calcula y aviso. */}
           {info && prediction?.available && (
             <button className="pre-info-panel" onClick={() => setInfo(false)}>
@@ -166,11 +171,11 @@ export function PrematchScreen({
               <span className="dim">Toca para cerrar</span>
             </button>
           )}
-        </div>
-        {/* Empezar, bajo la tarjeta de la previsión: así las fichas de los equipos tienen todo el alto. */}
-        <button className="btn btn-primary btn-lg pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
-          Empezar partido
-        </button>
+          {/* Empezar: neón verde, «EMPEZAR» arriba y «PARTIDO» abajo ocupando todo el botón. */}
+          <button className="pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
+            <span>EMPEZAR</span>
+            <span>PARTIDO</span>
+          </button>
         </div>
         {teamCard('blue')}
       </div>
@@ -195,20 +200,35 @@ interface RecentGame {
   same: boolean;
 }
 
-/** Últimos 10 clasificatorios (G/P), del más antiguo al más reciente; los de este mismo duelo, resaltados. */
-function RecentForm({ games }: { games: RecentGame[] }) {
+/**
+ * Últimos 10 clasificatorios (G/P). El más reciente queda hacia el centro de la pantalla
+ * (a la derecha en Blanco, a la izquierda en Azul) y bien nítido; los más antiguos se van
+ * apagando hacia el borde. Los jugados contra este mismo equipo, resaltados en dorado.
+ */
+function RecentForm({ games, team }: { games: RecentGame[]; team: Team }) {
   if (games.length === 0) return <span className="dim">Sin clasificatorios</span>;
+  // games llega del más antiguo al más reciente.
+  const ordered = team === 'white' ? games : [...games].reverse();
+  const n = games.length;
   return (
-    <span className="pre-recent" aria-label={`Últimos clasificatorios: ${games.map((g) => (g.won ? 'G' : 'P')).join(' ')}`}>
-      {games.map((g) => (
-        <span
-          key={g.id}
-          className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''}`}
-          title={g.same ? 'Contra este mismo equipo' : undefined}
-        >
-          {g.won ? 'G' : 'P'}
-        </span>
-      ))}
+    <span
+      className={`pre-recent pre-recent-${team}`}
+      aria-label={`Últimos clasificatorios, del más antiguo al más reciente: ${games.map((g) => (g.won ? 'G' : 'P')).join(' ')}`}
+    >
+      {ordered.map((g) => {
+        // 0 = el más reciente.
+        const age = n - 1 - games.indexOf(g);
+        return (
+          <span
+            key={g.id}
+            className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''} ${age === 0 ? 'newest' : ''}`}
+            style={{ opacity: Math.max(0.45, 1 - age * 0.065) }}
+            title={`${age === 0 ? 'El más reciente' : `Hace ${age + 1} partidos`}${g.same ? ' · contra este mismo equipo' : ''}`}
+          >
+            {g.won ? 'G' : 'P'}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -237,6 +257,7 @@ function PlayerCard({
   prog,
   stats,
   recent,
+  team,
   size,
 }: {
   name: string;
@@ -244,9 +265,10 @@ function PlayerCard({
   prog?: PlayerProgress;
   stats?: PlayerStats;
   recent: RecentGame[];
+  team: Team;
   size: 'xl' | 'lg' | 'sm';
 }) {
-  const form = <RecentForm games={recent} />;
+  const form = <RecentForm games={recent} team={team} />;
   if (!prog) {
     return (
       <div className="pre-player">
@@ -302,11 +324,14 @@ function PlayerCard({
       </div>
       {/* Cuánto falta para el siguiente rango y forma reciente, a todo el ancho de la ficha. */}
       <div className="pre-player-bottom">
-        <div className="pre-rankbar" style={{ '--cat': cat.color } as CSSProperties}>
-          <span style={{ width: `${Math.round(pct * 100)}%` }} />
+        {/* Barra y texto en la misma línea para ahorrar alto. */}
+        <div className="pre-rankrow">
+          <div className="pre-rankbar" style={{ '--cat': cat.color } as CSSProperties}>
+            <span style={{ width: `${Math.round(pct * 100)}%` }} />
+          </div>
+          <div className="pre-rankbar-text">{next ? `Faltan ${next.min - prog.elo} para ${next.name}` : 'Rango máximo'}</div>
         </div>
-        <div className="pre-rankbar-text">{next ? `Faltan ${next.min - prog.elo} para ${next.name}` : 'Rango máximo'}</div>
-        <div className="pre-form">{form}</div>
+        <div className={`pre-form pre-form-${team}`}>{form}</div>
       </div>
     </div>
   );

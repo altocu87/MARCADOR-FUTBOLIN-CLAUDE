@@ -739,17 +739,58 @@
     font-size: 18px;
   }
 }
-/* Columna central: tarjeta de la previsión y, debajo, el botón de empezar. */
+/* Columna central: «Pronóstico» enlazado a los porcentajes, tarjeta de enfrentamientos y botón. */
 .pre-center-col {
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+/* A la altura de los porcentajes de los equipos: una línea de neón cruza el hueco entre
+   tarjetas y une el blanco, el cartel «PRONÓSTICO» y el celeste. */
+.pre-link {
+  position: relative;
+  flex: none;
+  height: 46px;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pre-link-line {
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffffff, var(--ranked) 35%, var(--ranked) 65%, #62d6ff);
+  box-shadow: 0 0 8px rgba(242, 201, 76, 0.8), 0 0 16px rgba(242, 201, 76, 0.4);
+}
+.pre-link-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px 5px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--ranked);
+  background: rgba(14, 12, 4, 0.95);
+  box-shadow: 0 0 12px rgba(242, 201, 76, 0.6), inset 0 0 10px rgba(242, 201, 76, 0.25);
+  color: var(--ranked);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 8px rgba(242, 201, 76, 0.7);
+  white-space: nowrap;
+}
 .pre-center-col .pre-center {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  overflow-y: auto;
   /* Opaca para que el fondo no estorbe al leer. */
   background: linear-gradient(180deg, rgba(40, 33, 10, 0.94), rgba(14, 14, 20, 0.94));
 }
@@ -785,8 +826,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 5px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 10px 10px 8px;
   border-radius: 14px;
   background: rgba(7, 16, 28, 0.55);
   border: 1px solid var(--line);
@@ -822,21 +863,45 @@
   align-self: stretch;
 }
 /* Botón de empezar, al pie de la columna central. */
+/* Empezar partido: neón verde. «EMPEZAR» arriba y «PARTIDO» abajo, a todo el ancho. */
 .pre-start {
   flex: none;
   width: 100%;
-  /* Botón grande: ocupa el pie de la columna central. */
   min-height: 120px;
-  padding: 0 8px;
-  font-size: clamp(15px, 1.9vw, 20px);
-  white-space: nowrap;
+  padding: 8px 12px;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  border: 3px solid #3ddc97;
+  background: radial-gradient(ellipse at 50% 40%, rgba(61, 220, 151, 0.22), rgba(3, 24, 14, 0.94) 75%);
+  box-shadow:
+    0 0 12px rgba(61, 220, 151, 0.8),
+    0 0 30px rgba(61, 220, 151, 0.35),
+    inset 0 0 18px rgba(61, 220, 151, 0.35);
+  color: #c9ffe4;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.08s ease;
 }
-/* Empezar partido en verde. */
-.pre-start.btn-primary {
-  background: linear-gradient(180deg, #4ef0a6, #1fb874);
-  border-color: var(--ok);
+.pre-start span {
+  display: block;
+  /* 7 letras ocupando todo el ancho del botón. */
+  font-size: calc((100cqi - 4px) / 5.6);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px #3ddc97, 0 0 16px #3ddc97, 0 0 30px rgba(61, 220, 151, 0.6);
+}
+.pre-start:active {
+  transform: scale(0.97);
+  background: #3ddc97;
   color: #03170d;
-  box-shadow: 0 0 18px rgba(61, 220, 151, 0.55);
+}
+.pre-start:active span {
+  text-shadow: none;
 }
 .pre-lg .pre-name {
   font-size: 22px;
@@ -875,6 +940,23 @@
   font-size: 20px;
 }
 /* Barra hacia el siguiente rango, del color del rango actual. */
+/* Barra hacia el siguiente rango y su texto, en la misma línea. */
+.pre-rankrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pre-xl .pre-rankrow {
+  align-self: stretch;
+}
+.pre-rankrow .pre-rankbar {
+  flex: 1;
+  margin-top: 0;
+}
+.pre-rankrow .pre-rankbar-text {
+  flex: none;
+  white-space: nowrap;
+}
 .pre-rankbar {
   height: 7px;
   margin-top: 3px;
@@ -1046,13 +1128,9 @@
   border: 1px solid var(--ranked);
   background: var(--ranked-soft);
 }
-.pre-center-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 /* Botón «i»: muestra cómo se calcula el pronóstico. */
 .pre-info-btn {
+  flex: none;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -1068,7 +1146,7 @@
 }
 .pre-info-panel {
   position: absolute;
-  inset: 48px 10px auto 10px;
+  inset: 70px 0 auto 0;
   z-index: 5;
   display: flex;
   flex-direction: column;
