@@ -742,6 +742,13 @@
   font-size: 18px;
   white-space: nowrap;
 }
+/* Empezar partido en verde. */
+.pre-start.btn-primary {
+  background: linear-gradient(180deg, #4ef0a6, #1fb874);
+  border-color: var(--ok);
+  color: #03170d;
+  box-shadow: 0 0 18px rgba(61, 220, 151, 0.55);
+}
 .pre-lg .pre-name {
   font-size: 22px;
 }
