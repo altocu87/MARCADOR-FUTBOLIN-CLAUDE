@@ -561,6 +561,8 @@
 .pre-layout {
   flex: 1;
   min-height: 0;
+  /* Hueco arriba para el nombre del equipo, que sobresale del borde. */
+  padding-top: 10px;
   display: grid;
   /* Los equipos se llevan más ancho: el centro solo necesita la previsión y los enfrentamientos. */
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.3fr);
@@ -571,7 +573,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 12px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
@@ -613,62 +615,129 @@
   margin-left: auto;
 }
 
-/* Equipo Blanco con fondo blanco y equipo Azul en celeste claro: se ve de un vistazo
-   qué equipo es cada uno. Textos oscuros para que se lean sobre el fondo claro. */
-.pre-white,
-.pre-blue {
-  --text: #0b1626;
-  --text-2: #33465f;
-  --text-3: #5a6b82;
-  color: var(--text);
+/* Equipos con marco de neón (blanco o celeste) y fondo translúcido: se ve el fondo detrás. */
+.pre-team.pre-white,
+.pre-team.pre-blue {
+  --neon: #ffffff;
+  position: relative;
+  overflow: visible;
+  /* Fondo del color del equipo al 20 % (deja ver el fondo de la pantalla). */
+  background: color-mix(in srgb, var(--neon) 20%, transparent);
+  backdrop-filter: blur(6px);
+  border: 2px solid var(--neon);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--neon) 70%, transparent),
+    0 0 28px color-mix(in srgb, var(--neon) 30%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--neon) 22%, transparent);
 }
-.pre-white {
-  background: linear-gradient(180deg, #ffffff, #e3ebf5);
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 18px rgba(238, 246, 255, 0.35);
+.pre-team.pre-blue {
+  --neon: #62d6ff;
 }
-.pre-blue {
-  background: linear-gradient(180deg, #e2f3ff, #a9d6fa);
-  border: 2px solid #7cc4ff;
-  box-shadow: 0 0 18px rgba(98, 180, 255, 0.4);
-}
-.pre-white > .label,
-.pre-blue > .label {
-  color: var(--text);
+/* Nombre del equipo, grande y en neón, encajado en el borde superior de la tarjeta. */
+.pre-team-name {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  z-index: 2;
+  padding: 2px 16px;
+  border-radius: 10px;
+  background: rgba(6, 12, 24, 0.92);
+  /* Marco de neón del color del equipo, igual que el de la tarjeta. */
+  border: 2px solid var(--neon);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--neon) 70%, transparent),
+    0 0 24px color-mix(in srgb, var(--neon) 30%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--neon) 22%, transparent);
+  font-size: 30px;
   font-weight: 900;
+  letter-spacing: 0.2em;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--neon);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--neon) 80%, transparent);
 }
-/* Fichas dentro del equipo: blanco translúcido sobre el fondo claro. */
+/* Porcentaje del pronóstico de este equipo y su barra. */
+.pre-team-pct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.pre-pct {
+  flex: none;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--neon);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--neon) 70%, transparent);
+}
+/* Barra por segmentos: se encienden tantos como el porcentaje; un brillo la recorre. */
+.pre-tbar {
+  position: relative;
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+  background: rgba(6, 12, 24, 0.6);
+  overflow: hidden;
+}
+.pre-tbar-track {
+  position: absolute;
+  inset: 3px;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  background: color-mix(in srgb, var(--neon) 14%, transparent);
+}
+.pre-tbar-fill {
+  display: block;
+  height: 100%;
+  width: var(--p);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--neon) 55%, #0b1626), var(--neon));
+}
+.pre-tbar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: sheen 4s ease-in-out infinite;
+  pointer-events: none;
+}
+/* Fichas dentro del equipo: cristal oscuro con un toque del color del equipo. */
+.pre-team.pre-sm .pre-player {
+  padding: 4px 8px 4px 4px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: rgba(7, 16, 28, 0.6);
+}
 .pre-team.pre-white .pre-player-big,
 .pre-team.pre-blue .pre-player-big {
-  background: rgba(255, 255, 255, 0.55);
-  border-color: rgba(11, 22, 38, 0.12);
+  background: rgba(7, 16, 28, 0.6);
+  border-color: color-mix(in srgb, var(--neon) 35%, transparent);
 }
-/* El nombre del rango, algo más oscuro para que se lea sobre fondo claro. */
-.pre-white .pre-rank > span,
-.pre-blue .pre-rank > span,
-.pre-white .pre-cat,
-.pre-blue .pre-cat {
-  filter: brightness(0.6) saturate(1.3);
-}
-.pre-white .pre-rankbar,
-.pre-blue .pre-rankbar {
-  background: rgba(11, 22, 38, 0.12);
-}
-/* Forma reciente con más contraste sobre el fondo claro. */
-.pre-white .form-chip.G,
-.pre-blue .form-chip.G {
-  background: rgba(61, 220, 151, 0.35);
-  color: #0b7a4b;
-}
-.pre-white .form-chip.P,
-.pre-blue .form-chip.P {
-  background: rgba(255, 77, 94, 0.22);
-  color: #c21f33;
-}
-.pre-white .form-chip.E,
-.pre-blue .form-chip.E {
-  background: rgba(11, 22, 38, 0.12);
-  color: #33465f;
+/* Pantallas bajas (≈480 px): fotos, porcentaje y botón algo más pequeños para que quepa todo. */
+@media (max-height: 520px) {
+  .pre-lg .rank-frame {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  .pre-pct {
+    font-size: 28px;
+  }
+  .pre-tbar {
+    height: 20px;
+  }
+  .pre-team-name {
+    font-size: 24px;
+  }
+  .pre-start {
+    min-height: 80px;
+  }
+  .pre-lg .pre-name {
+    font-size: 18px;
+  }
 }
 /* Columna central: tarjeta de la previsión y, debajo, el botón de empezar. */
 .pre-center-col {
@@ -680,6 +749,7 @@
 .pre-center-col .pre-center {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   /* Opaca para que el fondo no estorbe al leer. */
   background: linear-gradient(180deg, rgba(40, 33, 10, 0.94), rgba(14, 14, 20, 0.94));
 }
@@ -715,8 +785,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: 14px;
   background: rgba(7, 16, 28, 0.55);
   border: 1px solid var(--line);
@@ -755,7 +825,10 @@
 .pre-start {
   flex: none;
   width: 100%;
-  font-size: 18px;
+  /* Botón grande: ocupa el pie de la columna central. */
+  min-height: 120px;
+  padding: 0 8px;
+  font-size: clamp(15px, 1.9vw, 20px);
   white-space: nowrap;
 }
 /* Empezar partido en verde. */
@@ -906,77 +979,115 @@
   }
 }
 
-/* Últimos enfrentamientos, bajo la previsión. */
+/* Últimos enfrentamientos, bajo el pronóstico: fecha y marcador, sin salirse de la tarjeta. */
 .pre-meetings {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-top: 4px;
+  min-width: 0;
 }
 .pre-meeting {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
   padding: 5px 10px;
   border-radius: 10px;
   background: rgba(7, 16, 28, 0.6);
   border: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 14px;
 }
 .pre-meeting-date {
   color: var(--text-2);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-}
-.pre-meeting-mode {
-  flex: 1;
-  min-width: 0;
-  font-size: 11px;
-  color: var(--text-3);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .pre-meeting-score {
   display: flex;
+  align-items: center;
   gap: 6px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pre-meeting-score b {
-  font-weight: 800;
+  font-weight: 900;
+  font-size: 16px;
   color: var(--text-2);
 }
 .pre-meeting-score b.won {
   color: var(--ranked);
+  text-shadow: 0 0 8px rgba(242, 201, 76, 0.6);
+}
+/* Punto de color del equipo junto a su marcador. */
+.pre-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.pre-dot.white {
+  background: #ffffff;
+  box-shadow: 0 0 6px #ffffff;
+}
+.pre-dot.blue {
+  background: #62d6ff;
+  box-shadow: 0 0 6px #62d6ff;
 }
 .pre-center {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
   padding: 12px;
   border-radius: var(--radius);
   border: 1px solid var(--ranked);
   background: var(--ranked-soft);
 }
-.pre-pcts {
+.pre-center-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-size: 34px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
 }
-.pre-bar {
-  height: 14px;
-  border-radius: 999px;
-  background: var(--blue-team);
-  overflow: hidden;
+/* Botón «i»: muestra cómo se calcula el pronóstico. */
+.pre-info-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--ranked);
+  background: rgba(7, 11, 18, 0.7);
+  color: var(--ranked);
+  font: italic 900 16px/1 Georgia, serif;
+  cursor: pointer;
 }
-.pre-bar span {
-  display: block;
-  height: 100%;
-  background: var(--white-team);
+.pre-info-btn.on {
+  background: var(--ranked);
+  color: #1a1400;
 }
-
+.pre-info-panel {
+  position: absolute;
+  inset: 48px 10px auto 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ranked);
+  background: rgba(10, 12, 18, 0.97);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  animation: pop-in 0.18s ease-out;
+}
+.pre-info-panel .dim {
+  font-size: 11px;
+}
 /* ---------- Informe / resumen ---------- */
 .report {
   flex: 1;

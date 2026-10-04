@@ -446,6 +446,27 @@ button.row:active {
   background: rgba(166, 183, 207, 0.2);
   color: var(--text-2);
 }
+/* Últimos 10 de la Previsión: una fila de casillas; las jugadas contra este mismo equipo, resaltadas. */
+.pre-recent {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 24px));
+  gap: 3px;
+  max-width: 100%;
+}
+.pre-recent .form-chip {
+  width: auto;
+  height: 22px;
+}
+.pre-sm .pre-recent .form-chip {
+  height: 18px;
+  font-size: 10px;
+  border-radius: 5px;
+}
+.form-chip.same {
+  outline: 2px solid var(--ranked);
+  outline-offset: 1px;
+  box-shadow: 0 0 8px rgba(242, 201, 76, 0.8);
+}
 
 .status-pill {
   display: inline-flex;
