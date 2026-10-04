@@ -1179,57 +1179,227 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1.6fr 1fr;
-  gap: 10px;
+  /* Equipos a los lados (mismo estilo que el Pronóstico) y el partido en el centro. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding-top: 14px;
 }
-.rep-team {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: rgba(17, 34, 59, 0.7);
-  min-width: 0;
+/* Estadísticas: fichas grandes sin la barra de rango (no hay alto para todo). */
+.pre-compact .pre-rankrow {
+  display: none;
 }
-.rep-team.is-winner {
-  border-color: var(--ranked);
-  box-shadow: 0 0 18px rgba(242, 201, 76, 0.2);
+/* Fichas compactas de las estadísticas: todo un poco más pequeño para que quepa sin cortarse. */
+.pre-compact.pre-lg .rank-frame {
+  width: 64px !important;
+  height: 64px !important;
 }
-.rep-white .rep-score {
-  color: var(--white-team);
+.pre-compact.pre-lg .pre-player-big {
+  gap: 4px;
+  padding: 6px 8px;
 }
-.rep-blue .rep-score {
-  color: #4fa3f0;
+.pre-compact.pre-lg .pre-name {
+  font-size: 18px;
 }
-.rep-score {
-  font-size: 72px;
-  font-weight: 900;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+.pre-compact .pre-rank {
+  font-size: 13px;
 }
-.win-tag {
-  color: var(--ranked);
-  margin-left: 6px;
+.pre-compact .pre-elo,
+.pre-compact .pre-record {
+  font-size: 12px;
 }
-.rep-person {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
+.pre-compact .pre-elo b {
   font-size: 14px;
 }
+.pre-compact .pre-recent .form-chip {
+  height: 18px;
+  font-size: 10px;
+}
+.pre-compact.pre-sm .pre-player {
+  padding: 3px 6px 3px 3px;
+}
+.pre-compact.pre-sm .rank-frame {
+  width: 40px !important;
+  height: 40px !important;
+}
+.pre-compact.pre-sm .pre-name {
+  font-size: 15px;
+}
+.pre-compact.pre-sm .pre-info .muted {
+  font-size: 11px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pre-compact.pre-sm .pre-recent .form-chip {
+  height: 15px;
+  font-size: 9px;
+}
+.pre-compact {
+  gap: 5px;
+  padding: 12px 10px 8px;
+}
+.pre-compact.pre-sm {
+  gap: 4px;
+}
+.pre-compact .pre-team-name {
+  font-size: 24px;
+}
 .rep-center {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   text-align: center;
 }
-.rep-line {
-  font-size: 22px;
+/* Tipo de partido, grande. */
+.rep-mode {
+  max-width: 100%;
+  font-size: 20px;
+  padding: 4px 14px;
+}
+/* Marcador grande en el centro. */
+.rep-big-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1;
   font-weight: 900;
-  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rep-big-num {
+  font-size: 56px;
+}
+.rep-big-num.white {
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
+}
+.rep-big-num.blue {
+  color: #62d6ff;
+  text-shadow: 0 0 14px rgba(98, 214, 255, 0.55);
+}
+.rep-big-num.won {
+  color: var(--ranked);
+  text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
+}
+.rep-big-sep {
+  font-size: 44px;
+  color: var(--text-3);
+}
+.rep-sub {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.rep-date {
+  font-size: 11px;
+  color: var(--text-3);
+}
+/* Cronología de goles: eje central; Blanco sale a la izquierda y Azul a la derecha. */
+.rep-tl {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  align-self: stretch;
+  margin: 4px 0 0;
+  padding: 2px 0;
+  list-style: none;
+  /* Si hay muchos goles, se desliza (con barra fina visible). */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(242, 201, 76, 0.5) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rep-tl::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, rgba(242, 201, 76, 0.6) 8%, rgba(242, 201, 76, 0.6) 92%, transparent);
+}
+.rep-tl-row {
+  position: relative;
+  display: flex;
+}
+.rep-tl-row.white {
+  justify-content: flex-end;
+  padding-right: calc(50% + 8px);
+}
+.rep-tl-row.blue {
+  justify-content: flex-start;
+  padding-left: calc(50% + 8px);
+}
+/* Punto sobre el eje. */
+.rep-tl-row::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--ranked);
+  box-shadow: 0 0 6px var(--ranked);
+}
+.rep-tl-goal {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.rep-tl-row.white .rep-tl-goal {
+  flex-direction: row-reverse;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.12);
+}
+.rep-tl-row.blue .rep-tl-goal {
+  border-color: rgba(98, 214, 255, 0.7);
+  background: rgba(98, 214, 255, 0.14);
+}
+.rep-tl-time {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.rep-tl-score {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.rep-tl-x {
+  color: var(--chaos);
+}
+/* Gol anulado: tachado y en rojo. */
+.rep-tl-row.off .rep-tl-goal {
+  border-color: rgba(255, 90, 110, 0.75);
+  background: rgba(255, 60, 80, 0.14);
+}
+.rep-tl-row.off .rep-tl-time {
+  text-decoration: line-through;
+  color: #ff8794;
+}
+.rep-tl-row.off::after {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+}
+.rep-tl-tag {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--danger);
+}
+.rep-tl-empty {
+  margin-top: 12px;
+  color: var(--text-3);
 }
 .rep-table {
   width: 100%;
