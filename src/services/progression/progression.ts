@@ -3,7 +3,7 @@
  * reprocesando el historial en orden cronológico. No hay totales guardados sin origen:
  * todo se deriva de partidos válidos, por lo que reprocesar no duplica premios.
  */
-import { goalValue, validGoalsFromEvents, type Team } from '../../match-engine';
+import { validGoalsFromEvents, type Team } from '../../match-engine';
 import type { ProgressionSettings, StoredMatch, Tournament } from '../persistence';
 import { dayKey } from '../statistics/calendar';
 import { personalGoalsInMatch } from '../statistics/extras';
@@ -285,7 +285,6 @@ export function computeProgression(
         firstGoalOfMatch: !!firstGoal && match.scorers?.[firstGoal.id] === part.playerId,
         penaltiesPerfect: ownKicks.length >= match.config.penaltyRounds && ownKicks.every((k) => k.scored),
         suddenDeathRounds: Math.floor(sdKicks / 2),
-        usedJoker: goals.some((g) => g.team === part.team && g.bonus?.includes('joker') && goalValue(g) > 1),
         hour: new Date(match.finishedAt).getHours(),
         matchesToday: c.byDay.get(day) ?? 0,
         distinctTeammates: c.teammates.size,

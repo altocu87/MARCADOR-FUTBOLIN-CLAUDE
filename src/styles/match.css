@@ -24,18 +24,21 @@
   letter-spacing: 0.12em;
   color: var(--text);
 }
+/* Tres columnas: Blanco · centro (tipo, reloj, pausa) · Azul. Las tarjetas de los lados
+   tienen anchura de sobra para dos cifras. */
 .match-main {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 210px 1fr;
+  grid-template-columns: 30% 1fr 30%;
   gap: 10px;
 }
 .team-side {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+  min-height: 0;
 }
 .score-btn {
   position: relative;
@@ -107,70 +110,9 @@
   background: currentColor;
   opacity: 0.6;
 }
-/* Fila de jugadores más alta: la tarjeta queda menos alta y los nombres se ven mejor. */
-.team-bottom {
-  height: 70px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.side-blue .team-bottom {
-  justify-content: flex-end;
-}
-.team-people {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  gap: 6px;
-  overflow: hidden;
-}
-.side-blue .team-people {
-  justify-content: flex-end;
-}
-.person {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px 4px 4px;
-  border-radius: 999px;
-  background: rgba(17, 34, 59, 0.85);
-  border: 1px solid var(--line);
-  font-size: 17px;
-  font-weight: 700;
-  min-width: 0;
-}
-.center-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding-top: 18px;
-}
-/* Reloj sobre un panel oscuro para que destaque; el brillo toma el color del tiempo. */
-.clock-panel {
-  /* Ocupa también el hueco libre sobre los botones de anular, hasta ~2 mm de las tarjetas:
-     hueco entre columnas (10 px) + botón de anular (58 px) − 8 px de margen. */
-  align-self: stretch;
-  margin: 0 -60px;
-  display: flex;
-  justify-content: center;
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: rgba(2, 6, 12, 0.82);
-  border: 1px solid color-mix(in srgb, var(--clock) 35%, transparent);
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.6), 0 0 16px color-mix(in srgb, var(--clock) 20%, transparent);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
 .clock {
   display: block;
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--clock, #62d6ff) 55%, transparent));
-}
-.period-goals {
-  font-size: 13px;
-  color: var(--text-2);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 .lock-msg {
   font-size: 12px;
@@ -195,21 +137,309 @@
     transform: translateX(4px);
   }
 }
-.center-actions {
-  margin-top: 8px;
+/* ---------- Marcador: tarjeta, fichas de jugador y columna central ---------- */
+.score-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.score-wrap .score-btn {
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Fichas de jugador: las mismas que en la selección de jugadores. Su tamaño depende de
+   cuántos haya: 1 jugador = ficha grande; 2 = una debajo de otra; 3 o 4 = en dos columnas
+   y más compactas. La tarjeta del marcador se queda con el resto del alto. */
+.team-cards {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.team-cards.many {
+  grid-template-columns: 1fr 1fr;
+}
+/* Con 3 jugadores, el tercero ocupa todo el ancho. */
+.team-cards.many .match-card:nth-child(3):last-child {
+  grid-column: span 2;
+}
+.match-card {
+  flex: none;
+  max-height: none;
+  height: 84px;
+  gap: 10px;
+  cursor: default;
+}
+.match-card:active {
+  transform: none;
+}
+.match-card .team-card-photo {
+  width: 70px;
+  height: 70px;
+}
+.match-card .team-card-photo .pick-initials {
+  font-size: 26px;
+}
+.match-card .team-card-name {
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.match-card .pick-meta {
+  font-size: 13px;
+}
+.match-card .pick-title {
+  font-size: 11px;
+}
+.team-cards.count-1 .match-card {
+  height: 100px;
+  gap: 12px;
+  padding: 7px 10px 7px 7px;
+}
+.team-cards.count-1 .match-card .team-card-photo {
+  width: 84px;
+  height: 84px;
+  border-radius: 14px;
+}
+.team-cards.count-1 .match-card .team-card-photo .pick-initials {
+  font-size: 38px;
+}
+.team-cards.count-1 .match-card .team-card-name {
+  font-size: 23px;
+}
+.team-cards.count-1 .match-card .pick-meta {
+  font-size: 14px;
+}
+.team-cards.count-1 .match-card .pick-title {
+  font-size: 12px;
+}
+.match-card .team-card-info {
+  overflow: hidden;
+}
+.match-card .pick-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.team-cards.many .match-card {
+  height: 66px;
+  gap: 4px;
+  padding: 4px 4px 4px 4px;
+}
+.team-cards.many .match-card .team-card-photo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+.team-cards.many .match-card .team-card-photo .pick-initials {
+  font-size: 14px;
+}
+.team-cards.many .match-card .team-card-name {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.team-cards.many .match-card .pick-meta {
+  font-size: 9px;
+  letter-spacing: -0.02em;
+}
+.team-cards.many .match-card .pick-title {
+  font-size: 8px;
+}
+
+.center-col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 100%;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
 }
-.center-actions .btn {
-  width: 100%;
+/* Tipo de partido: cartel de neón del color de su modo. */
+.match-mode {
+  max-width: 100%;
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 18px;
+  border: 3px solid var(--mc);
+  color: color-mix(in srgb, var(--mc) 55%, #ffffff);
+  background: rgba(7, 16, 28, 0.85);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--mc) 55%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--mc) 35%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--mc) 80%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-/* Pausa: el botón más grande del centro. */
+.mode-chip-quick {
+  --mc: var(--accent);
+}
+.mode-chip-chaos {
+  --mc: var(--chaos);
+}
+.mode-chip-ranked {
+  --mc: var(--ranked);
+}
+/* Parte en juego y a cuántos goles se juega. */
+.period-goals {
+  margin-top: -2px;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.center-badges {
+  height: 24px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.center-badges .badge {
+  font-size: 11px;
+}
+/* Reloj sobre un panel oscuro para que destaque; el brillo toma el color del tiempo. */
+.clock-panel {
+  align-self: stretch;
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(2, 6, 12, 0.82);
+  border: 1px solid color-mix(in srgb, var(--clock) 35%, transparent);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.6), 0 0 16px color-mix(in srgb, var(--clock) 20%, transparent);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.clock-panel .clock {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fila de acciones: Anular (Blanco) · Pausa · Anular (Azul), lo más grandes posible. */
+.center-actions {
+  align-self: stretch;
+  flex: 1;
+  min-height: 0;
+  max-height: 170px;
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1.9fr 1fr;
+  gap: 8px;
+}
+.annul-btn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 90, 110, 0.7);
+  background: linear-gradient(180deg, rgba(120, 10, 28, 0.9), rgba(70, 4, 16, 0.92));
+  color: #ff8794;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(255, 60, 80, 0.25);
+  transition: transform 0.06s ease;
+}
+.annul-btn span {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+.annul-btn:active:not(:disabled) {
+  background: rgba(200, 20, 45, 0.95);
+  color: #fff;
+  transform: scale(0.96);
+}
+.annul-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Pausa: neón amarillo. Normal = tubo encendido sobre fondo oscuro; pulsado = se rellena de luz. */
 .pause-btn {
-  min-height: 88px;
-  font-size: 24px;
-  letter-spacing: 0.08em;
+  --neon: #ffec3d;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 20px;
+  border: 3px solid var(--neon);
+  background: radial-gradient(ellipse at 50% 40%, rgba(255, 236, 61, 0.14), rgba(20, 18, 2, 0.92) 75%);
+  color: var(--neon);
+  cursor: pointer;
+  box-shadow:
+    0 0 10px rgba(255, 236, 61, 0.75),
+    0 0 26px rgba(255, 236, 61, 0.35),
+    inset 0 0 16px rgba(255, 236, 61, 0.35);
+  text-shadow: 0 0 8px rgba(255, 236, 61, 0.9), 0 0 18px rgba(255, 236, 61, 0.5);
+  transition: transform 0.06s ease, background 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
+}
+.pause-icon {
+  display: flex;
+  gap: 10px;
+  height: 40px;
+  align-items: center;
+  font-size: 36px;
+  line-height: 1;
+}
+.pause-icon i {
+  display: block;
+  width: 12px;
+  height: 40px;
+  border-radius: 3px;
+  background: currentColor;
+  box-shadow: 0 0 8px rgba(255, 236, 61, 0.9), 0 0 18px rgba(255, 236, 61, 0.5);
+}
+.pause-text {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+.pause-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  background: var(--neon);
+  color: #221d00;
+  text-shadow: none;
+  box-shadow:
+    0 0 18px rgba(255, 236, 61, 0.95),
+    0 0 48px rgba(255, 236, 61, 0.6),
+    inset 0 0 14px rgba(255, 255, 255, 0.6);
+}
+.pause-btn:active:not(:disabled) .pause-icon i {
+  box-shadow: none;
+}
+.pause-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Cómo se gana, bajo la Pausa. */
+.center-cond {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text);
+  opacity: 0.9;
+}
+/* Modo prueba, abajo del todo. */
+.center-test {
+  margin-top: auto;
 }
 
 /* ---------- Superposiciones ---------- */
@@ -501,11 +731,7 @@
 .match-point-badge {
   animation: mp-pulse 1.1s ease-in-out infinite;
 }
-.score-btn.joker-armed {
-  box-shadow: 0 0 0 3px var(--chaos), 0 0 34px rgba(214, 92, 255, 0.6);
-}
-.streak-badge,
-.joker-tag {
+.streak-badge {
   position: absolute;
   top: 38px;
   z-index: 3;
@@ -519,12 +745,6 @@
   box-shadow: 0 0 14px rgba(255, 120, 40, 0.7);
   animation: pop-in 0.3s ease-out;
 }
-.joker-tag {
-  top: auto;
-  bottom: 26px;
-  background: var(--chaos);
-  box-shadow: 0 0 14px rgba(214, 92, 255, 0.8);
-}
 @keyframes pop-in {
   from {
     transform: scale(0.4);
@@ -537,26 +757,6 @@
 }
 .score-team {
   z-index: 3;
-}
-.joker-btn {
-  height: 56px;
-  min-width: 56px;
-  flex: none;
-  border-radius: 12px;
-  border: 1px solid var(--chaos);
-  background: var(--chaos-soft);
-  color: #f3d6ff;
-  font-weight: 900;
-  font-size: 16px;
-  cursor: pointer;
-}
-.joker-btn.armed {
-  background: var(--chaos);
-  color: #fff;
-  box-shadow: 0 0 16px rgba(214, 92, 255, 0.7);
-}
-.joker-btn:disabled {
-  opacity: 0.3;
 }
 
 /* ---------- Cuenta atrás con anillo ---------- */
@@ -1404,59 +1604,6 @@
   animation: none !important;
 }
 
-/* ---------- Fichas de jugador del marcador: con foto bien visible ---------- */
-.person {
-  gap: 8px;
-  padding: 3px 14px 3px 3px;
-  flex: 0 1 auto;
-}
-.person .avatar {
-  border: 2px solid currentColor;
-}
-.side-white .person {
-  border-color: rgba(238, 246, 255, 0.55);
-}
-.side-blue .person {
-  border-color: rgba(98, 214, 255, 0.6);
-}
-/* Con 3 o 4 jugadores: foto algo menor y nombre más pequeño, pero la foto siempre se ve. */
-.team-people.many .person {
-  padding: 3px 10px 3px 3px;
-  font-size: 14px;
-  gap: 6px;
-}
-
-/* Ficha de jugador: foto arriba y nombre debajo, a todo el ancho de la ficha. La letra
-   se reduce lo necesario (según el ancho y la longitud del nombre) para que se lea entero. */
-.team-bottom {
-  height: 86px;
-}
-.person,
-.team-people.many .person {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 170px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: 4px 6px 3px;
-  border-radius: 14px;
-}
-.person-name {
-  align-self: stretch;
-  min-width: 0;
-  container-type: inline-size;
-  text-align: center;
-}
-.person-name > span {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
-  line-height: 1.15;
-  font-size: max(10px, min(16px, calc(100cqi / (var(--n) * 0.72))));
-}
-
 /* ---------- Gol anulado (rojo, pantalla completa) ---------- */
 .annul-show {
   position: absolute;
@@ -1628,108 +1775,6 @@
 }
 .annul-show.reduced .an-cross line {
   stroke-dashoffset: 0;
-}
-
-/* Tarjeta del marcador + botón de anular gol pegado a su lado interior (hacia el centro). */
-.score-row {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  /* El botón de anular queda abajo, a un tercio del alto: el resto del lado es todo tarjeta. */
-  align-items: flex-end;
-}
-.score-row .score-btn {
-  align-self: stretch;
-}
-.score-row .score-btn {
-  min-width: 0;
-  container-type: inline-size;
-}
-.side-white .score-row .score-btn {
-  border-bottom-right-radius: 0;
-}
-.side-blue .score-row .score-btn {
-  border-bottom-left-radius: 0;
-}
-.annul-btn {
-  flex: none;
-  width: 58px;
-  height: 33.333%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 2px solid rgba(255, 90, 110, 0.65);
-  background: linear-gradient(180deg, rgba(120, 10, 28, 0.9), rgba(70, 4, 16, 0.92));
-  color: #ff8794;
-  cursor: pointer;
-  box-shadow: 0 0 14px rgba(255, 60, 80, 0.25);
-}
-.annul-white {
-  border-left: none;
-  border-radius: 0 22px 22px 0;
-}
-.annul-blue {
-  border-right: none;
-  border-radius: 22px 0 0 22px;
-}
-.annul-btn span {
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: 0;
-  text-align: center;
-}
-.annul-btn:active:not(:disabled) {
-  background: rgba(200, 20, 45, 0.95);
-  color: #fff;
-}
-.annul-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-/* Cabecera: tipo de partido grande, del color de su modo. */
-.match-mode {
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 2px 16px;
-  border-radius: 999px;
-  border: 2px solid var(--mc);
-  color: var(--mc);
-  background: rgba(7, 16, 28, 0.75);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--mc) 60%, transparent);
-  white-space: nowrap;
-}
-.mode-chip-quick {
-  --mc: var(--accent);
-}
-.mode-chip-chaos {
-  --mc: var(--chaos);
-}
-.mode-chip-ranked {
-  --mc: var(--ranked);
-}
-/* Parte en juego, encima del reloj. */
-.center-period {
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-/* Cómo se gana, bajo la Pausa. */
-.center-cond {
-  margin-top: 4px;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  text-align: center;
-  color: var(--text);
-  opacity: 0.9;
 }
 
 /* ---------- Final del partido (pantalla única) ---------- */

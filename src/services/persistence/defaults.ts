@@ -25,7 +25,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   progression: DEFAULT_PROGRESSION,
   voice: false,
   goalSound: 'arcade',
-  chaosRules: { doubleLastMinute: true, jokers: true },
+  chaosRules: { doubleLastMinute: true, jokers: false },
   seasonLength: 'month',
   challenges: true,
   keepAwake: true,

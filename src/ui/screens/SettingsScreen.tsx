@@ -529,7 +529,7 @@ function SystemTab() {
 }
 
 const PENDING = [
-  ['Caos', 'Implementada propuesta caos-1 (comodín x2, último minuto x2). Pendiente de aprobación.'],
+  ['Caos', 'Implementada propuesta caos-1 (último minuto x2). Pendiente de aprobación.'],
   ['Torneos', 'Implementada propuesta torneos-1 (liguilla y cuadro 3–8 equipos). Pendiente de aprobación.'],
   ['Goleador', 'Asignación opcional tras el partido (1v1 automática). El documento original no lo registraba.'],
   ['Retos y temporadas', 'Propuestas retos-1 y temporadas mensuales/trimestrales. Pendientes de aprobación.'],

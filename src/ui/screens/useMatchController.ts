@@ -168,8 +168,6 @@ export function useMatchController(
           if (!isSuddenDeath(prev) && isSuddenDeath(next) && next.phase === 'penalties') {
             showBanner({ text: 'MUERTE SÚBITA', tone: 'danger' });
           }
-        } else if (e.type === 'JOKER' && e.team && e.reason === 'armed') {
-          showBanner({ text: 'COMODÍN', sub: `${e.team === 'white' ? 'BLANCO' : 'AZUL'} · SIGUIENTE GOL x2`, tone: 'chaos' }, 1400);
         }
       }
       // Bola de partido: aviso al aparecer.
