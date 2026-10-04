@@ -456,6 +456,12 @@ button.row:active {
 .pre-recent .form-chip {
   width: auto;
   height: 22px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.pre-recent .form-chip:active {
+  transform: scale(0.9);
 }
 .pre-sm .pre-recent .form-chip {
   height: 18px;
@@ -584,4 +590,82 @@ button.row:active {
 }
 .demo-card.on {
   border-color: #f5b301;
+}
+
+/* Ventana con los datos de un partido de la racha. */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.md-meta {
+  text-align: center;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.md-won {
+  color: var(--ok);
+}
+.md-lost {
+  color: var(--danger);
+}
+.md-score {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 14px;
+}
+.md-team {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: rgba(7, 16, 28, 0.6);
+}
+.md-white {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.md-blue {
+  border-color: rgba(98, 214, 255, 0.8);
+  text-align: right;
+}
+.md-team.won {
+  box-shadow: 0 0 14px rgba(242, 201, 76, 0.45);
+}
+.md-team-label {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+.md-white .md-team-label {
+  color: #ffffff;
+}
+.md-blue .md-team-label {
+  color: #62d6ff;
+}
+.md-name {
+  font-size: 17px;
+  font-weight: 700;
+}
+.md-name.me {
+  color: var(--ranked);
+}
+.md-nums {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 44px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.md-nums .won {
+  color: var(--ranked);
+  text-shadow: 0 0 12px rgba(242, 201, 76, 0.6);
+}
+.md-sep {
+  font-size: 30px;
+  color: var(--text-3);
 }

@@ -6,7 +6,7 @@ import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
 import type { Player, StoredMatch } from '../../services/persistence';
 import { initials } from '../../services/players';
 import { nextCategory, predict, type PlayerProgress } from '../../services/progression';
-import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
+import { MODE_LABEL, Modal, ScreenFrame, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
 import { CategoryBadge } from '../components/graphics';
 
@@ -21,6 +21,8 @@ export function PrematchScreen({
 }) {
   const { navigate, matches, progression, players, demoMode } = useApp();
   const [info, setInfo] = useState(false);
+  // Partido de la racha que se está consultando (ventana con sus datos).
+  const [detail, setDetail] = useState<{ match: StoredMatch; playerId: string } | null>(null);
   const ids = (team: Team) => participants.filter((p) => p.team === team).map((p) => p.playerId);
   // Estadísticas clasificatorias de cada jugador: balance de victorias.
   const stats = useMemo(() => {
@@ -39,6 +41,7 @@ export function PrematchScreen({
           .slice(-10)
           .map((m) => ({
             id: m.id,
+            match: m,
             won: m.result.winner === m.participants.find((x) => x.playerId === p.playerId)!.team,
             same: same(m),
           })),
@@ -95,6 +98,7 @@ export function PrematchScreen({
             recent={recent.get(p.playerId) ?? []}
             team={team}
             size={size}
+            onOpen={(match) => setDetail({ match, playerId: p.playerId })}
           />
         ))}
       </div>
@@ -179,6 +183,7 @@ export function PrematchScreen({
         </div>
         {teamCard('blue')}
       </div>
+      {detail && <MatchDetail match={detail.match} playerId={detail.playerId} onClose={() => setDetail(null)} />}
     </ScreenFrame>
   );
 }
@@ -195,6 +200,7 @@ function sameTeams(m: StoredMatch, whiteIds: string[], blueIds: string[]): boole
 
 interface RecentGame {
   id: string;
+  match: StoredMatch;
   won: boolean;
   /** Jugado entre estos mismos dos equipos. */
   same: boolean;
@@ -205,7 +211,7 @@ interface RecentGame {
  * (a la derecha en Blanco, a la izquierda en Azul) y bien nítido; los más antiguos se van
  * apagando hacia el borde. Los jugados contra este mismo equipo, resaltados en dorado.
  */
-function RecentForm({ games, team }: { games: RecentGame[]; team: Team }) {
+function RecentForm({ games, team, onOpen }: { games: RecentGame[]; team: Team; onOpen: (m: StoredMatch) => void }) {
   if (games.length === 0) return <span className="dim">Sin clasificatorios</span>;
   // games llega del más antiguo al más reciente.
   const ordered = team === 'white' ? games : [...games].reverse();
@@ -219,14 +225,16 @@ function RecentForm({ games, team }: { games: RecentGame[]; team: Team }) {
         // 0 = el más reciente.
         const age = n - 1 - games.indexOf(g);
         return (
-          <span
+          // Al tocarla se abre una ventana con los datos de ese partido.
+          <button
             key={g.id}
             className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''} ${age === 0 ? 'newest' : ''}`}
             style={{ opacity: Math.max(0.45, 1 - age * 0.065) }}
             title={`${age === 0 ? 'El más reciente' : `Hace ${age + 1} partidos`}${g.same ? ' · contra este mismo equipo' : ''}`}
+            onClick={() => onOpen(g.match)}
           >
             {g.won ? 'G' : 'P'}
-          </span>
+          </button>
         );
       })}
     </span>
@@ -259,6 +267,7 @@ function PlayerCard({
   recent,
   team,
   size,
+  onOpen,
 }: {
   name: string;
   player?: Player;
@@ -267,8 +276,9 @@ function PlayerCard({
   recent: RecentGame[];
   team: Team;
   size: 'xl' | 'lg' | 'sm';
+  onOpen: (m: StoredMatch) => void;
 }) {
-  const form = <RecentForm games={recent} team={team} />;
+  const form = <RecentForm games={recent} team={team} onOpen={onOpen} />;
   if (!prog) {
     return (
       <div className="pre-player">
@@ -334,5 +344,63 @@ function PlayerCard({
         <div className={`pre-form pre-form-${team}`}>{form}</div>
       </div>
     </div>
+  );
+}
+
+/** Ventana con los datos de un partido de la racha: fecha, tipo, resultado y equipos. */
+function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; playerId: string; onClose: () => void }) {
+  const r = match.result;
+  const names = (t: Team) =>
+    match.participants
+      .filter((p) => p.team === t)
+      .sort((a, b) => a.slot - b.slot)
+      .map((p) => p.nameSnapshot);
+  const mine = match.participants.find((p) => p.playerId === playerId);
+  const won = mine?.team === r.winner;
+  const side = (t: Team) => (
+    <div className={`md-team md-${t} ${r.winner === t ? 'won' : ''}`}>
+      <div className="md-team-label">
+        {t === 'white' ? 'BLANCO' : 'AZUL'}
+        {r.winner === t && ' 🏆'}
+      </div>
+      {names(t).map((n) => (
+        <div key={n} className={`md-name ${mine?.team === t && n === mine.nameSnapshot ? 'me' : ''}`}>
+          {n}
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <Modal
+      title={MODE_LABEL[match.config.mode]}
+      onClose={onClose}
+      actions={
+        <button className="btn btn-primary" onClick={onClose}>
+          Cerrar
+        </button>
+      }
+    >
+      <div className="md">
+        <div className="md-meta">
+          {new Date(match.finishedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          {mine && <b className={won ? 'md-won' : 'md-lost'}>{won ? ' · Victoria' : ' · Derrota'} de {mine.nameSnapshot}</b>}
+        </div>
+        <div className="md-score">
+          {side('white')}
+          <div className="md-nums">
+            <span className={r.winner === 'white' ? 'won' : ''}>{r.score.white}</span>
+            <span className="md-sep">–</span>
+            <span className={r.winner === 'blue' ? 'won' : ''}>{r.score.blue}</span>
+          </div>
+          {side('blue')}
+        </div>
+        {r.penaltyScore && (
+          <div className="md-meta">
+            Penaltis {r.penaltyScore.white}–{r.penaltyScore.blue}
+          </div>
+        )}
+        {r.reason === 'golden_goal' && <div className="md-meta">Gol de oro en la prórroga</div>}
+      </div>
+    </Modal>
   );
 }
