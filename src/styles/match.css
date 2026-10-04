@@ -2049,11 +2049,23 @@
 .overlay-victory .vic-title-wrap .victory-title {
   font-size: min(58px, calc(100cqi / 10.6));
 }
+/* Lados de la barra con el mismo ancho: el título queda centrado. */
+.vic-side {
+  flex: none;
+  width: 128px;
+  display: flex;
+  gap: 8px;
+}
+.vic-side-right {
+  justify-content: flex-end;
+}
 .vic-topbar .vic-main {
+  width: 128px;
   min-height: 56px;
-  min-width: 220px;
-  font-size: 22px;
-  letter-spacing: 0.08em;
+  padding: 0 8px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
 }
 .vic-icon-btn {
   flex: none;
