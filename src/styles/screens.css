@@ -577,6 +577,20 @@
   border: 1px solid var(--line);
   background: rgba(17, 34, 59, 0.7);
 }
+/* Fondo a pantalla completa (ya desenfocado en la imagen); se recorta sin deformarse. */
+.pre-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.pre-screen > :not(.pre-bg) {
+  position: relative;
+  z-index: 1;
+}
 /* Cabecera: tipo de partido grande y centrado. */
 .pre-screen .screen-header {
   position: relative;
@@ -666,6 +680,8 @@
 .pre-center-col .pre-center {
   flex: 1;
   min-height: 0;
+  /* Opaca para que el fondo no estorbe al leer. */
+  background: linear-gradient(180deg, rgba(40, 33, 10, 0.94), rgba(14, 14, 20, 0.94));
 }
 .pre-player {
   display: flex;

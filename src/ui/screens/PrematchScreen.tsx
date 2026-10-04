@@ -7,6 +7,7 @@ import type { Player } from '../../services/persistence';
 import { initials } from '../../services/players';
 import { nextCategory, predict, type PlayerProgress } from '../../services/progression';
 import { FormChips, MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
+import { AssetImage } from '../components/assets';
 import { CategoryBadge } from '../components/graphics';
 
 export function PrematchScreen({
@@ -65,6 +66,7 @@ export function PrematchScreen({
   return (
     <ScreenFrame
       className="pre-screen"
+      background={<AssetImage name="fondo-prevision" className="pre-bg" fallback={null} />}
       // Tipo de partido en grande y centrado, con el mismo cartel de neón que el marcador.
       title={<span className="match-mode mode-chip-ranked">{MODE_LABEL[config.mode]}</span>}
       onBack={() => (extras?.tournament ? navigate({ name: 'tournamentDetail', id: extras.tournament.id }) : navigate({ name: 'select', config, participants }))}
