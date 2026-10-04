@@ -6,7 +6,7 @@ import type { StoredMatch } from '../../services/persistence';
 import { ACHIEVEMENTS } from '../../services/progression';
 import { formatDuration } from '../../services/statistics';
 import { Avatar, Tabs, formatDate } from './common';
-import { TeamFrame } from './PlayerCards';
+import { RankPhoto, TeamFrame } from './PlayerCards';
 import { ScoreChart } from './ScoreChart';
 
 const TEAM: Record<Team, string> = { white: 'Blanco', blue: 'Azul' };
@@ -142,10 +142,16 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
   );
 }
 
-/** Goleador opcional: se asigna tras el partido, sin obligar. En 1v1 es automático. */
+/**
+ * Goleador opcional: se asigna tras el partido, sin obligar (en 1v1 es automático). Cada gol es
+ * una tarjeta del color de su equipo con las mini fichas (foto con marco de rango y nombre) de
+ * los jugadores que pudieron marcarlo; la elegida se enciende. Arriba, el resumen de goleadores.
+ */
 function ScorersEditor({ match, editable }: { match: StoredMatch; editable: boolean }) {
-  const { saveMatch, toast } = useApp();
+  const { saveMatch, toast, players, progression } = useApp();
   const goals = validGoalsFromEvents(match.events);
+  const photos = new Map(players.map((p) => [p.id, p.photo]));
+  const rank = (id: string) => progression?.players.get(id)?.category.id ?? 'none';
   const assign = async (goalId: string, playerId: string | null) => {
     const scorers = { ...(match.scorers ?? {}) };
     if (playerId) scorers[goalId] = playerId;
@@ -157,36 +163,66 @@ function ScorersEditor({ match, editable }: { match: StoredMatch; editable: bool
     }
   };
   if (goals.length === 0) return <div className="muted">Sin goles ordinarios.</div>;
+  // Resumen: goles asignados a cada jugador en este partido.
+  const tally = new Map<string, number>();
+  for (const g of goals) {
+    const id = match.scorers?.[g.id];
+    if (id) tally.set(id, (tally.get(id) ?? 0) + (g.value ?? 1));
+  }
+  const unassigned = goals.filter((g) => !match.scorers?.[g.id]).length;
+  // Con una sola parte no hace falta decir en cuál fue el gol.
+  const multi = new Set(goals.map((g) => g.period)).size > 1;
   return (
-    <div className="scroll" style={{ flex: 1, minHeight: 0 }}>
-      <div className="dim" style={{ fontSize: 12, marginBottom: 6 }}>
-        Opcional: indica quién marcó cada gol para las estadísticas personales (pichichi). No afecta al resultado, ELO ni XP del partido.
-        {!editable && ' Este partido no está guardado (modo prueba): no se puede asignar.'}
+    <div className="sc-wrap">
+      <div className="sc-head">
+        {[...tally.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([id, n]) => {
+            const p = match.participants.find((x) => x.playerId === id);
+            return (
+              <span key={id} className={`sc-total ${p?.team ?? ''}`}>
+                <RankPhoto name={p?.nameSnapshot ?? '?'} photo={photos.get(id)} rank={rank(id)} size={26} />
+                {p?.nameSnapshot ?? '?'} <b>⚽ {n}</b>
+              </span>
+            );
+          })}
+        {unassigned > 0 && <span className="sc-pending">{unassigned} sin asignar</span>}
+        <span className="sc-note">
+          Opcional · solo para el pichichi
+          {!editable && ' Partido sin guardar: no se puede asignar.'}
+        </span>
       </div>
-      <div className="list">
+      <div className="sc-list">
         {goals.map((g) => {
-          const options = match.participants.filter((p) => p.team === g.team);
+          const options = match.participants.filter((p) => p.team === g.team).sort((a, b) => a.slot - b.slot);
           const current = match.scorers?.[g.id];
           return (
-            <div key={g.id} className="row">
-              <span className={`badge ${g.team === 'white' ? '' : 'badge-accent'}`}>{TEAM[g.team!]}</span>
-              <span className="muted" style={{ width: 150, fontSize: 13 }}>
-                {periodName(match, g.period)} · {formatDuration(g.periodTimeMs)}
-              </span>
-              <span style={{ fontWeight: 800, width: 50 }}>
-                {g.scoreAfter.white}–{g.scoreAfter.blue}
-              </span>
-              <span style={{ flex: 1 }} />
-              {options.map((p) => (
-                <button
-                  key={p.playerId}
-                  className={`btn btn-sm ${current === p.playerId ? 'btn-primary' : ''}`}
-                  disabled={!editable || options.length === 1}
-                  onClick={() => assign(g.id, current === p.playerId ? null : p.playerId)}
-                >
-                  ⚽ {p.nameSnapshot}
-                </button>
-              ))}
+            <div key={g.id} className={`sc-goal ${g.team}`}>
+              <div className="sc-goal-info">
+                <span className="sc-team">{TEAM[g.team!].toUpperCase()}</span>
+                <span className="sc-time">
+                  ⚽ {multi ? `${periodName(match, g.period)} · ` : 'Minuto '}
+                  {formatDuration(g.periodTimeMs)}
+                </span>
+                <b className="sc-score">
+                  {g.scoreAfter.white}–{g.scoreAfter.blue}
+                </b>
+              </div>
+              <div className="sc-players">
+                {options.map((p) => (
+                  <button
+                    key={p.playerId}
+                    className={`sc-player ${current === p.playerId ? 'on' : ''}`}
+                    disabled={!editable || options.length === 1}
+                    onClick={() => assign(g.id, current === p.playerId ? null : p.playerId)}
+                    aria-pressed={current === p.playerId}
+                  >
+                    <RankPhoto name={p.nameSnapshot} photo={photos.get(p.playerId)} rank={rank(p.playerId)} size={34} />
+                    <span className="sc-name">{p.nameSnapshot}</span>
+                    {current === p.playerId && <span className="sc-ball">⚽</span>}
+                  </button>
+                ))}
+              </div>
             </div>
           );
         })}

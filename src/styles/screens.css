@@ -1713,6 +1713,177 @@
   fill: #62d6ff;
 }
 
+/* ---------- Goleadores (estadísticas del partido) ---------- */
+.sc-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sc-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sc-total {
+  --k: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--k);
+  background: rgba(4, 8, 15, 0.85);
+  color: var(--k);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--k) 40%, transparent);
+}
+.sc-total.blue {
+  --k: #62d6ff;
+}
+.sc-total b {
+  color: var(--ranked);
+}
+.sc-total .rank-frame {
+  padding: 2px;
+  border-radius: 50%;
+}
+.sc-total .rank-photo {
+  border-radius: 50%;
+  font-size: 10px !important;
+}
+.sc-pending {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(166, 183, 207, 0.6);
+  background: rgba(4, 8, 15, 0.85);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.sc-note {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(4, 8, 15, 0.8);
+  color: var(--text-2);
+  font-size: 11px;
+}
+/* Lista de goles en un panel de cristal oscuro. */
+.sc-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(98, 214, 255, 0.45);
+  background: rgba(4, 8, 15, 0.88);
+  box-shadow: 0 0 18px rgba(98, 214, 255, 0.2), inset 0 0 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(98, 214, 255, 0.5) transparent;
+}
+/* Cada gol: tarjeta con el color de su equipo. */
+.sc-goal {
+  --k: #ffffff;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--k) 45%, transparent);
+  border-left: 4px solid var(--k);
+  background: color-mix(in srgb, var(--k) 8%, rgba(7, 16, 28, 0.9));
+}
+.sc-goal.blue {
+  --k: #62d6ff;
+}
+.sc-goal-info {
+  flex: none;
+  width: 290px;
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  align-items: center;
+  column-gap: 10px;
+}
+.sc-team {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: var(--k);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--k) 70%, transparent);
+}
+.sc-time {
+  font-size: 13px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.sc-score {
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.sc-players {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+/* Mini ficha de jugador: foto con marco de rango y nombre. Elegida = se enciende. */
+.sc-player {
+  position: relative;
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 14px 3px 3px;
+  border-radius: 12px;
+  border: 1px solid rgba(166, 183, 207, 0.35);
+  background: rgba(4, 8, 15, 0.7);
+  color: var(--text-2);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.06s ease, box-shadow 0.15s ease;
+}
+.sc-player .rank-frame {
+  padding: 3px;
+  border-radius: 10px;
+}
+.sc-player .rank-photo {
+  border-radius: 7px;
+}
+.sc-player:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.sc-player.on {
+  color: #ffffff;
+  border: 2px solid var(--k);
+  background: color-mix(in srgb, var(--k) 18%, rgba(4, 8, 15, 0.9));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--k) 70%, transparent), inset 0 0 10px color-mix(in srgb, var(--k) 25%, transparent);
+}
+.sc-player:disabled {
+  cursor: default;
+}
+.sc-player:disabled:not(.on) {
+  opacity: 0.55;
+}
+.sc-ball {
+  margin-left: auto;
+  font-size: 18px;
+  filter: drop-shadow(0 0 6px var(--ranked));
+}
+
 /* ---------- Ranking ---------- */
 .std-head,
 .std-row {

@@ -67,7 +67,7 @@ function RecentForm({ games, team, onOpen }: { games: RecentGame[]; team: Team; 
 }
 
 /** Foto del jugador con el marco de su rango (solo se ve en el Clasificatorio). */
-function RankPhoto({ name, photo, rank, size }: { name: string; photo?: string; rank: string; size: number }) {
+export function RankPhoto({ name, photo, rank, size }: { name: string; photo?: string; rank: string; size: number }) {
   return (
     <span className={`rank-frame rank-${rank}`} style={{ width: size, height: size }}>
       <span className="rank-photo" style={{ fontSize: size * 0.34 }}>
