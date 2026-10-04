@@ -240,12 +240,15 @@ export function TeamFrame({
   participants,
   extra,
   compact,
+  winner,
 }: {
   team: Team;
   participants: ParticipantRef[];
   extra?: ReactNode;
   /** Con poco alto disponible: fichas un tamaño más pequeñas. */
   compact?: boolean;
+  /** Equipo ganador: lleva una corona de neón sobre el nombre. */
+  winner?: boolean;
 }) {
   const { matches, progression, players } = useApp();
   const [detail, setDetail] = useState<{ match: StoredMatch; playerId: string } | null>(null);
@@ -279,7 +282,10 @@ export function TeamFrame({
   }, [participants, matches]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div ref={frame} className={`pre-team pre-${team} pre-${size} ${compact ? 'pre-compact' : ''}`}>
-      <div className="pre-team-name">{team === 'white' ? 'BLANCO' : 'AZUL'}</div>
+      <div className="pre-team-name">
+        {winner && <NeonCrown />}
+        {team === 'white' ? 'BLANCO' : 'AZUL'}
+      </div>
       {extra}
       {list.map((p) => (
         <PlayerCard
@@ -301,5 +307,24 @@ export function TeamFrame({
           frame.current?.closest('.screen') ?? document.body,
         )}
     </div>
+  );
+}
+
+/** Corona dorada de neón que se posa sobre el nombre del equipo ganador. */
+function NeonCrown() {
+  return (
+    <svg className="neon-crown" viewBox="0 0 64 40" aria-label="Ganador" role="img">
+      <path
+        d="M6 34 L4 10 L20 22 L32 4 L44 22 L60 10 L58 34 Z"
+        fill="rgba(242, 201, 76, 0.18)"
+        stroke="#ffd75a"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <line x1="8" y1="34" x2="56" y2="34" stroke="#ffd75a" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="4" cy="9" r="3" fill="#fff3b0" />
+      <circle cx="32" cy="3.5" r="3.2" fill="#fff3b0" />
+      <circle cx="60" cy="9" r="3" fill="#fff3b0" />
+    </svg>
   );
 }
