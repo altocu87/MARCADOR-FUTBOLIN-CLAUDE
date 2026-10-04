@@ -28,6 +28,7 @@ export type Phase =
   | 'playing' // jugando
   | 'paused' // pausado
   | 'periodEnd' // final de periodo (espera acción del usuario)
+  | 'handicap' // Partido Loco: anuncio o fin de un hándicap (reloj parado)
   | 'penalties' // tanda de penaltis
   | 'finished'; // final de partido
 
@@ -46,12 +47,15 @@ export interface MatchConfig {
   penaltyFirstTeam: Team;
   /** Partido de prueba: no guarda historial ni progresión. Se fija al empezar. */
   testMode: boolean;
-  /** Reglas especiales de Partido Caos (propuesta «caos-1»). Solo se aplican en modo 'chaos'. */
+  /**
+   * Reglas antiguas de Partido Caos (ya no se aplican: el modo 'chaos' es ahora Partido Loco,
+   * con hándicaps). Se conservan para leer partidos guardados.
+   */
   chaos?: ChaosRules;
 }
 
 export interface ChaosRules {
-  /** Los goles en el último minuto de una parte con límite de tiempo valen doble. */
+  /** Obsoleta: los goles del último minuto valían doble. Ya no se aplica. */
   doubleLastMinute: boolean;
   /** Cada equipo tiene un comodín por partido: su siguiente gol vale doble. */
   jokers: boolean;
@@ -86,7 +90,13 @@ export type EngineCommand =
   | { type: 'CONTINUE' } // desde final de periodo: siguiente fase
   | { type: 'PENALTY'; team: Team; scored: boolean; source?: InputSource }
   | { type: 'UNDO_PENALTY' }
-  | { type: 'TOGGLE_JOKER'; team: Team };
+  | { type: 'TOGGLE_JOKER'; team: Team }
+  /** Partido Loco: para el reloj y anuncia un hándicap (sustituye al que hubiera). */
+  | { type: 'HANDICAP_START'; handicap: Handicap; nextAtMs: number }
+  /** Partido Loco: se sigue jugando tras el anuncio o tras «vuelta a la normalidad». */
+  | { type: 'HANDICAP_GO' }
+  /** Partido Loco: resultado del penalti pitado por un hándicap. */
+  | { type: 'HANDICAP_PENALTY'; scored: boolean; source?: InputSource };
 
 export type EventType =
   | 'MATCH_START'
@@ -102,7 +112,56 @@ export type EventType =
   | 'PENALTY'
   | 'PENALTY_UNDO'
   | 'JOKER'
+  | 'HANDICAP_START'
+  | 'HANDICAP_END'
+  | 'HANDICAP_PENALTY'
   | 'MATCH_END';
+
+/** Hándicaps del Partido Loco. */
+export type HandicapKind =
+  | 'double_all' // todos los goles valen doble
+  | 'double_team' // los goles de un equipo (el que va perdiendo) valen doble
+  | 'triple_next' // el próximo gol, de quien sea, vale 3
+  | 'steal' // el próximo gol del que va perdiendo además le quita uno al rival
+  | 'freeze_score' // marcador congelado: los goles no cuentan
+  | 'swap_positions' // portero/defensa ↔ ataque en un equipo o en los dos
+  | 'frozen_player' // un jugador (o uno de cada equipo) no se puede mover
+  | 'bar_lock' // un jugador (o uno de cada) no puede mover una barra
+  | 'penalty' // penalti a favor de un equipo
+  | 'transfer' // un jugador de cada equipo se cambia al rival
+  | 'weak_hand' // todos con la mano no dominante
+  | 'no_spin' // prohibido el molinillo
+  | 'long_shots' // solo valen los goles desde defensa o medio
+  | 'one_hand'; // cada jugador con una sola mano
+
+export type Bar = 'portero' | 'defensa' | 'medio' | 'delantero';
+
+export interface Handicap {
+  id: string;
+  kind: HandicapKind;
+  /** Equipo afectado (o a favor, en el penalti); 'both' = los dos. */
+  team?: Team | 'both';
+  /** Jugadores afectados (ids). */
+  players?: string[];
+  /** Barra bloqueada (bar_lock). */
+  bar?: Bar;
+  /** Duración en tiempo de juego; null = hasta el siguiente hándicap o hasta que se use. */
+  durationMs: number | null;
+}
+
+/** Hándicap en curso: anunciándose, activo o terminando («vuelta a la normalidad»). */
+export interface HandicapState {
+  spec: Handicap;
+  stage: 'announce' | 'active' | 'ending';
+  /** Tiempo de juego acumulado al empezar a correr (ms). */
+  startTotalMs?: number;
+  /** En «ending»: hora (epoch ms) a la que se sigue jugando sola. */
+  resumeAt?: number;
+  /** Hándicap anterior que terminó al anunciar este («volved a vuestro sitio»). */
+  replaced?: Handicap;
+}
+
+export const HANDICAP_END_PAUSE_MS = 3000;
 
 export interface Score {
   white: number;
@@ -131,8 +190,12 @@ export interface MatchEvent {
   scored?: boolean;
   /** Valor del gol (1 normal; 2 o 3 con reglas Caos). */
   value?: number;
-  /** Motivos del valor extra del gol. */
-  bonus?: ('joker' | 'last_minute')[];
+  /** Motivos del valor del gol (Partido Loco: double, triple, frozen, penalty; antiguos: joker, last_minute). */
+  bonus?: ('joker' | 'last_minute' | 'double' | 'triple' | 'steal' | 'frozen' | 'penalty')[];
+  /** Partido Loco: este gol quitó además un gol al rival. */
+  steal?: boolean;
+  /** Partido Loco: hándicap anunciado (HANDICAP_START) o terminado (HANDICAP_END). */
+  handicap?: Handicap;
   source?: InputSource;
   reason?: string;
 }
@@ -195,6 +258,10 @@ export interface MatchState {
   undoStack: string[];
   /** Comodines Caos por equipo. */
   jokers?: Record<Team, JokerState>;
+  /** Partido Loco: hándicap en curso. */
+  handicap?: HandicapState;
+  /** Partido Loco: tiempo de juego acumulado al que toca el siguiente hándicap. */
+  nextHandicapAtMs?: number;
   result?: MatchResult;
   seq: number;
 }

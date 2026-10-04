@@ -11,6 +11,9 @@ import {
   getPeriodScore,
   getScore,
   goalLockRemaining,
+  HANDICAP_ICON,
+  handicapRemaining,
+  handicapText,
   goalStreak,
   isSinglePeriod,
   isSuddenDeath,
@@ -32,6 +35,7 @@ import { AnnulShow, GoalShow } from '../components/GoalEffect';
 import { VictoryScreen, swapSides } from '../components/VictoryScreen';
 import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
+import { HandicapOverlay } from '../components/HandicapOverlay';
 import { useMatchController, type MatchController } from './useMatchController';
 
 export const PERIOD_LABEL: Record<Period, string> = {
@@ -166,6 +170,7 @@ export function MatchScreen({
         </div>
       )}
       {state.phase === 'periodEnd' && <PeriodEndOverlay ctl={ctl} />}
+      {state.phase === 'handicap' && <HandicapOverlay ctl={ctl} />}
       {state.phase === 'finished' && (
         <VictoryScreen
           state={state}
@@ -225,12 +230,9 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
         : clock.remainingMs !== null && clock.remainingMs <= 60_000
           ? CLOCK_YELLOW
           : CLOCK_GREEN;
-  const lastMinute =
-    state.config.mode === 'chaos' &&
-    state.config.chaos?.doubleLastMinute &&
-    state.period !== 'overtime' &&
-    clock.remainingMs !== null &&
-    clock.remainingMs <= 60_000;
+  // Partido Loco: hándicap en juego (en el sitio de la Pausa, con su cronómetro).
+  const handicap = state.handicap && (state.handicap.stage === 'active' || state.phase === 'paused') ? state.handicap : undefined;
+  const handicapLeft = handicapRemaining(state, now);
   // Bajo el tipo de partido: la parte en juego (si hay varias) y a cuántos goles se juega.
   const info = [
     isSinglePeriod(state.config) && state.period === 'first' ? null : PERIOD_LABEL[state.period],
@@ -329,7 +331,6 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
               BOLA DE PARTIDO {ctl.matchPoint.length === 1 ? `· ${TEAM_LABEL[ctl.matchPoint[0]]}` : ''}
             </span>
           )}
-          {lastMinute && <span className="badge badge-chaos">ÚLTIMO MINUTO · GOLES x2</span>}
         </div>
         <div className="clock-panel" style={{ '--clock': clockColor } as CSSProperties}>
           <SevenSegment
@@ -344,17 +345,43 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
         {/* Anular gol de Blanco · Pausa · Anular gol de Azul. */}
         <div className="center-actions">
           {minus('white')}
-          <button
-            className="pause-btn"
-            onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
-            disabled={!canCorrect}
-            aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
-          >
-            <span className="pause-icon" aria-hidden="true">
-              {state.phase === 'paused' ? '▶' : <><i /><i /></>}
-            </span>
-            <span className="pause-text">{state.phase === 'paused' ? 'SEGUIR' : 'PAUSA'}</span>
-          </button>
+          {handicap ? (
+            // Partido Loco: la tarjeta del hándicap con su cronómetro; tocarla pausa el juego.
+            <button
+              className={`pause-btn hc-btn ${handicapLeft !== null && handicapLeft <= 5000 ? 'ending' : ''}`}
+              onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
+              disabled={!canCorrect}
+              aria-label={`${handicapText(handicap.spec, state.participants).title}. Toca para ${state.phase === 'paused' ? 'seguir' : 'pausar'}.`}
+              style={
+                {
+                  '--left': handicapLeft !== null && handicap.spec.durationMs ? handicapLeft / handicap.spec.durationMs : 1,
+                } as CSSProperties
+              }
+            >
+              <span className="hc-btn-icon" aria-hidden="true">
+                {HANDICAP_ICON[handicap.spec.kind]}
+              </span>
+              <span className="hc-btn-title">{handicapText(handicap.spec, state.participants).short}</span>
+              {handicapLeft !== null ? (
+                <span className="hc-btn-time">{Math.ceil(handicapLeft / 1000)} s</span>
+              ) : (
+                <span className="hc-btn-time small">{handicap.spec.kind === 'swap_positions' ? 'HASTA EL PRÓXIMO' : 'HASTA QUE SE USE'}</span>
+              )}
+              <span className="hc-btn-bar" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              className="pause-btn"
+              onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
+              disabled={!canCorrect}
+              aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
+            >
+              <span className="pause-icon" aria-hidden="true">
+                {state.phase === 'paused' ? '▶' : <><i /><i /></>}
+              </span>
+              <span className="pause-text">{state.phase === 'paused' ? 'SEGUIR' : 'PAUSA'}</span>
+            </button>
+          )}
           {minus('blue')}
         </div>
         {/* Cómo se gana el partido, legible bajo la Pausa. */}

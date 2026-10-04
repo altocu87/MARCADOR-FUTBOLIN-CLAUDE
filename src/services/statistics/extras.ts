@@ -89,7 +89,7 @@ export function pairStats(matches: StoredMatch[]): PairStat[] {
   return [...map.values()].sort((a, b) => (b.rec.winPct ?? 0) - (a.rec.winPct ?? 0) || b.rec.played - a.rec.played);
 }
 
-/** Goles personales asignados (solo goles válidos; los dobles de Caos cuentan 1 gol). */
+/** Goles personales asignados (solo goles válidos; los dobles del Partido Loco cuentan 1 gol). */
 export function personalGoals(matches: StoredMatch[]): Map<string, number> {
   const out = new Map<string, number>();
   for (const m of matches) {

@@ -194,7 +194,7 @@ export function Modal({
 
 export const MODE_LABEL: Record<MatchMode, string> = {
   quick: 'Partido rápido',
-  chaos: 'Partido Caos',
+  chaos: 'Partido Loco',
   ranked: 'Clasificatorio',
 };
 

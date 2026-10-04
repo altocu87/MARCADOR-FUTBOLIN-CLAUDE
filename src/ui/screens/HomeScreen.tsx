@@ -11,7 +11,7 @@ import { MODE_LABEL, Modal, formatDate } from '../components/common';
 // Textos de una sola frase: se tienen que entender de un vistazo, de pie y jugando.
 const MODES: { mode: MatchMode; title: string; text: string; tag: string }[] = [
   { mode: 'quick', title: 'RÁPIDO', text: 'Empieza a jugar', tag: 'XP' },
-  { mode: 'chaos', title: 'CAOS', text: 'Reglas y hándicaps locos', tag: 'XP' },
+  { mode: 'chaos', title: 'LOCO', text: 'Un hándicap loco cada minuto', tag: 'XP' },
   { mode: 'ranked', title: 'CLASIFICATORIO', text: 'Partido competitivo', tag: 'ELO + XP' },
 ];
 

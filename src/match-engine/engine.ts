@@ -6,10 +6,10 @@
  * (marcas `now` en ms), nunca contando renderizados.
  */
 import {
-  CHAOS_LAST_MINUTE_MS,
   COUNTDOWN_MS,
   ENGINE_VERSION,
   GOAL_LOCK_MS,
+  HANDICAP_END_PAUSE_MS,
   RULES_VERSION,
   type CommandOutcome,
   type EngineCommand,
@@ -115,16 +115,41 @@ export function chaosActive(config: MatchConfig, rule: keyof NonNullable<MatchCo
   return config.mode === 'chaos' && !!config.chaos?.[rule];
 }
 
-export function getScore(state: MatchState): Score {
+/** Suma de goles válidos; un gol «robo» (Partido Loco) además quita uno al rival. Nunca baja de 0. */
+function sumGoals(goals: MatchEvent[]): Score {
   const score: Score = { white: 0, blue: 0 };
-  for (const g of validGoals(state)) if (g.team) score[g.team] += goalValue(g);
-  return score;
+  for (const g of goals) {
+    if (!g.team) continue;
+    score[g.team] += goalValue(g);
+    if (g.steal) score[otherTeam(g.team)] -= 1;
+  }
+  return { white: Math.max(0, score.white), blue: Math.max(0, score.blue) };
+}
+
+export function getScore(state: MatchState): Score {
+  return sumGoals(validGoals(state));
 }
 
 export function getPeriodScore(state: MatchState, period: Period = state.period): Score {
-  const score: Score = { white: 0, blue: 0 };
-  for (const g of validGoals(state)) if (g.team && g.period === period) score[g.team] += goalValue(g);
-  return score;
+  return sumGoals(validGoals(state).filter((g) => g.period === period));
+}
+
+/** Partido Loco: los hándicaps solo existen en el modo 'chaos'. */
+export function handicapsEnabled(config: MatchConfig): boolean {
+  return config.mode === 'chaos';
+}
+
+/** Hándicap activo (corriendo en juego), si lo hay. */
+export function activeHandicap(state: MatchState) {
+  return state.handicap?.stage === 'active' ? state.handicap.spec : undefined;
+}
+
+/** Tiempo de juego que le queda al hándicap activo (null si dura hasta el siguiente o hasta usarse). */
+export function handicapRemaining(state: MatchState, now: number): number | null {
+  const h = state.handicap;
+  if (!h || h.stage !== 'active' || h.spec.durationMs === null || h.startTotalMs === undefined) return null;
+  const total = state.closedPeriodsMs + periodElapsed(state, now);
+  return Math.max(0, h.startTotalMs + h.spec.durationMs - total);
 }
 
 export function getPenaltyScore(state: MatchState): Score {
@@ -228,15 +253,27 @@ export function advance(state: MatchState, now: number): { state: MatchState; ev
       s = startPeriodClock(s, events, s.countdownEndsAt);
       continue;
     }
+    // «Vuelta a la normalidad»: se sigue jugando solo tras la pausa breve.
+    if (s.phase === 'handicap' && s.handicap?.stage === 'ending' && s.handicap.resumeAt !== undefined && now >= s.handicap.resumeAt) {
+      s = { ...s, phase: 'playing', runningSince: s.handicap.resumeAt, handicap: undefined };
+      continue;
+    }
     if (s.phase === 'playing' && s.runningSince !== undefined) {
       const limit = periodTimeLimitMs(s.config, s.period);
-      if (limit !== null) {
-        const raw = s.periodElapsedMs + (now - s.runningSince);
-        if (raw >= limit) {
-          const endWall = s.runningSince + (limit - s.periodElapsedMs);
-          s = endPeriod(s, events, endWall, 'time');
+      const periodEndWall = limit !== null ? s.runningSince + (limit - s.periodElapsedMs) : Infinity;
+      // Fin de un hándicap con duración (si llega antes que el final de la parte).
+      const h = s.handicap;
+      if (h?.stage === 'active' && h.spec.durationMs !== null && h.startTotalMs !== undefined) {
+        const endTotal = h.startTotalMs + h.spec.durationMs;
+        const endWall = s.runningSince + (endTotal - s.closedPeriodsMs - s.periodElapsedMs);
+        if (now >= endWall && endWall < periodEndWall) {
+          s = handicapTimeUp(s, events, endWall);
           continue;
         }
+      }
+      if (now >= periodEndWall) {
+        s = endPeriod(s, events, periodEndWall, 'time');
+        continue;
       }
     }
     break;
@@ -264,31 +301,44 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
     case 'GOAL': {
       if (s.phase !== 'playing') return reject('invalid_state');
       if (goalLockRemaining(s, now) > 0) return reject('goal_lock');
-      // Reglas Caos: comodín armado y/o último minuto suman un punto extra cada uno.
-      const bonus: ('joker' | 'last_minute')[] = [];
-      if (s.jokers?.[command.team] === 'armed') bonus.push('joker');
-      const remaining = getClock(s, now).remainingMs;
-      if (
-        chaosActive(s.config, 'doubleLastMinute') &&
-        s.period !== 'overtime' &&
-        remaining !== null &&
-        remaining <= CHAOS_LAST_MINUTE_MS
-      ) {
-        bonus.push('last_minute');
+      const bonus: NonNullable<MatchEvent['bonus']> = [];
+      let value = 1;
+      let steal = false;
+      // Comodín Caos antiguo (desactivado en partidos nuevos).
+      if (s.jokers?.[command.team] === 'armed') {
+        bonus.push('joker');
+        value += 1;
       }
-      const value = 1 + bonus.length;
-      const score = getScore(s);
-      score[command.team] += value;
+      // Partido Loco: el hándicap activo cambia el valor del gol.
+      const h = activeHandicap(s);
+      if (h?.kind === 'double_all' || (h?.kind === 'double_team' && h.team === command.team)) {
+        bonus.push('double');
+        value *= 2;
+      } else if (h?.kind === 'triple_next') {
+        bonus.push('triple');
+        value = 3;
+      } else if (h?.kind === 'steal' && h.team === command.team && getScore(s)[otherTeam(command.team)] > 0) {
+        bonus.push('steal');
+        steal = true;
+      } else if (h?.kind === 'freeze_score') {
+        bonus.push('frozen');
+        value = 0;
+      }
       let next = pushEvent(s, events, now, {
         type: 'GOAL',
         team: command.team,
         source: command.source,
-        scoreAfter: score,
-        ...(value > 1 ? { value, bonus } : {}),
+        ...(bonus.length ? { value, bonus } : {}),
+        ...(steal ? { steal: true } : {}),
       });
+      rescoreLast(next);
       const goalId = next.events[next.events.length - 1].id;
       next = { ...next, lastGoalAt: now, undoStack: [...next.undoStack, goalId] };
       if (bonus.includes('joker') && next.jokers) next = { ...next, jokers: { ...next.jokers, [command.team]: 'used' } };
+      // El gol triple y el robo se gastan con el gol.
+      if (h && (h.kind === 'triple_next' || (h.kind === 'steal' && h.team === command.team))) {
+        next = endHandicap(next, events, now, 'used');
+      }
       return accept(checkGoalEnd(next, events, now));
     }
 
@@ -299,14 +349,12 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
         .reverse()
         .find((g) => g.team === command.team && g.period === s.period);
       if (!target) return reject('no_goal_to_remove');
-      const score = getScore(s);
-      score[command.team] -= goalValue(target);
       const next = pushEvent(s, events, now, {
         type: 'CORRECTION',
         team: command.team,
         refEventId: target.id,
-        scoreAfter: score,
       });
+      rescoreLast(next);
       const corrId = next.events[next.events.length - 1].id;
       return accept({ ...next, undoStack: [...next.undoStack, corrId] });
     }
@@ -317,17 +365,12 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       if (!lastId) return reject('nothing_to_undo');
       const target = s.events.find((e) => e.id === lastId);
       if (!target) return reject('nothing_to_undo');
-      const score = getScore(s);
-      const ref = target.type === 'CORRECTION' ? s.events.find((e) => e.id === target.refEventId) : target;
-      const v = ref ? goalValue(ref) : 1;
-      if (target.type === 'GOAL' && target.team) score[target.team] -= v;
-      if (target.type === 'CORRECTION' && target.team) score[target.team] += v;
       let next = pushEvent(s, events, now, {
         type: 'UNDO',
         team: target.team,
         refEventId: target.id,
-        scoreAfter: score,
       });
+      rescoreLast(next);
       // El bloqueo de gol (lastGoalAt) y el reloj no se modifican.
       next = { ...next, undoStack: next.undoStack.slice(0, -1) };
       // Restaurar un gol puede alcanzar el objetivo del periodo.
@@ -407,6 +450,57 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       return accept(pushEvent(next, events, now, { type: 'JOKER', team: command.team, reason: nextJoker }));
     }
 
+    case 'HANDICAP_START': {
+      // Partido Loco: se para el reloj y se anuncia; el anterior (si lo había) termina aquí.
+      if (!handicapsEnabled(s.config)) return reject('rule_disabled');
+      if (s.phase !== 'playing') return reject('invalid_state');
+      const replaced = s.handicap?.spec;
+      let base = s;
+      if (s.handicap) base = endHandicap(s, events, now, 'replaced');
+      const elapsed = periodElapsed(base, now);
+      let next: MatchState = {
+        ...base,
+        phase: 'handicap',
+        periodElapsedMs: elapsed,
+        runningSince: undefined,
+        nextHandicapAtMs: command.nextAtMs,
+        handicap: { spec: command.handicap, stage: 'announce', ...(replaced ? { replaced } : {}) },
+      };
+      const team = command.handicap.team === 'white' || command.handicap.team === 'blue' ? command.handicap.team : undefined;
+      next = pushEvent(next, events, now, { type: 'HANDICAP_START', handicap: command.handicap, ...(team ? { team } : {}) });
+      return accept(next);
+    }
+
+    case 'HANDICAP_GO': {
+      if (s.phase !== 'handicap' || !s.handicap) return reject('invalid_state');
+      if (s.handicap.stage === 'announce') {
+        if (s.handicap.spec.kind === 'penalty') return reject('invalid_state');
+        const startTotalMs = s.closedPeriodsMs + s.periodElapsedMs;
+        return accept({
+          ...s,
+          phase: 'playing',
+          runningSince: now,
+          handicap: { spec: s.handicap.spec, stage: 'active', startTotalMs },
+        });
+      }
+      // «Vuelta a la normalidad»: seguir antes de que termine la pausa breve.
+      return accept({ ...s, phase: 'playing', runningSince: now, handicap: undefined });
+    }
+
+    case 'HANDICAP_PENALTY': {
+      const h = s.handicap;
+      if (s.phase !== 'handicap' || !h || h.stage !== 'announce' || h.spec.kind !== 'penalty') return reject('invalid_state');
+      const team = h.spec.team === 'blue' ? 'blue' : 'white';
+      let next: MatchState = { ...s, phase: 'playing', runningSince: now, handicap: undefined };
+      next = pushEvent(next, events, now, { type: 'HANDICAP_PENALTY', team, scored: command.scored, source: command.source });
+      if (!command.scored) return accept(next);
+      next = pushEvent(next, events, now, { type: 'GOAL', team, source: command.source, value: 1, bonus: ['penalty'] });
+      rescoreLast(next);
+      const goalId = next.events[next.events.length - 1].id;
+      next = { ...next, lastGoalAt: now, undoStack: [...next.undoStack, goalId] };
+      return accept(checkGoalEnd(next, events, now));
+    }
+
     case 'UNDO_PENALTY': {
       // Propuesta: corregir el último lanzamiento mientras la tanda no esté decidida.
       if (s.phase !== 'penalties') return reject('invalid_state');
@@ -446,6 +540,34 @@ function pushEvent(
   };
   sink.push(event);
   return { ...state, seq, events: [...state.events, event] };
+}
+
+/** Recalcula el marcador del último evento con la cronología ya actualizada (−1, deshacer, robos…). */
+function rescoreLast(state: MatchState): void {
+  const last = state.events[state.events.length - 1];
+  if (last) last.scoreAfter = getScore(state);
+}
+
+/** Termina el hándicap en curso sin parar el juego (sustituido, usado o fin de la parte). */
+function endHandicap(state: MatchState, events: MatchEvent[], at: number, reason: 'replaced' | 'used' | 'period_end'): MatchState {
+  if (!state.handicap) return state;
+  const spec = state.handicap.spec;
+  const next = pushEvent({ ...state, handicap: undefined }, events, at, { type: 'HANDICAP_END', handicap: spec, reason });
+  return next;
+}
+
+/** Se acabó el tiempo de un hándicap: reloj parado y «vuelta a la normalidad» unos segundos. */
+function handicapTimeUp(state: MatchState, events: MatchEvent[], at: number): MatchState {
+  const spec = state.handicap!.spec;
+  const elapsed = periodElapsed(state, at);
+  const next: MatchState = {
+    ...state,
+    phase: 'handicap',
+    periodElapsedMs: elapsed,
+    runningSince: undefined,
+    handicap: { spec, stage: 'ending', resumeAt: at + HANDICAP_END_PAUSE_MS },
+  };
+  return pushEvent(next, events, at, { type: 'HANDICAP_END', handicap: spec, reason: 'time' });
 }
 
 function beginCountdown(state: MatchState, now: number, period: Period): MatchState {
@@ -492,6 +614,8 @@ function endPeriod(
   at: number,
   reason: PeriodRecord['endReason'],
 ): MatchState {
+  // Un hándicap no pasa a la parte siguiente.
+  state = endHandicap(state, events, at, 'period_end');
   const elapsed = periodElapsed(state, at);
   const record: PeriodRecord = {
     period: state.period,
