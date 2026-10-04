@@ -17,6 +17,9 @@ import {
   type MatchConfig,
   type MatchState,
   type ParticipantRef,
+  type Visitor,
+  goalTarget,
+  pickVisitor,
 } from '../src/match-engine';
 
 const P2 = [
@@ -215,6 +218,68 @@ describe('Partido Loco: hándicaps', () => {
     s = advance(s, 70_000).state;
     expect(s.phase).toBe('periodEnd');
     expect(s.handicap).toBeUndefined();
+  });
+});
+
+describe('Partido Loco: animales', () => {
+  const loco = (cfg: Partial<MatchConfig> = {}) => {
+    let s: MatchState = createMatch('m', { ...DEFAULT_CONFIG, testMode: false, mode: 'chaos', goalsPerPeriod: 5, ...cfg }, P2, 0);
+    s = dispatch(s, { type: 'SKIP_COUNTDOWN' }, 0).state;
+    return s;
+  };
+  const visit = (s: MatchState, v: Visitor, t: number) => {
+    s = dispatch(s, { type: 'VISIT_START', visitor: v }, t).state;
+    s = dispatch(s, { type: 'VISIT_APPLY' }, t + 2000).state;
+    return dispatch(s, { type: 'VISIT_END' }, t + 5000).state;
+  };
+
+  it('ardilla: roba un gol y para el reloj mientras está', () => {
+    let s = loco();
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1000).state;
+    s = dispatch(s, { type: 'VISIT_START', visitor: { id: 'v', animal: 'squirrel', from: 'white' } }, 10_000).state;
+    expect(s.phase).toBe('visit');
+    expect(getClock(s, 14_000).totalElapsedMs).toBe(10_000);
+    expect(getScore(s)).toEqual({ white: 1, blue: 0 });
+    s = dispatch(s, { type: 'VISIT_APPLY' }, 12_000).state;
+    expect(getScore(s)).toEqual({ white: 0, blue: 1 });
+    s = dispatch(s, { type: 'VISIT_END' }, 15_000).state;
+    expect(s.phase).toBe('playing');
+    // Un gol posterior lleva el marcador correcto.
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 20_000).state;
+    expect(s.events.filter((e) => e.type === 'GOAL').pop()?.scoreAfter).toEqual({ white: 0, blue: 2 });
+  });
+
+  it('caracol y gato cambian la meta en partidos por goles', () => {
+    let s = loco();
+    s = visit(s, { id: 'v1', animal: 'snail', goals: 1 }, 10_000);
+    expect(goalTarget(s)).toBe(6);
+    s = visit(s, { id: 'v2', animal: 'cat', goals: -1 }, 30_000);
+    expect(goalTarget(s)).toBe(5);
+  });
+
+  it('caracol y gato cambian el reloj en partidos por tiempo', () => {
+    let s = loco({ endCondition: 'time', minutesPerPeriod: 3 });
+    s = visit(s, { id: 'v1', animal: 'snail', timeMs: 60_000 }, 10_000);
+    // 3 min + 1 min; llevamos 10 s jugados.
+    expect(getClock(s, 15_000).remainingMs).toBe(230_000);
+    s = visit(s, { id: 'v2', animal: 'cat', timeMs: -60_000 }, 30_000);
+    // 4 min − 1 min; llevamos 25 s jugados (los 5 s de cada visita no cuentan).
+    expect(getClock(s, 35_000).remainingMs).toBe(155_000);
+  });
+
+  it('el sorteo nunca decide el partido', () => {
+    let s = loco({ goalsPerPeriod: 3 });
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 5000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 9000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 13000).state;
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    for (let i = 0; i < 200; i += 1) {
+      const v = pickVisitor(s, `v${i}`, 20_000, rnd);
+      // 2–2 a 3 goles: ni ardilla (daría la victoria) ni gato (bajaría la meta a 2).
+      expect(v?.animal).toBe('snail');
+    }
   });
 });
 

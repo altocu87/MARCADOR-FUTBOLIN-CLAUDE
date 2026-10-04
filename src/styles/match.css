@@ -1028,7 +1028,7 @@
   pointer-events: none;
   z-index: 0;
 }
-.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-show):not(.annul-show):not(.modal-backdrop) {
+.match > *:not(.match-bg):not(.overlay):not(.banner):not(.goal-show):not(.annul-show):not(.modal-backdrop):not(.visit-layer) {
   position: relative;
   z-index: 1;
 }

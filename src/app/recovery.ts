@@ -20,6 +20,10 @@ export function restoreSnapshot(snapshot: ActiveMatchSnapshot, now: number): Mat
   if (s.phase === 'countdown') {
     return { ...s, countdownEndsAt: now + COUNTDOWN_MS };
   }
+  // Partido Loco: si se cerró con un animal en pantalla, vuelve en pausa (sin él si no hizo nada).
+  if (s.phase === 'visit') {
+    return { ...s, phase: 'paused', visit: undefined };
+  }
   // Partido Loco: la «vuelta a la normalidad» vuelve a contar sus segundos al reabrir.
   if (s.phase === 'handicap' && s.handicap?.stage === 'ending') {
     return { ...s, handicap: { ...s.handicap, resumeAt: now + HANDICAP_END_PAUSE_MS } };

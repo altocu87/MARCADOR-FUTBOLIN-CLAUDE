@@ -29,6 +29,7 @@ export type Phase =
   | 'paused' // pausado
   | 'periodEnd' // final de periodo (espera acción del usuario)
   | 'handicap' // Partido Loco: anuncio o fin de un hándicap (reloj parado)
+  | 'visit' // Partido Loco: un animal sale de un agujero de gusano y hace una travesura (reloj parado)
   | 'penalties' // tanda de penaltis
   | 'finished'; // final de partido
 
@@ -92,11 +93,17 @@ export type EngineCommand =
   | { type: 'UNDO_PENALTY' }
   | { type: 'TOGGLE_JOKER'; team: Team }
   /** Partido Loco: para el reloj y anuncia un hándicap (sustituye al que hubiera). */
-  | { type: 'HANDICAP_START'; handicap: Handicap; nextAtMs: number }
+  | { type: 'HANDICAP_START'; handicap: Handicap; nextAtMs: number; visitAtMs?: number }
   /** Partido Loco: se sigue jugando tras el anuncio o tras «vuelta a la normalidad». */
   | { type: 'HANDICAP_GO' }
   /** Partido Loco: resultado del penalti pitado por un hándicap. */
-  | { type: 'HANDICAP_PENALTY'; scored: boolean; source?: InputSource };
+  | { type: 'HANDICAP_PENALTY'; scored: boolean; source?: InputSource }
+  /** Partido Loco: aparece un animal (reloj parado); aún no hace nada. */
+  | { type: 'VISIT_START'; visitor: Visitor }
+  /** Partido Loco: el animal hace su travesura (roba el gol, cambia el reloj o la meta). */
+  | { type: 'VISIT_APPLY' }
+  /** Partido Loco: el animal se va y se sigue jugando. */
+  | { type: 'VISIT_END' };
 
 export type EventType =
   | 'MATCH_START'
@@ -115,7 +122,33 @@ export type EventType =
   | 'HANDICAP_START'
   | 'HANDICAP_END'
   | 'HANDICAP_PENALTY'
+  | 'VISIT'
   | 'MATCH_END';
+
+/** Animales del Partido Loco que salen de un agujero de gusano. */
+export type Animal = 'squirrel' | 'snail' | 'cat';
+
+/**
+ * Travesura de un animal:
+ * - ardilla: roba un gol al equipo `from` y se lo da al otro;
+ * - caracol: +1 min al reloj (por tiempo) o sube la meta un gol (por goles);
+ * - gato del futuro: −1 min al reloj (por tiempo) o baja la meta un gol (por goles).
+ */
+export interface Visitor {
+  id: string;
+  animal: Animal;
+  /** Ardilla: equipo al que le roba el gol. */
+  from?: Team;
+  /** Caracol / gato: cambio de tiempo de la parte en ms (±60 000). */
+  timeMs?: number;
+  /** Caracol / gato: cambio de la meta de goles (±1). */
+  goals?: number;
+}
+
+export interface VisitState {
+  spec: Visitor;
+  applied: boolean;
+}
 
 /** Hándicaps del Partido Loco. */
 export type HandicapKind =
@@ -163,6 +196,13 @@ export interface HandicapState {
 
 export const HANDICAP_END_PAUSE_MS = 3000;
 
+/** Tiempos de la escena de cada animal (ms desde que aparece): cuándo hace la travesura y cuándo se va. */
+export const VISIT_TIMING: Record<Animal, { apply: number; end: number }> = {
+  squirrel: { apply: 4700, end: 7800 },
+  snail: { apply: 3800, end: 6600 },
+  cat: { apply: 2800, end: 5600 },
+};
+
 export interface Score {
   white: number;
   blue: number;
@@ -196,6 +236,8 @@ export interface MatchEvent {
   steal?: boolean;
   /** Partido Loco: hándicap anunciado (HANDICAP_START) o terminado (HANDICAP_END). */
   handicap?: Handicap;
+  /** Partido Loco: travesura de un animal (VISIT). */
+  visitor?: Visitor;
   source?: InputSource;
   reason?: string;
 }
@@ -262,6 +304,14 @@ export interface MatchState {
   handicap?: HandicapState;
   /** Partido Loco: tiempo de juego acumulado al que toca el siguiente hándicap. */
   nextHandicapAtMs?: number;
+  /** Partido Loco: animal en pantalla. */
+  visit?: VisitState;
+  /** Partido Loco: tiempo de juego al que puede salir el próximo animal (sin fijar = ninguno). */
+  nextVisitAtMs?: number;
+  /** Partido Loco: tiempo añadido (+) o quitado (−) a la parte actual por un animal. */
+  timeAdjustMs?: number;
+  /** Partido Loco: cambio de la meta de goles por un animal (por goles). */
+  goalTargetAdjust?: number;
   result?: MatchResult;
   seq: number;
 }

@@ -2,7 +2,7 @@
  * Lecturas del estado para avisos de interfaz (bola de partido, rachas, remontadas).
  * No cambian reglas: solo interpretan el estado que ya validó el motor.
  */
-import { getScore, goalValue, otherTeam, validGoals } from './engine';
+import { getScore, goalTarget, goalValue, otherTeam, validGoals } from './engine';
 import type { MatchEvent, MatchState, Score, Team } from './types';
 
 /** Equipos que ganarían el partido marcando el siguiente gol. */
@@ -12,7 +12,7 @@ export function matchPointTeams(state: MatchState): Team[] {
   if (state.config.endCondition === 'time') return [];
   // A un gol del objetivo de goles para ganar.
   const score = getScore(state);
-  return (['white', 'blue'] as Team[]).filter((t) => score[t] + 1 >= state.config.goalsPerPeriod);
+  return (['white', 'blue'] as Team[]).filter((t) => score[t] + 1 >= goalTarget(state));
 }
 
 /** Equipo que encadena goles sin respuesta y cuántos (racha del partido). */

@@ -23,6 +23,10 @@ import {
   handicapText,
   nextHandicapAtMs,
   pickHandicap,
+  pickVisitor,
+  scheduleVisitAtMs,
+  visitorText,
+  VISIT_TIMING,
   isSuddenDeath,
   matchPointTeams,
   type CommandOutcome,
@@ -33,6 +37,7 @@ import {
   type ParticipantRef,
   type Period,
   type Team,
+  type Visitor,
   isSinglePeriod,
 } from '../../match-engine';
 import { newId } from '../../services/ids';
@@ -40,6 +45,15 @@ import { sound } from '../../services/sound/sound';
 import { voice } from '../../services/sound/voice';
 
 const SNAPSHOT_EVERY_MS = 5000;
+
+/** Solo en desarrollo: el animal pedido, si puede salir ahora (si no, el que toque). */
+function forcedVisitor(s: MatchState, animal: Visitor['animal'], id: string, t: number): Visitor | null {
+  for (let i = 0; i < 40; i += 1) {
+    const v = pickVisitor(s, id, t);
+    if (v?.animal === animal) return v;
+  }
+  return pickVisitor(s, id, t);
+}
 
 const TEAM_VOICE: Record<Team, string> = { white: 'equipo blanco', blue: 'equipo azul' };
 const PERIOD_VOICE: Record<Period, string> = {
@@ -121,6 +135,17 @@ export function useMatchController(
   const [introUntil, setIntroUntil] = useState(0);
   const introUntilRef = useRef(0);
   const revealTimer = useRef<number | undefined>(undefined);
+  const visitTimers = useRef<number[]>([]);
+  // Solo en desarrollo: forzar un animal desde la consola (window.marcadorLoco.animal('squirrel')).
+  const forcedVisit = useRef<Visitor['animal'] | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { marcadorLoco: unknown }).marcadorLoco = {
+      animal: (a: Visitor['animal']) => {
+        forcedVisit.current = a;
+      },
+    };
+  }, []);
   const stateRef = useRef(state);
   const lastSnapshotAt = useRef(0);
   const matchPointKey = useRef('');
@@ -137,6 +162,7 @@ export function useMatchController(
     () => () => {
       window.clearTimeout(bannerTimer.current);
       window.clearTimeout(revealTimer.current);
+      visitTimers.current.forEach((id) => window.clearTimeout(id));
     },
     [],
   );
@@ -183,8 +209,8 @@ export function useMatchController(
       stateRef.current = next;
       setState(next);
       // Gol anulado: el marcador de un equipo baja en la misma parte (−1 o deshacer un gol).
-      // Un gol «robo» del Partido Loco también baja al rival, pero no es una anulación.
-      if (prev.period === next.period && !events.some((e) => e.type === 'GOAL' && e.steal)) {
+      // Un gol «robo» o la ardilla del Partido Loco también bajan al rival, pero no es una anulación.
+      if (prev.period === next.period && !events.some((e) => (e.type === 'GOAL' && e.steal) || e.type === 'VISIT')) {
         const before = getScore(prev);
         const after = getScore(next);
         const down = (['white', 'blue'] as Team[]).find((tm) => after[tm] < before[tm]);
@@ -224,6 +250,9 @@ export function useMatchController(
           if (replaced) voice.say(handicapEndText(replaced));
           sound.play('countdown');
           reveal(t + HANDICAP_INTRO_MS);
+        } else if (e.type === 'VISIT' && e.visitor) {
+          sound.play(e.visitor.animal === 'squirrel' ? 'error' : 'whoosh');
+          voice.say(visitorText(e.visitor).detail, { interrupt: false });
         } else if (e.type === 'HANDICAP_END' && e.handicap && e.reason === 'time') {
           sound.play('countdownGo');
           voice.say('¡Vuelta a la normalidad!');
@@ -296,8 +325,34 @@ export function useMatchController(
       ) {
         const total = getClock(s, t).totalElapsedMs;
         if (total >= (s.nextHandicapAtMs ?? firstHandicapAtMs(s.id))) {
-          const out = dispatch(s, { type: 'HANDICAP_START', handicap: pickHandicap(s, newId('h')), nextAtMs: nextHandicapAtMs(total, Math.random) }, t);
+          const handicap = pickHandicap(s, newId('h'));
+          const nextAtMs = nextHandicapAtMs(total, Math.random);
+          const visitAtMs = scheduleVisitAtMs(s, total, handicap.durationMs, nextAtMs, Math.random);
+          const out = dispatch(s, { type: 'HANDICAP_START', handicap, nextAtMs, visitAtMs }, t);
           if (out.accepted) commit(out.state, out.events, t);
+        } else if ((s.nextVisitAtMs !== undefined && total >= s.nextVisitAtMs) || forcedVisit.current) {
+          // Un animal sale del agujero de gusano entre dos hándicaps.
+          const forced = forcedVisit.current;
+          forcedVisit.current = null;
+          const visitor = forced ? forcedVisitor(s, forced, newId('v'), t) : pickVisitor(s, newId('v'), t);
+          if (visitor) {
+            const out = dispatch(s, { type: 'VISIT_START', visitor }, t);
+            if (out.accepted) {
+              commit(out.state, out.events, t);
+              sound.play('whoosh');
+              voice.say(visitorText(visitor).title.replace(/[¡!]/g, ''));
+              const timing = VISIT_TIMING[visitor.animal];
+              const step = (cmd: 'VISIT_APPLY' | 'VISIT_END') => {
+                const now2 = Date.now();
+                const o = dispatch(stateRef.current, { type: cmd }, now2);
+                if (o.accepted) commit(o.state, o.events, now2);
+              };
+              visitTimers.current = [
+                window.setTimeout(() => step('VISIT_APPLY'), timing.apply),
+                window.setTimeout(() => step('VISIT_END'), timing.end),
+              ];
+            }
+          }
         }
       }
       setNow(t);
