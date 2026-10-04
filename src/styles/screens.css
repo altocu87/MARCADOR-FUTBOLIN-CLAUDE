@@ -1198,8 +1198,16 @@
   padding: 0 14px;
   font-size: 14px;
 }
-.rep-screen .report > .tabs {
-  justify-content: center;
+/* Fila de arriba: pestañas a los lados y el marcador en el centro, bajo el tipo de partido. */
+.rep-top {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.rep-top > .tabs:last-child {
+  justify-content: flex-end;
 }
 
 .report {
@@ -1304,7 +1312,7 @@
 }
 .rep-big-num {
   /* Marcador grande: aprovecha el ancho del centro. */
-  font-size: clamp(64px, 11vw, 120px);
+  font-size: clamp(56px, 9vw, 96px);
 }
 .rep-big-num.white {
   color: #ffffff;
@@ -1319,7 +1327,7 @@
   text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
 }
 .rep-big-sep {
-  font-size: clamp(40px, 6vw, 70px);
+  font-size: clamp(34px, 5vw, 56px);
   color: var(--text-3);
 }
 .rep-sub {

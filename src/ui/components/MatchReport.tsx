@@ -42,27 +42,37 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
 
   return (
     <div className="report">
-      <Tabs
-        label="Secciones del resumen"
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'summary', label: 'Resumen' },
-          { id: 'chart', label: 'Evolución' },
-          { id: 'scorers', label: 'Goleadores' },
-          { id: 'progress', label: 'Progresión' },
-        ]}
-      />
+      {/* Fila de arriba: dos pestañas a cada lado y el marcador grande en el centro
+          (se ve en todas las pestañas). */}
+      <div className="rep-top">
+        <Tabs
+          label="Secciones del resumen"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'summary', label: 'Resumen' },
+            { id: 'chart', label: 'Evolución' },
+          ]}
+        />
+        <div className="rep-big-score" aria-label={`Resultado ${r.score.white} a ${r.score.blue}`}>
+          <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`}>{r.score.white}</span>
+          <span className="rep-big-sep">–</span>
+          <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
+        </div>
+        <Tabs
+          label="Más secciones del resumen"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'scorers', label: 'Goleadores' },
+            { id: 'progress', label: 'Progresión' },
+          ]}
+        />
+      </div>
       {tab === 'summary' && (
         <div className="rep-summary">
           <TeamFrame team="white" participants={match.participants} compact />
           <div className="rep-center">
-            {/* Marcador grande: el ganador en dorado. */}
-            <div className="rep-big-score">
-              <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`}>{r.score.white}</span>
-              <span className="rep-big-sep">–</span>
-              <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
-            </div>
             <div className="rep-sub">
               {r.penaltyScore ? `Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · ` : ''}
               {REASON[r.reason]} · {formatDuration(r.totalTimeMs)}
