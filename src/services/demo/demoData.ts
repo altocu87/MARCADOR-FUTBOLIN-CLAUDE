@@ -185,7 +185,6 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
       endCondition,
       goalsPerPeriod: pick([5, 5, 6, 7, 8, 10]),
       minutesPerPeriod: pick([2, 3, 3, 4, 5]),
-      ...(mode === 'chaos' ? { chaos: { doubleLastMinute: true, jokers: false } } : {}),
     };
   };
 

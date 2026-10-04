@@ -142,8 +142,7 @@ export function SetupScreen({ mode, initial }: { mode: MatchMode; initial?: Matc
         penaltyFirstTeam: prefs.penaltyFirstTeam,
         // Todos los partidos se guardan; en modo prueba van a los datos de prueba.
         testMode: false,
-        // Caos lleva siempre sus reglas especiales: no se eligen en esta pantalla.
-        ...(mode === 'chaos' ? { chaos: { jokers: false, doubleLastMinute: true } } : {}),
+        // Partido Loco: los hándicaps van siempre; no hay reglas que elegir aquí.
       },
   );
   const set = (patch: Partial<MatchConfig>) => setConfig((c) => ({ ...c, ...patch }));

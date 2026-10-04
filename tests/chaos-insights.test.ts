@@ -7,9 +7,16 @@ import {
   goalMoment,
   goalStreak,
   matchPointTeams,
+  advance,
+  getClock,
+  handicapRemaining,
+  handicapText,
+  pickHandicap,
   type EngineCommand,
+  type Handicap,
   type MatchConfig,
   type MatchState,
+  type ParticipantRef,
 } from '../src/match-engine';
 
 const P2 = [
@@ -64,17 +71,150 @@ describe('Caos: comodín', () => {
   });
 });
 
-describe('Caos: último minuto', () => {
-  it('goles con ≤60 s restantes valen doble', () => {
-    const m = run({ mode: 'chaos', endCondition: 'time', minutesPerPeriod: 2, chaos: { jokers: false, doubleLastMinute: true } });
-    m.at(30_000).cmd({ type: 'GOAL', team: 'white' });
-    m.at(60_000).cmd({ type: 'GOAL', team: 'white' });
-    expect(getScore(m.s).white).toBe(3);
+describe('Partido Loco: hándicaps', () => {
+  const P4 = [
+    { playerId: 'a', team: 'white' as const, slot: 1 as const, nameSnapshot: 'Ana' },
+    { playerId: 'c', team: 'white' as const, slot: 2 as const, nameSnapshot: 'Carlos' },
+    { playerId: 'b', team: 'blue' as const, slot: 1 as const, nameSnapshot: 'Bea' },
+    { playerId: 'd', team: 'blue' as const, slot: 2 as const, nameSnapshot: 'Dani' },
+  ];
+  const loco = (parts: ParticipantRef[] = P2) => {
+    let s: MatchState = createMatch('m', { ...DEFAULT_CONFIG, testMode: false, mode: 'chaos', goalsPerPeriod: 20 }, parts, 0);
+    s = dispatch(s, { type: 'SKIP_COUNTDOWN' }, 0).state;
+    return s;
+  };
+  const start = (s: MatchState, h: Handicap, t: number) => dispatch(s, { type: 'HANDICAP_START', handicap: h, nextAtMs: t + 45_000 }, t);
+
+  it('solo en Partido Loco', () => {
+    const s = run({ mode: 'quick' }).s;
+    expect(dispatch(s, { type: 'HANDICAP_START', handicap: { id: 'h', kind: 'double_all', durationMs: 30_000 }, nextAtMs: 0 }, 0).reason).toBe('rule_disabled');
   });
-  it('POR GOLES no tiene último minuto', () => {
-    const m = run({ mode: 'chaos', endCondition: 'goals', chaos: { jokers: false, doubleLastMinute: true } });
-    m.at(500_000).cmd({ type: 'GOAL', team: 'white' });
-    expect(getScore(m.s).white).toBe(1);
+
+  it('el anuncio para el reloj y los goles dobles duran 30 s de juego', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'double_all', team: 'both', durationMs: 30_000 }, 10_000).state;
+    expect(s.phase).toBe('handicap');
+    // Tiempo parado durante el anuncio: 5 s después sigue en 10 s de juego.
+    expect(getClock(s, 15_000).totalElapsedMs).toBe(10_000);
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 15_000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 16_000).state;
+    expect(getScore(s)).toEqual({ white: 2, blue: 0 });
+    // A los 30 s de juego termina: «vuelta a la normalidad» con el reloj parado.
+    s = advance(s, 45_000).state;
+    expect(s.phase).toBe('handicap');
+    expect(s.handicap?.stage).toBe('ending');
+    expect(s.events.some((e) => e.type === 'HANDICAP_END')).toBe(true);
+    // Sigue solo a los 3 s (o al tocar).
+    s = advance(s, 48_000).state;
+    expect(s.phase).toBe('playing');
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 50_000).state;
+    expect(getScore(s).white).toBe(3);
+  });
+
+  it('la pausa también para el hándicap', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'freeze_score', team: 'both', durationMs: 15_000 }, 0).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 0).state;
+    s = dispatch(s, { type: 'PAUSE' }, 5_000).state;
+    s = dispatch(s, { type: 'RESUME' }, 60_000).state;
+    expect(handicapRemaining(s, 60_000)).toBe(10_000);
+  });
+
+  it('marcador congelado: el gol se registra pero vale 0', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'freeze_score', team: 'both', durationMs: 15_000 }, 0).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 0).state;
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 1_000).state;
+    expect(getScore(s)).toEqual({ white: 0, blue: 0 });
+    expect(s.events.find((e) => e.type === 'GOAL')?.bonus).toEqual(['frozen']);
+  });
+
+  it('gol doble solo para un equipo', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'double_team', team: 'blue', durationMs: 30_000 }, 0).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 0).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1_000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 5_000).state;
+    expect(getScore(s)).toEqual({ white: 1, blue: 2 });
+  });
+
+  it('gol triple: vale 3, se gasta y −1 lo resta entero', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'triple_next', team: 'both', durationMs: null }, 0).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 0).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1_000).state;
+    expect(getScore(s).white).toBe(3);
+    expect(s.handicap).toBeUndefined();
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 5_000).state;
+    expect(getScore(s).white).toBe(4);
+    s = dispatch(s, { type: 'MINUS_ONE', team: 'white' }, 6_000).state;
+    s = dispatch(s, { type: 'MINUS_ONE', team: 'white' }, 7_000).state;
+    expect(getScore(s).white).toBe(0);
+  });
+
+  it('robo: el gol del que pierde quita uno al rival; anularlo lo devuelve', () => {
+    let s = loco();
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1_000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 5_000).state;
+    s = start(s, { id: 'h1', kind: 'steal', team: 'blue', durationMs: null }, 10_000).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 10_000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 11_000).state;
+    expect(getScore(s)).toEqual({ white: 1, blue: 1 });
+    expect(s.events.filter((e) => e.type === 'GOAL').pop()?.scoreAfter).toEqual({ white: 1, blue: 1 });
+    s = dispatch(s, { type: 'MINUS_ONE', team: 'blue' }, 12_000).state;
+    expect(getScore(s)).toEqual({ white: 2, blue: 0 });
+  });
+
+  it('penalti: gol o fallo y se sigue jugando', () => {
+    let s = loco();
+    s = start(s, { id: 'h1', kind: 'penalty', team: 'blue', durationMs: 0 }, 0).state;
+    expect(dispatch(s, { type: 'HANDICAP_GO' }, 0).accepted).toBe(false);
+    s = dispatch(s, { type: 'HANDICAP_PENALTY', scored: true }, 2_000).state;
+    expect(s.phase).toBe('playing');
+    expect(getScore(s)).toEqual({ white: 0, blue: 1 });
+    s = start(s, { id: 'h2', kind: 'penalty', team: 'white', durationMs: 0 }, 40_000).state;
+    s = dispatch(s, { type: 'HANDICAP_PENALTY', scored: false }, 41_000).state;
+    expect(getScore(s)).toEqual({ white: 0, blue: 1 });
+  });
+
+  it('un hándicap «hasta el siguiente» termina al anunciar el nuevo', () => {
+    let s = loco(P4);
+    s = start(s, { id: 'h1', kind: 'swap_positions', team: 'both', durationMs: null }, 0).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 0).state;
+    s = start(s, { id: 'h2', kind: 'weak_hand', team: 'both', durationMs: 20_000 }, 40_000).state;
+    expect(s.handicap?.replaced?.kind).toBe('swap_positions');
+    const end = s.events.find((e) => e.type === 'HANDICAP_END');
+    expect(end?.reason).toBe('replaced');
+  });
+
+  it('sorteo: nunca dobles para el que gana y sin cambios de sitio en 1 contra 1', () => {
+    let s = loco();
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1_000).state;
+    let seed = 1;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    for (let i = 0; i < 300; i += 1) {
+      const h = pickHandicap(s, `h${i}`, rnd);
+      expect(['swap_positions', 'transfer']).not.toContain(h.kind);
+      if (h.kind === 'double_team' || h.kind === 'steal') expect(h.team).toBe('blue');
+    }
+    const kinds = new Set(Array.from({ length: 300 }, (_, i) => pickHandicap(loco(P4), `x${i}`, rnd).kind));
+    expect(kinds.has('swap_positions')).toBe(true);
+    expect(kinds.has('transfer')).toBe(true);
+  });
+
+  it('los textos llevan los nombres de los jugadores', () => {
+    const t = handicapText({ id: 'h', kind: 'frozen_player', team: 'both', players: ['a', 'b'], durationMs: 15_000 }, P4);
+    expect(t.detail).toBe('Ana y Bea no se pueden mover durante 15 segundos.');
+  });
+
+  it('el hándicap termina con la parte', () => {
+    let s = createMatch('m', { ...DEFAULT_CONFIG, testMode: false, mode: 'chaos', endCondition: 'time', minutesPerPeriod: 1 }, P2, 0);
+    s = dispatch(s, { type: 'SKIP_COUNTDOWN' }, 0).state;
+    s = start(s, { id: 'h1', kind: 'swap_positions', team: 'both', durationMs: null }, 50_000).state;
+    s = dispatch(s, { type: 'HANDICAP_GO' }, 50_000).state;
+    s = advance(s, 70_000).state;
+    expect(s.phase).toBe('periodEnd');
+    expect(s.handicap).toBeUndefined();
   });
 });
 
