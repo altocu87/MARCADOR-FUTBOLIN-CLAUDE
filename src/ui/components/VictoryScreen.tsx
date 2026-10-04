@@ -81,6 +81,8 @@ export function VictoryScreen({
   const r = state.result!;
   const byTeam = (t: Team) => state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
   const winners = byTeam(r.winner);
+  // Con 3 o 4 jugadores por equipo las filas se compactan para que quepa todo.
+  const many = Math.max(byTeam('white').length, byTeam('blue').length) >= 3;
   const byId = new Map(players.map((p) => [p.id, p]));
 
   // Melodía del primer ganador (una vez, al aparecer la pantalla).
@@ -111,6 +113,12 @@ export function VictoryScreen({
 
   const facts = matchFacts(state);
 
+  // Filtro por logro: al tocar uno se resaltan quienes lo han conseguido y el resto se apaga.
+  // Solo uno a la vez; tocarlo otra vez lo quita.
+  const [filter, setFilter] = useState<string | null>(null);
+  const mark = (playerId: string) =>
+    filter === null ? undefined : entries?.get(playerId)?.unlocked.includes(filter) ? 'hl' : 'dim';
+
   const column = (team: Team, list: ParticipantRef[], winner: boolean, offset: number) => (
     <div className="vic-col">
       <div className={`vic-col-label vic-col-${team}`}>
@@ -124,13 +132,15 @@ export function VictoryScreen({
           photo={byId.get(p.playerId)?.photo}
           entry={entries?.get(p.playerId)}
           delay={0.7 + (offset + i) * 0.2}
+          mark={mark(p.playerId)}
+          avatarSize={many ? 38 : 46}
         />
       ))}
     </div>
   );
 
   return (
-    <div className={`overlay overlay-victory victory-${r.winner}`} aria-live="assertive">
+    <div className={`overlay overlay-victory victory-${r.winner} ${many ? 'vic-many' : ''}`} aria-live="assertive">
       {prefs.effects !== 'off' && <Confetti count={prefs.effects === 'full' ? 70 : 24} />}
       <AssetImage name="modo-clasificatorio" className="victory-bg" fallback={null} />
       <div className="victory-rays" aria-hidden="true" />
@@ -170,6 +180,7 @@ export function VictoryScreen({
         </div>
       </div>
 
+      {/* El marcador ocupa todo el hueco que dejan los jugadores: cuantos menos, más grande. */}
       <div className="vic-head">
         {/* Marcador grande, estilo televisión. */}
         <div className="vic-score">
@@ -198,10 +209,18 @@ export function VictoryScreen({
         </div>
         {achievements.length > 0 && (
           <div className="vic-ach">
-            <div className="vic-ach-title">🏅 LOGROS DESBLOQUEADOS</div>
-            <div className="vic-ach-list">
+            <div className="vic-ach-title">
+              🏅 LOGROS DESBLOQUEADOS <span className="vic-ach-hint">· toca uno para ver quién lo ha conseguido</span>
+            </div>
+            <div className={`vic-ach-list ${filter ? 'filtering' : ''}`}>
               {achievements.map(({ def, who }, i) => (
-                <div key={def!.id} className={`vic-ach-card rarity-${def!.rarity}`} style={{ '--d': `${1.4 + i * 0.2}s` } as CSSProperties}>
+                <button
+                  key={def!.id}
+                  className={`vic-ach-card rarity-${def!.rarity} ${filter === def!.id ? 'selected' : ''}`}
+                  style={{ '--d': `${1.4 + i * 0.2}s` } as CSSProperties}
+                  onClick={() => setFilter((f) => (f === def!.id ? null : def!.id))}
+                  aria-pressed={filter === def!.id}
+                >
                   <AchievementIcon id={def!.id} glyph={def!.icon} rarity={def!.rarity} size={34} />
                   <div className="vic-ach-text">
                     <div className="vic-ach-name">
@@ -210,7 +229,7 @@ export function VictoryScreen({
                     <div className="vic-ach-desc">{def!.description}</div>
                     <div className="vic-ach-who">{who.join(' · ')}</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -238,11 +257,16 @@ function PlayerProgressRow({
   photo,
   entry,
   delay,
+  mark,
+  avatarSize,
 }: {
   name: string;
   photo?: string;
   entry?: MatchProgressEntry;
   delay: number;
+  /** Filtro de logro activo: «hl» = lo ha conseguido (resaltado), «dim» = no (apagado). */
+  mark?: 'hl' | 'dim';
+  avatarSize: number;
 }) {
   const before = entry ? entry.xpAfter - entry.xpGained : 0;
   const leveled = entry ? entry.levelAfter > entry.levelBefore : false;
@@ -298,13 +322,13 @@ function PlayerProgressRow({
 
   return (
     <button
-      className={`vic-row ${open ? 'open' : ''}`}
+      className={`vic-row ${open ? 'open' : ''} ${mark ?? ''}`}
       style={{ '--d': `${delay - 0.3}s` } as CSSProperties}
       onClick={() => entry && setOpen((o) => !o)}
       aria-expanded={open}
       aria-label={`${name}${entry ? `: +${entry.xpGained} XP. Toca para ver el desglose.` : ''}`}
     >
-      <Avatar name={name} photo={photo} size={46} />
+      <Avatar name={name} photo={photo} size={avatarSize} />
       <span className="vic-row-main">
         <span className="vic-row-top">
           <strong className="vic-name">{name}</strong>

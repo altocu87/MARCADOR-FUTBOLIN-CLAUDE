@@ -1790,9 +1790,16 @@
 .vic-head {
   position: relative;
   z-index: 2;
+  /* Se queda con el alto libre (los jugadores y logros miden lo suyo) y el marcador
+     crece hasta llenarlo. */
+  flex: 1 1 0;
+  min-height: 74px;
+  align-self: stretch;
+  container-type: size;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
 }
 .overlay-victory .victory-title {
@@ -1808,17 +1815,20 @@
 }
 /* Marcador grande estilo televisión. */
 .vic-score {
+  /* Tamaño de las cifras según el alto disponible (resto: rótulos y datos del partido). */
+  /* Limitado también por el ancho para que nunca se salga por los lados. */
+  --num: clamp(42px, min(calc((100cqh - 30px) / 1.1), calc(100cqi / 6.5)), 200px);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 2px 22px;
+  gap: calc(var(--num) * 0.25);
+  padding: 2px calc(var(--num) * 0.4);
   border-radius: 14px;
   background: rgba(4, 8, 15, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.15);
   animation: pop-in 0.4s 0.3s both;
 }
 .vic-score-team {
-  font-size: 16px;
+  font-size: max(16px, calc(var(--num) * 0.2));
   font-weight: 900;
   letter-spacing: 0.2em;
   opacity: 0.55;
@@ -1833,7 +1843,7 @@
   color: #6fb6f5;
 }
 .vic-score-num {
-  font-size: 42px;
+  font-size: var(--num);
   font-weight: 900;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
@@ -1844,7 +1854,7 @@
   text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
 }
 .vic-score-sep {
-  font-size: 30px;
+  font-size: calc(var(--num) * 0.7);
   font-weight: 900;
   color: var(--text-3);
 }
@@ -1873,7 +1883,7 @@
 .vic-body {
   position: relative;
   z-index: 2;
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   width: 100%;
   max-width: 1150px;
@@ -2092,7 +2102,7 @@
 }
 /* El título se ajusta al hueco entre los botones. */
 .overlay-victory .vic-title-wrap .victory-title {
-  font-size: min(58px, calc(100cqi / 10.6));
+  font-size: min(58px, calc(100cqi / 12.5));
 }
 /* Lados de la barra con el mismo ancho: el título queda centrado. */
 .vic-side {
@@ -2162,9 +2172,13 @@
   margin-bottom: 3px;
 }
 .vic-ach-list {
+  /* Una sola fila (si hay muchos, se desliza de lado) para dejar el alto al marcador. */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
   gap: 6px;
+  overflow-x: auto;
+  padding: 2px;
 }
 .vic-ach-card {
   display: flex;
@@ -2174,7 +2188,58 @@
   border-radius: 12px;
   background: rgba(7, 16, 28, 0.9);
   border: 1px solid var(--line);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
   animation: pop-in 0.4s var(--d, 0s) both;
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+.vic-ach-card:active {
+  transform: scale(0.98);
+}
+.vic-ach-hint {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+/* Filtro activo: el logro elegido brilla y los demás se apagan. */
+.vic-ach-list.filtering .vic-ach-card:not(.selected) {
+  filter: grayscale(0.7) brightness(0.5);
+}
+.vic-ach-list .vic-ach-card.selected {
+  border: 2px solid var(--ranked);
+  box-shadow: 0 0 16px rgba(242, 201, 76, 0.6);
+}
+/* Jugadores con el filtro activo: los que tienen el logro resaltados, el resto en sombra. */
+.vic-row {
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+.vic-row.hl {
+  border: 2px solid var(--ranked);
+  box-shadow: 0 0 18px rgba(242, 201, 76, 0.55);
+}
+.vic-row.dim {
+  filter: grayscale(0.8) brightness(0.4);
+}
+/* 3 o 4 jugadores por equipo: filas más bajas. */
+.vic-many .vic-col {
+  gap: 4px;
+}
+.vic-many .vic-row {
+  padding: 4px 10px 4px 5px;
+  gap: 8px;
+}
+.vic-many .vic-row-main {
+  gap: 2px;
+}
+.vic-many .vic-name {
+  font-size: 15px;
+}
+.vic-many .vic-bar {
+  height: 17px;
+}
+.vic-many .vic-col-label {
+  font-size: 16px;
 }
 .vic-ach-card.rarity-rare {
   border-color: #6fb6f5;
