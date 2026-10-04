@@ -21,5 +21,7 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
   equipo que está eligiendo (1280×720 .webp).
 - Pendientes (llegaron dañadas en el ZIP; mientras, se ve el icono de respaldo):
   - `categoria-diamond` (archivo vacío).
+  - `categoria-scrap` (Chatarra) y `categoria-wood` (Madera): rangos nuevos, aún sin imagen.
+  - `categoria-elite` ya no se usa (el rango Élite desapareció).
   - Fila inferior de `plantilla-logros-03` (imagen cortada): `logro-hat_trick`, `logro-scorer50`,
     `logro-first_blood`, `logro-ranked_debut`, `logro-platinum`.

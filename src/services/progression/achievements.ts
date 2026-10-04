@@ -110,7 +110,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   A({ id: 'first_blood', name: 'Primera sangre', description: 'Marca (asignado) el primer gol de un partido.', category: 'goles', rarity: 'common', secret: true, icon: '◉', check: (c) => c.firstGoalOfMatch }),
   // Competición
   A({ id: 'ranked_debut', name: 'Competidor', description: 'Juega tu primer partido clasificatorio.', category: 'competicion', rarity: 'common', icon: '⚔', check: (c) => c.rankedPlayed >= 1 }),
-  A({ id: 'platinum', name: 'Platino', description: 'Alcanza 1400 de ELO.', category: 'competicion', rarity: 'rare', icon: '◆', check: (c) => c.elo >= 1400 }),
+  A({ id: 'platinum', name: 'Platino', description: 'Alcanza 1500 de ELO.', category: 'competicion', rarity: 'rare', icon: '◆', check: (c) => c.elo >= 1500 }),
   A({ id: 'diamond', name: 'Diamante', description: 'Alcanza 1600 de ELO.', category: 'competicion', rarity: 'epic', icon: '◈', check: (c) => c.elo >= 1600 }),
   A({ id: 'elite', name: 'Élite', description: 'Alcanza 1800 de ELO.', category: 'competicion', rarity: 'epic', icon: '♔', title: 'Élite', check: (c) => c.elo >= 1800 }),
   A({ id: 'giant_killer', name: 'Matagigantes', description: 'Gana un clasificatorio contra rivales con 150+ ELO más.', category: 'competicion', rarity: 'rare', icon: '⚒', title: 'Matagigantes', check: (c) => c.won && c.match.config.mode === 'ranked' && c.eloGapBefore >= 150 }),

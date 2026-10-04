@@ -55,7 +55,8 @@ Se distingue entre **requisito fijado** (del documento maestro), **propuesta con
   expectativa con la media de cada equipo y cada jugador aplica su propio K. Victoria por penaltis
   cuenta como victoria (1). Multiplicador por diferencia de goles disponible pero **desactivado**;
   si se activa, un partido decidido en penaltis usa 1,00.
-- **Categorías**: Bronce <1000, Plata 1000, Oro 1200, Platino 1400, Diamante 1600, Élite 1800. Sin histéresis.
+- **Categorías (rangos)**: Chatarra <1225 (se empieza aquí), Madera 1225, Bronce 1275, Plata 1350, Oro 1425,
+  Platino 1500, Diamante 1600 (máximo). Sin histéresis. En la Previsión, la foto lleva un marco del rango.
 - **XP** (se acumulan): completar +50, victoria +100 / derrota +25, victoria clasificatoria +50,
   prórroga +25, penaltis +25, logro +25/+50/+100 según rareza. Rápido y Caos dan XP; solo
   Clasificatorio modifica ELO. «Récord personal +50» y «ganar torneo +300» no se conceden (pendientes).

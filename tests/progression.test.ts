@@ -54,10 +54,13 @@ describe('ELO', () => {
     expect(p2.players.get('a')).toEqual(p1.players.get('a'));
   });
   it('categorías por umbral', () => {
-    expect(categoryFor(999).name).toBe('Bronce');
-    expect(categoryFor(1000).name).toBe('Plata');
-    expect(categoryFor(1200).name).toBe('Oro');
-    expect(categoryFor(1800).name).toBe('Élite');
+    expect(categoryFor(1200).name).toBe('Chatarra');
+    expect(categoryFor(1225).name).toBe('Madera');
+    expect(categoryFor(1275).name).toBe('Bronce');
+    expect(categoryFor(1350).name).toBe('Plata');
+    expect(categoryFor(1425).name).toBe('Oro');
+    expect(categoryFor(1500).name).toBe('Platino');
+    expect(categoryFor(1800).name).toBe('Diamante');
   });
 });
 

@@ -12,6 +12,7 @@ import {
 import {
   autoScorers,
   duel,
+  lastMeetings,
   pairStats,
   periodDigest,
   personalGoals,
@@ -144,6 +145,18 @@ describe('Estadísticas ampliadas', () => {
     const m = makeMatch({ white: ['a'], blue: ['b', 'c'], goals: 'WWB' });
     const scorers = autoScorers(m)!;
     expect(Object.values(scorers)).toEqual(['a', 'a']);
+  });
+  it('últimos enfrentamientos: más reciente primero, marcador desde las alineaciones de hoy', () => {
+    const ms = [
+      makeMatch({ white: ['a'], blue: ['b'], goals: 'WW', at: 10 }),
+      makeMatch({ white: ['b'], blue: ['a'], goals: 'WWB', at: 20 }),
+      makeMatch({ white: ['a'], blue: ['c'], goals: 'W', at: 30 }),
+    ];
+    const l = lastMeetings(ms, ['a'], ['b'], 3);
+    expect(l).toHaveLength(2);
+    // El del día 20: «b» jugó de Blanco y ganó 2–1; visto con «a» de Blanco es 1–2 y gana Azul.
+    expect(l[0]).toMatchObject({ white: 1, blue: 2, winner: 'blue' });
+    expect(l[1]).toMatchObject({ white: 2, blue: 0, winner: 'white' });
   });
   it('resumen del periodo', () => {
     const ms = [makeMatch({ white: ['a'], blue: ['b'], goals: 'WWWWB', at: 10 }), makeMatch({ white: ['a'], blue: ['b'], goals: 'WB B', at: 20 })];

@@ -30,14 +30,22 @@ export interface CategoryDef {
   color: string;
 }
 
+/** Rangos de menor a mayor. Se empieza en Chatarra (ELO inicial 1200) y hay que ganarse el resto. */
 export const CATEGORIES: CategoryDef[] = [
-  { id: 'bronze', name: 'Bronce', min: -Infinity, color: '#C98A54' },
-  { id: 'silver', name: 'Plata', min: 1000, color: '#C9D3E0' },
-  { id: 'gold', name: 'Oro', min: 1200, color: '#F2C94C' },
-  { id: 'platinum', name: 'Platino', min: 1400, color: '#7FE3D6' },
+  { id: 'scrap', name: 'Chatarra', min: -Infinity, color: '#9C8F86' },
+  { id: 'wood', name: 'Madera', min: 1225, color: '#B5814A' },
+  { id: 'bronze', name: 'Bronce', min: 1275, color: '#C98A54' },
+  { id: 'silver', name: 'Plata', min: 1350, color: '#C9D3E0' },
+  { id: 'gold', name: 'Oro', min: 1425, color: '#F2C94C' },
+  { id: 'platinum', name: 'Platino', min: 1500, color: '#7FE3D6' },
   { id: 'diamond', name: 'Diamante', min: 1600, color: '#8AB8FF' },
-  { id: 'elite', name: 'Élite', min: 1800, color: '#E07BFF' },
 ];
+
+/** Rango siguiente (null si ya es el máximo). */
+export function nextCategory(category: CategoryDef): CategoryDef | null {
+  const i = CATEGORIES.findIndex((c) => c.id === category.id);
+  return CATEGORIES[i + 1] ?? null;
+}
 
 export function categoryFor(elo: number): CategoryDef {
   let cat = CATEGORIES[0];
