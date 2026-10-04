@@ -64,13 +64,15 @@ export function PrematchScreen({
 
   return (
     <ScreenFrame
-      title="Previsión"
-      subtitle="Clasificatorio"
+      className="pre-screen"
+      // Tipo de partido en grande y centrado, con el mismo cartel de neón que el marcador.
+      title={<span className="match-mode mode-chip-ranked">{MODE_LABEL[config.mode]}</span>}
       onBack={() => (extras?.tournament ? navigate({ name: 'tournamentDetail', id: extras.tournament.id }) : navigate({ name: 'select', config, participants }))}
       right={demoMode ? <TestModeBadge /> : undefined}
     >
       <div className="pre-layout">
         {teamCard('white')}
+        <div className="pre-center-col">
         <div className="pre-center">
           {!prediction ? (
             <div className="notice warn">Clasificación pendiente: la progresión está desactivada en Ajustes.</div>
@@ -87,7 +89,7 @@ export function PrematchScreen({
                 <span style={{ width: `${prediction.whitePct}%` }} />
               </div>
               <div className="muted" style={{ fontSize: 13 }}>
-                Blanco {prediction.whitePct} % · Azul {prediction.bluePct} % · Confianza {prediction.confidence}
+                Confianza {prediction.confidence}
               </div>
               <div className="dim" style={{ fontSize: 11 }}>
                 {prediction.directMatches} enfrentamientos directos · pesos ELO {(prediction.weights.elo * 100).toFixed(0)} % ·
@@ -124,10 +126,11 @@ export function PrematchScreen({
           <div className="dim" style={{ fontSize: 10, marginTop: 'auto' }}>
             Estimación, nunca una certeza. Fórmula propuesta pendiente de aprobación.
           </div>
-          {/* Empezar, abajo del centro: así las fichas de los equipos tienen todo el alto. */}
-          <button className="btn btn-primary btn-lg pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
-            Empezar partido
-          </button>
+        </div>
+        {/* Empezar, bajo la tarjeta de la previsión: así las fichas de los equipos tienen todo el alto. */}
+        <button className="btn btn-primary btn-lg pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
+          Empezar partido
+        </button>
         </div>
         {teamCard('blue')}
       </div>
@@ -186,7 +189,7 @@ function PlayerCard({
         <div className="pre-info">
           <div className="pre-name">{name}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            ELO {prog.elo} · <span style={{ color: cat.color, fontWeight: 800 }}>{cat.name}</span> · Nv {prog.level}
+            ELO {prog.elo} · <span className="pre-cat" style={{ color: cat.color, fontWeight: 800 }}>{cat.name}</span> · Nv {prog.level}
           </div>
           <div className="pre-form">{form}</div>
         </div>

@@ -577,11 +577,95 @@
   border: 1px solid var(--line);
   background: rgba(17, 34, 59, 0.7);
 }
+/* Cabecera: tipo de partido grande y centrado. */
+.pre-screen .screen-header {
+  position: relative;
+  height: 64px;
+}
+.pre-screen .screen-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  flex: none;
+  overflow: visible;
+  padding: 0 !important;
+}
+.pre-screen .screen-title .match-mode {
+  display: inline-block;
+  font-size: 28px;
+  letter-spacing: 0.1em;
+}
+.pre-screen .screen-header > .badge {
+  margin-left: auto;
+}
+
+/* Equipo Blanco con fondo blanco y equipo Azul en celeste claro: se ve de un vistazo
+   qué equipo es cada uno. Textos oscuros para que se lean sobre el fondo claro. */
+.pre-white,
+.pre-blue {
+  --text: #0b1626;
+  --text-2: #33465f;
+  --text-3: #5a6b82;
+  color: var(--text);
+}
 .pre-white {
-  border-color: rgba(238, 246, 255, 0.5);
+  background: linear-gradient(180deg, #ffffff, #e3ebf5);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 18px rgba(238, 246, 255, 0.35);
 }
 .pre-blue {
-  border-color: rgba(23, 109, 188, 0.8);
+  background: linear-gradient(180deg, #e2f3ff, #a9d6fa);
+  border: 2px solid #7cc4ff;
+  box-shadow: 0 0 18px rgba(98, 180, 255, 0.4);
+}
+.pre-white > .label,
+.pre-blue > .label {
+  color: var(--text);
+  font-weight: 900;
+}
+/* Fichas dentro del equipo: blanco translúcido sobre el fondo claro. */
+.pre-team.pre-white .pre-player-big,
+.pre-team.pre-blue .pre-player-big {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(11, 22, 38, 0.12);
+}
+/* El nombre del rango, algo más oscuro para que se lea sobre fondo claro. */
+.pre-white .pre-rank > span,
+.pre-blue .pre-rank > span,
+.pre-white .pre-cat,
+.pre-blue .pre-cat {
+  filter: brightness(0.6) saturate(1.3);
+}
+.pre-white .pre-rankbar,
+.pre-blue .pre-rankbar {
+  background: rgba(11, 22, 38, 0.12);
+}
+/* Forma reciente con más contraste sobre el fondo claro. */
+.pre-white .form-chip.G,
+.pre-blue .form-chip.G {
+  background: rgba(61, 220, 151, 0.35);
+  color: #0b7a4b;
+}
+.pre-white .form-chip.P,
+.pre-blue .form-chip.P {
+  background: rgba(255, 77, 94, 0.22);
+  color: #c21f33;
+}
+.pre-white .form-chip.E,
+.pre-blue .form-chip.E {
+  background: rgba(11, 22, 38, 0.12);
+  color: #33465f;
+}
+/* Columna central: tarjeta de la previsión y, debajo, el botón de empezar. */
+.pre-center-col {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pre-center-col .pre-center {
+  flex: 1;
+  min-height: 0;
 }
 .pre-player {
   display: flex;
@@ -744,7 +828,7 @@
   border-radius: 12px;
   overflow: hidden;
   background: linear-gradient(135deg, #1d3a63, #0f2140);
-  color: var(--text-2);
+  color: #a6b7cf;
   font-weight: 900;
 }
 .pre-sm .rank-photo {
