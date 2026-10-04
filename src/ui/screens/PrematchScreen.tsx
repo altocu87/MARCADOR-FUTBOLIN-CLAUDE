@@ -6,7 +6,7 @@ import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
 import type { Player, StoredMatch } from '../../services/persistence';
 import { initials } from '../../services/players';
 import { nextCategory, predict, type PlayerProgress } from '../../services/progression';
-import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
+import { MODE_LABEL, Modal, ScreenFrame, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
 import { CategoryBadge } from '../components/graphics';
 
@@ -21,6 +21,8 @@ export function PrematchScreen({
 }) {
   const { navigate, matches, progression, players, demoMode } = useApp();
   const [info, setInfo] = useState(false);
+  // Partido de la racha que se está consultando (ventana con sus datos).
+  const [detail, setDetail] = useState<{ match: StoredMatch; playerId: string } | null>(null);
   const ids = (team: Team) => participants.filter((p) => p.team === team).map((p) => p.playerId);
   // Estadísticas clasificatorias de cada jugador: balance de victorias.
   const stats = useMemo(() => {
@@ -39,6 +41,7 @@ export function PrematchScreen({
           .slice(-10)
           .map((m) => ({
             id: m.id,
+            match: m,
             won: m.result.winner === m.participants.find((x) => x.playerId === p.playerId)!.team,
             same: same(m),
           })),
@@ -93,7 +96,9 @@ export function PrematchScreen({
             prog={progression?.players.get(p.playerId)}
             stats={stats.get(p.playerId)}
             recent={recent.get(p.playerId) ?? []}
+            team={team}
             size={size}
+            onOpen={(match) => setDetail({ match, playerId: p.playerId })}
           />
         ))}
       </div>
@@ -112,48 +117,52 @@ export function PrematchScreen({
       <div className="pre-layout">
         {teamCard('white')}
         <div className="pre-center-col">
-        <div className="pre-center">
-          <div className="pre-center-head">
-            <div className="label">Pronóstico</div>
-            {/* Detalles del cálculo, a la vista solo si se pulsa la «i». */}
-            {prediction?.available && (
-              <button className={`pre-info-btn ${info ? 'on' : ''}`} onClick={() => setInfo((v) => !v)} aria-expanded={info} aria-label="Cómo se calcula">
-                i
-              </button>
-            )}
+          {/* «Pronóstico» enlazado con una línea de neón a los porcentajes de los dos equipos. */}
+          <div className="pre-link">
+            <span className="pre-link-line" aria-hidden="true" />
+            <span className="pre-link-pill">
+              PRONÓSTICO
+              {prediction?.available && (
+                <button className={`pre-info-btn ${info ? 'on' : ''}`} onClick={() => setInfo((v) => !v)} aria-expanded={info} aria-label="Cómo se calcula">
+                  i
+                </button>
+              )}
+            </span>
           </div>
           {!prediction ? (
             <div className="notice warn">Clasificación pendiente: la progresión está desactivada en Ajustes.</div>
           ) : !prediction.available ? (
             <div className="notice">{prediction.reason ?? 'Datos insuficientes.'} Puedes jugar igualmente.</div>
           ) : null}
-          {/* Últimos enfrentamientos entre estos mismos equipos. */}
-          <div className="pre-meetings">
-            <div className="label">Últimos enfrentamientos</div>
-            {meetings.length === 0 ? (
-              <div className="dim" style={{ fontSize: 13 }}>Primer enfrentamiento entre estos equipos.</div>
-            ) : (
-              meetings.map((m) => (
-                <div key={m.match.id} className="pre-meeting" title={MODE_LABEL[m.match.config.mode]}>
-                  <span className="pre-meeting-date">
-                    {new Date(m.match.finishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                  </span>
-                  <span className="pre-meeting-score">
-                    <i className="pre-dot white" aria-label="Blanco" />
-                    <b className={m.winner === 'white' ? 'won' : ''}>{m.white}</b>
-                    <span className="dim">–</span>
-                    <b className={m.winner === 'blue' ? 'won' : ''}>{m.blue}</b>
-                    <i className="pre-dot blue" aria-label="Azul" />
-                  </span>
-                </div>
-              ))
+          {/* Tarjeta propia: últimos enfrentamientos entre estos mismos equipos. */}
+          <div className="pre-center">
+            <div className="pre-meetings">
+              <div className="label">Últimos enfrentamientos</div>
+              {meetings.length === 0 ? (
+                <div className="dim" style={{ fontSize: 13 }}>Primer enfrentamiento entre estos equipos.</div>
+              ) : (
+                meetings.map((m) => (
+                  <div key={m.match.id} className="pre-meeting" title={MODE_LABEL[m.match.config.mode]}>
+                    <span className="pre-meeting-date">
+                      {new Date(m.match.finishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </span>
+                    <span className="pre-meeting-score">
+                      <i className="pre-dot white" aria-label="Blanco" />
+                      <b className={m.winner === 'white' ? 'won' : ''}>{m.white}</b>
+                      <span className="dim">–</span>
+                      <b className={m.winner === 'blue' ? 'won' : ''}>{m.blue}</b>
+                      <i className="pre-dot blue" aria-label="Azul" />
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+            {rivalry && (
+              <div className="rivalry" style={{ fontSize: 12, alignSelf: 'center' }}>
+                ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
+              </div>
             )}
           </div>
-          {rivalry && (
-            <div className="rivalry" style={{ fontSize: 12, alignSelf: 'center' }}>
-              ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
-            </div>
-          )}
           {/* Panel de la «i»: confianza, cómo se calcula y aviso. */}
           {info && prediction?.available && (
             <button className="pre-info-panel" onClick={() => setInfo(false)}>
@@ -166,14 +175,15 @@ export function PrematchScreen({
               <span className="dim">Toca para cerrar</span>
             </button>
           )}
-        </div>
-        {/* Empezar, bajo la tarjeta de la previsión: así las fichas de los equipos tienen todo el alto. */}
-        <button className="btn btn-primary btn-lg pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
-          Empezar partido
-        </button>
+          {/* Empezar: neón verde, «EMPEZAR» arriba y «PARTIDO» abajo ocupando todo el botón. */}
+          <button className="pre-start" onClick={() => navigate({ name: 'match', config, participants, extras })}>
+            <span>EMPEZAR</span>
+            <span>PARTIDO</span>
+          </button>
         </div>
         {teamCard('blue')}
       </div>
+      {detail && <MatchDetail match={detail.match} playerId={detail.playerId} onClose={() => setDetail(null)} />}
     </ScreenFrame>
   );
 }
@@ -190,25 +200,43 @@ function sameTeams(m: StoredMatch, whiteIds: string[], blueIds: string[]): boole
 
 interface RecentGame {
   id: string;
+  match: StoredMatch;
   won: boolean;
   /** Jugado entre estos mismos dos equipos. */
   same: boolean;
 }
 
-/** Últimos 10 clasificatorios (G/P), del más antiguo al más reciente; los de este mismo duelo, resaltados. */
-function RecentForm({ games }: { games: RecentGame[] }) {
+/**
+ * Últimos 10 clasificatorios (G/P). El más reciente queda hacia el centro de la pantalla
+ * (a la derecha en Blanco, a la izquierda en Azul) y bien nítido; los más antiguos se van
+ * apagando hacia el borde. Los jugados contra este mismo equipo, resaltados en dorado.
+ */
+function RecentForm({ games, team, onOpen }: { games: RecentGame[]; team: Team; onOpen: (m: StoredMatch) => void }) {
   if (games.length === 0) return <span className="dim">Sin clasificatorios</span>;
+  // games llega del más antiguo al más reciente.
+  const ordered = team === 'white' ? games : [...games].reverse();
+  const n = games.length;
   return (
-    <span className="pre-recent" aria-label={`Últimos clasificatorios: ${games.map((g) => (g.won ? 'G' : 'P')).join(' ')}`}>
-      {games.map((g) => (
-        <span
-          key={g.id}
-          className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''}`}
-          title={g.same ? 'Contra este mismo equipo' : undefined}
-        >
-          {g.won ? 'G' : 'P'}
-        </span>
-      ))}
+    <span
+      className={`pre-recent pre-recent-${team}`}
+      aria-label={`Últimos clasificatorios, del más antiguo al más reciente: ${games.map((g) => (g.won ? 'G' : 'P')).join(' ')}`}
+    >
+      {ordered.map((g) => {
+        // 0 = el más reciente.
+        const age = n - 1 - games.indexOf(g);
+        return (
+          // Al tocarla se abre una ventana con los datos de ese partido.
+          <button
+            key={g.id}
+            className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''} ${age === 0 ? 'newest' : ''}`}
+            style={{ opacity: Math.max(0.45, 1 - age * 0.065) }}
+            title={`${age === 0 ? 'El más reciente' : `Hace ${age + 1} partidos`}${g.same ? ' · contra este mismo equipo' : ''}`}
+            onClick={() => onOpen(g.match)}
+          >
+            {g.won ? 'G' : 'P'}
+          </button>
+        );
+      })}
     </span>
   );
 }
@@ -237,16 +265,20 @@ function PlayerCard({
   prog,
   stats,
   recent,
+  team,
   size,
+  onOpen,
 }: {
   name: string;
   player?: Player;
   prog?: PlayerProgress;
   stats?: PlayerStats;
   recent: RecentGame[];
+  team: Team;
   size: 'xl' | 'lg' | 'sm';
+  onOpen: (m: StoredMatch) => void;
 }) {
-  const form = <RecentForm games={recent} />;
+  const form = <RecentForm games={recent} team={team} onOpen={onOpen} />;
   if (!prog) {
     return (
       <div className="pre-player">
@@ -302,12 +334,73 @@ function PlayerCard({
       </div>
       {/* Cuánto falta para el siguiente rango y forma reciente, a todo el ancho de la ficha. */}
       <div className="pre-player-bottom">
-        <div className="pre-rankbar" style={{ '--cat': cat.color } as CSSProperties}>
-          <span style={{ width: `${Math.round(pct * 100)}%` }} />
+        {/* Barra y texto en la misma línea para ahorrar alto. */}
+        <div className="pre-rankrow">
+          <div className="pre-rankbar" style={{ '--cat': cat.color } as CSSProperties}>
+            <span style={{ width: `${Math.round(pct * 100)}%` }} />
+          </div>
+          <div className="pre-rankbar-text">{next ? `Faltan ${next.min - prog.elo} para ${next.name}` : 'Rango máximo'}</div>
         </div>
-        <div className="pre-rankbar-text">{next ? `Faltan ${next.min - prog.elo} para ${next.name}` : 'Rango máximo'}</div>
-        <div className="pre-form">{form}</div>
+        <div className={`pre-form pre-form-${team}`}>{form}</div>
       </div>
     </div>
+  );
+}
+
+/** Ventana con los datos de un partido de la racha: fecha, tipo, resultado y equipos. */
+function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; playerId: string; onClose: () => void }) {
+  const r = match.result;
+  const names = (t: Team) =>
+    match.participants
+      .filter((p) => p.team === t)
+      .sort((a, b) => a.slot - b.slot)
+      .map((p) => p.nameSnapshot);
+  const mine = match.participants.find((p) => p.playerId === playerId);
+  const won = mine?.team === r.winner;
+  const side = (t: Team) => (
+    <div className={`md-team md-${t} ${r.winner === t ? 'won' : ''}`}>
+      <div className="md-team-label">
+        {t === 'white' ? 'BLANCO' : 'AZUL'}
+        {r.winner === t && ' 🏆'}
+      </div>
+      {names(t).map((n) => (
+        <div key={n} className={`md-name ${mine?.team === t && n === mine.nameSnapshot ? 'me' : ''}`}>
+          {n}
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <Modal
+      title={MODE_LABEL[match.config.mode]}
+      onClose={onClose}
+      actions={
+        <button className="btn btn-primary" onClick={onClose}>
+          Cerrar
+        </button>
+      }
+    >
+      <div className="md">
+        <div className="md-meta">
+          {new Date(match.finishedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          {mine && <b className={won ? 'md-won' : 'md-lost'}>{won ? ' · Victoria' : ' · Derrota'} de {mine.nameSnapshot}</b>}
+        </div>
+        <div className="md-score">
+          {side('white')}
+          <div className="md-nums">
+            <span className={r.winner === 'white' ? 'won' : ''}>{r.score.white}</span>
+            <span className="md-sep">–</span>
+            <span className={r.winner === 'blue' ? 'won' : ''}>{r.score.blue}</span>
+          </div>
+          {side('blue')}
+        </div>
+        {r.penaltyScore && (
+          <div className="md-meta">
+            Penaltis {r.penaltyScore.white}–{r.penaltyScore.blue}
+          </div>
+        )}
+        {r.reason === 'golden_goal' && <div className="md-meta">Gol de oro en la prórroga</div>}
+      </div>
+    </Modal>
   );
 }
