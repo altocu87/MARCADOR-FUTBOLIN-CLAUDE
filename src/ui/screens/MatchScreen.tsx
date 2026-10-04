@@ -165,7 +165,6 @@ export function MatchScreen({
           inTournament={!!extras?.tournament}
           onStats={goSummary}
           onRematch={() => navigate({ name: 'match', config: state.config, participants: swapSides(state.participants), extras: undefined })}
-          onNewMatch={() => navigate({ name: 'setup', mode: state.config.mode })}
           onTournament={() => extras?.tournament && navigate({ name: 'tournamentDetail', id: extras.tournament.id })}
           onHome={() => navigate({ name: 'home' })}
         />

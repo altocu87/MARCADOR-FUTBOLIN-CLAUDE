@@ -65,7 +65,6 @@ export function VictoryScreen({
   inTournament,
   onStats,
   onRematch,
-  onNewMatch,
   onTournament,
   onHome,
 }: {
@@ -75,7 +74,6 @@ export function VictoryScreen({
   inTournament: boolean;
   onStats: () => void;
   onRematch: () => void;
-  onNewMatch: () => void;
   onTournament: () => void;
   onHome: () => void;
 }) {
@@ -138,24 +136,37 @@ export function VictoryScreen({
       <AssetImage name="modo-clasificatorio" className="victory-bg" fallback={null} />
       <div className="victory-rays" aria-hidden="true" />
 
-      {/* Inicio y estadísticas: iconos en las esquinas de arriba. */}
-      <button className="vic-icon-btn vic-home" onClick={onHome} aria-label="Inicio" title="Inicio">
-        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 11.5 12 4l9 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M5.5 10v9.5h4.5V14h4v5.5h4.5V10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
-        </svg>
-      </button>
-      <button className="vic-icon-btn vic-stats" onClick={onStats} disabled={!save} aria-label="Ver estadísticas" title="Estadísticas">
-        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 20h16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          <rect x="5.5" y="12" width="3" height="6" rx="1" fill="currentColor" />
-          <rect x="10.5" y="7" width="3" height="11" rx="1" fill="currentColor" />
-          <rect x="15.5" y="4" width="3" height="14" rx="1" fill="currentColor" />
-        </svg>
-      </button>
+      {/* Barra de arriba: Inicio · título · Revancha (o Volver al torneo) · Estadísticas. */}
+      <div className="vic-topbar">
+        <button className="vic-icon-btn vic-home" onClick={onHome} aria-label="Inicio" title="Inicio">
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11.5 12 4l9 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5.5 10v9.5h4.5V14h4v5.5h4.5V10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div className="vic-title-wrap">
+          <div className="victory-title">¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
+        </div>
+        {inTournament ? (
+          <button className="btn btn-primary vic-main" onClick={onTournament} disabled={!save}>
+            Volver al torneo
+          </button>
+        ) : (
+          <button className="btn btn-primary vic-main" onClick={onRematch} disabled={!save} title="Mismos jugadores cambiando de lado">
+            ⇄ REVANCHA
+          </button>
+        )}
+        <button className="vic-icon-btn vic-stats" onClick={onStats} disabled={!save} aria-label="Ver estadísticas" title="Estadísticas">
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 20h16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <rect x="5.5" y="12" width="3" height="6" rx="1" fill="currentColor" />
+            <rect x="10.5" y="7" width="3" height="11" rx="1" fill="currentColor" />
+            <rect x="15.5" y="4" width="3" height="14" rx="1" fill="currentColor" />
+          </svg>
+        </button>
+      </div>
 
       <div className="vic-head">
-        <div className="victory-title">¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
         {/* Marcador grande, estilo televisión. */}
         <div className="vic-score">
           <span className={`vic-score-team vic-col-white ${r.winner === 'white' ? 'won' : ''}`}>BLANCO</span>
@@ -201,23 +212,6 @@ export function VictoryScreen({
         )}
       </div>
 
-      {/* Lo más habitual en la mesa es la revancha: va la primera y destacada. */}
-      <div className="vic-actions">
-        {inTournament ? (
-          <button className="btn btn-primary vic-btn vic-main" onClick={onTournament} disabled={!save}>
-            Volver al torneo
-          </button>
-        ) : (
-          <>
-            <button className="btn btn-primary vic-btn vic-main" onClick={onRematch} disabled={!save} title="Mismos jugadores cambiando de lado">
-              ⇄ REVANCHA
-            </button>
-            <button className="btn vic-btn" onClick={onNewMatch} disabled={!save}>
-              Nuevo partido
-            </button>
-          </>
-        )}
-      </div>
     </div>
   );
 }
@@ -305,7 +299,7 @@ function PlayerProgressRow({
       aria-expanded={open}
       aria-label={`${name}${entry ? `: +${entry.xpGained} XP. Toca para ver el desglose.` : ''}`}
     >
-      <Avatar name={name} photo={photo} size={40} />
+      <Avatar name={name} photo={photo} size={46} />
       <span className="vic-row-main">
         <span className="vic-row-top">
           <strong className="vic-name">{name}</strong>

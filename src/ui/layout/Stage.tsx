@@ -70,7 +70,8 @@ function safeInsets(): Insets {
     left: parseFloat(cs.paddingLeft) || 0,
   };
   el.remove();
-  return { ...insets, top: Math.max(insets.top, MIN_TOP_MARGIN) };
+  // Abajo basta con la mitad de lo que pide el sistema (la barra de gestos del iPhone no tapa botones).
+  return { ...insets, top: Math.max(insets.top, MIN_TOP_MARGIN), bottom: insets.bottom / 2 };
 }
 
 /** Hueco útil: la pantalla menos las zonas del sistema, y su centro. */
