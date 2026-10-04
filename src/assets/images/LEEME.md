@@ -17,9 +17,12 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
   transparente y recortados justo al borde del triángulo para que encajen a ras del recuadro.
   Ahora no se usan: la configuración dibuja unas pestañas con flecha en SVG (se pueden volver a poner).
 - `fondo-configuracion`: fondo de la pantalla de configuración del partido (1280×768 .webp).
+- `fondo-prevision`: fondo de la Previsión del Clasificatorio (1280×720 .webp, ya desenfocado).
 - `fondo-equipo-blanco` y `fondo-equipo-azul`: fondos de la selección de jugadores; se ve uno u otro según el
   equipo que está eligiendo (1280×720 .webp).
 - Pendientes (llegaron dañadas en el ZIP; mientras, se ve el icono de respaldo):
   - `categoria-diamond` (archivo vacío).
+  - `categoria-scrap` (Chatarra) y `categoria-wood` (Madera): rangos nuevos, aún sin imagen.
+  - `categoria-elite` ya no se usa (el rango Élite desapareció).
   - Fila inferior de `plantilla-logros-03` (imagen cortada): `logro-hat_trick`, `logro-scorer50`,
     `logro-first_blood`, `logro-ranked_debut`, `logro-platinum`.

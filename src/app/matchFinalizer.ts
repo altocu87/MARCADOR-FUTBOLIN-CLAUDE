@@ -27,7 +27,6 @@ export function toStoredMatch(state: MatchState, extras: MatchExtras = {}): Stor
     periods: state.periods,
     events: state.events,
     penalties: state.penalties,
-    ...(extras.picks?.length ? { picks: extras.picks } : {}),
     ...(extras.tournament ? { tournament: extras.tournament } : {}),
   };
   // En 1v1 el goleador es inequívoco: se asigna solo.

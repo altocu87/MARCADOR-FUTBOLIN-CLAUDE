@@ -222,6 +222,37 @@ export function headToHead(
   return { played, whiteWins, blueWins };
 }
 
+/**
+ * Últimos enfrentamientos entre estas dos alineaciones (cualquier modalidad), del más reciente al
+ * más antiguo. El marcador se da siempre desde el punto de vista de las alineaciones pedidas:
+ * «white» es el equipo que hoy juega de Blanco, aunque aquel día jugase de Azul.
+ */
+export function lastMeetings(
+  matches: StoredMatch[],
+  whiteIds: string[],
+  blueIds: string[],
+  limit = 3,
+): { match: StoredMatch; white: number; blue: number; winner: Team }[] {
+  const key = (ids: string[]) => [...ids].sort().join('|');
+  const kw = key(whiteIds);
+  const kb = key(blueIds);
+  const out: { match: StoredMatch; white: number; blue: number; winner: Team }[] = [];
+  for (const m of [...matches].sort((a, b) => b.finishedAt - a.finishedAt)) {
+    const mw = key(m.participants.filter((p) => p.team === 'white').map((p) => p.playerId));
+    const mb = key(m.participants.filter((p) => p.team === 'blue').map((p) => p.playerId));
+    const swapped = mw === kb && mb === kw;
+    if (!(mw === kw && mb === kb) && !swapped) continue;
+    const { white, blue } = m.result.score;
+    out.push(
+      swapped
+        ? { match: m, white: blue, blue: white, winner: m.result.winner === 'white' ? 'blue' : 'white' }
+        : { match: m, white, blue, winner: m.result.winner },
+    );
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);

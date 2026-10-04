@@ -18,7 +18,7 @@ import {
   type Team,
 } from '../../match-engine';
 import { newId } from '../ids';
-import { STORAGE_FORMAT_VERSION, type MatchPick, type Player, type StoredMatch, type Tournament } from '../persistence';
+import { STORAGE_FORMAT_VERSION, type Player, type StoredMatch, type Tournament } from '../persistence';
 import { autoScorers } from '../statistics/extras';
 import { createTournament, fixtureParticipants, playableFixtures, recordFixtureResult } from '../tournaments';
 
@@ -226,14 +226,6 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
     const ids = pool.slice(0, teamSize * 2).map((p) => p.id);
     const participants = makeParticipants(shuffled(ids), teamSize);
     const match = play(randomConfig(mode), participants, startAt);
-    // Pronósticos de los que miran.
-    if (rnd() < 0.35) {
-      const watching = players.filter((p) => !ids.includes(p.id));
-      const picks: MatchPick[] = shuffled(watching)
-        .slice(0, 1 + Math.floor(rnd() * 3))
-        .map((p) => ({ playerId: p.id, team: rnd() < 0.5 ? 'white' : 'blue' }));
-      match.picks = picks;
-    }
     matches.push(match);
   }
 

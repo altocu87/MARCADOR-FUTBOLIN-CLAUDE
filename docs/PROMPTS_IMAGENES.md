@@ -76,12 +76,13 @@ Escudos que aparecen en el ranking, el perfil y la celebración de ascenso. Mism
 
 | Archivo | Categoría | Material / color |
 |---|---|---|
+| `categoria-scrap` | Chatarra | chapa oxidada y remendada `#9C8F86` |
+| `categoria-wood` | Madera | madera tallada con vetas `#B5814A` |
 | `categoria-bronze` | Bronce | bronce cobrizo `#C98A54` |
 | `categoria-silver` | Plata | plata pulida `#C9D3E0` |
 | `categoria-gold` | Oro | oro brillante `#F2C94C` |
 | `categoria-platinum` | Platino | platino turquesa `#7FE3D6` |
 | `categoria-diamond` | Diamante | cristal azul `#8AB8FF` |
-| `categoria-elite` | Élite | metal violeta con energía `#E07BFF` |
 
 Medida: **512 × 512, fondo transparente.**
 
@@ -90,12 +91,13 @@ Medida: **512 × 512, fondo transparente.**
 > [MATERIAL], biselado con reflejos metálicos, borde con brillo neón, un balón de futbolín estilizado en el
 > centro, [EXTRA]. Fondo transparente, centrado, sin texto, estilo vectorial pulido con relieve, 512×512.
 
-- Bronce → MATERIAL: «bronce cobrizo envejecido» · EXTRA: «diseño sencillo, sin alas».
+- Chatarra → MATERIAL: «chapa oxidada con remaches y remiendos» · EXTRA: «diseño muy sencillo, abollado, sin alas».
+- Madera → «madera tallada con vetas visibles» · «diseño sencillo, sin alas».
+- Bronce → «bronce cobrizo envejecido» · «diseño sencillo, sin alas».
 - Plata → «plata pulida» · «pequeñas alas laterales».
 - Oro → «oro brillante» · «alas laterales y una estrella arriba».
 - Platino → «platino con reflejos turquesa» · «alas amplias y dos estrellas».
-- Diamante → «cristal de diamante azul tallado y translúcido» · «alas de cristal y destellos».
-- Élite → «metal oscuro con vetas de energía violeta» · «corona, alas grandes y aura de energía».
+- Diamante (rango máximo) → «cristal de diamante azul tallado y translúcido» · «corona, alas de cristal y destellos».
 
 ---
 
@@ -184,5 +186,5 @@ Consejo: genera primero 3 o 4 para fijar el estilo y usa esas imágenes como ref
 ## Resumen de archivos
 
 `fondo-inicio`, `logo`, `modo-rapido`, `modo-caos`, `modo-clasificatorio`, `trofeo`,
-`categoria-bronze`, `categoria-silver`, `categoria-gold`, `categoria-platinum`, `categoria-diamond`,
-`categoria-elite` y los 54 `logro-*` de la tabla anterior.
+`categoria-scrap`, `categoria-wood`, `categoria-bronze`, `categoria-silver`, `categoria-gold`,
+`categoria-platinum`, `categoria-diamond` y los `logro-*` de la tabla anterior.

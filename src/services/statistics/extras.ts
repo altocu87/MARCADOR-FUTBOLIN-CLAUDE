@@ -1,6 +1,6 @@
 /**
  * Estadísticas ampliadas: lado de la mesa, horarios, parejas, goleadores asignados,
- * pronósticos y resúmenes por periodo. Todo derivado del historial guardado.
+ * y resúmenes por periodo. Todo derivado del historial guardado.
  */
 import { validGoalsFromEvents, type Team } from '../../match-engine';
 import type { Player, StoredMatch } from '../persistence';
@@ -121,27 +121,6 @@ export function autoScorers(m: StoredMatch): Record<string, string> | undefined 
     if (pid) out[g.id] = pid;
   }
   return out;
-}
-
-export interface PickerStat {
-  playerId: string;
-  picks: number;
-  correct: number;
-  pct: number;
-}
-
-export function pickerStats(matches: StoredMatch[]): PickerStat[] {
-  const map = new Map<string, PickerStat>();
-  for (const m of matches) {
-    for (const p of m.picks ?? []) {
-      const s = map.get(p.playerId) ?? { playerId: p.playerId, picks: 0, correct: 0, pct: 0 };
-      s.picks += 1;
-      if (p.team === m.result.winner) s.correct += 1;
-      s.pct = (s.correct / s.picks) * 100;
-      map.set(p.playerId, s);
-    }
-  }
-  return [...map.values()].sort((a, b) => b.correct - a.correct || b.pct - a.pct);
 }
 
 export interface PeriodDigest {

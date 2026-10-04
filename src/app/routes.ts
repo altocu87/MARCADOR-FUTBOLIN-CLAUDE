@@ -1,5 +1,5 @@
 import type { MatchConfig, MatchMode, MatchState, ParticipantRef } from '../match-engine';
-import type { MatchPick, StoredMatch } from '../services/persistence';
+import type { StoredMatch } from '../services/persistence';
 import type { SaveStatus } from './matchFinalizer';
 
 export type RankingTab = 'standings' | 'history' | 'players' | 'fame' | 'records' | 'pairs' | 'digest' | 'duel';
@@ -8,7 +8,6 @@ export type SettingsTab = 'general' | 'players' | 'audio' | 'progression' | 'con
 /** Datos extra que acompañan a un partido hasta guardarlo. */
 export interface MatchExtras {
   tournament?: { id: string; fixtureId: string };
-  picks?: MatchPick[];
 }
 
 export type Route =
