@@ -115,10 +115,10 @@ export function VictoryScreen({
   const facts = matchFacts(state);
 
   const column = (team: Team, list: ParticipantRef[], winner: boolean, offset: number) => (
-    <div className={`vic-col ${winner ? 'is-winner' : 'is-loser'}`}>
+    <div className="vic-col">
       <div className={`vic-col-label vic-col-${team}`}>
-        {winner ? '🏆 ' : ''}
         {TEAM_LABEL[team]}
+        {winner && ' 🏆'}
       </div>
       {list.map((p, i) => (
         <PlayerProgressRow
@@ -126,7 +126,6 @@ export function VictoryScreen({
           name={p.nameSnapshot}
           photo={byId.get(p.playerId)?.photo}
           entry={entries?.get(p.playerId)}
-          winner={winner}
           delay={0.7 + (offset + i) * 0.2}
         />
       ))}
@@ -138,6 +137,22 @@ export function VictoryScreen({
       {prefs.effects !== 'off' && <Confetti count={prefs.effects === 'full' ? 70 : 24} />}
       <AssetImage name="modo-clasificatorio" className="victory-bg" fallback={null} />
       <div className="victory-rays" aria-hidden="true" />
+
+      {/* Inicio y estadísticas: iconos en las esquinas de arriba. */}
+      <button className="vic-icon-btn vic-home" onClick={onHome} aria-label="Inicio" title="Inicio">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 11.5 12 4l9 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5.5 10v9.5h4.5V14h4v5.5h4.5V10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button className="vic-icon-btn vic-stats" onClick={onStats} disabled={!save} aria-label="Ver estadísticas" title="Estadísticas">
+        <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20h16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          <rect x="5.5" y="12" width="3" height="6" rx="1" fill="currentColor" />
+          <rect x="10.5" y="7" width="3" height="11" rx="1" fill="currentColor" />
+          <rect x="15.5" y="4" width="3" height="14" rx="1" fill="currentColor" />
+        </svg>
+      </button>
 
       <div className="vic-head">
         <div className="victory-title">¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
@@ -202,12 +217,6 @@ export function VictoryScreen({
             </button>
           </>
         )}
-        <button className="btn vic-btn" onClick={onStats} disabled={!save}>
-          📊 Estadísticas
-        </button>
-        <button className="btn vic-btn" onClick={onHome}>
-          ⌂ Inicio
-        </button>
       </div>
     </div>
   );
@@ -229,13 +238,11 @@ function PlayerProgressRow({
   name,
   photo,
   entry,
-  winner,
   delay,
 }: {
   name: string;
   photo?: string;
   entry?: MatchProgressEntry;
-  winner: boolean;
   delay: number;
 }) {
   const before = entry ? entry.xpAfter - entry.xpGained : 0;
@@ -292,19 +299,16 @@ function PlayerProgressRow({
 
   return (
     <button
-      className={`vic-row ${winner ? 'is-winner' : ''} ${open ? 'open' : ''}`}
+      className={`vic-row ${open ? 'open' : ''}`}
       style={{ '--d': `${delay - 0.3}s` } as CSSProperties}
       onClick={() => entry && setOpen((o) => !o)}
       aria-expanded={open}
       aria-label={`${name}${entry ? `: +${entry.xpGained} XP. Toca para ver el desglose.` : ''}`}
     >
-      <Avatar name={name} photo={photo} size={winner ? 42 : 36} />
+      <Avatar name={name} photo={photo} size={40} />
       <span className="vic-row-main">
         <span className="vic-row-top">
-          <strong className="vic-name">
-            {winner && '👑 '}
-            {name}
-          </strong>
+          <strong className="vic-name">{name}</strong>
           {entry && <span className="vic-xp">+{shownXp} XP</span>}
           {entry?.eloDelta !== undefined && (
             <span className={`vic-elo ${entry.eloDelta >= 0 ? 'up' : 'down'}`}>
@@ -333,15 +337,15 @@ function PlayerProgressRow({
               <span className={`vic-lv ${levelReached ? 'leveled' : ''}`}>NV {span.level}</span>
               <span className={`vic-bar ${phase === 'up' ? 'flash' : ''}`}>
                 <span
+                  className="vic-bar-fill"
                   style={{
                     width: `${Math.round(fill * 100)}%`,
                     // Al volver a cero tras subir de nivel, sin animación.
                     transition: phase === 'reset' ? 'none' : 'width 1s cubic-bezier(0.3, 0.8, 0.3, 1)',
                   }}
                 />
-              </span>
-              <span className="vic-need" title={`${span.have} / ${span.need} XP`}>
-                {span.need > 0 ? `${span.have}/${span.need} · faltan ${span.need - span.have}` : 'Nivel máximo'}
+                {/* XP dentro del nivel, sobre la propia barra. */}
+                <span className="vic-bar-text">{span.need > 0 ? `${span.have}/${span.need}` : 'MÁX'}</span>
               </span>
             </span>
           </>
