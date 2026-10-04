@@ -108,7 +108,6 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
           s = advance(s, t).state;
           if (s.phase !== 'playing') break;
           const team: Team = rnd() < Math.min(0.85, Math.max(0.15, pWhite)) ? 'white' : 'blue';
-          if (s.jokers?.[team] === 'available' && rnd() < 0.3) s = dispatch(s, { type: 'TOGGLE_JOKER', team }, t).state;
           s = dispatch(s, { type: 'GOAL', team, source: pick(['sensor', 'sensor', 'touch', 'button'] as const) }, t).state;
           // De vez en cuando un gol mal contado que se anula con −1.
           if (s.phase === 'playing' && rnd() < 0.04) {
@@ -186,7 +185,7 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
       endCondition,
       goalsPerPeriod: pick([5, 5, 6, 7, 8, 10]),
       minutesPerPeriod: pick([2, 3, 3, 4, 5]),
-      ...(mode === 'chaos' ? { chaos: { doubleLastMinute: true, jokers: true } } : {}),
+      ...(mode === 'chaos' ? { chaos: { doubleLastMinute: true, jokers: false } } : {}),
     };
   };
 

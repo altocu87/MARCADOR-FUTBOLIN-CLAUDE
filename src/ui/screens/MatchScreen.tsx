@@ -289,12 +289,11 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
 
   const team = (t: Team) => {
     const people = state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
-    const joker = state.jokers?.[t];
     return (
       <div className={`team-side side-${t}`}>
         <div className="score-wrap">
           <button
-            className={`score-btn score-${t} ${lock > 0 ? 'locked' : ''} ${ctl.matchPoint.includes(t) ? 'match-point' : ''} ${joker === 'armed' ? 'joker-armed' : ''}`}
+            className={`score-btn score-${t} ${lock > 0 ? 'locked' : ''} ${ctl.matchPoint.includes(t) ? 'match-point' : ''}`}
             onClick={() => send({ type: 'GOAL', team: t, source: 'touch' })}
             disabled={!playing}
             aria-label={`Gol ${TEAM_LABEL[t]}. Marcador ${score[t]}`}
@@ -302,7 +301,6 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
             <span className="score-sheen" aria-hidden="true" />
             <span className="score-team">{TEAM_LABEL[t]}</span>
             {streak && streak.team === t && streak.count >= 3 && <span className="streak-badge">🔥 x{streak.count}</span>}
-            {joker === 'armed' && <span className="joker-tag">COMODÍN x2</span>}
             <span className={`score-num ${score[t] >= 10 ? 'two' : ''}`}>{score[t]}</span>
             {lock > 0 && (
               <span className="lock-bar" aria-hidden="true">
@@ -310,19 +308,8 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
               </span>
             )}
           </button>
-          {/* Comodín (modo caos): en la esquina superior interior de la tarjeta. */}
-          {joker && (
-            <button
-              className={`joker-btn ${joker}`}
-              disabled={joker === 'used' || !canCorrect}
-              onClick={() => send({ type: 'TOGGLE_JOKER', team: t })}
-              aria-label={`Comodín ${TEAM_LABEL[t]}: ${joker === 'armed' ? 'armado' : joker === 'used' ? 'usado' : 'disponible'}`}
-            >
-              🃏 {joker === 'armed' ? 'x2' : joker === 'used' ? '—' : ''}
-            </button>
-          )}
         </div>
-        <div className={`team-cards ${people.length >= 3 ? 'many' : ''}`}>{people.map((p) => card(p, t))}</div>
+        <div className={`team-cards ${people.length >= 3 ? 'many' : `count-${people.length}`}`}>{people.map((p) => card(p, t))}</div>
       </div>
     );
   };

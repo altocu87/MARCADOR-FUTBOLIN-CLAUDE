@@ -51,7 +51,6 @@ export interface AchievementContext {
   firstGoalOfMatch: boolean;
   penaltiesPerfect: boolean;
   suddenDeathRounds: number;
-  usedJoker: boolean;
   hour: number;
   matchesToday: number;
   distinctTeammates: number;
@@ -128,7 +127,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   A({ id: 'impossible', name: 'Misión imposible', description: 'Gana tras ir perdiendo por 4 o más goles.', category: 'especiales', rarity: 'epic', secret: true, icon: '✧', check: (c) => c.won && c.comeback >= 4 }),
   A({ id: 'chaos_win', name: 'Caos controlado', description: 'Gana un Partido Caos.', category: 'especiales', rarity: 'common', icon: '✦', check: (c) => c.won && c.match.config.mode === 'chaos' }),
   A({ id: 'chaos_lord', name: 'Señor del Caos', description: 'Gana 10 Partidos Caos.', category: 'especiales', rarity: 'rare', icon: '✺', title: 'Señor del Caos', check: (c) => c.chaosWins >= 10 }),
-  A({ id: 'joker_win', name: 'Comodín ganador', description: 'Gana un Partido Caos usando tu comodín.', category: 'especiales', rarity: 'common', icon: '🃏', check: (c) => c.won && c.usedJoker }),
   A({ id: 'social', name: 'Sociable', description: 'Juega con 5 compañeros distintos.', category: 'especiales', rarity: 'common', icon: '☺', check: (c) => c.distinctTeammates >= 5 }),
   A({ id: 'globetrotter', name: 'Trotamundos', description: 'Enfréntate a 10 rivales distintos.', category: 'especiales', rarity: 'rare', icon: '🌐', check: (c) => c.distinctRivals >= 10 }),
   A({ id: 'night_owl', name: 'Búho', description: 'Juega un partido entre las 23:00 y las 5:00.', category: 'especiales', rarity: 'common', secret: true, icon: '🦉', title: 'Búho Nocturno', check: (c) => c.hour >= 23 || c.hour < 5 }),
