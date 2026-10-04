@@ -54,10 +54,18 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
             { id: 'chart', label: 'Evolución' },
           ]}
         />
-        <div className="rep-big-score" aria-label={`Resultado ${r.score.white} a ${r.score.blue}`}>
-          <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`} title={r.winner === 'white' ? 'Ganador' : undefined}>{r.score.white}</span>
-          <span className="rep-big-sep">–</span>
-          <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
+        {/* Cómo terminó (tiempo reglamentario, gol de oro, penaltis), duración y fecha, sobre el marcador. */}
+        <div className="rep-score-box">
+          <div className="rep-sub">
+            {r.penaltyScore ? `Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · ` : ''}
+            {REASON[r.reason]} · {formatDuration(r.totalTimeMs)}
+            <span className="rep-date"> · {formatDate(match.finishedAt)}</span>
+          </div>
+          <div className="rep-big-score" aria-label={`Resultado ${r.score.white} a ${r.score.blue}`}>
+            <span className={`rep-big-num white ${r.winner === 'white' ? 'won' : ''}`} title={r.winner === 'white' ? 'Ganador' : undefined}>{r.score.white}</span>
+            <span className="rep-big-sep">–</span>
+            <span className={`rep-big-num blue ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
+          </div>
         </div>
         <Tabs
           label="Más secciones del resumen"
@@ -71,18 +79,13 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
       </div>
       {tab === 'summary' && (
         <div className="rep-summary">
-          <TeamFrame team="white" participants={match.participants} compact />
+          <TeamFrame team="white" participants={match.participants} compact winner={r.winner === 'white'} />
           <div className="rep-center">
-            <div className="rep-sub">
-              {r.penaltyScore ? `Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · ` : ''}
-              {REASON[r.reason]} · {formatDuration(r.totalTimeMs)}
-              <span className="rep-date"> · {formatDate(match.finishedAt)}</span>
-            </div>
             {/* Cronología de goles: los de Blanco a la izquierda y los de Azul a la derecha;
                 los anulados, tachados en rojo. */}
             <GoalTimeline match={match} name={(p) => periodName(match, p)} />
           </div>
-          <TeamFrame team="blue" participants={match.participants} compact />
+          <TeamFrame team="blue" participants={match.participants} compact winner={r.winner === 'blue'} />
         </div>
       )}
       {tab === 'chart' && <ScoreChart events={match.events} totalTimeMs={r.totalTimeMs} />}

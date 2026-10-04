@@ -657,6 +657,22 @@
   color: var(--neon);
   text-shadow: 0 0 10px color-mix(in srgb, var(--neon) 80%, transparent);
 }
+/* Corona de neón del ganador, posada sobre el marco del nombre. */
+.neon-crown {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 44px;
+  height: 28px;
+  transform: translate(-50%, 2px) rotate(-8deg);
+  filter: drop-shadow(0 0 4px #ffd75a) drop-shadow(0 0 10px rgba(242, 201, 76, 0.8));
+  animation: crown-glow 2.4s ease-in-out infinite;
+}
+@keyframes crown-glow {
+  50% {
+    filter: drop-shadow(0 0 2px #ffd75a) drop-shadow(0 0 5px rgba(242, 201, 76, 0.5));
+  }
+}
 /* Porcentaje del pronóstico de este equipo y su barra. */
 .pre-team-pct {
   display: flex;
@@ -1216,6 +1232,12 @@
   font-size: 14px;
 }
 /* Fila de arriba: pestañas a los lados y el marcador en el centro, bajo el tipo de partido. */
+.rep-score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
 .rep-top {
   flex: none;
   display: grid;
@@ -1241,7 +1263,8 @@
   /* Equipos a los lados (mismo estilo que el Pronóstico) y el partido en el centro. */
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 12px;
-  padding-top: 14px;
+  /* Hueco para el nombre del equipo y la corona del ganador. */
+  padding-top: 30px;
 }
 /* Estadísticas: fichas grandes sin la barra de rango (no hay alto para todo). */
 .pre-compact .pre-rankrow {
@@ -1367,7 +1390,7 @@
   flex: 1;
   min-height: 0;
   align-self: stretch;
-  margin: 4px 0 0;
+  margin: 0;
   list-style: none;
   /* Panel oscuro detrás para que se lea bien sobre el fondo. */
   padding: 8px 6px;
@@ -1381,7 +1404,7 @@
   scrollbar-color: rgba(242, 201, 76, 0.5) transparent;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .rep-tl::before {
   content: '';
@@ -1396,6 +1419,10 @@
 .rep-tl-row {
   position: relative;
   display: flex;
+  align-items: center;
+  /* Las filas se reparten el alto: hasta ~10 goles caben sin deslizar. */
+  flex: 0 1 30px;
+  min-height: 20px;
 }
 .rep-tl-row.white {
   justify-content: flex-end;
@@ -1420,10 +1447,11 @@
 }
 .rep-tl-goal {
   max-width: 100%;
+  max-height: 100%;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 7px;
+  padding: 1px 7px;
   border-radius: 8px;
   font-size: 12px;
   white-space: nowrap;
