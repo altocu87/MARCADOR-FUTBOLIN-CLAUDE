@@ -21,9 +21,12 @@ import {
   type Period,
   type Team,
 } from '../../match-engine';
+import type { Player } from '../../services/persistence';
+import { initials } from '../../services/players';
+import { displayTitle } from '../../services/progression';
 import { sound } from '../../services/sound/sound';
 import { formatDuration, headToHead } from '../../services/statistics';
-import { Avatar, MODE_LABEL, Modal, TestModeBadge } from '../components/common';
+import { MODE_LABEL, Modal, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
 import { AnnulShow, GoalShow } from '../components/GoalEffect';
 import { VictoryScreen, swapSides } from '../components/VictoryScreen';
@@ -51,10 +54,15 @@ const MODE_ART: Record<MatchConfig['mode'], string> = {
   ranked: 'modo-clasificatorio',
 };
 
+/** «1 gol», «5 goles». */
+function goalsText(n: number): string {
+  return `${n} ${n === 1 ? 'gol' : 'goles'}`;
+}
+
 function conditionText(config: MatchConfig): string {
-  if (config.endCondition === 'goals') return `Gana quien llegue a ${config.goalsPerPeriod} goles`;
+  if (config.endCondition === 'goals') return `Gana quien llegue a ${goalsText(config.goalsPerPeriod)}`;
   if (config.endCondition === 'time') return `2 partes de ${config.minutesPerPeriod} min`;
-  return `A ${config.goalsPerPeriod} goles o 2 partes de ${config.minutesPerPeriod} min`;
+  return `A ${goalsText(config.goalsPerPeriod)} o 2 partes de ${config.minutesPerPeriod} min`;
 }
 
 /** Rótulo del periodo: por goles no hay partes, es «PARTIDO». */
@@ -110,6 +118,7 @@ export function MatchScreen({
   };
 
   const photos = new Map(players.map((p) => [p.id, p.photo]));
+  const playersById = new Map(players.map((p) => [p.id, p]));
 
   return (
     <section className={`screen match mode-${state.config.mode}`} onPointerDown={() => sound.unlock()}>
@@ -117,7 +126,7 @@ export function MatchScreen({
       {state.phase === 'penalties' || (state.phase === 'finished' && state.period === 'shootout') ? (
         <PenaltiesView ctl={ctl} />
       ) : (
-        <ScoreboardView ctl={ctl} photos={photos} />
+        <ScoreboardView ctl={ctl} players={playersById} />
       )}
 
       {/* Al marcar: pantalla completa «¡GOL! · EQUIPO …» (varía en cada gol). */}
@@ -196,8 +205,8 @@ export function MatchScreen({
 
 // ---------------------------------------------------------------------------
 
-function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<string, string | undefined> }) {
-  const { demoMode } = useApp();
+function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<string, Player> }) {
+  const { demoMode, progression } = useApp();
   const { state, now, send } = ctl;
   const score = getScore(state);
   const clock = getClock(state, now);
@@ -222,43 +231,68 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
     state.period !== 'overtime' &&
     clock.remainingMs !== null &&
     clock.remainingMs <= 60_000;
+  // Bajo el tipo de partido: la parte en juego (si hay varias) y a cuántos goles se juega.
+  const info = [
+    isSinglePeriod(state.config) && state.period === 'first' ? null : PERIOD_LABEL[state.period],
+    state.config.endCondition !== 'time' && state.period !== 'overtime' ? `A ${goalsText(state.config.goalsPerPeriod)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // Anular gol: botón rojo a cada lado de la Pausa.
+  const minus = (t: Team) => (
+    <button
+      className={`annul-btn annul-${t}`}
+      onClick={() => send({ type: 'MINUS_ONE', team: t })}
+      disabled={!canCorrect || periodScore[t] === 0}
+      aria-label={`Anular un gol de ${TEAM_LABEL[t]}`}
+    >
+      <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
+        <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      </svg>
+      <span>
+        ANULAR
+        <br />
+        GOL
+      </span>
+    </button>
+  );
+
+  // Ficha de jugador: la misma que en la selección de jugadores (foto, nombre, nivel/ELO y título).
+  const card = (p: ParticipantRef, t: Team) => {
+    const player = players.get(p.playerId);
+    const prog = progression?.players.get(p.playerId);
+    const title = displayTitle(prog, player?.titleId);
+    return (
+      <div key={p.playerId} className={`team-card team-card-${t} match-card`}>
+        <span className="team-card-photo">
+          {player?.photo ? (
+            <img src={player.photo} alt="" draggable={false} />
+          ) : (
+            <span className="pick-initials">{initials(p.nameSnapshot)}</span>
+          )}
+        </span>
+        <span className="team-card-info">
+          <span className="team-card-name">{p.nameSnapshot}</span>
+          {prog && (
+            <span className="pick-meta">
+              Nv {prog.level}
+              {prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}
+            </span>
+          )}
+          {title && <span className="pick-title">{title}</span>}
+        </span>
+      </div>
+    );
+  };
 
   const team = (t: Team) => {
     const people = state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
     const joker = state.jokers?.[t];
-    // Anular gol: botón rojo pegado abajo, en el lado interior de la tarjeta (un tercio de su alto).
-    const minus = (
-      <button
-        className={`annul-btn annul-${t}`}
-        onClick={() => send({ type: 'MINUS_ONE', team: t })}
-        disabled={!canCorrect || periodScore[t] === 0}
-        aria-label={`Anular un gol de ${TEAM_LABEL[t]}`}
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.4" />
-          <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-        </svg>
-        <span>
-          ANULAR
-          <br />
-          GOL
-        </span>
-      </button>
-    );
-    const jokerBtn = joker && (
-      <button
-        className={`joker-btn ${joker}`}
-        disabled={joker === 'used' || !canCorrect}
-        onClick={() => send({ type: 'TOGGLE_JOKER', team: t })}
-        aria-label={`Comodín ${TEAM_LABEL[t]}: ${joker === 'armed' ? 'armado' : joker === 'used' ? 'usado' : 'disponible'}`}
-      >
-        🃏 {joker === 'armed' ? 'x2' : joker === 'used' ? '—' : ''}
-      </button>
-    );
     return (
       <div className={`team-side side-${t}`}>
-        <div className="score-row">
-          {t === 'blue' && minus}
+        <div className="score-wrap">
           <button
             className={`score-btn score-${t} ${lock > 0 ? 'locked' : ''} ${ctl.matchPoint.includes(t) ? 'match-point' : ''} ${joker === 'armed' ? 'joker-armed' : ''}`}
             onClick={() => send({ type: 'GOAL', team: t, source: 'touch' })}
@@ -276,82 +310,79 @@ function ScoreboardView({ ctl, photos }: { ctl: MatchController; photos: Map<str
               </span>
             )}
           </button>
-          {t === 'white' && minus}
+          {/* Comodín (modo caos): en la esquina superior interior de la tarjeta. */}
+          {joker && (
+            <button
+              className={`joker-btn ${joker}`}
+              disabled={joker === 'used' || !canCorrect}
+              onClick={() => send({ type: 'TOGGLE_JOKER', team: t })}
+              aria-label={`Comodín ${TEAM_LABEL[t]}: ${joker === 'armed' ? 'armado' : joker === 'used' ? 'usado' : 'disponible'}`}
+            >
+              🃏 {joker === 'armed' ? 'x2' : joker === 'used' ? '—' : ''}
+            </button>
+          )}
         </div>
-        <div className="team-bottom">
-          {t === 'white' && jokerBtn}
-          <div className={`team-people ${people.length >= 3 ? 'many' : ''}`}>
-            {people.map((p) => (
-              <span key={p.playerId} className="person">
-                <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={people.length >= 3 ? 44 : 52} />
-                {/* El tamaño de letra se ajusta al hueco disponible para que el nombre se lea entero. */}
-                <span className="person-name" style={{ '--n': Math.max(4, p.nameSnapshot.length) } as CSSProperties}>
-                  <span>{p.nameSnapshot}</span>
-                </span>
-              </span>
-            ))}
-          </div>
-          {t === 'blue' && jokerBtn}
-        </div>
+        <div className={`team-cards ${people.length >= 3 ? 'many' : ''}`}>{people.map((p) => card(p, t))}</div>
       </div>
     );
   };
 
   return (
-    <>
-      <header className="match-top">
-        {/* Tipo de partido, grande, a la izquierda de la cabecera. */}
+    <div className="match-main">
+      {team('white')}
+      <div className="center-col">
+        {/* Tipo de partido, en grande, y debajo a cuántos goles se juega. */}
         <span className={`match-mode mode-chip-${state.config.mode}`}>{MODE_LABEL[state.config.mode]}</span>
-        {state.period === 'overtime' && <span className="badge badge-ranked">GOL DE ORO</span>}
-        {ctl.matchPoint.length > 0 && state.period !== 'overtime' && (
-          <span className="badge badge-danger match-point-badge">
-            BOLA DE PARTIDO {ctl.matchPoint.length === 1 ? `· ${TEAM_LABEL[ctl.matchPoint[0]]}` : ''}
-          </span>
-        )}
-        {lastMinute && <span className="badge badge-chaos">ÚLTIMO MINUTO · GOLES x2</span>}
-        <span style={{ flex: 1 }} />
-        {(demoMode || state.config.testMode) && <TestModeBadge />}
-      </header>
-      <div className="match-main">
-        {team('white')}
-        <div className="center-col">
-          {/* Parte en juego (1ª parte, 2ª parte, prórroga…) encima del reloj. */}
-          <div className="center-period">{periodLabel(state)}</div>
-          <div className="clock-panel" style={{ '--clock': clockColor } as CSSProperties}>
-            <SevenSegment
-              className="clock"
-              text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
-              height={104}
-              ghost={false}
-              color={clockColor}
-              label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}
-            />
-          </div>
-          {state.config.endCondition !== 'time' && state.period !== 'overtime' && (
-            <div className="period-goals">
-              A {state.config.goalsPerPeriod} goles
-            </div>
+        <div className="period-goals">{info || '\u00a0'}</div>
+        {/* Avisos del momento (gol de oro, bola de partido…): hueco fijo para que el reloj no salte. */}
+        <div className="center-badges">
+          {state.period === 'overtime' && <span className="badge badge-ranked">GOL DE ORO</span>}
+          {ctl.matchPoint.length > 0 && state.period !== 'overtime' && (
+            <span className="badge badge-danger match-point-badge">
+              BOLA DE PARTIDO {ctl.matchPoint.length === 1 ? `· ${TEAM_LABEL[ctl.matchPoint[0]]}` : ''}
+            </span>
           )}
-          {/* Pausa grande justo bajo el reloj. */}
-          <div className="center-actions">
-            <button
-              className="btn pause-btn"
-              onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
-              disabled={!canCorrect}
-              aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
-            >
-              {state.phase === 'paused' ? '▶ Continuar' : '❚❚ Pausa'}
-            </button>
-          </div>
-          {/* Cómo se gana el partido, legible bajo la Pausa. */}
-          <div className="center-cond">{conditionText(state.config)}</div>
-          <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
-            {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
-          </div>
+          {lastMinute && <span className="badge badge-chaos">ÚLTIMO MINUTO · GOLES x2</span>}
         </div>
-        {team('blue')}
+        <div className="clock-panel" style={{ '--clock': clockColor } as CSSProperties}>
+          <SevenSegment
+            className="clock"
+            text={formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}
+            height={104}
+            ghost={false}
+            color={clockColor}
+            label={`Reloj ${formatDuration(clock.remainingMs ?? clock.periodElapsedMs)}`}
+          />
+        </div>
+        {/* Anular gol de Blanco · Pausa · Anular gol de Azul. */}
+        <div className="center-actions">
+          {minus('white')}
+          <button
+            className="pause-btn"
+            onClick={() => send({ type: state.phase === 'paused' ? 'RESUME' : 'PAUSE' })}
+            disabled={!canCorrect}
+            aria-label={state.phase === 'paused' ? 'Continuar' : 'Pausa'}
+          >
+            <span className="pause-icon" aria-hidden="true">
+              {state.phase === 'paused' ? '▶' : <><i /><i /></>}
+            </span>
+            <span className="pause-text">{state.phase === 'paused' ? 'SEGUIR' : 'PAUSA'}</span>
+          </button>
+          {minus('blue')}
+        </div>
+        {/* Cómo se gana el partido, legible bajo la Pausa. */}
+        <div className="center-cond">{conditionText(state.config)}</div>
+        <div className={`lock-msg ${lock > 0 ? 'on' : ''} ${flash ? 'flash' : ''}`} role="status">
+          {lock > 0 ? `Bloqueo ${(lock / 1000).toFixed(1)} s` : ' '}
+        </div>
+        {(demoMode || state.config.testMode) && (
+          <div className="center-test">
+            <TestModeBadge />
+          </div>
+        )}
       </div>
-    </>
+      {team('blue')}
+    </div>
   );
 }
 
