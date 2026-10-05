@@ -26,6 +26,7 @@ import {
 import { Avatar, FormChips, MODE_LABEL, ScreenFrame, StatTile, Tabs, formatDate, pct } from '../components/common';
 import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics';
 import { resultLine } from '../components/MatchReport';
+import { FORMAT_LABEL } from '../../services/tournaments';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
 
@@ -222,7 +223,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                 return (
                   <button key={t.id} className="row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
                     <span style={{ flex: 1 }}>
-                      <strong>{t.name}</strong> <span className="muted">· {t.format === 'league' ? 'Liguilla' : 'Cuadro'}</span>
+                      <strong>{t.name}</strong> <span className="muted">· {FORMAT_LABEL[t.format]}</span>
                     </span>
                     {t.status === 'finished' ? (won ? <span className="badge badge-ranked">🏆 Campeón</span> : <span className="badge">Terminado</span>) : <span className="badge badge-accent">En juego</span>}
                   </button>

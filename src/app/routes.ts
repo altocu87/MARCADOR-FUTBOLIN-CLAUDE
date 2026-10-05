@@ -18,10 +18,14 @@ export type Route =
   | { name: 'match'; config: MatchConfig; participants: ParticipantRef[]; resume?: MatchState; extras?: MatchExtras }
   | { name: 'summary'; match: StoredMatch; save: SaveStatus; live: MatchState; extras?: MatchExtras }
   | { name: 'ranking'; tab?: RankingTab }
-  | { name: 'matchDetail'; matchId: string }
+  | { name: 'matchDetail'; matchId: string; fromTournament?: boolean }
   | { name: 'profile'; playerId: string }
-  | { name: 'tournament' }
-  | { name: 'tournamentNew' }
-  | { name: 'tournamentDetail'; id: string }
+  | { name: 'tournament'; tab?: 'list' | 'honours' }
+  /** Palmarés de una competición (todas sus ediciones). */
+  | { name: 'tournamentHonours'; key: string }
+  | { name: 'tournamentNew'; templateId?: string; selected?: string[] }
+  /** Creador de predefinidos: `templateId` edita uno guardado; `baseId` parte de otro. `selected` se devuelve al volver. */
+  | { name: 'tournamentTemplate'; templateId?: string; baseId?: string; selected?: string[] }
+  | { name: 'tournamentDetail'; id: string; view?: 'report' | 'play' }
   | { name: 'challenges' }
   | { name: 'settings'; tab?: SettingsTab };

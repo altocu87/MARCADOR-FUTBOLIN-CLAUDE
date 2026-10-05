@@ -4,7 +4,7 @@ import { AssetImage } from '../components/assets';
 import { MatchReport } from '../components/MatchReport';
 import { MODE_LABEL, Modal, ScreenFrame } from '../components/common';
 
-export function MatchDetailScreen({ matchId }: { matchId: string }) {
+export function MatchDetailScreen({ matchId, fromTournament }: { matchId: string; fromTournament?: boolean }) {
   const { matches, navigate, deleteMatch, toast } = useApp();
   const [confirm, setConfirm] = useState(false);
   const match = matches.find((m) => m.id === matchId);
@@ -22,7 +22,11 @@ export function MatchDetailScreen({ matchId }: { matchId: string }) {
       className="rep-screen"
       background={<AssetImage name="fondo-estadisticas" className="rep-bg" fallback={null} />}
       title={match ? <span className={`match-mode mode-chip-${match.config.mode}`}>{MODE_LABEL[match.config.mode]}</span> : 'Detalle del partido'}
-      onBack={() => navigate({ name: 'ranking', tab: 'history' })}
+      onBack={() =>
+        fromTournament && match?.tournament
+          ? navigate({ name: 'tournamentDetail', id: match.tournament.id, view: 'report' })
+          : navigate({ name: 'ranking', tab: 'history' })
+      }
       right={
         match &&
         !match.tournament && (

@@ -1,26 +1,48 @@
-/** Torneos: lista, creación (liguilla o cuadro) y detalle con clasificación/cuadro y partidos. */
-import { useState } from 'react';
+/**
+ * Torneos: lista, creación a partir de un predefinido, creador de predefinidos y detalle
+ * (clasificación, cuadro o Pool rotativo, final y partidos).
+ */
+import { useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
-import { DEFAULT_CONFIG, type EndCondition, type MatchConfig } from '../../match-engine';
-import type { Fixture, Tournament, TournamentFormat } from '../../services/persistence';
-import { sortPlayers } from '../../services/players';
+import type { MatchConfig } from '../../match-engine';
+import type { Fixture, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import { initials, sortPlayers } from '../../services/players';
+import { displayTitle } from '../../services/progression';
+import { seededRandom } from '../../services/statistics/calendar';
 import {
-  MAX_TEAMS,
-  MIN_TEAMS,
+  FORMAT_LABEL,
   TOURNAMENT_RULES_VERSION,
+  allTemplates,
+  competitions,
+  editionName,
+  nextEdition,
+  tournamentReport,
   createTournament,
+  describeTemplate,
+  draftFromTemplate,
+  finalOptions,
+  fixtureConfig,
   fixtureParticipants,
-  leagueStandings,
+  fixtureScore,
+  newTemplate,
   playableFixtures,
+  recommendedTemplateId,
   roundLabel,
+  standings,
+  templateFit,
   validateDraft,
-  type TournamentDraft,
+  type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
-import { Avatar, Modal, ScreenFrame, Toggle, formatDate } from '../components/common';
+import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
+import { PlayerEditor } from '../components/PlayerEditor';
 import { Confetti } from '../components/graphics';
 
-const FORMAT_LABEL: Record<TournamentFormat, string> = { league: 'Liguilla', bracket: 'Cuadro eliminatorio' };
+const FINAL_LABEL: Record<TournamentFinal, string> = {
+  none: 'Sin final',
+  top2: '1º contra 2º',
+  top4: '1º+4º contra 2º+3º',
+};
 
 function Trophy({ size = 64 }: { size?: number }) {
   return (
@@ -33,25 +55,108 @@ function Trophy({ size = 64 }: { size?: number }) {
   );
 }
 
-export function TournamentListScreen() {
-  const { navigate, tournaments } = useApp();
+function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+  return (
+    <div className="segmented">
+      {options.map(([v, label]) => (
+        <button key={String(v)} className="seg seg-compact" aria-pressed={value === v} onClick={() => onChange(v)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
+const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
+
+/** «5 oct 2026». */
+function shortDate(ts: number): string {
+  return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function teamCountLabel(t: Tournament): string {
+  return t.format === 'pool' ? `${t.entrants?.length ?? 0} jugadores` : `${t.teams.length} equipos · ${t.teamSize === 1 ? '1v1' : '2v2'}`;
+}
+
+export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'honours' }) {
+  const { navigate, tournaments, matches, players } = useApp();
+  const [tab, setTab] = useState<'list' | 'honours'>(initialTab ?? 'list');
   const list = [...tournaments].sort((a, b) => b.createdAt - a.createdAt);
+  const comps = tab === 'honours' ? competitions(tournaments, matches, players) : [];
   return (
     <ScreenFrame
       title="Torneos"
+      className="select-screen tn-screen"
+      background={TN_BG}
       onBack={() => navigate({ name: 'home' })}
       right={
-        <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
-          + Nuevo torneo
-        </button>
+        <>
+          <Tabs
+            label="Vista"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: 'list', label: 'Torneos' },
+              { id: 'honours', label: 'Palmarés' },
+            ]}
+          />
+          <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
+            + Nuevo torneo
+          </button>
+        </>
       }
     >
-      {list.length === 0 ? (
+      {tab === 'honours' ? (
+        comps.length === 0 ? (
+          <div className="empty">
+            <div>
+              <Trophy size={70} />
+              <strong>Palmarés vacío</strong>
+              Cuando termine el primer torneo, aquí saldrá su campeón.
+            </div>
+          </div>
+        ) : (
+          <div className="hon-grid scroll">
+            {comps.map((c) => {
+              const top = c.honours[0];
+              return (
+                <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
+                  <span className="hon-card-head">
+                    <Trophy size={40} />
+                    <span>
+                      <strong>{c.name}</strong>
+                      <small>
+                        {c.format} · {c.editions.length} edici{c.editions.length === 1 ? 'ón' : 'ones'}
+                      </small>
+                    </span>
+                  </span>
+                  {c.lastChampion ? (
+                    <span className="hon-last">
+                      <small>Último campeón · {c.lastChampion.edition}ª edición · {shortDate(c.lastChampion.date)}</small>
+                      <b>{c.lastChampion.champion}</b>
+                    </span>
+                  ) : (
+                    <span className="hon-last">
+                      <small>1ª edición en juego</small>
+                    </span>
+                  )}
+                  {top && top.titles > 0 && (
+                    <span className="hon-top">
+                      Más títulos: <b>{top.name}</b> · {top.titles} 🏆
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )
+      ) : list.length === 0 ? (
         <div className="empty">
           <div style={{ maxWidth: 520 }}>
             <Trophy size={80} />
             <strong>Aún no hay torneos</strong>
-            Crea una liguilla (todos contra todos) o un cuadro eliminatorio de 3 a 8 equipos, individuales o por parejas.
+            Elige quién juega y la app te propone los tipos de torneo que encajan.
             <div style={{ marginTop: 12 }}>
               <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentNew' })}>
                 Crear torneo
@@ -62,16 +167,16 @@ export function TournamentListScreen() {
       ) : (
         <div className="list scroll" style={{ flex: 1, minHeight: 0 }}>
           {list.map((t) => {
-            const done = t.fixtures.filter((f) => f.matchId).length;
-            const total = t.fixtures.filter((f) => !f.bye).length;
+            const real = t.fixtures.filter((f) => !f.bye);
+            const done = real.filter((f) => f.winnerTeamId).length;
             const winner = t.teams.find((x) => x.id === t.winnerTeamId);
             return (
-              <button key={t.id} className="row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
+              <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
                 <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
-                <span style={{ flex: 1 }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
                   <strong>{t.name}</strong>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    {FORMAT_LABEL[t.format]} · {t.teams.length} equipos · {t.teamSize === 1 ? '1v1' : '2v2'} · {t.ranked ? 'cuenta para ELO' : 'sin ELO'} · {formatDate(t.createdAt)}
+                    {FORMAT_LABEL[t.format]} · {teamCountLabel(t)} · {t.ranked ? 'cuenta para ELO' : 'sin ELO'} · {shortDate(t.createdAt)}
                   </div>
                 </span>
                 {t.status === 'finished' && winner ? (
@@ -79,7 +184,7 @@ export function TournamentListScreen() {
                 ) : t.status === 'cancelled' ? (
                   <span className="badge">Cancelado</span>
                 ) : (
-                  <span className="badge badge-accent">{done}/{total} partidos</span>
+                  <span className="badge badge-accent">{done}/{real.length} partidos</span>
                 )}
               </button>
             );
@@ -87,50 +192,195 @@ export function TournamentListScreen() {
         </div>
       )}
       <div className="dim" style={{ fontSize: 11 }}>
-        Formato propuesto «{TOURNAMENT_RULES_VERSION}»: victoria = 3 puntos; desempate por diferencia de goles, goles a favor y enfrentamiento directo. Ganar un torneo da +300 XP.
+        Formato propuesto «{TOURNAMENT_RULES_VERSION}»: victoria = 3 puntos; desempate por diferencia de goles y goles a favor. En el Pool puntúa cada jugador. Ganar un torneo da +300 XP.
       </div>
     </ScreenFrame>
   );
 }
 
-export function TournamentNewScreen() {
-  const { navigate, players, progression, prefs, saveTournament, toast } = useApp();
-  const [name, setName] = useState(`Torneo ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`);
-  const [format, setFormat] = useState<TournamentFormat>('league');
-  const [teamSize, setTeamSize] = useState<1 | 2>(1);
-  const [ranked, setRanked] = useState(false);
-  const [seeding, setSeeding] = useState<'elo' | 'random'>('elo');
-  const [endCondition, setEndCondition] = useState<EndCondition>(prefs.defaultEndCondition);
-  const [goals, setGoals] = useState(prefs.defaultGoalsPerPeriod);
-  const [minutes, setMinutes] = useState(prefs.defaultMinutesPerPeriod);
-  const [selected, setSelected] = useState<string[]>([]);
+/** Palmarés de una competición: todas sus ediciones con campeón y MVP, y quién suma más títulos. */
+export function TournamentHonoursScreen({ competitionKey }: { competitionKey: string }) {
+  const { navigate, tournaments, matches, players } = useApp();
+  const c = competitions(tournaments, matches, players).find((x) => x.key === competitionKey);
+  if (!c) {
+    return (
+      <ScreenFrame title="Palmarés" onBack={() => navigate({ name: 'tournament', tab: 'honours' })}>
+        <div className="empty">Competición no encontrada.</div>
+      </ScreenFrame>
+    );
+  }
+  const photoOf = (id: string) => players.find((p) => p.id === id)?.photo;
+  return (
+    <ScreenFrame
+      title={c.name}
+      subtitle={`Palmarés · ${c.format} · ${c.editions.length} edici${c.editions.length === 1 ? 'ón' : 'ones'}`}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      onBack={() => navigate({ name: 'tournament', tab: 'honours' })}
+    >
+      <div className="td-layout">
+        <div className="td-panel scroll">
+          <div className="label">Ediciones</div>
+          <div className="hon-editions">
+            {c.editions.map((e) => (
+              <button key={e.tournament.id} className="hon-edition" onClick={() => navigate({ name: 'tournamentDetail', id: e.tournament.id })}>
+                <span className="hon-ed-num">
+                  {e.edition}
+                  <small>ª</small>
+                </span>
+                <span className="hon-ed-body">
+                  <small>
+                    {e.tournament.status === 'finished' ? shortDate(e.date) : `En juego desde ${shortDate(e.tournament.createdAt)}`}
+                  </small>
+                  {e.champion ? <b>🏆 {e.champion}</b> : <b className="dim">Sin campeón todavía</b>}
+                  {e.mvp && <span>MVP: {e.mvp.name}</span>}
+                </span>
+                <span className="hon-ed-avatars">
+                  {e.championIds.map((id) => (
+                    <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photoOf(id)} size={34} />
+                  ))}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="td-panel scroll">
+          <div className="label">Cuadro de honor</div>
+          <table className="rep-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Jugador</th>
+                <th title="Títulos">🏆</th>
+                <th title="Veces MVP">MVP</th>
+                <th title="Ediciones jugadas">Ed.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.honours.map((h, i) => (
+                <tr key={h.playerId} className={i === 0 && h.titles > 0 ? 'leader' : ''}>
+                  <td>{i + 1}</td>
+                  <td>{h.name}</td>
+                  <td><strong>{h.titles}</strong></td>
+                  <td>{h.mvps}</td>
+                  <td>{h.editions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ScreenFrame>
+  );
+}
+
+/**
+ * Crear un torneo en dos pasos: primero quién juega (fichas con foto) y después el tipo de torneo.
+ * La lista de tipos se ordena según el número de jugadores: arriba los que se pueden jugar (con el
+ * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
+ */
+export function TournamentNewScreen({ templateId, initialSelected }: { templateId?: string; initialSelected?: string[] }) {
+  const { navigate, players, progression, prefs, saveTournament, toast, tournaments } = useApp();
+  const [step, setStep] = useState<'players' | 'format'>(initialSelected?.length ? 'format' : 'players');
+  const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
+  const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
+  // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
+  const [seed, setSeed] = useState(() => String(Date.now()));
+  const [creating, setCreating] = useState(false);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
+  const n = selected.length;
+
+  // Tipos ordenados: los que encajan primero (el recomendado el primero de todos).
+  const recommended = recommendedTemplateId(n);
+  const fits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
+  const usable = fits.filter((x) => x.fit.ok).sort((a, b) => Number(b.t.id === recommended) - Number(a.t.id === recommended));
+  const blocked = fits.filter((x) => !x.fit.ok);
+  const tpl = usable.find((x) => x.t.id === chosenTpl)?.t ?? usable[0]?.t;
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // Parejas equilibradas: el mejor ELO con el peor, el segundo con el penúltimo…
-  const teams: { playerIds: string[] }[] = [];
-  if (teamSize === 1) selected.forEach((id) => teams.push({ playerIds: [id] }));
-  else {
-    const sorted = [...selected].sort((a, b) => elo(b) - elo(a));
-    while (sorted.length >= 2) teams.push({ playerIds: [sorted.shift()!, sorted.pop()!] });
-    if (sorted.length) teams.push({ playerIds: [sorted[0]] });
+  if (step === 'players') {
+    const available = sortPlayers(players.filter((p) => p.active));
+    return (
+      <ScreenFrame
+        title="¿Quién juega?"
+        subtitle="Nuevo torneo"
+        className="select-screen tn-screen"
+        background={TN_BG}
+        onBack={() => navigate({ name: 'tournament' })}
+        right={<button className="btn btn-sm" onClick={() => setCreating(true)}>+ Nuevo</button>}
+        footer={
+          <>
+            <span className="tn-count" aria-live="polite">
+              <b>{n}</b> {n === 1 ? 'jugador' : 'jugadores'}
+            </span>
+            <span className="notice select-status">
+              {n < 3 ? `Marca al menos ${3 - n} más` : `${usable.length} tipo${usable.length === 1 ? '' : 's'} de torneo disponible${usable.length === 1 ? '' : 's'}`}
+            </span>
+            <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
+              {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
+            </button>
+            <button className="btn btn-primary btn-lg" disabled={n < 3} onClick={() => setStep('format')}>
+              Siguiente
+            </button>
+          </>
+        }
+      >
+        <div className="pick-grid tn-pick-grid scroll">
+          {available.length === 0 ? (
+            <div className="empty" style={{ gridColumn: '1 / -1' }}>
+              <div>
+                <strong>Sin jugadores</strong>
+                Crea jugadores para montar un torneo.
+              </div>
+            </div>
+          ) : (
+            available.map((p) => {
+              const on = selected.includes(p.id);
+              const prog = progression?.players.get(p.id);
+              const title = displayTitle(prog, p.titleId);
+              return (
+                <button
+                  key={p.id}
+                  className={`pick-card tn-pick ${on ? 'is-picked' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => toggle(p.id)}
+                  aria-label={`${on ? 'Quitar a' : 'Apuntar a'} ${p.name}`}
+                >
+                  <span className="pick-photo">
+                    {p.photo ? <img src={p.photo} alt="" draggable={false} /> : <span className="pick-initials">{initials(p.name)}</span>}
+                    {on && <span className="tn-check" aria-hidden="true">✓</span>}
+                  </span>
+                  <span className="pick-info">
+                    <span className="pick-name">{p.name}</span>
+                    <span className="pick-meta">{prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
+                    {title && <span className="pick-title">{title}</span>}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => setSelected((s) => [...s, p.id])} />}
+      </ScreenFrame>
+    );
   }
 
-  const config: MatchConfig = {
-    ...DEFAULT_CONFIG,
-    endCondition,
-    goalsPerPeriod: goals,
-    minutesPerPeriod: minutes,
-    penaltyFirstTeam: prefs.penaltyFirstTeam,
-  };
-  const draft: TournamentDraft = { name, format, teamSize, ranked, config, teams, seeding };
-  const errors = validateDraft(draft);
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
+  // El nombre sale solo: competición (el tipo de torneo) y número de edición.
+  const edition = tpl ? nextEdition(tpl.id, tournaments) : 1;
+  const name = tpl ? editionName(tpl.name, edition) : '';
+  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed)) : null;
+  const draft = built ? { ...built.draft, edition } : null;
+  const leftover = built?.leftover ?? [];
+  const errors = !tpl || !draft ? ['Ningún tipo de torneo encaja con estos jugadores.'] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
+  const isPool = tpl?.format === 'pool';
+  const usesDraw = !!tpl && (isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random'));
 
   const create = async () => {
+    if (!draft) return;
     try {
-      const t = createTournament(draft, players, elo, Date.now());
+      const t = createTournament(draft, players, elo, Date.now(), seededRandom(`${seed}-cal`));
       await saveTournament(t);
       navigate({ name: 'tournamentDetail', id: t.id });
     } catch (err) {
@@ -138,24 +388,58 @@ export function TournamentNewScreen() {
     }
   };
 
-  const seg = <T,>(value: T, options: [T, string][], onChange: (v: T) => void) => (
-    <div className="segmented">
-      {options.map(([v, label]) => (
-        <button key={String(v)} className="seg seg-compact" aria-pressed={value === v} onClick={() => onChange(v)}>
-          {label}
-        </button>
-      ))}
-    </div>
+  const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => (
+    <button
+      key={t.id}
+      className={`tpl-card ${fit.ok ? '' : 'is-off'}`}
+      aria-pressed={fit.ok && t.id === tpl?.id}
+      disabled={!fit.ok}
+      onClick={() => setChosenTpl(t.id)}
+    >
+      <strong>
+        {t.name}
+        {t.id === recommended && <span className="tpl-rec">Recomendado</span>}
+        {!t.builtIn && <span className="tpl-mine">mío</span>}
+      </strong>
+      {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
+      <span>{describeTemplate(t)}</span>
+    </button>
   );
+
+  let preview: ReactNode = null;
+  if (tpl && draft) {
+    preview = isPool ? (
+      <div className="tn-plan">
+        <strong>{templateFit(tpl, n).summary}</strong>
+        <span>Las parejas cambian en cada partido y puntúa cada jugador.{draft.gamesPerPlayer !== tpl.gamesPerPlayer ? ` Ajustado a ${draft.gamesPerPlayer} partidos por jugador para que todos jueguen los mismos.` : ''}</span>
+        {draft.final !== 'none' && <span>Final: {FINAL_LABEL[draft.final!]}{tpl.finalBestOf > 1 ? ', al mejor de 3' : ''}.</span>}
+        <div className="tn-teams" style={{ marginTop: 4 }}>
+          {selected.map((id) => <span key={id} className="tn-team">{nameOf(id)}</span>)}
+        </div>
+      </div>
+    ) : (
+      <div className="tn-plan">
+        <strong>{templateFit(tpl, n).summary}</strong>
+        <div className="tn-teams">
+          {draft.teams.map((t, i) => (
+            <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ScreenFrame
-      title="Nuevo torneo"
-      onBack={() => navigate({ name: 'tournament' })}
+      title="Elige el torneo"
+      subtitle={`${n} jugadores`}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      onBack={() => setStep('players')}
       footer={
         <>
-          <span className={`notice ${errors.length ? 'warn' : ''}`} style={{ marginRight: 'auto' }}>
-            {errors[0] ?? `${teams.length} equipos listos`}
+          <span className={`notice select-status ${errors.length ? 'warn' : ''}`}>
+            {errors[0] ?? (isPool ? `${n} jugadores listos` : `${draft?.teams.length ?? 0} equipos listos`)}
           </span>
           <button className="btn btn-primary btn-lg" disabled={errors.length > 0} onClick={create}>
             Crear torneo
@@ -164,54 +448,207 @@ export function TournamentNewScreen() {
       }
     >
       <div className="tn-layout">
-        <div className="tn-col scroll">
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Nombre del torneo" maxLength={30} />
-          <div className="label">Formato</div>
-          {seg(format, [['league', 'LIGUILLA'], ['bracket', 'CUADRO']], setFormat)}
-          <div className="label">Equipos</div>
-          {seg<1 | 2>(teamSize, [[1, '1 JUGADOR'], [2, 'PAREJAS']], setTeamSize)}
-          {format === 'bracket' && (
-            <>
-              <div className="label">Siembra</div>
-              {seg(seeding, [['elo', 'POR ELO'], ['random', 'SORTEO']], setSeeding)}
-            </>
-          )}
-          <div className="label">Partidos</div>
-          {seg(endCondition, [['goals', 'GOLES'], ['time', 'TIEMPO'], ['both', 'AMBAS']], setEndCondition)}
-          {endCondition !== 'time' && seg(goals, [[3, '3'], [5, '5'], [7, '7'], [10, '10']], setGoals)}
-          {endCondition !== 'goals' && seg(minutes, [[3, '3 min'], [5, '5 min'], [8, '8 min']], setMinutes)}
-          <Toggle checked={ranked} onChange={setRanked} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio." />
+        <div className="tn-col">
+          <div className="label">Tipos de torneo para {n} jugadores</div>
+          <div className="tpl-list scroll">
+            {usable.map(tplCard)}
+            {blocked.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
+            {blocked.map(tplCard)}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected })}>
+              + Crear tipo
+            </button>
+            {tpl && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigate(tpl.builtIn ? { name: 'tournamentTemplate', baseId: tpl.id, selected } : { name: 'tournamentTemplate', templateId: tpl.id, selected })}
+              >
+                {tpl.builtIn ? 'Copiar y ajustar' : 'Editar tipo'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="tn-col">
-          <div className="label">
-            Jugadores ({selected.length}) · {teamSize === 1 ? `${MIN_TEAMS}–${MAX_TEAMS}` : `${MIN_TEAMS * 2}–${MAX_TEAMS * 2}, número par`}
-          </div>
-          <div className="chip-wrap scroll" style={{ maxHeight: 120 }}>
-            {sortPlayers(players.filter((p) => p.active)).map((p) => (
-              <button key={p.id} className={`pick-chip ${selected.includes(p.id) ? 'pick-blue' : ''}`} onClick={() => toggle(p.id)}>
-                {p.name}
-              </button>
-            ))}
-          </div>
-          <div className="label">Equipos {teamSize === 2 && '(parejas equilibradas por ELO)'}</div>
-          <div className="tn-teams scroll">
-            {teams.map((t, i) => (
-              <span key={i} className="tn-team">
-                {t.playerIds.map(nameOf).join(' + ')}
+          {tpl && (
+            <div className="tn-nameplate" aria-label={`Nombre del torneo: ${name}`}>
+              <span className="tn-np-edition">
+                {edition}
+                <small>ª edición</small>
               </span>
-            ))}
-            {teams.length === 0 && <span className="dim">Selecciona jugadores.</span>}
+              <span className="tn-np-body">
+                <b>{tpl.name}</b>
+                <small>{shortDate(Date.now())} · el nombre se pone solo</small>
+              </span>
+            </div>
+          )}
+          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ flex: 1 }}>
+              {isPool ? 'Cómo se jugará' : `Equipos${tpl?.teamSize === 2 ? (tpl.pairing === 'elo' ? ' · parejas equilibradas' : ' · parejas al azar') : ''}`}
+            </span>
+            {usesDraw && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setSeed(String(Date.now()))}>
+                ↻ Sortear otra vez
+              </button>
+            )}
           </div>
+          <div className="scroll" style={{ minHeight: 0 }}>{preview}</div>
         </div>
       </div>
     </ScreenFrame>
   );
 }
 
-export function TournamentDetailScreen({ id }: { id: string }) {
+/** Creador de tipos de torneo: se guardan como predefinidos para reutilizarlos. */
+export function TournamentTemplateScreen({ templateId, baseId, selected }: { templateId?: string; baseId?: string; selected?: string[] }) {
+  const { navigate, prefs, savePrefs, toast } = useApp();
+  const saved = prefs.tournamentTemplates;
+  const existing = saved.find((x) => x.id === templateId);
+  const [tpl, setTpl] = useState<TournamentTemplate>(() => {
+    if (existing) return { ...existing };
+    const base = allTemplates(saved).find((x) => x.id === baseId);
+    return newTemplate(base);
+  });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const set = <K extends keyof TournamentTemplate>(key: K, value: TournamentTemplate[K]) => setTpl((t) => ({ ...t, [key]: value }));
+  const isPool = tpl.format === 'pool';
+  const finals = finalOptions(tpl.format);
+  const hasFinal = tpl.format === 'bracket' || tpl.final !== 'none';
+
+  const setFormat = (format: TournamentTemplate['format']) =>
+    setTpl((t) => ({
+      ...t,
+      format,
+      teamSize: format === 'pool' ? 2 : t.teamSize,
+      final: finalOptions(format).includes(t.final) ? t.final : 'none',
+    }));
+
+  const save = async () => {
+    const clean: TournamentTemplate = { ...tpl, name: tpl.name.trim(), builtIn: false };
+    const list = existing ? saved.map((x) => (x.id === clean.id ? clean : x)) : [...saved, clean];
+    await savePrefs({ ...prefs, tournamentTemplates: list });
+    toast('Predefinido guardado');
+    navigate({ name: 'tournamentNew', templateId: clean.id, selected });
+  };
+
+  const remove = async () => {
+    await savePrefs({ ...prefs, tournamentTemplates: saved.filter((x) => x.id !== tpl.id) });
+    toast('Predefinido borrado');
+    navigate({ name: 'tournamentNew', selected });
+  };
+
+  return (
+    <ScreenFrame
+      title={existing ? 'Editar tipo de torneo' : 'Crear tipo de torneo'}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      onBack={() => navigate({ name: 'tournamentNew', templateId: existing?.id ?? baseId, selected })}
+      footer={
+        <>
+          <span className="notice" style={{ marginRight: 'auto', maxWidth: 470 }}>{describeTemplate(tpl)}</span>
+          {existing && (
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)}>
+              Borrar
+            </button>
+          )}
+          <button className="btn btn-primary btn-lg" disabled={!tpl.name.trim()} onClick={save}>
+            Guardar predefinido
+          </button>
+        </>
+      }
+    >
+      <div className="tn-layout">
+        <div className="tn-col scroll">
+          <input className="input" value={tpl.name} onChange={(e) => set('name', e.target.value)} aria-label="Nombre del predefinido" maxLength={24} placeholder="Nombre del predefinido" />
+          <div className="label">Formato</div>
+          <Seg<TournamentTemplate['format']> value={tpl.format} options={[['pool', 'POOL'], ['league', 'LIGUILLA'], ['bracket', 'CUADRO']]} onChange={setFormat} />
+          <div className="dim" style={{ fontSize: 11 }}>
+            {isPool
+              ? 'Parejas que cambian en cada partido; puntúa cada jugador. Vale con número par o impar: si sobra alguien, descansa por turnos.'
+              : tpl.format === 'league'
+                ? 'Todos contra todos a una vuelta.'
+                : 'Eliminación directa; los huecos pasan directos.'}
+          </div>
+          {isPool ? (
+            <>
+              <div className="label">Partidos por jugador</div>
+              <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
+              <div className="dim" style={{ fontSize: 11 }}>Se ajusta al crear para que todos jueguen los mismos.</div>
+            </>
+          ) : (
+            <>
+              <div className="label">Equipos</div>
+              <Seg<1 | 2> value={tpl.teamSize} options={[[1, '1 JUGADOR'], [2, 'PAREJAS FIJAS']]} onChange={(v) => set('teamSize', v)} />
+            </>
+          )}
+          {(isPool || tpl.teamSize === 2) && (
+            <>
+              <div className="label">Parejas</div>
+              <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
+            </>
+          )}
+          {tpl.format === 'bracket' && (
+            <>
+              <div className="label">Siembra</div>
+              <Seg<'elo' | 'random'> value={tpl.seeding} options={[['elo', 'POR ELO'], ['random', 'SORTEO']]} onChange={(v) => set('seeding', v)} />
+            </>
+          )}
+        </div>
+        <div className="tn-col scroll">
+          <div className="label">Partidos</div>
+          <Seg<TournamentTemplate['endCondition']> value={tpl.endCondition} options={[['goals', 'GOLES'], ['time', 'TIEMPO'], ['both', 'AMBAS']]} onChange={(v) => set('endCondition', v)} />
+          {tpl.endCondition !== 'time' && (
+            <Seg value={tpl.goalsPerPeriod} options={[[3, '3'], [5, '5'], [7, '7'], [10, '10']]} onChange={(v) => set('goalsPerPeriod', v)} />
+          )}
+          {tpl.endCondition !== 'goals' && (
+            <Seg value={tpl.minutesPerPeriod} options={[[3, '3 min'], [5, '5 min'], [8, '8 min']]} onChange={(v) => set('minutesPerPeriod', v)} />
+          )}
+          {finals.length > 0 && (
+            <>
+              <div className="label">Final</div>
+              <Seg value={tpl.final} options={finals.map((f) => [f, FINAL_LABEL[f].toUpperCase()] as [TournamentFinal, string])} onChange={(v) => set('final', v)} />
+            </>
+          )}
+          {hasFinal && (
+            <>
+              <div className="label">La final se juega</div>
+              <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'A 1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
+              {tpl.endCondition !== 'time' && (
+                <Seg<number | null>
+                  value={tpl.finalGoals}
+                  options={[[null, 'MISMOS GOLES'], [7, 'A 7'], [10, 'A 10']]}
+                  onChange={(v) => set('finalGoals', v)}
+                />
+              )}
+            </>
+          )}
+          <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio." />
+        </div>
+      </div>
+      {confirmDelete && (
+        <Modal
+          title="¿Borrar este predefinido?"
+          onClose={() => setConfirmDelete(false)}
+          actions={
+            <>
+              <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>No</button>
+              <button className="btn btn-danger" onClick={remove}>Borrar</button>
+            </>
+          }
+        >
+          <p style={{ margin: 0 }}>Los torneos ya creados con él no cambian.</p>
+        </Modal>
+      )}
+    </ScreenFrame>
+  );
+}
+
+export function TournamentDetailScreen({ id, view: initialView }: { id: string; view?: 'report' | 'play' }) {
   const { navigate, tournaments, matches, players, saveTournament, prefs } = useApp();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const t = tournaments.find((x) => x.id === id);
+  // Terminado: se abre en la ficha; en juego: en los partidos.
+  const [view, setView] = useState<'report' | 'play'>(initialView ?? (t?.status === 'finished' ? 'report' : 'play'));
   if (!t) {
     return (
       <ScreenFrame title="Torneo" onBack={() => navigate({ name: 'tournament' })}>
@@ -220,52 +657,86 @@ export function TournamentDetailScreen({ id }: { id: string }) {
     );
   }
   const teamName = (tid: string | null) => (tid ? t.teams.find((x) => x.id === tid)?.name ?? '?' : '—');
+  const nameOf = (pid: string) => players.find((p) => p.id === pid)?.name ?? '?';
   const byId = new Map(matches.map((m) => [m.id, m]));
-  const playable = playableFixtures(t);
+  // En el Pool se juega en orden para respetar los descansos; en el resto, en cualquier orden.
+  const playable = t.format === 'pool' ? playableFixtures(t).slice(0, 1) : playableFixtures(t);
   const winner = t.teams.find((x) => x.id === t.winnerTeamId);
+  const finalFx = t.fixtures.find((f) => f.stage === 'final');
 
   const play = (f: Fixture) => {
     const participants = fixtureParticipants(t, f, players);
-    const config: MatchConfig = { ...t.config, testMode: false, penaltyFirstTeam: prefs.penaltyFirstTeam };
+    const config: MatchConfig = { ...fixtureConfig(t, f), testMode: false, penaltyFirstTeam: prefs.penaltyFirstTeam };
     const extras = { tournament: { id: t.id, fixtureId: f.id } };
     if (config.mode === 'ranked') navigate({ name: 'prematch', config, participants, extras });
     else navigate({ name: 'match', config, participants, extras });
   };
 
-  const score = (f: Fixture) => {
-    const m = f.matchId ? byId.get(f.matchId) : undefined;
-    if (!m) return null;
-    return `${m.result.score.white}–${m.result.score.blue}${m.result.penaltyScore ? ` (p ${m.result.penaltyScore.white}–${m.result.penaltyScore.blue})` : ''}`;
+  const fixtureRow = (f: Fixture) => {
+    const series = (f.bestOf ?? 1) > 1;
+    const game = (f.matchIds?.length ?? 0) + 1;
+    return (
+      <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''}`}>
+        <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>{teamName(f.whiteTeamId)}</span>
+        <span className="fx-score">
+          {f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
+          {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
+        </span>
+        <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>{teamName(f.blueTeamId)}</span>
+        {playable.includes(f) && (
+          <button className="btn btn-primary btn-sm" onClick={() => play(f)}>
+            ▶ {series && game > 1 ? `Partido ${game}` : 'Jugar'}
+          </button>
+        )}
+      </div>
+    );
   };
 
-  const fixtureRow = (f: Fixture) => (
-    <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''}`}>
-      <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>{teamName(f.whiteTeamId)}</span>
-      <span className="fx-score">{f.bye ? 'pase' : score(f) ?? 'vs'}</span>
-      <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>{teamName(f.blueTeamId)}</span>
-      {playable.includes(f) && (
-        <button className="btn btn-primary btn-sm" onClick={() => play(f)}>
-          ▶ Jugar
-        </button>
+  const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
+  const finalCard = finalFx && (
+    <div className="final-card">
+      <div className="label" style={{ color: 'var(--ranked)' }}>
+        Final · {FINAL_LABEL[t.final ?? 'top2']}
+        {(finalFx.bestOf ?? 1) > 1 ? ' · al mejor de 3' : ''}
+      </div>
+      {finalFx.whiteTeamId ? (
+        fixtureRow(finalFx)
+      ) : (
+        <div className="dim" style={{ fontSize: 12 }}>Se decide al acabar la fase regular.</div>
       )}
     </div>
   );
 
-  const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
-
   return (
     <ScreenFrame
       title={t.name}
-      subtitle={`${FORMAT_LABEL[t.format]} · ${t.teamSize === 1 ? '1v1' : '2v2'}${t.ranked ? ' · ELO' : ''}`}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      subtitle={`${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}${t.ranked ? ' · ELO' : ''}`}
       onBack={() => navigate({ name: 'tournament' })}
       right={
-        t.status === 'active' && (
-          <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
-            Cancelar torneo
-          </button>
-        )
+        <>
+          <Tabs
+            label="Vista del torneo"
+            value={view}
+            onChange={setView}
+            tabs={[
+              { id: 'play', label: t.format === 'bracket' ? 'Cuadro' : 'Clasificación' },
+              { id: 'report', label: 'Ficha' },
+            ]}
+          />
+          {t.status === 'active' && (
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
+              Cancelar
+            </button>
+          )}
+        </>
       }
     >
+      {view === 'report' ? (
+        <TournamentReportView t={t} />
+      ) : (
+      <>
       {t.status === 'finished' && winner && (
         <div className="champion-banner">
           {prefs.effects !== 'off' && <Confetti count={30} />}
@@ -283,37 +754,7 @@ export function TournamentDetailScreen({ id }: { id: string }) {
         </div>
       )}
       <div className="td-layout">
-        {t.format === 'league' ? (
-          <div className="td-panel scroll">
-            <div className="label">Clasificación</div>
-            <table className="rep-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Equipo</th>
-                  <th>PJ</th>
-                  <th>G</th>
-                  <th>P</th>
-                  <th>Dif</th>
-                  <th>Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leagueStandings(t, matches).map((r, i) => (
-                  <tr key={r.team.id} className={i === 0 ? 'leader' : ''}>
-                    <td>{i + 1}</td>
-                    <td>{r.team.name}</td>
-                    <td>{r.played}</td>
-                    <td>{r.wins}</td>
-                    <td>{r.losses}</td>
-                    <td>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
-                    <td><strong>{r.points}</strong></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
+        {t.format === 'bracket' ? (
           <div className="td-panel bracket scroll">
             {rounds.map((r) => (
               <div key={r} className="bracket-round">
@@ -329,17 +770,59 @@ export function TournamentDetailScreen({ id }: { id: string }) {
               </div>
             ))}
           </div>
+        ) : (
+          <div className="td-panel scroll">
+            <div className="label">{t.format === 'pool' ? 'Clasificación individual' : 'Clasificación'}</div>
+            <table className="rep-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{t.format === 'pool' ? 'Jugador' : 'Equipo'}</th>
+                  <th>PJ</th>
+                  <th>G</th>
+                  <th>P</th>
+                  <th>Dif</th>
+                  <th>Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings(t, matches).map((r, i) => (
+                  <tr key={r.team.id} className={i === 0 && r.played > 0 ? 'leader' : ''}>
+                    <td>{i + 1}</td>
+                    <td>{r.team.name}</td>
+                    <td>{r.played}</td>
+                    <td>{r.wins}</td>
+                    <td>{r.losses}</td>
+                    <td>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                    <td><strong>{r.points}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {finalCard}
+          </div>
         )}
         <div className="td-panel scroll">
           <div className="label">Partidos</div>
-          {rounds.map((r) => (
-            <div key={r}>
-              <div className="dim" style={{ fontSize: 11, margin: '6px 0 3px' }}>{roundLabel(t, r)}</div>
-              {t.fixtures.filter((f) => f.round === r && (f.whiteTeamId || f.blueTeamId)).map(fixtureRow)}
-            </div>
-          ))}
+          {rounds
+            .filter((r) => t.format === 'bracket' || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
+            .map((r) => {
+              const fx = t.fixtures.filter((f) => f.round === r && (f.whiteTeamId || f.blueTeamId));
+              const resting = fx[0]?.resting ?? [];
+              return (
+                <div key={r}>
+                  <div className="dim" style={{ fontSize: 11, margin: '6px 0 3px' }}>
+                    {roundLabel(t, r)}
+                    {resting.length > 0 && ` · descansa${resting.length > 1 ? 'n' : ''}: ${resting.map(nameOf).join(', ')}`}
+                  </div>
+                  {fx.map(fixtureRow)}
+                </div>
+              );
+            })}
         </div>
       </div>
+      </>
+      )}
       {confirmCancel && (
         <Modal
           title="¿Cancelar el torneo?"
@@ -364,5 +847,145 @@ export function TournamentDetailScreen({ id }: { id: string }) {
         </Modal>
       )}
     </ScreenFrame>
+  );
+}
+
+/**
+ * Ficha completa del torneo: campeón y MVP arriba; información, destacados y estadísticas
+ * de cada jugador debajo. Los destacados abren el partido.
+ */
+function TournamentReportView({ t }: { t: Tournament }) {
+  const { matches, players, navigate, prefs } = useApp();
+  const r = tournamentReport(t, matches, players);
+  const champ = t.teams.find((x) => x.id === t.winnerTeamId);
+  const photo = (id: string) => players.find((p) => p.id === id)?.photo;
+  const openMatch = (matchId: string) => navigate({ name: 'matchDetail', matchId, fromTournament: true });
+  const anyScored = r.players.some((p) => p.scored > 0);
+  const total = t.fixtures.filter((f) => !f.bye).length;
+  const minutes = (ms: number) => `${Math.max(1, Math.round(ms / 60000))} min`;
+  const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+  const info: [string, string][] = [
+    ['Competición', t.templateName ?? t.name],
+    ['Edición', t.edition ? `${t.edition}ª` : '—'],
+    ['Formato', `${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}`],
+    ['Empezó', shortDate(r.startedAt ?? t.createdAt)],
+    ['Terminó', t.status === 'finished' && r.finishedAt ? shortDate(r.finishedAt) : t.status === 'cancelled' ? 'Cancelado' : 'En juego'],
+    ['Partidos', t.status === 'finished' ? String(r.matches.length) : `${r.matches.length} de ${total}`],
+    ['Goles', `${r.totalGoals}${r.matches.length ? ` · ${r.avgGoals.toFixed(1)} por partido` : ''}`],
+    ['Tiempo de juego', r.matches.length ? minutes(r.playTimeMs) : '—'],
+    ['Prórroga o penaltis', String(r.extraTime)],
+    ['Cuenta para ELO', t.ranked ? 'Sí' : 'No'],
+  ];
+  if (r.finalScore) info.splice(6, 0, ['Final', r.finalScore]);
+
+  const highlights: { icon: string; label: string; text: string; matchId?: string }[] = [];
+  if (r.topScorer) highlights.push({ icon: '⚽', label: 'Pichichi', text: `${r.topScorer.name} · ${r.topScorer.scored} goles` });
+  if (r.biggestWin) highlights.push({ icon: '💥', label: 'Mayor goleada', text: r.biggestWin.label, matchId: r.biggestWin.match.id });
+  if (r.highestScoring) highlights.push({ icon: '🔥', label: 'Partido con más goles', text: r.highestScoring.label, matchId: r.highestScoring.match.id });
+  if (r.longest) highlights.push({ icon: '⏱', label: `Partido más largo · ${minutes(r.longest.match.result.totalTimeMs)}`, text: r.longest.label, matchId: r.longest.match.id });
+
+  return (
+    <div className="rp-layout scroll">
+      <div className="rp-hero">
+        <div className={`rp-champ ${champ ? '' : 'is-pending'}`}>
+          {champ && prefs.effects !== 'off' && <Confetti count={24} />}
+          <Trophy size={58} />
+          <div className="rp-champ-body">
+            <div className="label">{champ ? 'Campeón' : t.status === 'cancelled' ? 'Cancelado' : 'En juego'}</div>
+            <div className="rp-champ-name">{champ?.name ?? 'Por decidir'}</div>
+            {r.finalScore && <small>Final: {r.finalScore}</small>}
+          </div>
+          {champ && (
+            <div className="rp-avatars">
+              {champ.playerIds.map((id) => (
+                <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photo(id)} size={46} />
+              ))}
+            </div>
+          )}
+        </div>
+        {r.mvp && (
+          <div className="rp-mvp">
+            <Avatar name={r.mvp.name} photo={photo(r.mvp.playerId)} size={52} />
+            <div className="rp-mvp-body">
+              <div className="label">★ MVP{t.status === 'finished' ? '' : ' provisional'}</div>
+              <div className="rp-mvp-name">{r.mvp.name}</div>
+              <small>
+                {r.mvp.wins} G · {r.mvp.losses} P{r.mvp.scored ? ` · ${r.mvp.scored} goles` : ''} · {sign(r.mvp.goalsFor - r.mvp.goalsAgainst)} · {r.mvp.mvp} pts
+              </small>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="rp-grid">
+        <div className="rp-side">
+          <div className="rp-card">
+            <div className="label">Información</div>
+            <dl className="rp-info">
+              {info.map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          {highlights.length > 0 && (
+            <div className="rp-card">
+              <div className="label">Destacados</div>
+              {highlights.map((h) => (
+                <button key={h.label} className="rp-hl" disabled={!h.matchId} onClick={() => h.matchId && openMatch(h.matchId)}>
+                  <span aria-hidden="true">{h.icon}</span>
+                  <span>
+                    <small>{h.label}</small>
+                    <b>{h.text}</b>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rp-card">
+          <div className="label">Jugadores</div>
+          <table className="rep-table rp-table">
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>PJ</th>
+                <th>G</th>
+                <th>P</th>
+                {anyScored && <th title="Goles marcados">Goles</th>}
+                <th title="Diferencia de goles de su equipo">Dif</th>
+                <th>% vic.</th>
+                <th title="Puntuación MVP">MVP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.players.map((p, i) => (
+                <tr key={p.playerId} className={i === 0 && r.mvp ? 'leader' : ''}>
+                  <td>
+                    <span className="rp-player">
+                      <Avatar name={p.name} photo={photo(p.playerId)} size={24} />
+                      {p.name}
+                      {p.champion && <span title="Campeón"> 🏆</span>}
+                    </span>
+                  </td>
+                  <td>{p.played}</td>
+                  <td>{p.wins}</td>
+                  <td>{p.losses}</td>
+                  {anyScored && <td>{p.scored}</td>}
+                  <td>{sign(p.goalsFor - p.goalsAgainst)}</td>
+                  <td>{p.played ? `${Math.round(p.winPct)} %` : '—'}</td>
+                  <td><strong>{p.mvp}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="dim" style={{ fontSize: 10, marginTop: 6 }}>
+            MVP = 3 por victoria + 1 por gol marcado + la mitad de la diferencia de goles + 2 al campeón.
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

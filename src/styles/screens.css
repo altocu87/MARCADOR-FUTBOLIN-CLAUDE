@@ -2596,6 +2596,519 @@
   font-size: 13px;
   font-weight: 700;
 }
+.tn-team-out {
+  border-color: var(--warn, #f2994a);
+  background: rgba(242, 153, 74, 0.14);
+}
+.tpl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-height: 0;
+  padding: 2px 4px 2px 2px;
+}
+/* Tarjeta de tipo de torneo: cristal oscuro con marco de neón celeste; la elegida se enciende. */
+.tpl-card {
+  --neon: #62d6ff;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: rgba(7, 16, 28, 0.72);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  flex: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.tpl-card strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+.tpl-card span {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.tpl-card .tpl-fit {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--neon);
+}
+.tpl-card .tpl-why {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ff8a8a;
+}
+.tpl-card[aria-pressed='true'] {
+  border: 2px solid var(--neon);
+  background: color-mix(in srgb, var(--neon) 16%, rgba(7, 16, 28, 0.8));
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--neon) 70%, transparent),
+    0 0 24px color-mix(in srgb, var(--neon) 28%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--neon) 20%, transparent);
+}
+.tpl-card[aria-pressed='true'] strong {
+  color: var(--neon);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--neon) 70%, transparent);
+}
+.tpl-card.is-off {
+  opacity: 0.45;
+  cursor: default;
+  border-style: dashed;
+}
+.tpl-card .tpl-rec,
+.tpl-card .tpl-mine {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+.tpl-card .tpl-rec {
+  color: #1a1203;
+  background: var(--ranked);
+  box-shadow: 0 0 10px rgba(242, 201, 76, 0.7);
+}
+.tpl-card .tpl-mine {
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.tpl-sep {
+  margin: 6px 0 0;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+/* Pantallas de torneo: título en neón dorado (el color del trofeo) sobre el fondo de la app. */
+.tn-screen {
+  --tc: var(--ranked);
+}
+.tn-screen .tn-bg.is-on {
+  opacity: 0.55;
+}
+.tn-screen .td-panel,
+.tn-screen .tn-plan {
+  background: rgba(7, 16, 28, 0.72);
+  backdrop-filter: blur(6px);
+}
+.tn-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(98, 214, 255, 0.45);
+  box-shadow: inset 0 0 14px rgba(98, 214, 255, 0.12);
+  font-size: 13px;
+}
+.tn-plan strong {
+  color: #62d6ff;
+  text-shadow: 0 0 8px rgba(98, 214, 255, 0.6);
+}
+/* Paso 1: fichas de jugador; las apuntadas se encienden en dorado con una marca. */
+.tn-pick-grid {
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+.tn-pick {
+  background: rgba(7, 16, 28, 0.78);
+  opacity: 0.82;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+.tn-pick.is-picked {
+  opacity: 1;
+  border-color: var(--ranked);
+  box-shadow:
+    0 0 10px rgba(242, 201, 76, 0.75),
+    0 0 24px rgba(242, 201, 76, 0.3),
+    inset 0 0 12px rgba(242, 201, 76, 0.25);
+}
+.tn-pick.is-picked .pick-name {
+  color: var(--ranked);
+  text-shadow: 0 0 8px rgba(242, 201, 76, 0.7);
+}
+.tn-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ranked);
+  color: #1a1203;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(242, 201, 76, 0.9);
+}
+.tn-count {
+  flex: none;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.tn-count b {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--ranked);
+  text-shadow: 0 0 12px rgba(242, 201, 76, 0.75);
+  margin-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* Placa con el nombre automático: número de edición en grande y la competición. */
+.tn-nameplate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--ranked);
+  background: rgba(7, 16, 28, 0.78);
+  box-shadow:
+    0 0 10px rgba(242, 201, 76, 0.6),
+    0 0 26px rgba(242, 201, 76, 0.22),
+    inset 0 0 14px rgba(242, 201, 76, 0.18);
+}
+.tn-np-edition {
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ranked);
+  text-shadow: 0 0 12px rgba(242, 201, 76, 0.8);
+}
+.tn-np-edition small {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-left: 2px;
+}
+.tn-np-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tn-np-body b {
+  font-size: 20px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tn-np-body small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.tn-screen .tabs {
+  margin: 0;
+}
+.tn-row strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Palmarés: una tarjeta por competición. */
+.hon-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-auto-rows: max-content;
+  gap: 10px;
+  align-content: start;
+}
+.hon-card {
+  --neon: var(--ranked);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid color-mix(in srgb, var(--neon) 70%, transparent);
+  background: rgba(7, 16, 28, 0.78);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--neon) 45%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--neon) 14%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.hon-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hon-card-head strong {
+  display: block;
+  font-size: 17px;
+  color: var(--neon);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--neon) 60%, transparent);
+}
+.hon-card-head small,
+.hon-last small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.hon-last b {
+  font-size: 15px;
+}
+.hon-top {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.hon-top b {
+  color: var(--text);
+}
+.hon-editions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hon-edition {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(242, 201, 76, 0.35);
+  background: rgba(7, 16, 28, 0.6);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.hon-ed-num {
+  flex: none;
+  width: 44px;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  color: var(--ranked);
+  text-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
+}
+.hon-ed-num small {
+  font-size: 14px;
+  vertical-align: super;
+}
+.hon-ed-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+.hon-ed-body small {
+  color: var(--text-2);
+  font-size: 11px;
+}
+.hon-ed-body b {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hon-ed-avatars {
+  display: flex;
+  gap: 4px;
+}
+/* Ficha del torneo. */
+.rp-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rp-hero {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+.rp-champ,
+.rp-mvp {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  border: 2px solid var(--ranked);
+  background: linear-gradient(90deg, rgba(242, 201, 76, 0.22), rgba(7, 16, 28, 0.82));
+  box-shadow:
+    0 0 14px rgba(242, 201, 76, 0.45),
+    inset 0 0 16px rgba(242, 201, 76, 0.15);
+}
+.rp-champ.is-pending {
+  border-color: var(--line);
+  background: rgba(7, 16, 28, 0.78);
+  box-shadow: none;
+}
+.rp-champ .label,
+.rp-mvp .label {
+  color: var(--ranked);
+}
+.rp-champ-body,
+.rp-mvp-body {
+  flex: 1;
+  min-width: 0;
+}
+.rp-champ-name {
+  font-size: 22px;
+  font-weight: 900;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-champ small,
+.rp-mvp small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.rp-avatars {
+  display: flex;
+  gap: 6px;
+}
+.rp-mvp {
+  --neon: #62d6ff;
+  border-color: var(--neon);
+  background: linear-gradient(90deg, rgba(98, 214, 255, 0.2), rgba(7, 16, 28, 0.82));
+  box-shadow:
+    0 0 14px rgba(98, 214, 255, 0.45),
+    inset 0 0 16px rgba(98, 214, 255, 0.15);
+}
+.rp-mvp .label {
+  color: var(--neon);
+}
+.rp-mvp-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--neon);
+  text-shadow: 0 0 10px rgba(98, 214, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-grid {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.rp-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rp-card {
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.72);
+  backdrop-filter: blur(6px);
+}
+.rp-info {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+.rp-info div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rp-info dt {
+  color: var(--text-2);
+}
+.rp-info dd {
+  margin: 0;
+  font-weight: 800;
+  text-align: right;
+}
+.rp-hl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 4px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 18px;
+}
+.rp-hl:disabled {
+  cursor: default;
+}
+.rp-hl span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rp-hl small {
+  font-size: 10px;
+  color: var(--text-2);
+}
+.rp-hl b {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-table td,
+.rp-table th {
+  white-space: nowrap;
+}
+.rp-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pool-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.final-card {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--ranked);
+  background: rgba(242, 201, 76, 0.08);
+}
+.fx-series {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-2);
+}
 .td-panel {
   min-height: 0;
   padding: 10px;
