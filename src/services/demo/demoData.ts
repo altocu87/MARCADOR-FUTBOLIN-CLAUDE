@@ -40,6 +40,7 @@ const DEMO_PLAYERS: { name: string; alias?: string; skill: number }[] = [
   { name: 'Vicky', skill: 0.7 },
   { name: 'José', skill: 0.72 },
   { name: 'María', skill: 0.68 },
+  { name: 'Victoria', skill: 0.58 },
   { name: 'Lucía', alias: 'La Muralla', skill: 0.85 },
   { name: 'Marcos', alias: 'Cañonero', skill: 0.8 },
   { name: 'Sara', skill: 0.72 },
