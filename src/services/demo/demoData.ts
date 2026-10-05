@@ -38,6 +38,8 @@ const DAY = 86_400_000;
 const DEMO_PLAYERS: { name: string; alias?: string; skill: number }[] = [
   { name: 'Alex', skill: 0.74 },
   { name: 'Vicky', skill: 0.7 },
+  { name: 'José', skill: 0.72 },
+  { name: 'María', skill: 0.68 },
   { name: 'Lucía', alias: 'La Muralla', skill: 0.85 },
   { name: 'Marcos', alias: 'Cañonero', skill: 0.8 },
   { name: 'Sara', skill: 0.72 },
