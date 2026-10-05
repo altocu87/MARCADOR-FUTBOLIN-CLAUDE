@@ -36,4 +36,6 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
 - Logos: `escudo-<categoría>-NN` (p. ej. `escudo-retro80-03`); copas: `copa-<categoría>-NN` (`copa-retro90-01`).
   Sin categoría (`escudo-07`) van a «Genéricos». Recortados, fondo transparente, ~256 px, .webp.
 - Las categorías y sus bloqueos (nivel, rango, logro o torneos ganados) están en `src/services/icons.ts`.
-  Una categoría sin imágenes no sale. Mientras no haya genéricos se usan provisionales (emoji y trofeo teñido).
+  Una categoría sin imágenes no sale.
+- Integrados: `escudo-generico-01…16` y `copa-generico-01…09` (recortados de sus hojas, fondo magenta quitado).
+  Pendientes: `escudo-retro80-*` y `copa-retro90-*`.
