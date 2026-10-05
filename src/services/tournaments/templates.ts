@@ -6,7 +6,7 @@ import { DEFAULT_CONFIG, type MatchConfig } from '../../match-engine';
 import type { TournamentTemplate } from '../persistence';
 import { newId } from '../ids';
 import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, effectivePoolGames } from './pool';
-import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, type TournamentDraft } from './tournaments';
+import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, rulesShort, sameRules, type MatchRules, type TournamentDraft } from './tournaments';
 
 const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   builtIn: true,
@@ -56,8 +56,7 @@ export function describeTemplate(t: TournamentTemplate): string {
   if (t.format === 'bracket') {
     if (bo) parts.push(`final${bo}`);
   } else parts.push(FINAL_LABEL[t.final] + (t.final !== 'none' ? bo : ''));
-  const goals = t.endCondition === 'time' ? `${t.minutesPerPeriod} min` : `a ${t.goalsPerPeriod} goles`;
-  parts.push(goals + (t.finalGoals && t.endCondition !== 'time' ? ` (final a ${t.finalGoals})` : ''));
+  parts.push(rulesShort(t) + (hasTemplateFinal(t) && !sameRules(t, finalRulesOf(t)) ? ` (final ${rulesShort(finalRulesOf(t))})` : ''));
   if (t.ranked) parts.push('cuenta para ELO');
   return parts.join(' · ');
 }
@@ -66,6 +65,25 @@ export function describeTemplate(t: TournamentTemplate): string {
 export function finalOptions(format: TournamentTemplate['format']): TournamentTemplate['final'][] {
   if (format === 'bracket') return [];
   return format === 'pool' ? ['none', 'top2', 'top4'] : ['none', 'top2'];
+}
+
+/** ¿Este tipo de torneo acaba en final? (el cuadro siempre; liguilla y Pool si la tienen). */
+export function hasTemplateFinal(t: TournamentTemplate): boolean {
+  return t.format === 'bracket' || (t.final !== 'none' && finalOptions(t.format).includes(t.final));
+}
+
+/** Reglas de la final: las suyas propias o, si no tiene, las del resto. */
+export function finalRulesOf(t: TournamentTemplate): MatchRules {
+  return {
+    endCondition: t.finalEndCondition ?? t.endCondition,
+    goalsPerPeriod: t.finalGoals ?? t.goalsPerPeriod,
+    minutesPerPeriod: t.finalMinutes ?? t.minutesPerPeriod,
+  };
+}
+
+/** El tipo de torneo con la final jugada con otras reglas. */
+export function withFinalRules(t: TournamentTemplate, r: MatchRules): TournamentTemplate {
+  return { ...t, finalEndCondition: r.endCondition, finalGoals: r.goalsPerPeriod, finalMinutes: r.minutesPerPeriod };
 }
 
 export function templateMatchConfig(t: TournamentTemplate, defaults: Partial<MatchConfig> = {}): MatchConfig {
@@ -88,8 +106,9 @@ export function draftFromTemplate(
   rnd: () => number = Math.random,
 ): { draft: TournamentDraft; leftover: string[] } {
   const config = templateMatchConfig(t, defaults);
-  const hasFinal = t.format === 'bracket' || (t.final !== 'none' && finalOptions(t.format).includes(t.final));
-  const finalConfig = hasFinal && t.finalGoals && t.endCondition !== 'time' ? { ...config, goalsPerPeriod: t.finalGoals } : undefined;
+  const hasFinal = hasTemplateFinal(t);
+  const fr = finalRulesOf(t);
+  const finalConfig = hasFinal && !sameRules(t, fr) ? { ...config, ...fr } : undefined;
   const common = {
     name,
     format: t.format,

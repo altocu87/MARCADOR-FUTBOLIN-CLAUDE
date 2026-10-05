@@ -86,6 +86,8 @@ export interface Fixture {
   series?: { white: number; blue: number };
   /** Partidos de la serie, en orden (`matchId` es siempre el último). */
   matchIds?: string[];
+  /** Se empezó y se abandonó a medias (sigue pendiente; se borra al apuntar el resultado). */
+  abandonedAt?: number;
 }
 
 export interface Tournament {
@@ -143,6 +145,10 @@ export interface TournamentTemplate {
   minutesPerPeriod: number;
   /** Goles de la final (null = los mismos que el resto). */
   finalGoals: number | null;
+  /** Cómo se acaba la final (sin poner = como el resto). */
+  finalEndCondition?: MatchConfig['endCondition'];
+  /** Minutos por parte de la final (sin poner = los mismos que el resto). */
+  finalMinutes?: number;
 }
 
 export type EffectsLevel = 'full' | 'reduced' | 'off';

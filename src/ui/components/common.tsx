@@ -1,5 +1,6 @@
 /** Componentes de interfaz reutilizables. */
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { MatchMode } from '../../match-engine';
 import { initials } from '../../services/players';
 import { assetUrl } from './assets';
@@ -179,7 +180,14 @@ export function Modal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  // La ventana se pinta sobre la pantalla entera (no dentro del panel desde el que se abre).
+  const anchor = useRef<HTMLSpanElement>(null);
+  // Se busca la pantalla antes de pintar nada (sin parpadeo, y los campos con foco automático lo conservan).
+  const [host, setHost] = useState<Element | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (anchor.current) setHost(anchor.current.closest('.screen'));
+  }, []);
+  const content = (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
@@ -190,6 +198,8 @@ export function Modal({
       </div>
     </div>
   );
+  if (host) return createPortal(content, host);
+  return host === undefined ? <span ref={anchor} hidden /> : content;
 }
 
 export const MODE_LABEL: Record<MatchMode, string> = {

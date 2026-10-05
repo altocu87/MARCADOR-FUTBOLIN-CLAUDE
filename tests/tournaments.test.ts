@@ -17,6 +17,11 @@ import {
   fixtureConfig,
   fixtureProgress,
   nextFixture,
+  undoMatch,
+  updateTournamentRules,
+  recordedMatches,
+  markAbandoned,
+  withFinalRules,
   phaseInfo,
   standingsMovement,
   formTeams,
@@ -385,5 +390,82 @@ describe('Cartel de fase del torneo', () => {
   it('la eliminatoria de 8 empieza en cuartos de final', () => {
     const t = bracket(8);
     expect(phaseInfo(t, t.fixtures.find((f) => f.round === 1)!)).toMatchObject({ tier: 'quarter', title: 'CUARTOS DE FINAL' });
+  });
+});
+
+describe('Reglas propias de la final', () => {
+  const ps = players(['a', 'b', 'c', 'd']);
+  const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-league-final')!;
+  it('la final puede jugarse a tiempo aunque la liguilla sea a goles, y a partido único', () => {
+    const custom = { ...withFinalRules(tpl, { endCondition: 'time', goalsPerPeriod: 5, minutesPerPeriod: 8 }), finalBestOf: 1 as const };
+    const { draft } = draftFromTemplate(custom, 'Liga', ps.map((p) => p.id), () => 1200);
+    const t = createTournament(draft, ps, () => 1200, 0, seededRandom('z'));
+    const final = t.fixtures.find((f) => f.stage === 'final')!;
+    expect(final.bestOf).toBeUndefined();
+    expect(fixtureConfig(t, final)).toMatchObject({ endCondition: 'time', minutesPerPeriod: 8 });
+    expect(fixtureConfig(t, t.fixtures[0])).toMatchObject({ endCondition: 'goals', goalsPerPeriod: 5 });
+    expect(describeTemplate(custom)).toMatch(/final 8 min/);
+  });
+  it('sin reglas propias la final se juega como el resto', () => {
+    const { draft } = draftFromTemplate(tpl, 'Liga', ps.map((p) => p.id), () => 1200);
+    expect(draft.finalConfig).toBeUndefined();
+  });
+});
+
+describe('Corregir un torneo ya empezado', () => {
+  const tplB = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-bracket')!;
+  const tplL = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-league-final')!;
+  const ps = players(['a', 'b', 'c', 'd']);
+  const make = (tpl: typeof tplB) => {
+    const { draft } = draftFromTemplate(tpl, 'T', ps.map((p) => p.id), () => 1200);
+    return createTournament(draft, ps, () => 1200, 0, seededRandom('z'));
+  };
+  it('repetir el último partido deja el torneo como antes de jugarlo', () => {
+    const t0 = make(tplB);
+    const { t, matches } = playAll(t0, (w, b) => (w[0] < b[0] ? 'W' : 'B'));
+    expect(t.status).toBe('finished');
+    const last = recordedMatches(t, matches).at(-1)!;
+    const back = undoMatch(t, last.id, matches);
+    expect(back.status).toBe('active');
+    expect(back.winnerTeamId).toBeUndefined();
+    const final = back.fixtures.find((f) => f.round === 2)!;
+    expect(final.whiteTeamId && final.blueTeamId).toBeTruthy();
+    expect((final.series?.white ?? 0) + (final.series?.blue ?? 0)).toBe(1);
+    expect(final.winnerTeamId).toBeUndefined();
+  });
+  it('en la liguilla, deshacer el último de la fase regular quita los equipos de la final', () => {
+    let t = make(tplL);
+    const matches: StoredMatch[] = [];
+    let at = 1000;
+    while (playableFixtures(t).some((f) => f.stage !== 'final')) {
+      const f = playableFixtures(t)[0];
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const m = { ...makeMatch({ white, blue, goals: 'WWWWB', at: (at += 1000), mode: 'quick' }), tournament: { id: t.id, fixtureId: f.id } };
+      matches.push(m);
+      t = recordFixtureResult(t, f.id, m, matches);
+    }
+    expect(t.fixtures.find((f) => f.stage === 'final')!.whiteTeamId).toBeTruthy();
+    const back = undoMatch(t, matches.at(-1)!.id, matches);
+    expect(back.fixtures.find((f) => f.stage === 'final')!.whiteTeamId).toBeNull();
+    expect(back.fixtures.filter((f) => f.winnerTeamId).length).toBe(matches.length - 1);
+  });
+  it('cambiar las reglas a mitad de torneo afecta a lo pendiente y a la final', () => {
+    const t = make(tplL);
+    const next = updateTournamentRules(t, { endCondition: 'time', goalsPerPeriod: 5, minutesPerPeriod: 3 }, { endCondition: 'goals', goalsPerPeriod: 10, minutesPerPeriod: 3 }, 1);
+    const final = next.fixtures.find((f) => f.stage === 'final')!;
+    expect(fixtureConfig(next, next.fixtures[0])).toMatchObject({ endCondition: 'time', minutesPerPeriod: 3 });
+    expect(fixtureConfig(next, final)).toMatchObject({ endCondition: 'goals', goalsPerPeriod: 10 });
+    expect(final.bestOf).toBeUndefined();
+  });
+  it('un partido abandonado queda marcado hasta que se apunta su resultado', () => {
+    const t = make(tplB);
+    const f = playableFixtures(t)[0];
+    const marked = markAbandoned(t, f.id, 5);
+    expect(marked.fixtures.find((x) => x.id === f.id)!.abandonedAt).toBe(5);
+    const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+    const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+    const m = { ...makeMatch({ white, blue, goals: 'WWWWW', at: 9, mode: 'quick' }), tournament: { id: t.id, fixtureId: f.id } };
+    expect(recordFixtureResult(marked, f.id, m, [m]).fixtures.find((x) => x.id === f.id)!.abandonedAt).toBeUndefined();
   });
 });
