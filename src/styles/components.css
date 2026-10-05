@@ -731,3 +731,47 @@ button.row:active {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.icon-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.icon-tab {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(7, 16, 28, 0.7);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.icon-tab.is-on {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(98, 214, 255, 0.45);
+}
+.icon-tab.is-locked {
+  opacity: 0.7;
+}
+.icon-lock-note {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ranked);
+  background: rgba(30, 22, 4, 0.8);
+  color: var(--ranked);
+  font-size: 13px;
+  font-weight: 700;
+}
+.icon-grid.is-locked .icon-cell {
+  cursor: not-allowed;
+  filter: grayscale(1) brightness(0.55);
+}

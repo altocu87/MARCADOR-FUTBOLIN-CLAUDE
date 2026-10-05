@@ -45,3 +45,25 @@ describe('Nombre propio de la competición', () => {
     expect(competitionKey(t({ templateId: 'builtin-pool' }))).toBe('builtin-pool');
   });
 });
+
+describe('Categorías del muestrario', () => {
+  const prog = (over: Record<string, unknown>) => ({ level: 1, maxElo: 1200, tournamentsWon: 0, achievements: [], ...over }) as never;
+  it('se reconoce la categoría por el nombre de la imagen', async () => {
+    const { iconCategory } = await import('../src/services/icons');
+    expect(iconCategory('escudo-retro80-03', 'logo')).toBe('retro80');
+    expect(iconCategory('escudo-07', 'logo')).toBe('generico');
+    expect(iconCategory('copa-retro90-01', 'cup')).toBe('retro90');
+    expect(iconCategory('copa-raro-01', 'cup')).toBe('generico');
+  });
+  it('se desbloquea si lo cumple alguno de los jugadores', async () => {
+    const { isUnlocked, unlockText } = await import('../src/services/icons');
+    expect(isUnlocked(undefined, [])).toBe(true);
+    expect(isUnlocked({ level: 10 }, [prog({ level: 3 }), prog({ level: 12 })])).toBe(true);
+    expect(isUnlocked({ level: 10 }, [prog({ level: 3 })])).toBe(false);
+    expect(isUnlocked({ rank: 'gold' }, [prog({ maxElo: 1430 })])).toBe(true);
+    expect(isUnlocked({ rank: 'gold' }, [prog({ maxElo: 1400 })])).toBe(false);
+    expect(isUnlocked({ titles: 2 }, [prog({ tournamentsWon: 2 })])).toBe(true);
+    expect(isUnlocked({ achievement: 'debut' }, [prog({ achievements: [{ id: 'debut' }] })])).toBe(true);
+    expect(unlockText({ rank: 'gold' })).toBe('Rango Oro');
+  });
+});

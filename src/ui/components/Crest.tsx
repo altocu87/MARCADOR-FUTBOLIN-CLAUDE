@@ -4,7 +4,9 @@
  * - Mientras no haya imágenes se usan unos provisionales: emojis en un escudo de neón y el trofeo
  *   de la app teñido de varios colores. Lo guardado es solo el id (`escudo-07`, `emoji:🦅`, `trofeo:plata`).
  */
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { useApp } from '../../app/AppContext';
+import { ICON_CATEGORIES, ICON_PREFIX, iconCategory, isUnlocked, unlockText, type IconCategory, type IconKind } from '../../services/icons';
 import { Modal } from './common';
 import { AssetImage, assetNames, assetUrl } from './assets';
 
@@ -21,16 +23,26 @@ const CUP_TINTS: Record<string, { label: string; filter: string }> = {
   rojo: { label: 'Rojo', filter: 'hue-rotate(-45deg) saturate(1.8)' },
 };
 
-/** Logos disponibles: las imágenes `escudo-*` o, si aún no hay, los provisionales. */
-export function logoCatalog(): string[] {
-  const imgs = assetNames('escudo-');
-  return imgs.length ? imgs : EMOJI_LOGOS.map((e) => `emoji:${e}`);
+/** Imágenes de una categoría; los genéricos, si aún no hay imágenes, son los provisionales. */
+export function categoryItems(kind: IconKind, category: string): string[] {
+  const imgs = assetNames(ICON_PREFIX[kind]).filter((n) => iconCategory(n, kind) === category);
+  if (imgs.length || category !== 'generico') return imgs;
+  return kind === 'logo' ? EMOJI_LOGOS.map((e) => `emoji:${e}`) : Object.keys(CUP_TINTS).map((k) => `trofeo:${k}`);
 }
 
-/** Copas disponibles: las imágenes `copa-*` o, si aún no hay, el trofeo en varios colores. */
+/** Categorías que ya tienen algo que enseñar. */
+export function iconCategories(kind: IconKind): IconCategory[] {
+  return ICON_CATEGORIES.filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
+}
+
+/** Logos genéricos (los de por defecto). */
+export function logoCatalog(): string[] {
+  return categoryItems('logo', 'generico');
+}
+
+/** Copas genéricas. */
 export function cupCatalog(): string[] {
-  const imgs = assetNames('copa-');
-  return imgs.length ? imgs : Object.keys(CUP_TINTS).map((k) => `trofeo:${k}`);
+  return categoryItems('cup', 'generico');
 }
 
 /** Un logo para empezar, siempre el mismo para la misma semilla (nombre del equipo o torneo). */
@@ -75,21 +87,78 @@ export function Cup({ id, size = 48, className = '' }: { id?: string; size?: num
   );
 }
 
-/** Muestrario para elegir un logo o una copa. */
+/**
+ * Muestrario con pestañas por categoría. Las bloqueadas se ven apagadas con su candado y lo que
+ * hace falta; se desbloquean si lo cumple alguno de los jugadores (`playerIds`).
+ */
+export function IconGrid({
+  kind,
+  value,
+  onPick,
+  playerIds,
+  size = 56,
+}: {
+  kind: IconKind;
+  value?: string;
+  onPick: (id: string) => void;
+  playerIds: string[];
+  size?: number;
+}) {
+  const { progression } = useApp();
+  const cats = iconCategories(kind);
+  const progs = playerIds.map((id) => progression?.players.get(id));
+  const startCat = (value && cats.find((c) => categoryItems(kind, c.id).includes(value))?.id) || cats[0]?.id;
+  const [tab, setTab] = useState(startCat);
+  const cat = cats.find((c) => c.id === tab) ?? cats[0];
+  if (!cat) return null;
+  const open = isUnlocked(cat.unlock, progs);
+  return (
+    <div className="icon-picker">
+      {cats.length > 1 && (
+        <div className="icon-tabs" role="tablist">
+          {cats.map((c) => {
+            const locked = !isUnlocked(c.unlock, progs);
+            return (
+              <button key={c.id} role="tab" className={`icon-tab ${c.id === cat.id ? 'is-on' : ''} ${locked ? 'is-locked' : ''}`} aria-selected={c.id === cat.id} onClick={() => setTab(c.id)}>
+                {locked && '🔒 '}
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!open && cat.unlock && (
+        <div className="icon-lock-note">
+          🔒 Se desbloquea con: <b>{unlockText(cat.unlock)}</b> (basta con uno de los jugadores)
+        </div>
+      )}
+      <div className={`icon-grid icon-grid-${kind} ${open ? '' : 'is-locked'}`}>
+        {categoryItems(kind, cat.id).map((id) => (
+          <button key={id} className={`icon-cell ${id === value ? 'is-on' : ''}`} aria-pressed={id === value} disabled={!open} onClick={() => onPick(id)}>
+            {kind === 'logo' ? <Crest id={id} size={size} /> : <Cup id={id} size={size + 8} />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Ventana para elegir un logo o una copa. */
 export function IconPicker({
   kind,
   value,
   onPick,
   onClose,
+  playerIds,
   title,
 }: {
-  kind: 'logo' | 'cup';
+  kind: IconKind;
   value?: string;
   onPick: (id: string) => void;
   onClose: () => void;
+  playerIds: string[];
   title?: string;
 }) {
-  const list = kind === 'logo' ? logoCatalog() : cupCatalog();
   return (
     <Modal
       title={title ?? (kind === 'logo' ? 'Elige un logo' : 'Elige la copa')}
@@ -100,21 +169,15 @@ export function IconPicker({
         </button>
       }
     >
-      <div className={`icon-grid icon-grid-${kind}`}>
-        {list.map((id) => (
-          <button
-            key={id}
-            className={`icon-cell ${id === value ? 'is-on' : ''}`}
-            aria-pressed={id === value}
-            onClick={() => {
-              onPick(id);
-              onClose();
-            }}
-          >
-            {kind === 'logo' ? <Crest id={id} size={56} /> : <Cup id={id} size={64} />}
-          </button>
-        ))}
-      </div>
+      <IconGrid
+        kind={kind}
+        value={value}
+        playerIds={playerIds}
+        onPick={(id) => {
+          onPick(id);
+          onClose();
+        }}
+      />
     </Modal>
   );
 }

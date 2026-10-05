@@ -51,7 +51,7 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
-import { Crest, Cup, IconPicker, defaultCup, defaultLogo, logoCatalog } from '../components/Crest';
+import { Crest, Cup, IconGrid, IconPicker, defaultCup, defaultLogo } from '../components/Crest';
 import { clubNameTaken, findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
@@ -249,13 +249,7 @@ function TeamEditor({
         </div>
         {taken && <div className="notice warn">Ya hay otro equipo con ese nombre.</div>}
         <div className="label">Logo</div>
-        <div className="icon-grid icon-grid-logo">
-          {logoCatalog().map((id) => (
-            <button key={id} className={`icon-cell ${id === logo ? 'is-on' : ''}`} aria-pressed={id === logo} onClick={() => setLogo(id)}>
-              <Crest id={id} size={48} />
-            </button>
-          ))}
-        </div>
+        <IconGrid kind="logo" value={logo} onPick={setLogo} playerIds={playerIds} size={48} />
         <small className="muted">Se guarda como equipo: saldrá con este nombre y logo siempre que jueguen juntos.</small>
       </div>
     </Modal>
@@ -928,6 +922,7 @@ export function TournamentNewScreen({
                 kind={picker}
                 value={picker === 'logo' ? logo : cup}
                 onPick={(v) => setBrandField(picker === 'logo' ? { logo: v } : { cup: v })}
+                playerIds={selected}
                 onClose={() => setPicker(null)}
               />
             )}
