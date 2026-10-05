@@ -104,6 +104,10 @@ guardados sin origen y reprocesar no duplica premios.
   con fechas, campeón y MVP, y cuadro de honor por títulos). Ficha de cada torneo con información, destacados y
   estadísticas por jugador. **MVP** (propuesta) = 3 por victoria + 1 por gol marcado + ½ diferencia de goles
   + 2 al campeón.
+- **Torneo empieza por «¿Quién juega?»** (la lista de torneos y el palmarés, en «Mis torneos»). **Invitados**: se
+  añaden con solo el nombre, se guardan para otra vez y no salen en el ranking. Tras elegir jugadores solo se
+  enseñan los tipos recomendados para ese número (pensado para 4–6 personas; el resto, tras «Ver todos los tipos»).
+  Nuevo predefinido de fábrica «Liga Parejas» (3+ parejas fijas, todos contra todos y final al mejor de 3).
 - **Logros**: 54 (10 secretos) con títulos elegibles. **Sorteo de equipos**: el reparto con menor diferencia
   de ELO medio. **Avisos**: bola de partido = el siguiente gol daría la victoria (2ª parte con goles, o prórroga).
 

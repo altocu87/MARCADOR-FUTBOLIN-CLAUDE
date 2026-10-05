@@ -29,6 +29,7 @@ export const BUILT_IN_TEMPLATES: TournamentTemplate[] = [
   { ...base, id: 'builtin-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
   { ...base, id: 'builtin-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },
   { ...base, id: 'builtin-pairs', name: 'Copa Parejas', format: 'bracket', teamSize: 2, finalBestOf: 3, finalGoals: 7 },
+  { ...base, id: 'builtin-pairs-league', name: 'Liga Parejas', format: 'league', teamSize: 2, final: 'top2', finalBestOf: 3 },
 ];
 
 export function allTemplates(saved: TournamentTemplate[]): TournamentTemplate[] {
@@ -155,13 +156,24 @@ export function templateFit(t: TournamentTemplate, n: number): TemplateFit {
 }
 
 /**
- * Tipo de fábrica recomendado para `n` jugadores: con 3, liguilla; de 4 a 7, Pool rotativo
- * (sirve igual con número par o impar); con 8 o más, Copa Parejas si son pares y si no, Pool.
+ * Tipos de fábrica recomendados para `n` jugadores, del más al menos aconsejable. Pensado sobre todo
+ * para grupos de 4 a 6: torneos de una tarde, con pocos partidos y sin nadie mucho rato parado.
  */
+const RECOMMENDED: Record<number, string[]> = {
+  3: ['builtin-league', 'builtin-league-final'],
+  4: ['builtin-pool', 'builtin-league', 'builtin-league-final'],
+  5: ['builtin-pool', 'builtin-league'],
+  6: ['builtin-pool', 'builtin-pairs-league', 'builtin-bracket'],
+  7: ['builtin-pool', 'builtin-bracket'],
+  8: ['builtin-pairs', 'builtin-pool', 'builtin-pairs-league'],
+};
+
+export function recommendedTemplateIds(n: number): string[] {
+  const ids = RECOMMENDED[n] ?? (n > 8 ? (n % 2 === 0 ? ['builtin-pool', 'builtin-pairs'] : ['builtin-pool']) : []);
+  return ids.filter((id) => templateFit(BUILT_IN_TEMPLATES.find((x) => x.id === id)!, n).ok);
+}
+
+/** El más recomendado para `n` jugadores. */
 export function recommendedTemplateId(n: number): string | null {
-  const pick = (id: string) => (templateFit(BUILT_IN_TEMPLATES.find((x) => x.id === id)!, n).ok ? id : null);
-  if (n === 3) return pick('builtin-league');
-  if (n >= 4 && n <= 7) return pick('builtin-pool');
-  if (n >= 8) return (n % 2 === 0 ? pick('builtin-pairs') : null) ?? pick('builtin-pool');
-  return null;
+  return recommendedTemplateIds(n)[0] ?? null;
 }

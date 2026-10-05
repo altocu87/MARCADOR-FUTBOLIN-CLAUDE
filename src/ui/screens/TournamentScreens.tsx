@@ -26,7 +26,7 @@ import {
   fixtureScore,
   newTemplate,
   playableFixtures,
-  recommendedTemplateId,
+  recommendedTemplateIds,
   roundLabel,
   standings,
   templateFit,
@@ -36,6 +36,7 @@ import {
 import { AssetImage } from '../components/assets';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
+import { newId } from '../../services/ids';
 import { Confetti } from '../components/graphics';
 
 const FINAL_LABEL: Record<TournamentFinal, string> = {
@@ -89,7 +90,7 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
       title="Torneos"
       className="select-screen tn-screen"
       background={TN_BG}
-      onBack={() => navigate({ name: 'home' })}
+      onBack={() => navigate({ name: 'tournamentNew' })}
       right={
         <>
           <Tabs
@@ -280,43 +281,77 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
  */
 export function TournamentNewScreen({ templateId, initialSelected }: { templateId?: string; initialSelected?: string[] }) {
-  const { navigate, players, progression, prefs, saveTournament, toast, tournaments } = useApp();
+  const { navigate, players, progression, prefs, saveTournament, savePlayer, toast, tournaments } = useApp();
   const [step, setStep] = useState<'players' | 'format'>(initialSelected?.length ? 'format' : 'players');
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
   const [creating, setCreating] = useState(false);
+  const [guestName, setGuestName] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
 
-  // Tipos ordenados: los que encajan primero (el recomendado el primero de todos).
-  const recommended = recommendedTemplateId(n);
+  // Solo se enseñan los tipos recomendados para este número de jugadores (y los propios que encajen);
+  // el resto queda detrás de «Ver todos los tipos».
+  const recIds = recommendedTemplateIds(n);
+  const recommended = recIds[0] ?? null;
   const fits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
-  const usable = fits.filter((x) => x.fit.ok).sort((a, b) => Number(b.t.id === recommended) - Number(a.t.id === recommended));
+  const rank = (id: string) => (recIds.includes(id) ? recIds.indexOf(id) : recIds.length);
+  const shown = fits.filter((x) => x.fit.ok && (recIds.includes(x.t.id) || !x.t.builtIn)).sort((a, b) => rank(a.t.id) - rank(b.t.id));
+  const otherOk = fits.filter((x) => x.fit.ok && !shown.includes(x));
   const blocked = fits.filter((x) => !x.fit.ok);
-  const tpl = usable.find((x) => x.t.id === chosenTpl)?.t ?? usable[0]?.t;
+  const pickable = showAll ? [...shown, ...otherOk] : shown.length ? shown : otherOk;
+  const tpl = pickable.find((x) => x.t.id === chosenTpl)?.t ?? pickable[0]?.t;
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
+  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se apunta a ese.
+  const addGuest = async () => {
+    const clean = (guestName ?? '').trim();
+    if (!clean) return;
+    const same = players.find((p) => p.active && p.name.toLocaleLowerCase('es') === clean.toLocaleLowerCase('es'));
+    if (same) {
+      setSelected((s) => (s.includes(same.id) ? s : [...s, same.id]));
+      toast(`${same.name} ya estaba en la lista: apuntado`);
+    } else {
+      const now = Date.now();
+      const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
+      await savePlayer(guest);
+      setSelected((s) => [...s, guest.id]);
+    }
+    setGuestName(null);
+  };
+
   if (step === 'players') {
-    const available = sortPlayers(players.filter((p) => p.active));
+    // Los invitados, al final de la lista.
+    const available = sortPlayers(players.filter((p) => p.active)).sort((a, b) => Number(!!a.guest) - Number(!!b.guest));
+    const running = tournaments.filter((t) => t.status === 'active').length;
     return (
       <ScreenFrame
         title="¿Quién juega?"
-        subtitle="Nuevo torneo"
+        subtitle="Torneo"
         className="select-screen tn-screen"
         background={TN_BG}
-        onBack={() => navigate({ name: 'tournament' })}
-        right={<button className="btn btn-sm" onClick={() => setCreating(true)}>+ Nuevo</button>}
+        onBack={() => navigate({ name: 'home' })}
+        right={
+          <>
+            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournament' })}>
+              {running ? `Mis torneos · ${running} en juego` : 'Mis torneos'}
+            </button>
+            <button className="btn btn-sm" onClick={() => setCreating(true)}>+ Jugador</button>
+            <button className="btn btn-sm tn-guest-btn" onClick={() => setGuestName('')}>+ Invitado</button>
+          </>
+        }
         footer={
           <>
             <span className="tn-count" aria-live="polite">
               <b>{n}</b> {n === 1 ? 'jugador' : 'jugadores'}
             </span>
             <span className="notice select-status">
-              {n < 3 ? `Marca al menos ${3 - n} más` : `${usable.length} tipo${usable.length === 1 ? '' : 's'} de torneo disponible${usable.length === 1 ? '' : 's'}`}
+              {n < 3 ? `Marca al menos ${3 - n} más` : `${shown.length} torneo${shown.length === 1 ? '' : 's'} recomendado${shown.length === 1 ? '' : 's'}`}
             </span>
             <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
               {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
@@ -354,8 +389,8 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
                   </span>
                   <span className="pick-info">
                     <span className="pick-name">{p.name}</span>
-                    <span className="pick-meta">{prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
-                    {title && <span className="pick-title">{title}</span>}
+                    <span className="pick-meta">{prog && !p.guest ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
+                    {p.guest ? <span className="pick-title tn-guest-tag">Invitado</span> : title && <span className="pick-title">{title}</span>}
                   </span>
                 </button>
               );
@@ -363,6 +398,32 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
           )}
         </div>
         {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => setSelected((s) => [...s, p.id])} />}
+        {guestName !== null && (
+          <Modal
+            title="Añadir invitado"
+            onClose={() => setGuestName(null)}
+            actions={
+              <>
+                <button className="btn btn-ghost" onClick={() => setGuestName(null)}>Cancelar</button>
+                <button className="btn btn-primary" disabled={!guestName.trim()} onClick={addGuest}>Añadir</button>
+              </>
+            }
+          >
+            <input
+              className="input"
+              autoFocus
+              value={guestName}
+              maxLength={20}
+              placeholder="Nombre del invitado"
+              aria-label="Nombre del invitado"
+              onChange={(e) => setGuestName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void addGuest()}
+            />
+            <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
+              Juega el torneo con su nombre y no sale en el ranking. Queda guardado para la próxima vez.
+            </p>
+          </Modal>
+        )}
       </ScreenFrame>
     );
   }
@@ -449,11 +510,23 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
     >
       <div className="tn-layout">
         <div className="tn-col">
-          <div className="label">Tipos de torneo para {n} jugadores</div>
+          <div className="label">Recomendados para {n} jugadores</div>
           <div className="tpl-list scroll">
-            {usable.map(tplCard)}
-            {blocked.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
-            {blocked.map(tplCard)}
+            {(shown.length ? shown : otherOk).map(tplCard)}
+            {showAll ? (
+              <>
+                {shown.length > 0 && otherOk.length > 0 && <div className="tpl-sep">Otros tipos</div>}
+                {shown.length > 0 && otherOk.map(tplCard)}
+                {blocked.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
+                {blocked.map(tplCard)}
+              </>
+            ) : (
+              (otherOk.length > 0 || blocked.length > 0) && (
+                <button className="tpl-more" onClick={() => setShowAll(true)}>
+                  Ver todos los tipos ({otherOk.length + blocked.length} más)
+                </button>
+              )
+            )}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected })}>

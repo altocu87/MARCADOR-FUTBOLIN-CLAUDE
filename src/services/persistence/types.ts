@@ -30,6 +30,8 @@ export interface Player {
   titleId?: string;
   /** Melodía de celebración al ganar. */
   anthem?: string;
+  /** Invitado: se apunta con solo el nombre y no sale en el ranking. */
+  guest?: boolean;
 }
 
 /** Partido terminado y guardado. Permite reconstruir el encuentro completo. */
