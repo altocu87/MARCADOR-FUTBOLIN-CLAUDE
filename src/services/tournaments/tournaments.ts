@@ -282,6 +282,18 @@ export function playableFixtures(t: Tournament): Fixture[] {
   return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !f.winnerTeamId);
 }
 
+/** Siguiente partido: el primero pendiente por orden de jornada y de calendario. */
+export function nextFixture(t: Tournament): Fixture | undefined {
+  const order = new Map(t.fixtures.map((f, i) => [f.id, i]));
+  return [...playableFixtures(t)].sort((a, b) => a.round - b.round || order.get(a.id)! - order.get(b.id)!)[0];
+}
+
+/** Partidos decididos y totales (sin contar pases directos). */
+export function fixtureProgress(t: Tournament): { done: number; total: number } {
+  const real = t.fixtures.filter((f) => !f.bye);
+  return { done: real.filter((f) => f.winnerTeamId).length, total: real.length };
+}
+
 /** Reglas del partido de un cruce (la final puede tener las suyas). */
 export function fixtureConfig(t: Tournament, f: Fixture): MatchConfig {
   return t.finalConfig && isFinalFixture(t, f) ? t.finalConfig : t.config;

@@ -15,6 +15,8 @@ import {
   draftFromTemplate,
   effectivePoolGames,
   fixtureConfig,
+  fixtureProgress,
+  nextFixture,
   formTeams,
   playableFixtures,
   poolGameOptions,
@@ -285,5 +287,32 @@ describe('Fusionar un invitado con un jugador', () => {
     const m = makeMatch({ white: ['a'], blue: ['g'], goals: 'WWWWW' });
     expect(mergeBlocker('g', 'a', [m])).not.toBeNull();
     expect(mergeBlocker('g', 'b', [m])).toBeNull();
+  });
+});
+
+describe('Siguiente partido', () => {
+  it('va por orden de jornada y cuenta el progreso', () => {
+    const ps = players(['a', 'b', 'c', 'd', 'e']);
+    let t = createTournament(
+      { name: 'Liga', format: 'league', teamSize: 1, ranked: false, config: DEFAULT_CONFIG, teams: ps.map((p) => ({ playerIds: [p.id] })), seeding: 'elo' },
+      ps,
+      () => 1200,
+      0,
+    );
+    expect(fixtureProgress(t)).toEqual({ done: 0, total: 10 });
+    const seen: number[] = [];
+    const all: StoredMatch[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const f = nextFixture(t)!;
+      seen.push(f.round);
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const m = { ...makeMatch({ white, blue, goals: 'WWWWW', at: 1000 + i }), tournament: { id: t.id, fixtureId: f.id } };
+      all.push(m);
+      t = recordFixtureResult(t, f.id, m, all);
+    }
+    expect(seen).toEqual([...seen].sort((a, b) => a - b));
+    expect(nextFixture(t)).toBeUndefined();
+    expect(fixtureProgress(t)).toEqual({ done: 10, total: 10 });
   });
 });

@@ -23,9 +23,10 @@ export type Route =
   | { name: 'tournament'; tab?: 'list' | 'honours' }
   /** Palmarés de una competición (todas sus ediciones). */
   | { name: 'tournamentHonours'; key: string }
-  | { name: 'tournamentNew'; templateId?: string; selected?: string[] }
+  | { name: 'tournamentNew'; templateId?: string; selected?: string[]; step?: 'players' | 'format' }
   /** Creador de predefinidos: `templateId` edita uno guardado; `baseId` parte de otro. `selected` se devuelve al volver. */
   | { name: 'tournamentTemplate'; templateId?: string; baseId?: string; selected?: string[] }
-  | { name: 'tournamentDetail'; id: string; view?: 'report' | 'play' }
+  /** `from: 'list'`: se abrió desde «Mis torneos» (volver allí); si no, se vuelve a «¿Quién juega?». */
+  | { name: 'tournamentDetail'; id: string; view?: 'report' | 'play'; from?: 'list' }
   | { name: 'challenges' }
   | { name: 'settings'; tab?: SettingsTab };
