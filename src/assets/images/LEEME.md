@@ -38,4 +38,4 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
 - Las categorías y sus bloqueos (nivel, rango, logro o torneos ganados) están en `src/services/icons.ts`.
   Una categoría sin imágenes no sale.
 - Integrados: `escudo-generico-01…16` y `copa-generico-01…09` (recortados de sus hojas, fondo magenta quitado).
-  Pendientes: `escudo-retro80-*` y `copa-retro90-*`.
+  También `escudo-retro80-01…16` y `copa-retro90-01…09` (fondo exterior quitado; conservan sus rosas).
