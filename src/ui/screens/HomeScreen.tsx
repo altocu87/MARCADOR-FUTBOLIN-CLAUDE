@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { restoreSnapshot } from '../../app/recovery';
+import { markAbandoned } from '../../services/tournaments';
 import { getScore, type MatchMode } from '../../match-engine';
 import type { ActiveMatchSnapshot } from '../../services/persistence';
 import { sound } from '../../services/sound/sound';
@@ -55,7 +56,7 @@ const MODE_FILE: Record<MatchMode, string> = { quick: 'rapido', chaos: 'caos', r
 const PRESS_FEEDBACK_MS = 180;
 
 export function HomeScreen() {
-  const { navigate, repos, persistent } = useApp();
+  const { navigate, repos, persistent, tournaments, saveTournament } = useApp();
   const [snapshot, setSnapshot] = useState<ActiveMatchSnapshot | null>(null);
   const [pressed, setPressed] = useState<string | null>(null);
   const pressTimer = useRef<number | undefined>(undefined);
@@ -102,6 +103,10 @@ export function HomeScreen() {
 
   const discard = async () => {
     await repos.activeMatch.clear();
+    // Si era de un torneo, el partido sigue pendiente allí y queda marcado «a medias».
+    const tn = snapshot?.extras?.tournament;
+    const t = tn && tournaments.find((x) => x.id === tn.id);
+    if (tn && t) await saveTournament(markAbandoned(t, tn.fixtureId, Date.now())).catch(() => undefined);
     setSnapshot(null);
   };
 

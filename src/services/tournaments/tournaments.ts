@@ -33,6 +33,24 @@ export const FORMAT_LABEL: Record<TournamentFormat, string> = {
   pool: 'Pool rotativo',
 };
 
+/** Lo que decide cómo se acaba un partido. */
+export type MatchRules = Pick<MatchConfig, 'endCondition' | 'goalsPerPeriod' | 'minutesPerPeriod'>;
+
+/** «a 5 goles», «5 min», «a 5 goles o 5 min». */
+export function rulesShort(r: MatchRules): string {
+  if (r.endCondition === 'time') return `${r.minutesPerPeriod} min`;
+  if (r.endCondition === 'both') return `a ${r.goalsPerPeriod} goles o ${r.minutesPerPeriod} min`;
+  return `a ${r.goalsPerPeriod} goles`;
+}
+
+export function sameRules(a: MatchRules, b: MatchRules): boolean {
+  return (
+    a.endCondition === b.endCondition &&
+    (a.endCondition === 'time' || a.goalsPerPeriod === b.goalsPerPeriod) &&
+    (a.endCondition === 'goals' || a.minutesPerPeriod === b.minutesPerPeriod)
+  );
+}
+
 export interface TournamentDraft {
   name: string;
   format: TournamentFormat;
@@ -417,6 +435,7 @@ export function recordFixtureResult(t: Tournament, fixtureId: string, match: Sto
   if (f.matchId === match.id || f.matchIds?.includes(match.id)) return t;
   const side = match.result.winner;
   f.matchId = match.id;
+  delete f.abandonedAt;
   if ((f.bestOf ?? 1) > 1) {
     f.matchIds = [...(f.matchIds ?? []), match.id];
     const s = { white: f.series?.white ?? 0, blue: f.series?.blue ?? 0 };
@@ -532,4 +551,60 @@ export function phaseInfo(t: Tournament, f: Fixture): PhaseInfo {
     sub = w === need - 1 && b === need - 1 ? '¡PARTIDO DECISIVO!' : `PARTIDO ${w + b + 1} · AL MEJOR DE ${bestOf}`;
   }
   return { tier, title, ...(sub ? { sub } : {}) };
+}
+
+/** Partidos ya apuntados en el torneo (los de las series incluidos), del más antiguo al último. */
+export function recordedMatches(t: Tournament, matches: StoredMatch[]): StoredMatch[] {
+  const ids = new Set(t.fixtures.flatMap((f) => f.matchIds ?? (f.matchId ? [f.matchId] : [])));
+  return matches.filter((m) => ids.has(m.id) && m.tournament?.id === t.id).sort((a, b) => a.finishedAt - b.finishedAt);
+}
+
+/**
+ * El torneo como si ese partido no se hubiera jugado: se vuelve al cuadro/calendario inicial y se
+ * apuntan de nuevo, en orden, todos los demás resultados. Sirve para repetir un partido mal apuntado.
+ */
+export function undoMatch(t: Tournament, matchId: string, matches: StoredMatch[]): Tournament {
+  const fixtures: Fixture[] = t.fixtures.map((f) => {
+    if (f.bye) return { ...f };
+    const { winnerTeamId: _w, matchId: _m, matchIds: _ids, series: _s, ...rest } = f;
+    // Rondas siguientes del cuadro y final: sus equipos salen de los resultados.
+    if (f.stage === 'final' || (t.format === 'bracket' && f.round > 1)) return { ...rest, whiteTeamId: null, blueTeamId: null };
+    return rest;
+  });
+  for (const f of fixtures.filter((x) => x.bye)) advanceWinner(fixtures, f, f.winnerTeamId!, true);
+  const { winnerTeamId: _w, finishedAt: _f, finalMatchId: _fm, ...base } = t;
+  let next: Tournament = { ...base, status: 'active', fixtures };
+  const played: StoredMatch[] = [];
+  for (const m of recordedMatches(t, matches)) {
+    if (m.id === matchId) continue;
+    played.push(m);
+    next = recordFixtureResult(next, m.tournament!.fixtureId, m, played);
+  }
+  return next;
+}
+
+/**
+ * Cambia las reglas de lo que queda por jugar. Los partidos ya jugados no cambian.
+ * La serie de la final solo cambia (1 partido / al mejor de 3) si aún no ha empezado.
+ */
+export function updateTournamentRules(t: Tournament, rules: MatchRules, finalRules: MatchRules | null, finalBestOf?: 1 | 3): Tournament {
+  const config: MatchConfig = { ...t.config, ...rules };
+  const finalConfig = finalRules && !sameRules(rules, finalRules) ? { ...config, ...finalRules } : undefined;
+  const fixtures = t.fixtures.map((f) => {
+    if (!finalBestOf || !isFinalFixture(t, f) || f.winnerTeamId || f.matchIds?.length) return f;
+    const { bestOf: _b, ...rest } = f;
+    return finalBestOf > 1 ? { ...rest, bestOf: finalBestOf } : rest;
+  });
+  const { finalConfig: _old, ...base } = t;
+  return { ...base, config, fixtures, ...(finalConfig ? { finalConfig } : {}) };
+}
+
+/** ¿Se puede cambiar todavía si la final es a 1 partido o al mejor de 3? */
+export function finalSeriesEditable(t: Tournament): boolean {
+  return t.status === 'active' && t.fixtures.filter((f) => isFinalFixture(t, f)).every((f) => !f.winnerTeamId && !f.matchIds?.length);
+}
+
+/** Marca un partido del torneo como abandonado a medias (sigue pendiente). */
+export function markAbandoned(t: Tournament, fixtureId: string, now: number): Tournament {
+  return { ...t, fixtures: t.fixtures.map((f) => (f.id === fixtureId && !f.winnerTeamId ? { ...f, abandonedAt: now } : f)) };
 }

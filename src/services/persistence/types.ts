@@ -86,6 +86,8 @@ export interface Fixture {
   series?: { white: number; blue: number };
   /** Partidos de la serie, en orden (`matchId` es siempre el último). */
   matchIds?: string[];
+  /** Se empezó y se abandonó a medias (sigue pendiente; se borra al apuntar el resultado). */
+  abandonedAt?: number;
 }
 
 export interface Tournament {

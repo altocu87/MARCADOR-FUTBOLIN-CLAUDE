@@ -38,7 +38,7 @@ import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { HandicapOverlay } from '../components/HandicapOverlay';
 import { PhasePoster } from '../components/PhasePoster';
-import { phaseInfo, type PhaseInfo } from '../../services/tournaments';
+import { markAbandoned, phaseInfo, type PhaseInfo } from '../../services/tournaments';
 import { VisitorOverlay } from '../components/VisitorOverlay';
 import { useMatchController, type MatchController } from './useMatchController';
 
@@ -91,7 +91,7 @@ export function MatchScreen({
 }) {
   const ctl = useMatchController(config, participants, resume, extras);
   const { state } = ctl;
-  const { repos, navigate, refresh, prefs, players, matches, tournaments } = useApp();
+  const { repos, navigate, refresh, prefs, players, matches, tournaments, saveTournament } = useApp();
   // Partido de torneo: su fase (semifinal, final…) para el cartel y la cabecera.
   const [phase] = useState(() => {
     const t = extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id);
@@ -128,6 +128,14 @@ export function MatchScreen({
 
   const abandon = async () => {
     await repos.activeMatch.clear();
+    // En un torneo el partido sigue pendiente: se marca «a medias» y se vuelve al torneo.
+    const tn = extras?.tournament;
+    const t = tn && tournaments.find((x) => x.id === tn.id);
+    if (tn && t) {
+      await saveTournament(markAbandoned(t, tn.fixtureId, Date.now())).catch(() => undefined);
+      navigate({ name: 'tournamentDetail', id: tn.id });
+      return;
+    }
     navigate({ name: 'home' });
   };
 

@@ -2,10 +2,11 @@
  * Torneos: lista, creación a partir de un predefinido, creador de predefinidos y detalle
  * (clasificación, cuadro o Pool rotativo, final y partidos).
  */
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
-import type { Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import { restoreSnapshot } from '../../app/recovery';
+import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
 import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
@@ -22,6 +23,11 @@ import {
   draftFromTemplate,
   finalOptions,
   finalRulesOf,
+  finalSeriesEditable,
+  isFinalFixture,
+  recordedMatches,
+  undoMatch,
+  updateTournamentRules,
   hasTemplateFinal,
   withFinalRules,
   type MatchRules,
@@ -80,7 +86,7 @@ function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]
 const GOAL_OPTIONS: [number, string][] = [[3, 'A 3'], [5, 'A 5'], [7, 'A 7'], [10, 'A 10']];
 const MINUTE_OPTIONS: [number, string][] = [[3, '3 MIN'], [5, '5 MIN'], [8, '8 MIN'], [10, '10 MIN']];
 
-function pickRules(t: TournamentTemplate): MatchRules {
+function pickRules(t: MatchRules): MatchRules {
   return { endCondition: t.endCondition, goalsPerPeriod: t.goalsPerPeriod, minutesPerPeriod: t.minutesPerPeriod };
 }
 
@@ -127,6 +133,58 @@ function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch:
       </div>
       <AmountRow rules={rules} onChange={onChange} />
     </>
+  );
+}
+
+/** Cambiar las reglas de un torneo ya empezado: solo afectan a lo que queda por jugar. */
+function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => void; onSave: (t: Tournament) => Promise<void> }) {
+  const hasFinal = t.fixtures.some((f) => isFinalFixture(t, f));
+  const finalFx = t.fixtures.find((f) => isFinalFixture(t, f));
+  const [rules, setRules] = useState<MatchRules>(() => pickRules(t.config));
+  const [finalRules, setFinalRules] = useState<MatchRules>(() => pickRules(t.finalConfig ?? t.config));
+  const [bestOf, setBestOf] = useState<1 | 3>((finalFx?.bestOf ?? 1) > 1 ? 3 : 1);
+  const seriesEditable = finalSeriesEditable(t);
+  return (
+    <Modal
+      title="Reglas del torneo"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            onClick={() => void onSave(updateTournamentRules(t, rules, hasFinal ? finalRules : null, seriesEditable ? bestOf : undefined))}
+          >
+            Guardar
+          </button>
+        </>
+      }
+    >
+      <div className="tn-rules-modal">
+        <div className="tn-rules">
+          <div className="tn-rules-head">
+            <div className="label">Partidos</div>
+            <ConditionSeg rules={rules} onChange={(p) => setRules((r) => ({ ...r, ...p }))} />
+          </div>
+          <AmountRow rules={rules} onChange={(p) => setRules((r) => ({ ...r, ...p }))} />
+        </div>
+        {hasFinal && (
+          <div className="tn-rules tn-rules-final">
+            <div className="tn-rules-head">
+              <div className="label">🏆 Final</div>
+              <ConditionSeg rules={finalRules} onChange={(p) => setFinalRules((r) => ({ ...r, ...p }))} />
+            </div>
+            {seriesEditable && (
+              <div className="tn-rules-row">
+                <Seg<1 | 3> value={bestOf} options={[[1, '1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={setBestOf} />
+              </div>
+            )}
+            <AmountRow rules={finalRules} onChange={(p) => setFinalRules((r) => ({ ...r, ...p }))} />
+          </div>
+        )}
+        <small className="tn-rules-note">Solo cambia lo que queda por jugar; los partidos jugados se quedan como están.</small>
+      </div>
+    </Modal>
   );
 }
 
@@ -891,8 +949,15 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
 }
 
 export function TournamentDetailScreen({ id, view: initialView, from }: { id: string; view?: 'report' | 'play'; from?: 'list' }) {
-  const { navigate, tournaments, matches, players, saveTournament, prefs, progression, toast } = useApp();
+  const { navigate, tournaments, matches, players, saveTournament, deleteMatch, repos, prefs, progression, toast } = useApp();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [editRules, setEditRules] = useState(false);
+  // Partido de este torneo que se quedó a medias (app cerrada o recargada): se puede seguir.
+  const [pending, setPending] = useState<ActiveMatchSnapshot | null>(null);
+  useEffect(() => {
+    void repos.activeMatch.load().then((snap) => setPending(snap?.extras?.tournament?.id === id ? snap : null));
+  }, [repos, id]);
   const t = tournaments.find((x) => x.id === id);
   // Terminado: se abre en la ficha; en juego: en los partidos.
   const [view, setView] = useState<'report' | 'play'>(initialView ?? (t?.status === 'finished' ? 'report' : 'play'));
@@ -921,6 +986,26 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     const participants = fixtureParticipants(t, f, players);
     const config: MatchConfig = { ...fixtureConfig(t, f), testMode: false, penaltyFirstTeam: prefs.penaltyFirstTeam };
     navigate({ name: 'prematch', config, participants, extras: { tournament: { id: t.id, fixtureId: f.id } } });
+  };
+
+  const resume = () => {
+    if (!pending) return;
+    const state = restoreSnapshot(pending, Date.now());
+    navigate({ name: 'match', config: state.config, participants: state.participants, resume: state, extras: pending.extras });
+  };
+
+  // Repetir el último partido: se borra su resultado y vuelve a quedar pendiente.
+  const lastMatch = recordedMatches(t, matches).at(-1);
+  const undoLast = async () => {
+    if (!lastMatch) return;
+    try {
+      await saveTournament(undoMatch(t, lastMatch.id, matches));
+      await deleteMatch(lastMatch.id);
+      toast('Resultado borrado: el partido vuelve a estar pendiente');
+    } catch {
+      toast('No se pudo deshacer');
+    }
+    setConfirmUndo(false);
   };
 
   const fixtureRow = (f: Fixture) => {
@@ -974,6 +1059,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
             {` · ${rulesShort(fixtureConfig(t, next))}`}
           </span>
         </div>
+        {next.abandonedAt && !pending && <div className="next-abandoned">⏸ Se dejó a medias · se empieza de cero</div>}
         <div className="next-teams">
           {teamBlock(white, 'white')}
           <span className="next-vs">VS</span>
@@ -1114,7 +1200,27 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
           </div>
         )}
         <div className="td-panel scroll">
+          {pending && (
+            <button className="td-resume" onClick={resume}>
+              <span>⏸ Hay un partido a medias</span>
+              <b>▶ CONTINUAR</b>
+            </button>
+          )}
           {nextCard}
+          {(lastMatch || t.status === 'active') && (
+            <div className="td-tools">
+              {t.status === 'active' && (
+                <button className="td-tool" onClick={() => setEditRules(true)}>
+                  ⚙ Reglas
+                </button>
+              )}
+              {lastMatch && (
+                <button className="td-tool" onClick={() => setConfirmUndo(true)}>
+                  ↶ Repetir último partido
+                </button>
+              )}
+            </div>
+          )}
           <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'bracket' ? 'Rondas' : 'Jornadas'}</div>
           {rounds
             .filter((r) => t.format === 'bracket' || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
@@ -1141,6 +1247,39 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
         </div>
       </div>
       </>
+      )}
+      {confirmUndo && lastMatch && (
+        <Modal
+          title="¿Repetir el último partido?"
+          onClose={() => setConfirmUndo(false)}
+          actions={
+            <>
+              <button className="btn btn-ghost" onClick={() => setConfirmUndo(false)}>No</button>
+              <button className="btn btn-danger" onClick={() => void undoLast()}>Borrar y repetir</button>
+            </>
+          }
+        >
+          <p style={{ margin: 0 }}>
+            <b>
+              {lastMatch.participants.filter((p) => p.team === 'white').map((p) => p.nameSnapshot).join(' + ')} {lastMatch.result.score.white}–
+              {lastMatch.result.score.blue} {lastMatch.participants.filter((p) => p.team === 'blue').map((p) => p.nameSnapshot).join(' + ')}
+            </b>
+          </p>
+          <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>
+            Se borra este resultado (también de las estadísticas) y el partido vuelve a quedar pendiente para jugarlo otra vez.
+          </p>
+        </Modal>
+      )}
+      {editRules && (
+        <RulesEditor
+          t={t}
+          onClose={() => setEditRules(false)}
+          onSave={async (next) => {
+            await saveTournament(next);
+            setEditRules(false);
+            toast('Reglas cambiadas para los partidos que quedan');
+          }}
+        />
       )}
       {confirmCancel && (
         <Modal

@@ -4181,3 +4181,68 @@ div > .name-clash:first-child {
   font-weight: 700;
   color: var(--text-2);
 }
+
+/* Torneo en juego: herramientas discretas bajo el siguiente partido. */
+.td-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.td-tool {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(7, 16, 28, 0.6);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.td-tool:hover,
+.td-tool:focus-visible {
+  color: var(--text);
+  border-color: var(--accent);
+}
+/* Partido a medias (app cerrada): se puede seguir desde el torneo. */
+.td-resume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--ranked);
+  background: rgba(30, 22, 4, 0.85);
+  color: var(--ranked);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(242, 201, 76, 0.45);
+}
+.td-resume b {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+.next-abandoned {
+  align-self: center;
+  margin: 2px auto 4px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(20, 14, 2, 0.85);
+  border: 1px solid var(--ranked);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ranked);
+  text-align: center;
+  width: fit-content;
+}
+.tn-rules-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

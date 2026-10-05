@@ -6,7 +6,7 @@ import { DEFAULT_CONFIG, type MatchConfig } from '../../match-engine';
 import type { TournamentTemplate } from '../persistence';
 import { newId } from '../ids';
 import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, effectivePoolGames } from './pool';
-import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, type TournamentDraft } from './tournaments';
+import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, rulesShort, sameRules, type MatchRules, type TournamentDraft } from './tournaments';
 
 const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   builtIn: true,
@@ -65,24 +65,6 @@ export function describeTemplate(t: TournamentTemplate): string {
 export function finalOptions(format: TournamentTemplate['format']): TournamentTemplate['final'][] {
   if (format === 'bracket') return [];
   return format === 'pool' ? ['none', 'top2', 'top4'] : ['none', 'top2'];
-}
-
-/** Lo que decide cómo se acaba un partido. */
-export type MatchRules = Pick<TournamentTemplate, 'endCondition' | 'goalsPerPeriod' | 'minutesPerPeriod'>;
-
-/** «a 5 goles», «5 min», «a 5 goles o 5 min». */
-export function rulesShort(r: MatchRules): string {
-  if (r.endCondition === 'time') return `${r.minutesPerPeriod} min`;
-  if (r.endCondition === 'both') return `a ${r.goalsPerPeriod} goles o ${r.minutesPerPeriod} min`;
-  return `a ${r.goalsPerPeriod} goles`;
-}
-
-export function sameRules(a: MatchRules, b: MatchRules): boolean {
-  return (
-    a.endCondition === b.endCondition &&
-    (a.endCondition === 'time' || a.goalsPerPeriod === b.goalsPerPeriod) &&
-    (a.endCondition === 'goals' || a.minutesPerPeriod === b.minutesPerPeriod)
-  );
 }
 
 /** ¿Este tipo de torneo acaba en final? (el cuadro siempre; liguilla y Pool si la tienen). */
