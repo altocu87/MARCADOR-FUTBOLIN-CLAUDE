@@ -30,8 +30,10 @@ import {
   recommendedTemplateIds,
   roundLabel,
   standings,
+  standingsMovement,
   templateFit,
   validateDraft,
+  type Movement,
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
@@ -76,6 +78,17 @@ const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on 
 /** «5 oct 2026». */
 function shortDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Flecha verde si sube, roja si baja, igual amarillo si se queda. */
+function MoveIcon({ move }: { move?: Movement }) {
+  if (!move) return null;
+  const label = move === 'up' ? 'Sube' : move === 'down' ? 'Baja' : 'Se mantiene';
+  return (
+    <span className={`move move-${move}`} title={label} aria-label={label}>
+      {move === 'up' ? '▲' : move === 'down' ? '▼' : '='}
+    </span>
+  );
 }
 
 function teamCountLabel(t: Tournament): string {
@@ -400,8 +413,8 @@ export function TournamentNewScreen({
                   {running > 1 ? ` · y ${running - 1} más en «Mis torneos»` : ''}
                 </small>
               </span>
-              <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
-                ▶ Continuar
+              <button className="neon-go tn-resume-go" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
+                ▶ CONTINUAR
               </button>
             </div>
           );
@@ -810,6 +823,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
   const progress = fixtureProgress(t);
   const winner = t.teams.find((x) => x.id === t.winnerTeamId);
   const finalFx = t.fixtures.find((f) => f.stage === 'final');
+  // Subidas y bajadas de puesto con el último partido.
+  const movement = standingsMovement(t, matches);
   const allPlayerIds = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
   const back = () => (from === 'list' ? navigate({ name: 'tournament' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
 
@@ -825,12 +840,16 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     const isNext = f.id === next?.id;
     return (
       <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''} ${isNext ? 'is-next' : ''}`}>
-        <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>{teamName(f.whiteTeamId)}</span>
+        <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
+          <i className="pre-dot white" aria-label="Blanco" /> {teamName(f.whiteTeamId)}
+        </span>
         <span className="fx-score">
           {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
           {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
         </span>
-        <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>{teamName(f.blueTeamId)}</span>
+        <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>
+          {teamName(f.blueTeamId)} <i className="pre-dot blue" aria-label="Azul" />
+        </span>
       </div>
     );
   };
@@ -847,6 +866,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     const game = (next.matchIds?.length ?? 0) + 1;
     const teamBlock = (ids: string[], team: 'white' | 'blue') => (
       <div className={`next-side next-${team}`}>
+        <span className="next-team-label">{team === 'white' ? 'BLANCO' : 'AZUL'}</span>
         <div className="next-avatars">
           {ids.map((pid) => (
             <Avatar key={pid} name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={46} />
@@ -871,8 +891,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
           {teamBlock(blue, 'blue')}
         </div>
         {resting.length > 0 && <div className="next-rest">Descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</div>}
-        <button className="btn btn-primary btn-lg next-btn" onClick={() => play(next)}>
-          ▶ Siguiente partido
+        <button className="neon-go next-btn" onClick={() => play(next)}>
+          ▶ SIGUIENTE PARTIDO
         </button>
       </div>
     );
@@ -974,6 +994,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
               <thead>
                 <tr>
                   <th>#</th>
+                  <th aria-label="Cambio de puesto" />
                   <th>{t.format === 'pool' ? 'Jugador' : 'Equipo'}</th>
                   <th>PJ</th>
                   <th>G</th>
@@ -986,6 +1007,9 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
                 {standings(t, matches).map((r, i) => (
                   <tr key={r.team.id} className={i === 0 && r.played > 0 ? 'leader' : ''}>
                     <td>{i + 1}</td>
+                    <td>
+                      <MoveIcon move={movement.get(r.team.id)} />
+                    </td>
                     <td>{r.team.name}</td>
                     <td>{r.played}</td>
                     <td>{r.wins}</td>

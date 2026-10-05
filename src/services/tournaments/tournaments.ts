@@ -326,6 +326,29 @@ export function standings(t: Tournament, matches: StoredMatch[]): StandingRow[] 
   return t.format === 'pool' ? poolStandings(t, matches) : leagueStandings(t, matches);
 }
 
+export type Movement = 'up' | 'down' | 'same';
+
+/**
+ * Cómo ha cambiado cada puesto con el último partido jugado de la fase regular:
+ * se compara la clasificación de antes de ese partido con la de ahora. Vacío si aún no se ha jugado.
+ */
+export function standingsMovement(t: Tournament, matches: StoredMatch[]): Map<string, Movement> {
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const played = t.fixtures
+    .filter((f) => f.stage !== 'final' && f.matchId && byId.has(f.matchId))
+    .map((f) => byId.get(f.matchId!)!)
+    .sort((a, b) => a.finishedAt - b.finishedAt);
+  const out = new Map<string, Movement>();
+  if (!played.length) return out;
+  const lastId = played[played.length - 1].id;
+  const before = standings(t, matches.filter((m) => m.id !== lastId)).map((r) => r.team.id);
+  standings(t, matches).forEach((r, i) => {
+    const was = before.indexOf(r.team.id);
+    out.set(r.team.id, was > i ? 'up' : was < i ? 'down' : 'same');
+  });
+  return out;
+}
+
 export function leagueStandings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
   const byId = new Map(matches.map((m) => [m.id, m]));
   const rows = new Map<string, StandingRow>(t.teams.map((team) => [team.id, emptyRow(team)]));

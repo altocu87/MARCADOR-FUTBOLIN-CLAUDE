@@ -3837,11 +3837,14 @@
   gap: 6px;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 2px solid var(--ranked);
-  background: linear-gradient(180deg, rgba(242, 201, 76, 0.14), rgba(7, 16, 28, 0.85));
+  /* Degradado de blanco (izquierda, equipo blanco) a celeste (derecha, equipo azul). */
+  border: 2px solid transparent;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.24), rgba(7, 16, 28, 0.9) 42%, rgba(7, 16, 28, 0.9) 58%, rgba(98, 214, 255, 0.26)) padding-box,
+    linear-gradient(90deg, #ffffff, #62d6ff) border-box;
   box-shadow:
-    0 0 12px rgba(242, 201, 76, 0.5),
-    inset 0 0 16px rgba(242, 201, 76, 0.14);
+    -8px 0 16px rgba(255, 255, 255, 0.22),
+    8px 0 16px rgba(98, 214, 255, 0.35);
 }
 .next-head {
   display: flex;
@@ -3849,11 +3852,36 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 11px;
-  color: var(--text-2);
+  color: var(--text);
+  /* Legible sobre el degradado blanco y celeste. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.7);
+}
+.next-side b,
+.next-pct {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 .next-head .label {
-  color: var(--ranked);
+  color: #fff;
   margin: 0;
+}
+.next-team-label {
+  padding: 1px 10px;
+  border-radius: 8px;
+  border: 1.5px solid currentColor;
+  background: rgba(6, 12, 24, 0.85);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+}
+.next-white .next-team-label {
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+.next-blue .next-team-label {
+  color: #62d6ff;
+  box-shadow: 0 0 8px rgba(98, 214, 255, 0.6);
+  text-shadow: 0 0 8px rgba(98, 214, 255, 0.8);
 }
 .next-teams {
   display: grid;
@@ -3905,9 +3933,67 @@
   color: var(--text-2);
   text-align: center;
 }
+/* Botón de neón verde futurista, como «EMPEZAR PARTIDO». */
+.neon-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border-radius: 14px;
+  border: 3px solid #3ddc97;
+  background: radial-gradient(ellipse at 50% 40%, rgba(61, 220, 151, 0.22), rgba(3, 24, 14, 0.94) 75%);
+  box-shadow:
+    0 0 12px rgba(61, 220, 151, 0.8),
+    0 0 28px rgba(61, 220, 151, 0.3),
+    inset 0 0 16px rgba(61, 220, 151, 0.35);
+  color: #c9ffe4;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px #3ddc97, 0 0 16px #3ddc97;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.08s ease;
+}
+.neon-go:active {
+  transform: scale(0.97);
+  background: #3ddc97;
+  color: #03170d;
+  text-shadow: none;
+}
 .next-btn {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
+  font-size: 22px;
+}
+.tn-resume-go {
+  min-height: 46px;
+  font-size: 16px;
+}
+/* Cambio de puesto en la clasificación. */
+.move {
+  display: inline-block;
+  width: 14px;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+.move-up {
+  color: #3ddc84;
+  text-shadow: 0 0 6px rgba(61, 220, 132, 0.8);
+}
+.move-down {
+  color: #ff5c6c;
+  text-shadow: 0 0 6px rgba(255, 92, 108, 0.8);
+}
+.move-same {
+  color: #f2c94c;
+  text-shadow: 0 0 6px rgba(242, 201, 76, 0.7);
+}
+.fx-team .pre-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  vertical-align: middle;
 }
 .round-block {
   margin-top: 6px;
