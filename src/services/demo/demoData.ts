@@ -20,6 +20,7 @@ import {
 import { newId } from '../ids';
 import { STORAGE_FORMAT_VERSION, type Player, type StoredMatch, type Tournament } from '../persistence';
 import { autoScorers } from '../statistics/extras';
+import { DEMO_PHOTOS } from './demoPhotos';
 import {
   createTournament,
   editionName,
@@ -35,6 +36,8 @@ const DAY = 86_400_000;
 
 /** Nombres ficticios con alias y nivel de juego (0-1) para que haya favoritos. */
 const DEMO_PLAYERS: { name: string; alias?: string; skill: number }[] = [
+  { name: 'Alex', skill: 0.74 },
+  { name: 'Vicky', skill: 0.7 },
   { name: 'Lucía', alias: 'La Muralla', skill: 0.85 },
   { name: 'Marcos', alias: 'Cañonero', skill: 0.8 },
   { name: 'Sara', skill: 0.72 },
@@ -85,6 +88,7 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
     id: newId('p'),
     name: d.name,
     alias: d.alias,
+    ...(DEMO_PHOTOS[d.name] ? { photo: DEMO_PHOTOS[d.name] } : {}),
     active: true,
     createdAt: startDay - (DEMO_PLAYERS.length - i) * 3_600_000,
     updatedAt: startDay,
