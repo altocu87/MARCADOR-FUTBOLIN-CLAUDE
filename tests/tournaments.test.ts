@@ -17,6 +17,7 @@ import {
   fixtureConfig,
   fixtureProgress,
   nextFixture,
+  withFinalRules,
   phaseInfo,
   standingsMovement,
   formTeams,
@@ -385,5 +386,24 @@ describe('Cartel de fase del torneo', () => {
   it('la eliminatoria de 8 empieza en cuartos de final', () => {
     const t = bracket(8);
     expect(phaseInfo(t, t.fixtures.find((f) => f.round === 1)!)).toMatchObject({ tier: 'quarter', title: 'CUARTOS DE FINAL' });
+  });
+});
+
+describe('Reglas propias de la final', () => {
+  const ps = players(['a', 'b', 'c', 'd']);
+  const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-league-final')!;
+  it('la final puede jugarse a tiempo aunque la liguilla sea a goles, y a partido único', () => {
+    const custom = { ...withFinalRules(tpl, { endCondition: 'time', goalsPerPeriod: 5, minutesPerPeriod: 8 }), finalBestOf: 1 as const };
+    const { draft } = draftFromTemplate(custom, 'Liga', ps.map((p) => p.id), () => 1200);
+    const t = createTournament(draft, ps, () => 1200, 0, seededRandom('z'));
+    const final = t.fixtures.find((f) => f.stage === 'final')!;
+    expect(final.bestOf).toBeUndefined();
+    expect(fixtureConfig(t, final)).toMatchObject({ endCondition: 'time', minutesPerPeriod: 8 });
+    expect(fixtureConfig(t, t.fixtures[0])).toMatchObject({ endCondition: 'goals', goalsPerPeriod: 5 });
+    expect(describeTemplate(custom)).toMatch(/final 8 min/);
+  });
+  it('sin reglas propias la final se juega como el resto', () => {
+    const { draft } = draftFromTemplate(tpl, 'Liga', ps.map((p) => p.id), () => 1200);
+    expect(draft.finalConfig).toBeUndefined();
   });
 });

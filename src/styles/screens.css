@@ -4137,6 +4137,38 @@ div > .name-clash:first-child {
 .tn-rules .label {
   margin: 0;
 }
+.tn-col-rules {
+  padding-right: 4px;
+}
+.tn-col-rules > * {
+  flex: none;
+}
+.tn-rules .seg-compact {
+  min-height: 36px !important;
+  white-space: nowrap;
+}
+.tn-rules-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tn-rules-head .label {
+  flex: 1;
+  white-space: nowrap;
+}
+.tn-rules-head .segmented {
+  flex: 0 1 380px;
+}
+.tn-rules-head .seg-compact {
+  padding: 0 12px;
+}
+/* La final en dorado, como el trofeo. */
+.tn-rules-final {
+  --accent: var(--ranked);
+}
+.tn-rules-final .label {
+  color: var(--ranked);
+}
 .tn-rules-row {
   display: flex;
   gap: 8px;

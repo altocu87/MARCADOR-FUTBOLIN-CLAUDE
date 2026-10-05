@@ -21,6 +21,11 @@ import {
   describeTemplate,
   draftFromTemplate,
   finalOptions,
+  finalRulesOf,
+  hasTemplateFinal,
+  withFinalRules,
+  type MatchRules,
+  rulesShort,
   fixtureConfig,
   fixtureParticipants,
   fixtureScore,
@@ -72,7 +77,6 @@ function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]
   );
 }
 
-type MatchRules = Pick<TournamentTemplate, 'endCondition' | 'goalsPerPeriod' | 'minutesPerPeriod'>;
 const GOAL_OPTIONS: [number, string][] = [[3, 'A 3'], [5, 'A 5'], [7, 'A 7'], [10, 'A 10']];
 const MINUTE_OPTIONS: [number, string][] = [[3, '3 MIN'], [5, '5 MIN'], [8, '8 MIN'], [10, '10 MIN']];
 
@@ -86,13 +90,44 @@ function withRules(t: TournamentTemplate, r: MatchRules): TournamentTemplate {
   return { ...t, endCondition: r.endCondition, goalsPerPeriod: r.goalsPerPeriod, minutesPerPeriod: r.minutesPerPeriod, finalGoals };
 }
 
-/** «Gana quien llegue a 5 goles» / «Partidos de 5 minutos» / …, con la final si cambia. */
-function rulesText(t: TournamentTemplate): string {
-  const g = `${t.goalsPerPeriod} goles`;
-  const m = `2 partes de ${t.minutesPerPeriod} minutos`;
-  const base =
-    t.endCondition === 'goals' ? `Gana quien llegue a ${g}` : t.endCondition === 'time' ? `${m[0].toUpperCase()}${m.slice(1)}: gana quien lleve más goles` : `A ${g} o ${m}, lo que llegue antes`;
-  return base + (t.finalGoals && t.endCondition !== 'time' && (t.format === 'bracket' || t.final !== 'none') ? ` · la final a ${t.finalGoals}` : '') + '.';
+/** «Gana quien llegue a 5 goles» / «2 partes de 5 minutos: gana quien lleve más goles» / … */
+function rulesText(r: MatchRules): string {
+  const g = `${r.goalsPerPeriod} goles`;
+  const m = `2 partes de ${r.minutesPerPeriod} minutos`;
+  if (r.endCondition === 'goals') return `Gana quien llegue a ${g}.`;
+  if (r.endCondition === 'time') return `${m[0].toUpperCase()}${m.slice(1)}: gana quien lleve más goles.`;
+  return `A ${g} o ${m}, lo que llegue antes.`;
+}
+
+/** Elegir cómo se acaba un partido: a goles, a tiempo o ambas, y cuántos goles o minutos. */
+function ConditionSeg({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
+  return (
+    <Seg<MatchRules['endCondition']>
+      value={rules.endCondition}
+      options={[['goals', '⚽ GOLES'], ['time', '⏱ TIEMPO'], ['both', 'AMBAS']]}
+      onChange={(v) => onChange({ endCondition: v })}
+    />
+  );
+}
+
+function AmountRow({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
+  return (
+    <div className="tn-rules-row">
+      {rules.endCondition !== 'time' && <Seg value={rules.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => onChange({ goalsPerPeriod: v })} />}
+      {rules.endCondition !== 'goals' && <Seg value={rules.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => onChange({ minutesPerPeriod: v })} />}
+    </div>
+  );
+}
+
+function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
+  return (
+    <>
+      <div className="tn-rules-row">
+        <ConditionSeg rules={rules} onChange={onChange} />
+      </div>
+      <AmountRow rules={rules} onChange={onChange} />
+    </>
+  );
 }
 
 /** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
@@ -341,6 +376,8 @@ export function TournamentNewScreen({
   const [showAll, setShowAll] = useState(false);
   // Cómo se juegan los partidos (goles, tiempo o ambas): sale del tipo elegido y se puede cambiar aquí.
   const [rules, setRules] = useState<(MatchRules & { tplId: string }) | null>(null);
+  // Y la final: a partido único o al mejor de 3, y sus propias reglas.
+  const [finalPick, setFinalPick] = useState<(MatchRules & { tplId: string; bestOf: 1 | 3 }) | null>(null);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
@@ -356,9 +393,12 @@ export function TournamentNewScreen({
   const blocked = fits.filter((x) => !x.fit.ok);
   const pickable = showAll ? [...shown, ...otherOk] : shown.length ? shown : otherOk;
   const baseTpl = pickable.find((x) => x.t.id === chosenTpl)?.t ?? pickable[0]?.t;
-  const tpl = baseTpl && rules?.tplId === baseTpl.id ? withRules(baseTpl, rules) : baseTpl;
-  const setRule = (patch: Partial<MatchRules>) =>
-    baseTpl && setRules({ ...pickRules(tpl!), ...patch, tplId: baseTpl.id });
+  const ruledTpl = baseTpl && rules?.tplId === baseTpl.id ? withRules(baseTpl, rules) : baseTpl;
+  const tpl =
+    ruledTpl && finalPick?.tplId === ruledTpl.id ? { ...withFinalRules(ruledTpl, finalPick), finalBestOf: finalPick.bestOf } : ruledTpl;
+  const setRule = (patch: Partial<MatchRules>) => baseTpl && setRules({ ...pickRules(tpl!), ...patch, tplId: baseTpl.id });
+  const setFinal = (patch: Partial<MatchRules & { bestOf: 1 | 3 }>) =>
+    baseTpl && setFinalPick({ ...finalRulesOf(tpl!), bestOf: tpl!.finalBestOf, ...patch, tplId: baseTpl.id });
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -656,7 +696,7 @@ export function TournamentNewScreen({
             )}
           </div>
         </div>
-        <div className="tn-col">
+        <div className="tn-col tn-col-rules scroll">
           {tpl && (
             <div className="tn-nameplate" aria-label={`Nombre del torneo: ${name}`}>
               <span className="tn-np-edition">
@@ -671,23 +711,28 @@ export function TournamentNewScreen({
           )}
           {tpl && (
             <div className="tn-rules">
-              <div className="label">Partidos</div>
-              <div className="tn-rules-row">
-                <Seg<MatchRules['endCondition']>
-                  value={tpl.endCondition}
-                  options={[['goals', '⚽ A GOLES'], ['time', '⏱ A TIEMPO'], ['both', 'AMBAS']]}
-                  onChange={(v) => setRule({ endCondition: v })}
-                />
+              <div className="tn-rules-head">
+                <div className="label">Partidos</div>
+                <ConditionSeg rules={tpl} onChange={setRule} />
               </div>
-              <div className="tn-rules-row">
-                {tpl.endCondition !== 'time' && (
-                  <Seg value={tpl.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => setRule({ goalsPerPeriod: v })} />
-                )}
-                {tpl.endCondition !== 'goals' && (
-                  <Seg value={tpl.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => setRule({ minutesPerPeriod: v })} />
-                )}
-              </div>
+              <AmountRow rules={tpl} onChange={setRule} />
               <small className="tn-rules-note">{rulesText(tpl)}</small>
+            </div>
+          )}
+          {tpl && hasTemplateFinal(tpl) && (
+            <div className="tn-rules tn-rules-final">
+              <div className="tn-rules-head">
+                <div className="label">🏆 Final</div>
+                <ConditionSeg rules={finalRulesOf(tpl)} onChange={setFinal} />
+              </div>
+              <div className="tn-rules-row">
+                <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, '1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => setFinal({ bestOf: v })} />
+              </div>
+              <AmountRow rules={finalRulesOf(tpl)} onChange={setFinal} />
+              <small className="tn-rules-note">
+                {tpl.finalBestOf > 1 ? 'Al mejor de 3. ' : 'A un partido. '}
+                {rulesText(finalRulesOf(tpl))}
+              </small>
             </div>
           )}
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -700,7 +745,7 @@ export function TournamentNewScreen({
               </button>
             )}
           </div>
-          <div className="scroll" style={{ minHeight: 0 }}>{preview}</div>
+          <div>{preview}</div>
         </div>
       </div>
     </ScreenFrame>
@@ -820,14 +865,8 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
           {hasFinal && (
             <>
               <div className="label">La final se juega</div>
-              <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'A 1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
-              {tpl.endCondition !== 'time' && (
-                <Seg<number | null>
-                  value={tpl.finalGoals}
-                  options={[[null, 'MISMOS GOLES'], [7, 'A 7'], [10, 'A 10']]}
-                  onChange={(v) => set('finalGoals', v)}
-                />
-              )}
+              <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
+              <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />
             </>
           )}
           <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio." />
@@ -932,6 +971,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
           <span>
             {roundLabel(t, next.round)} · partido {progress.done + 1} de {progress.total}
             {(next.bestOf ?? 1) > 1 && ` · serie ${next.series?.white ?? 0}–${next.series?.blue ?? 0}, partido ${game}`}
+            {` · ${rulesShort(fixtureConfig(t, next))}`}
           </span>
         </div>
         <div className="next-teams">
@@ -952,7 +992,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     <div className="final-card">
       <div className="label" style={{ color: 'var(--ranked)' }}>
         Final · {FINAL_LABEL[t.final ?? 'top2']}
-        {(finalFx.bestOf ?? 1) > 1 ? ' · al mejor de 3' : ''}
+        {(finalFx.bestOf ?? 1) > 1 ? ' · al mejor de 3' : ' · partido único'}
+        {` · ${rulesShort(fixtureConfig(t, finalFx))}`}
       </div>
       {finalFx.whiteTeamId ? (
         fixtureRow(finalFx)

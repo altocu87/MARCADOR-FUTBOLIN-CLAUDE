@@ -143,6 +143,10 @@ export interface TournamentTemplate {
   minutesPerPeriod: number;
   /** Goles de la final (null = los mismos que el resto). */
   finalGoals: number | null;
+  /** Cómo se acaba la final (sin poner = como el resto). */
+  finalEndCondition?: MatchConfig['endCondition'];
+  /** Minutos por parte de la final (sin poner = los mismos que el resto). */
+  finalMinutes?: number;
 }
 
 export type EffectsLevel = 'full' | 'reduced' | 'off';
