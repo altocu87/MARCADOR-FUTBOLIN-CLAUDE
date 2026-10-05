@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '../src/match-engine';
 import { DEFAULT_PROGRESSION, normalizePreferences, type Player, type StoredMatch, type Tournament } from '../src/services/persistence';
+import { findNameClash, mergeBlocker, mergePlayers, nameKey, validatePlayerDraft } from '../src/services/players';
 import { computeProgression } from '../src/services/progression';
 import { seededRandom } from '../src/services/statistics/calendar';
 import {
@@ -14,6 +15,9 @@ import {
   draftFromTemplate,
   effectivePoolGames,
   fixtureConfig,
+  fixtureProgress,
+  nextFixture,
+  standingsMovement,
   formTeams,
   playableFixtures,
   poolGameOptions,
@@ -257,5 +261,109 @@ describe('Ediciones, ficha y palmarés', () => {
     expect(c.name).toBe('Copa Rotativa');
     expect(c.editions.map((e) => e.edition)).toEqual([2, 1]);
     expect(c.honours[0]).toMatchObject({ playerId: 'a', titles: 2, mvps: 2, editions: 2 });
+  });
+});
+
+describe('Fusionar un invitado con un jugador', () => {
+  it('pasa partidos, goleadores y torneos al jugador y el invitado desaparece', () => {
+    const ps: Player[] = [...players(['a', 'b', 'c', 'd']), { id: 'g', name: 'Pepe', guest: true, active: true, createdAt: 0, updatedAt: 0 }];
+    const t0 = createTournament(poolDraft(['a', 'b', 'c', 'g']), ps, () => 1200, 0, seededRandom('m'));
+    const { t, matches } = playAll(t0, (_w, b) => (b.includes('g') ? 'B' : 'W'));
+    const withScorer = { ...matches[0], scorers: { e1: 'g' } };
+    const all = [withScorer, ...matches.slice(1)];
+    const r = mergePlayers('g', 'd', ps, all, [t], 5);
+    expect(r.players.some((p) => p.id === 'g')).toBe(false);
+    expect(r.matches.every((m) => m.participants.every((p) => p.playerId !== 'g'))).toBe(true);
+    expect(r.matches[0].scorers?.e1).toBe('d');
+    expect(r.tournaments[0].entrants).toContain('d');
+    expect(r.tournaments[0].teams.some((x) => x.playerIds.includes('g'))).toBe(false);
+    expect(r.movedTournaments).toBe(1);
+    // El campeón (era el invitado) pasa a ser «d».
+    const champ = r.tournaments[0].teams.find((x) => x.id === r.tournaments[0].winnerTeamId)!;
+    expect(champ.playerIds).toEqual(['d']);
+    expect(champ.name).toBe('D');
+  });
+
+  it('no deja fusionar a dos que jugaron en el mismo partido', () => {
+    const m = makeMatch({ white: ['a'], blue: ['g'], goals: 'WWWWW' });
+    expect(mergeBlocker('g', 'a', [m])).not.toBeNull();
+    expect(mergeBlocker('g', 'b', [m])).toBeNull();
+  });
+});
+
+describe('Siguiente partido', () => {
+  it('va por orden de jornada y cuenta el progreso', () => {
+    const ps = players(['a', 'b', 'c', 'd', 'e']);
+    let t = createTournament(
+      { name: 'Liga', format: 'league', teamSize: 1, ranked: false, config: DEFAULT_CONFIG, teams: ps.map((p) => ({ playerIds: [p.id] })), seeding: 'elo' },
+      ps,
+      () => 1200,
+      0,
+    );
+    expect(fixtureProgress(t)).toEqual({ done: 0, total: 10 });
+    const seen: number[] = [];
+    const all: StoredMatch[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const f = nextFixture(t)!;
+      seen.push(f.round);
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const m = { ...makeMatch({ white, blue, goals: 'WWWWW', at: 1000 + i }), tournament: { id: t.id, fixtureId: f.id } };
+      all.push(m);
+      t = recordFixtureResult(t, f.id, m, all);
+    }
+    expect(seen).toEqual([...seen].sort((a, b) => a - b));
+    expect(nextFixture(t)).toBeUndefined();
+    expect(fixtureProgress(t)).toEqual({ done: 10, total: 10 });
+  });
+});
+
+describe('Nombres repetidos', () => {
+  const ps: Player[] = [
+    { id: 'j', name: 'José', active: true, createdAt: 0, updatedAt: 0 },
+    { id: 'g', name: 'Pepe', guest: true, active: true, createdAt: 0, updatedAt: 0 },
+  ];
+  it('detecta el mismo nombre sin tildes, mayúsculas ni espacios', () => {
+    expect(nameKey('  José  ')).toBe('jose');
+    expect(findNameClash('jose', ps)?.id).toBe('j');
+    expect(findNameClash('PEPE', ps)?.id).toBe('g');
+    expect(findNameClash('Pepa', ps)).toBeUndefined();
+    // Al editar a uno, su propio nombre no cuenta.
+    expect(findNameClash('José', ps, 'j')).toBeUndefined();
+  });
+  it('no deja guardar un jugador con un nombre que ya existe', () => {
+    expect(validatePlayerDraft({ name: 'pepe' }, ps)).toContain('Ya existe un jugador con ese nombre.');
+  });
+});
+
+describe('Subidas y bajadas en la clasificación', () => {
+  it('compara con la clasificación de antes del último partido', () => {
+    const ps = players(['a', 'b', 'c']);
+    let t = createTournament(
+      { name: 'Liga', format: 'league', teamSize: 1, ranked: false, config: DEFAULT_CONFIG, teams: ps.map((p) => ({ playerIds: [p.id] })), seeding: 'elo' },
+      ps,
+      () => 1200,
+      0,
+    );
+    expect(standingsMovement(t, []).size).toBe(0);
+    const all: StoredMatch[] = [];
+    const play = (winnerLetter: string) => {
+      const f = nextFixture(t)!;
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const m = { ...makeMatch({ white, blue, goals: white.includes(winnerLetter) ? 'WWWWW' : 'BBBBB', at: 1000 + all.length }), tournament: { id: t.id, fixtureId: f.id } };
+      all.push(m);
+      t = recordFixtureResult(t, f.id, m, all);
+      return [...white, ...blue];
+    };
+    // Antes de jugar: A, B, C (por nombre). Primer partido: B contra C y gana C.
+    expect(play('c').sort()).toEqual(['b', 'c']);
+    const id = (pid: string) => t.teams.find((tt) => tt.playerIds[0] === pid)!.id;
+    const mv = standingsMovement(t, all);
+    // Ahora: C, A, B → C sube; A y B bajan un puesto.
+    expect(mv.get(id('c'))).toBe('up');
+    expect(mv.get(id('a'))).toBe('down');
+    expect(mv.get(id('b'))).toBe('down');
+    expect([...mv.values()].every((v) => ['up', 'down', 'same'].includes(v))).toBe(true);
   });
 });

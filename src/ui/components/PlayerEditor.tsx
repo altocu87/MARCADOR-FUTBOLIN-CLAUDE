@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { Player } from '../../services/persistence';
-import { ALIAS_MAX, NAME_MAX, createPlayer, updatePlayer, validatePlayerDraft } from '../../services/players';
+import { ALIAS_MAX, NAME_MAX, createPlayer, findNameClash, mergeBlocker, updatePlayer, validatePlayerDraft } from '../../services/players';
+import { NameClashNotice } from './NameClash';
 import { Avatar, Modal } from './common';
 
 /** Redimensiona la foto en local a 160 × 160 (recorte centrado) para no llenar el almacenamiento. */
@@ -33,12 +34,23 @@ export function PlayerEditor({
   player,
   onClose,
   onSaved,
+  promote = false,
+  onMerged,
 }: {
   player?: Player;
   onClose: () => void;
   onSaved?: (p: Player) => void;
+  /** Convertir un invitado en jugador definitivo (deja de ser invitado al guardar). */
+  promote?: boolean;
+  /** Se fusionó con otro jugador por tener el mismo nombre: el que queda. */
+  onMerged?: (intoId: string) => void;
 }) {
-  const { players, savePlayer } = useApp();
+  const { players, matches, savePlayer, mergePlayers } = useApp();
+  // Jugador o invitado que ya tiene ese nombre.
+  const [clash, setClash] = useState<Player | null>(null);
+  const [clashError, setClashError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(player?.name ?? '');
   const [alias, setAlias] = useState(player?.alias ?? '');
   const [photo, setPhoto] = useState<string | undefined>(player?.photo);
@@ -47,11 +59,19 @@ export function PlayerEditor({
 
   const save = async () => {
     const draft = { name, alias, photo };
+    const same = findNameClash(name, players, player?.id);
+    if (same) {
+      setErrors([]);
+      setClashError(null);
+      setClash(same);
+      return;
+    }
     const errs = validatePlayerDraft(draft, players, player?.id);
     setErrors(errs);
     if (errs.length) return;
     const now = Date.now();
-    const next = player ? updatePlayer(player, draft, now) : createPlayer(draft, now);
+    const updated = player ? updatePlayer(player, draft, now) : createPlayer(draft, now);
+    const next = promote ? { ...updated, guest: undefined, active: true } : updated;
     try {
       await savePlayer(next);
       onSaved?.(next);
@@ -59,6 +79,63 @@ export function PlayerEditor({
     } catch (err) {
       setErrors([err instanceof Error ? err.message : 'No se pudo guardar.']);
     }
+  };
+
+  // «Es la misma persona»: si se está creando, se usa (o se hace definitivo) el que ya existe;
+  // si se edita uno que ya existía, se fusionan (el invitado pasa al jugador, nunca al revés).
+  const useSame = async () => {
+    if (!clash) return;
+    setBusy(true);
+    const now = Date.now();
+    try {
+      if (!player) {
+        const kept: Player = {
+          ...clash,
+          alias: alias.trim() || clash.alias,
+          photo: photo ?? clash.photo,
+          active: true,
+          // Se estaba creando un jugador: si el que existía era invitado, pasa a definitivo.
+          guest: undefined,
+          updatedAt: now,
+        };
+        await savePlayer(kept);
+        onSaved?.(kept);
+        onClose();
+        return;
+      }
+      const [from, into] = player.guest && !clash.guest ? [player, clash] : !player.guest && clash.guest ? [clash, player] : [player, clash];
+      const blocker = mergeBlocker(from.id, into.id, matches);
+      if (blocker) {
+        setClashError(blocker);
+        return;
+      }
+      await mergePlayers(from.id, into.id);
+      // Lo que se haya puesto (foto, alias) se queda en el que permanece.
+      const keptBase = into.id === player.id ? { ...player, name: clash.name } : into;
+      const kept: Player = {
+        ...keptBase,
+        alias: alias.trim() || keptBase.alias,
+        photo: photo ?? keptBase.photo,
+        active: true,
+        guest: undefined,
+        updatedAt: now,
+      };
+      await savePlayer(kept);
+      onMerged?.(kept.id);
+      onSaved?.(kept);
+      onClose();
+    } catch (err) {
+      setClashError(err instanceof Error ? err.message : 'No se pudo completar.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rename = () => {
+    setClash(null);
+    setClashError(null);
+    nameRef.current?.focus();
+    nameRef.current?.select();
   };
 
   const onFile = async (file?: File) => {
@@ -72,19 +149,35 @@ export function PlayerEditor({
 
   return (
     <Modal
-      title={player ? 'Editar jugador' : 'Nuevo jugador'}
+      title={promote ? 'Hacer jugador definitivo' : player ? 'Editar jugador' : 'Nuevo jugador'}
       onClose={onClose}
       actions={
-        <>
-          <button className="btn btn-ghost" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn btn-primary" onClick={save}>
-            Guardar
-          </button>
-        </>
+        clash ? (
+          <>
+            <button className="btn btn-ghost" onClick={rename} disabled={busy}>
+              Usar otro nombre
+            </button>
+            <button className="btn btn-primary" onClick={() => void useSame()} disabled={busy}>
+              {player ? 'Es la misma persona: fusionar' : clash.guest ? 'Es la misma persona: hacerlo jugador' : 'Es la misma persona'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="btn btn-ghost" onClick={onClose}>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={save}>
+              {promote ? 'Hacer definitivo' : 'Guardar'}
+            </button>
+          </>
+        )
       }
     >
+      {clash && (
+        <div style={{ marginBottom: 10 }}>
+          <NameClashNotice clash={clash} busy={busy} error={clashError} showActions={false} onSame={() => void useSame()} onRename={rename} />
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
           <Avatar name={name || '?'} photo={photo} size={84} />
@@ -108,11 +201,15 @@ export function PlayerEditor({
           <label className="field">
             <span className="label">Nombre</span>
             <input
+              ref={nameRef}
               className="input"
               value={name}
               maxLength={NAME_MAX}
               autoFocus
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setClash(null);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && void save()}
             />
           </label>
@@ -122,6 +219,11 @@ export function PlayerEditor({
           </label>
         </div>
       </div>
+      {promote && (
+        <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
+          Conserva todos sus partidos, torneos y palmarés. Pasará a salir en el ranking.
+        </p>
+      )}
       {errors.length > 0 && (
         <div className="notice error" style={{ marginTop: 10 }}>
           {errors.join(' ')}

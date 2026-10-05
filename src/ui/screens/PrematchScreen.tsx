@@ -4,6 +4,7 @@ import type { MatchExtras } from '../../app/routes';
 import { headToHead, lastMeetings } from '../../services/statistics';
 import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
 import { predict } from '../../services/progression';
+import { roundLabel } from '../../services/tournaments';
 import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
 import { AssetImage } from '../components/assets';
 import { TeamFrame } from '../components/PlayerCards';
@@ -17,7 +18,13 @@ export function PrematchScreen({
   participants: ParticipantRef[];
   extras?: MatchExtras;
 }) {
-  const { navigate, matches, progression, demoMode } = useApp();
+  const { navigate, matches, progression, demoMode, tournaments } = useApp();
+  // En un torneo, el cartel dice la jornada o la ronda («JORNADA 2», «FINAL»…).
+  const tournamentLabel = useMemo(() => {
+    const t = extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id);
+    const f = t && t.fixtures.find((x) => x.id === extras!.tournament!.fixtureId);
+    return t && f ? roundLabel(t, f.round) : null;
+  }, [extras, tournaments]);
   const [info, setInfo] = useState(false);
   // Últimos enfrentamientos entre estas mismas alineaciones (cualquier modalidad).
   const meetings = useMemo(() => {
@@ -64,7 +71,7 @@ export function PrematchScreen({
       className="pre-screen"
       background={<AssetImage name="fondo-prevision" className="pre-bg" fallback={null} />}
       // Tipo de partido en grande y centrado, con el mismo cartel de neón que el marcador.
-      title={<span className="match-mode mode-chip-ranked">{MODE_LABEL[config.mode]}</span>}
+      title={<span className="match-mode mode-chip-ranked">{tournamentLabel ?? MODE_LABEL[config.mode]}</span>}
       onBack={() => (extras?.tournament ? navigate({ name: 'tournamentDetail', id: extras.tournament.id }) : navigate({ name: 'select', config, participants }))}
       right={demoMode ? <TestModeBadge /> : undefined}
     >

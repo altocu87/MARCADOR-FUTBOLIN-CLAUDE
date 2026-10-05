@@ -2,12 +2,12 @@
  * Torneos: lista, creación a partir de un predefinido, creador de predefinidos y detalle
  * (clasificación, cuadro o Pool rotativo, final y partidos).
  */
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
-import type { Fixture, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
-import { initials, sortPlayers } from '../../services/players';
-import { displayTitle } from '../../services/progression';
+import type { Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
+import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
   FORMAT_LABEL,
@@ -25,16 +25,20 @@ import {
   fixtureParticipants,
   fixtureScore,
   newTemplate,
-  playableFixtures,
+  fixtureProgress,
+  nextFixture,
   recommendedTemplateIds,
   roundLabel,
   standings,
+  standingsMovement,
   templateFit,
   validateDraft,
+  type Movement,
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
+import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { newId } from '../../services/ids';
 import { Confetti } from '../components/graphics';
@@ -74,6 +78,17 @@ const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on 
 /** «5 oct 2026». */
 function shortDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Flecha verde si sube, roja si baja, igual amarillo si se queda. */
+function MoveIcon({ move }: { move?: Movement }) {
+  if (!move) return null;
+  const label = move === 'up' ? 'Sube' : move === 'down' ? 'Baja' : 'Se mantiene';
+  return (
+    <span className={`move move-${move}`} title={label} aria-label={label}>
+      {move === 'up' ? '▲' : move === 'down' ? '▼' : '='}
+    </span>
+  );
 }
 
 function teamCountLabel(t: Tournament): string {
@@ -172,7 +187,7 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
             const done = real.filter((f) => f.winnerTeamId).length;
             const winner = t.teams.find((x) => x.id === t.winnerTeamId);
             return (
-              <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
+              <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' })}>
                 <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <strong>{t.name}</strong>
@@ -224,7 +239,7 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
           <div className="label">Ediciones</div>
           <div className="hon-editions">
             {c.editions.map((e) => (
-              <button key={e.tournament.id} className="hon-edition" onClick={() => navigate({ name: 'tournamentDetail', id: e.tournament.id })}>
+              <button key={e.tournament.id} className="hon-edition" onClick={() => navigate({ name: 'tournamentDetail', id: e.tournament.id, from: 'list' })}>
                 <span className="hon-ed-num">
                   {e.edition}
                   <small>ª</small>
@@ -280,15 +295,26 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * La lista de tipos se ordena según el número de jugadores: arriba los que se pueden jugar (con el
  * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
  */
-export function TournamentNewScreen({ templateId, initialSelected }: { templateId?: string; initialSelected?: string[] }) {
+export function TournamentNewScreen({
+  templateId,
+  initialSelected,
+  initialStep,
+}: {
+  templateId?: string;
+  initialSelected?: string[];
+  initialStep?: 'players' | 'format';
+}) {
   const { navigate, players, progression, prefs, saveTournament, savePlayer, toast, tournaments } = useApp();
-  const [step, setStep] = useState<'players' | 'format'>(initialSelected?.length ? 'format' : 'players');
+  const [step, setStep] = useState<'players' | 'format'>(initialStep ?? (initialSelected?.length ? 'format' : 'players'));
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
   const [creating, setCreating] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
+  // Jugador o invitado que ya tiene el nombre escrito.
+  const [guestClash, setGuestClash] = useState<Player | null>(null);
+  const guestRef = useRef<HTMLInputElement>(null);
   const [showAll, setShowAll] = useState(false);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
@@ -308,27 +334,38 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se apunta a ese.
+  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se pregunta si es la misma persona.
   const addGuest = async () => {
     const clean = (guestName ?? '').trim();
     if (!clean) return;
-    const same = players.find((p) => p.active && p.name.toLocaleLowerCase('es') === clean.toLocaleLowerCase('es'));
+    // No puede haber dos con el mismo nombre (ni jugador ni invitado): se pregunta qué hacer.
+    const same = findNameClash(clean, players);
     if (same) {
-      setSelected((s) => (s.includes(same.id) ? s : [...s, same.id]));
-      toast(`${same.name} ya estaba en la lista: apuntado`);
-    } else {
-      const now = Date.now();
-      const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
-      await savePlayer(guest);
-      setSelected((s) => [...s, guest.id]);
+      setGuestClash(same);
+      return;
     }
+    const now = Date.now();
+    const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
+    await savePlayer(guest);
+    setSelected((s) => [...s, guest.id]);
+    setGuestName(null);
+  };
+
+  // «Es la misma persona»: se apunta al que ya existe (si estaba de baja, se reactiva).
+  const useExisting = async () => {
+    if (!guestClash) return;
+    if (!guestClash.active) await savePlayer({ ...guestClash, active: true, updatedAt: Date.now() });
+    setSelected((s) => (s.includes(guestClash.id) ? s : [...s, guestClash.id]));
+    toast(`${guestClash.name} apuntado`);
+    setGuestClash(null);
     setGuestName(null);
   };
 
   if (step === 'players') {
     // Los invitados, al final de la lista.
     const available = sortPlayers(players.filter((p) => p.active)).sort((a, b) => Number(!!a.guest) - Number(!!b.guest));
-    const running = tournaments.filter((t) => t.status === 'active').length;
+    const runningList = tournaments.filter((t) => t.status === 'active').sort((a, b) => b.createdAt - a.createdAt);
+    const running = runningList.length;
     return (
       <ScreenFrame
         title="¿Quién juega?"
@@ -362,6 +399,26 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
           </>
         }
       >
+        {runningList.slice(0, 1).map((t) => {
+          const nx = nextFixture(t);
+          const pr = fixtureProgress(t);
+          const teamOf = (tid: string | null) => t.teams.find((x) => x.id === tid)?.name ?? '?';
+          return (
+            <div key={t.id} className="tn-resume">
+              <span className="tn-resume-tag">En juego</span>
+              <span className="tn-resume-body">
+                <b>{t.name}</b>
+                <small>
+                  {pr.done} de {pr.total} partidos{nx ? ` · siguiente: ${teamOf(nx.whiteTeamId)} vs ${teamOf(nx.blueTeamId)}` : ''}
+                  {running > 1 ? ` · y ${running - 1} más en «Mis torneos»` : ''}
+                </small>
+              </span>
+              <button className="neon-go tn-resume-go" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
+                ▶ CONTINUAR
+              </button>
+            </div>
+          );
+        })}
         <div className="pick-grid tn-pick-grid scroll">
           {available.length === 0 ? (
             <div className="empty" style={{ gridColumn: '1 / -1' }}>
@@ -401,24 +458,53 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
         {guestName !== null && (
           <Modal
             title="Añadir invitado"
-            onClose={() => setGuestName(null)}
+            onClose={() => {
+              setGuestName(null);
+              setGuestClash(null);
+            }}
             actions={
               <>
-                <button className="btn btn-ghost" onClick={() => setGuestName(null)}>Cancelar</button>
-                <button className="btn btn-primary" disabled={!guestName.trim()} onClick={addGuest}>Añadir</button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setGuestName(null);
+                    setGuestClash(null);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button className="btn btn-primary" disabled={!guestName.trim() || !!guestClash} onClick={addGuest}>
+                  Aceptar
+                </button>
               </>
             }
           >
             <input
+              ref={guestRef}
               className="input"
               autoFocus
               value={guestName}
-              maxLength={20}
+              maxLength={NAME_MAX}
               placeholder="Nombre del invitado"
               aria-label="Nombre del invitado"
-              onChange={(e) => setGuestName(e.target.value)}
+              onChange={(e) => {
+                setGuestName(e.target.value);
+                setGuestClash(null);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && void addGuest()}
             />
+            {guestClash && (
+              <NameClashNotice
+                clash={guestClash}
+                sameLabel="Es la misma persona: apuntarlo"
+                onSame={() => void useExisting()}
+                onRename={() => {
+                  setGuestClash(null);
+                  guestRef.current?.focus();
+                  guestRef.current?.select();
+                }}
+              />
+            )}
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
               Juega el torneo con su nombre y no sale en el ranking. Queda guardado para la próxima vez.
             </p>
@@ -716,8 +802,8 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
   );
 }
 
-export function TournamentDetailScreen({ id, view: initialView }: { id: string; view?: 'report' | 'play' }) {
-  const { navigate, tournaments, matches, players, saveTournament, prefs } = useApp();
+export function TournamentDetailScreen({ id, view: initialView, from }: { id: string; view?: 'report' | 'play'; from?: 'list' }) {
+  const { navigate, tournaments, matches, players, saveTournament, prefs, progression, toast } = useApp();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const t = tournaments.find((x) => x.id === id);
   // Terminado: se abre en la ficha; en juego: en los partidos.
@@ -732,38 +818,85 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
   const teamName = (tid: string | null) => (tid ? t.teams.find((x) => x.id === tid)?.name ?? '?' : '—');
   const nameOf = (pid: string) => players.find((p) => p.id === pid)?.name ?? '?';
   const byId = new Map(matches.map((m) => [m.id, m]));
-  // En el Pool se juega en orden para respetar los descansos; en el resto, en cualquier orden.
-  const playable = t.format === 'pool' ? playableFixtures(t).slice(0, 1) : playableFixtures(t);
+  // Se juega en orden: el propio torneo dice cuál es el siguiente partido.
+  const next = nextFixture(t);
+  const progress = fixtureProgress(t);
   const winner = t.teams.find((x) => x.id === t.winnerTeamId);
   const finalFx = t.fixtures.find((f) => f.stage === 'final');
+  // Subidas y bajadas de puesto con el último partido.
+  const movement = standingsMovement(t, matches);
+  const allPlayerIds = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
+  const back = () => (from === 'list' ? navigate({ name: 'tournament' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
 
+  // Siempre pasa por la pantalla de Previsión (pronóstico, últimos enfrentamientos) antes de jugar.
   const play = (f: Fixture) => {
     const participants = fixtureParticipants(t, f, players);
     const config: MatchConfig = { ...fixtureConfig(t, f), testMode: false, penaltyFirstTeam: prefs.penaltyFirstTeam };
-    const extras = { tournament: { id: t.id, fixtureId: f.id } };
-    if (config.mode === 'ranked') navigate({ name: 'prematch', config, participants, extras });
-    else navigate({ name: 'match', config, participants, extras });
+    navigate({ name: 'prematch', config, participants, extras: { tournament: { id: t.id, fixtureId: f.id } } });
   };
 
   const fixtureRow = (f: Fixture) => {
     const series = (f.bestOf ?? 1) > 1;
-    const game = (f.matchIds?.length ?? 0) + 1;
+    const isNext = f.id === next?.id;
     return (
-      <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''}`}>
-        <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>{teamName(f.whiteTeamId)}</span>
+      <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''} ${isNext ? 'is-next' : ''}`}>
+        <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
+          <i className="pre-dot white" aria-label="Blanco" /> {teamName(f.whiteTeamId)}
+        </span>
         <span className="fx-score">
-          {f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
+          {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
           {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
         </span>
-        <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>{teamName(f.blueTeamId)}</span>
-        {playable.includes(f) && (
-          <button className="btn btn-primary btn-sm" onClick={() => play(f)}>
-            ▶ {series && game > 1 ? `Partido ${game}` : 'Jugar'}
-          </button>
-        )}
+        <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>
+          {teamName(f.blueTeamId)} <i className="pre-dot blue" aria-label="Azul" />
+        </span>
       </div>
     );
   };
+
+  // Tarjeta del siguiente partido: quién juega, quién descansa, pronóstico y un único botón.
+  let nextCard: ReactNode = null;
+  if (next) {
+    const side = (tid: string | null) => t.teams.find((x) => x.id === tid)?.playerIds ?? [];
+    const white = side(next.whiteTeamId);
+    const blue = side(next.blueTeamId);
+    const pr = progression ? predict(white, blue, matches, progression) : null;
+    const pct = (team: 'white' | 'blue') => (pr?.available ? `${team === 'white' ? pr.whitePct : pr.bluePct} %` : null);
+    const resting = next.resting ?? allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool');
+    const game = (next.matchIds?.length ?? 0) + 1;
+    const teamBlock = (ids: string[], team: 'white' | 'blue') => (
+      <div className={`next-side next-${team}`}>
+        <span className="next-team-label">{team === 'white' ? 'BLANCO' : 'AZUL'}</span>
+        <div className="next-avatars">
+          {ids.map((pid) => (
+            <Avatar key={pid} name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={46} />
+          ))}
+        </div>
+        <b>{ids.map(nameOf).join(' + ')}</b>
+        {pct(team) && <span className="next-pct">{pct(team)}</span>}
+      </div>
+    );
+    nextCard = (
+      <div className="next-card">
+        <div className="next-head">
+          <span className="label">Siguiente partido</span>
+          <span>
+            {roundLabel(t, next.round)} · partido {progress.done + 1} de {progress.total}
+            {(next.bestOf ?? 1) > 1 && ` · serie ${next.series?.white ?? 0}–${next.series?.blue ?? 0}, partido ${game}`}
+          </span>
+        </div>
+        <div className="next-teams">
+          {teamBlock(white, 'white')}
+          <span className="next-vs">VS</span>
+          {teamBlock(blue, 'blue')}
+        </div>
+        {resting.length > 0 && <div className="next-rest">Descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</div>}
+        <button className="neon-go next-btn" onClick={() => play(next)}>
+          ▶ SIGUIENTE PARTIDO
+        </button>
+      </div>
+    );
+  }
 
   const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
   const finalCard = finalFx && (
@@ -782,11 +915,11 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
 
   return (
     <ScreenFrame
-      title={t.name}
+      title={t.templateName && t.edition ? t.templateName : t.name}
       className="select-screen tn-screen"
       background={TN_BG}
-      subtitle={`${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}${t.ranked ? ' · ELO' : ''}`}
-      onBack={() => navigate({ name: 'tournament' })}
+      subtitle={t.templateName && t.edition ? `${t.edition}ª edición${t.ranked ? ' · ELO' : ''}` : `${FORMAT_LABEL[t.format]}${t.ranked ? ' · ELO' : ''}`}
+      onBack={back}
       right={
         <>
           <Tabs
@@ -799,9 +932,20 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
             ]}
           />
           {t.status === 'active' && (
-            <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
-              Cancelar
-            </button>
+            <>
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  toast('Torneo guardado: para seguir, entra en Torneo → Continuar');
+                  navigate({ name: 'home' });
+                }}
+              >
+                Guardar y salir
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
+                Cancelar
+              </button>
+            </>
           )}
         </>
       }
@@ -850,6 +994,7 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
               <thead>
                 <tr>
                   <th>#</th>
+                  <th aria-label="Cambio de puesto" />
                   <th>{t.format === 'pool' ? 'Jugador' : 'Equipo'}</th>
                   <th>PJ</th>
                   <th>G</th>
@@ -862,6 +1007,9 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
                 {standings(t, matches).map((r, i) => (
                   <tr key={r.team.id} className={i === 0 && r.played > 0 ? 'leader' : ''}>
                     <td>{i + 1}</td>
+                    <td>
+                      <MoveIcon move={movement.get(r.team.id)} />
+                    </td>
                     <td>{r.team.name}</td>
                     <td>{r.played}</td>
                     <td>{r.wins}</td>
@@ -876,17 +1024,25 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
           </div>
         )}
         <div className="td-panel scroll">
-          <div className="label">Partidos</div>
+          {nextCard}
+          <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'bracket' ? 'Rondas' : 'Jornadas'}</div>
           {rounds
             .filter((r) => t.format === 'bracket' || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
             .map((r) => {
               const fx = t.fixtures.filter((f) => f.round === r && (f.whiteTeamId || f.blueTeamId));
-              const resting = fx[0]?.resting ?? [];
+              // Liguilla con número impar: el equipo que no juega esa jornada descansa.
+              const resting =
+                fx[0]?.resting ??
+                (t.format === 'league' && !fx.some((f) => f.stage)
+                  ? t.teams.filter((tt) => !fx.some((f) => f.whiteTeamId === tt.id || f.blueTeamId === tt.id)).flatMap((tt) => tt.playerIds)
+                  : []);
+              const state = fx.every((f) => f.winnerTeamId) ? 'done' : fx.some((f) => f.id === next?.id) ? 'current' : 'pending';
               return (
-                <div key={r}>
-                  <div className="dim" style={{ fontSize: 11, margin: '6px 0 3px' }}>
-                    {roundLabel(t, r)}
-                    {resting.length > 0 && ` · descansa${resting.length > 1 ? 'n' : ''}: ${resting.map(nameOf).join(', ')}`}
+                <div key={r} className={`round-block round-${state}`}>
+                  <div className="round-head">
+                    <b>{roundLabel(t, r)}</b>
+                    <span>{state === 'done' ? 'Jugada' : state === 'current' ? 'En juego' : 'Pendiente'}</span>
+                    {resting.length > 0 && <small>descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</small>}
                   </div>
                   {fx.map(fixtureRow)}
                 </div>
@@ -909,6 +1065,8 @@ export function TournamentDetailScreen({ id, view: initialView }: { id: string; 
                   const cancelled: Tournament = { ...t, status: 'cancelled' };
                   await saveTournament(cancelled);
                   setConfirmCancel(false);
+                  // De vuelta a elegir jugadores, con los mismos ya marcados.
+                  navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' });
                 }}
               >
                 Cancelar torneo

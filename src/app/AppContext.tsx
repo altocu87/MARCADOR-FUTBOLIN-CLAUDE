@@ -16,6 +16,7 @@ import {
   type Tournament,
 } from '../services/persistence';
 import { generateDemoData } from '../services/demo';
+import { mergePlayers } from '../services/players';
 import { computeProgression, type ProgressionSnapshot } from '../services/progression';
 import { sound } from '../services/sound/sound';
 import { voice } from '../services/sound/voice';
@@ -36,6 +37,8 @@ interface AppContextValue {
   saveMatch(match: StoredMatch): Promise<void>;
   deleteMatch(id: string): Promise<void>;
   saveTournament(tournament: Tournament): Promise<void>;
+  /** Pasa todo lo de un jugador (p. ej. un invitado) a otro y borra el primero. */
+  mergePlayers(fromId: string, intoId: string): Promise<{ movedMatches: number; movedTournaments: number }>;
   savePrefs(prefs: Preferences): Promise<void>;
   /** Modo prueba: la app trabaja sobre datos ficticios y guarda ahí lo que se juegue. */
   demoMode: boolean;
@@ -137,6 +140,19 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [repos],
   );
 
+  const mergePlayersCb = useCallback(
+    async (fromId: string, intoId: string) => {
+      const [p, m, t] = await Promise.all([repos.players.list(), repos.matches.list(), repos.tournaments.list()]);
+      const r = mergePlayers(fromId, intoId, p, m, t, Date.now());
+      await repos.matches.saveAll(r.matches);
+      await repos.tournaments.saveAll(r.tournaments);
+      await repos.players.saveAll(r.players);
+      await refresh();
+      return { movedMatches: r.movedMatches, movedTournaments: r.movedTournaments };
+    },
+    [repos, refresh],
+  );
+
   const savePrefs = useCallback(
     async (next: Preferences) => {
       await repos.preferences.save(next);
@@ -200,6 +216,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     saveMatch,
     deleteMatch,
     saveTournament,
+    mergePlayers: mergePlayersCb,
     savePrefs,
     demoMode,
     setDemoMode,

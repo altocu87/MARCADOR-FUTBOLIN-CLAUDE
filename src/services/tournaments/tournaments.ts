@@ -282,6 +282,18 @@ export function playableFixtures(t: Tournament): Fixture[] {
   return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !f.winnerTeamId);
 }
 
+/** Siguiente partido: el primero pendiente por orden de jornada y de calendario. */
+export function nextFixture(t: Tournament): Fixture | undefined {
+  const order = new Map(t.fixtures.map((f, i) => [f.id, i]));
+  return [...playableFixtures(t)].sort((a, b) => a.round - b.round || order.get(a.id)! - order.get(b.id)!)[0];
+}
+
+/** Partidos decididos y totales (sin contar pases directos). */
+export function fixtureProgress(t: Tournament): { done: number; total: number } {
+  const real = t.fixtures.filter((f) => !f.bye);
+  return { done: real.filter((f) => f.winnerTeamId).length, total: real.length };
+}
+
 /** Reglas del partido de un cruce (la final puede tener las suyas). */
 export function fixtureConfig(t: Tournament, f: Fixture): MatchConfig {
   return t.finalConfig && isFinalFixture(t, f) ? t.finalConfig : t.config;
@@ -312,6 +324,29 @@ export interface StandingRow {
 /** Clasificación de la fase regular: por equipos (liguilla) o por jugador (Pool). */
 export function standings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
   return t.format === 'pool' ? poolStandings(t, matches) : leagueStandings(t, matches);
+}
+
+export type Movement = 'up' | 'down' | 'same';
+
+/**
+ * Cómo ha cambiado cada puesto con el último partido jugado de la fase regular:
+ * se compara la clasificación de antes de ese partido con la de ahora. Vacío si aún no se ha jugado.
+ */
+export function standingsMovement(t: Tournament, matches: StoredMatch[]): Map<string, Movement> {
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const played = t.fixtures
+    .filter((f) => f.stage !== 'final' && f.matchId && byId.has(f.matchId))
+    .map((f) => byId.get(f.matchId!)!)
+    .sort((a, b) => a.finishedAt - b.finishedAt);
+  const out = new Map<string, Movement>();
+  if (!played.length) return out;
+  const lastId = played[played.length - 1].id;
+  const before = standings(t, matches.filter((m) => m.id !== lastId)).map((r) => r.team.id);
+  standings(t, matches).forEach((r, i) => {
+    const was = before.indexOf(r.team.id);
+    out.set(r.team.id, was > i ? 'up' : was < i ? 'down' : 'same');
+  });
+  return out;
 }
 
 export function leagueStandings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
