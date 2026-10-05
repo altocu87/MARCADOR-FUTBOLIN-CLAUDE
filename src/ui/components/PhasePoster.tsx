@@ -7,6 +7,7 @@ import type { CSSProperties } from 'react';
 import type { ParticipantRef, Team } from '../../match-engine';
 import type { PhaseInfo } from '../../services/tournaments';
 import { AssetImage } from './assets';
+import { Avatar } from './common';
 
 const TIER_ICON: Record<PhaseInfo['tier'], string> = {
   final: '🏆',
@@ -20,19 +21,26 @@ export function PhasePoster({
   info,
   tournamentName,
   participants,
+  photos,
   onSkip,
 }: {
   info: PhaseInfo;
   tournamentName: string;
   participants: ParticipantRef[];
+  /** Foto de cada jugador por id: siempre se enseña en su ficha. */
+  photos: Map<string, string | undefined>;
   onSkip: () => void;
 }) {
-  const names = (t: Team) =>
+  const team = (t: Team) =>
     participants
       .filter((p) => p.team === t)
       .sort((a, b) => a.slot - b.slot)
-      .map((p) => p.nameSnapshot)
-      .join(' · ');
+      .map((p) => (
+        <span key={p.playerId} className="pp-player">
+          <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={64} />
+          <span className="pp-name">{p.nameSnapshot}</span>
+        </span>
+      ));
   return (
     <button className={`overlay phase-poster tier-${info.tier}`} onClick={onSkip} aria-label={`${info.title}. Toca para empezar`}>
       <span className="pp-rays" aria-hidden="true" />
@@ -52,9 +60,9 @@ export function PhasePoster({
       </span>
       {info.sub && <span className="pp-sub">{info.sub}</span>}
       <span className="pp-versus">
-        <span className="pp-team white">{names('white')}</span>
+        <span className="pp-team white">{team('white')}</span>
         <span className="pp-vs">VS</span>
-        <span className="pp-team blue">{names('blue')}</span>
+        <span className="pp-team blue">{team('blue')}</span>
       </span>
       <span className="overlay-hint">Toca para empezar</span>
     </button>

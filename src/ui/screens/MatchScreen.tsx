@@ -168,7 +168,7 @@ export function MatchScreen({
 
       {state.phase === 'countdown' &&
         (phase && countdownRemaining(state, ctl.now) > COUNTDOWN_MS ? (
-          <PhasePoster info={phase.info} tournamentName={phase.name} participants={state.participants} onSkip={() => ctl.send({ type: 'SKIP_INTRO' })} />
+          <PhasePoster info={phase.info} tournamentName={phase.name} participants={state.participants} photos={photos} onSkip={() => ctl.send({ type: 'SKIP_INTRO' })} />
         ) : (
           <CountdownOverlay ctl={ctl} rivalry={state.period === 'first' ? rivalry : null} />
         ))}
