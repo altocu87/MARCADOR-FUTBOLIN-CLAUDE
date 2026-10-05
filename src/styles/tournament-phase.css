@@ -1,0 +1,343 @@
+/* ==========================================================================
+   Torneos: cartel de fase (GRAN FINAL, SEMIFINAL, CUARTOS…) y chip en el marcador
+   ========================================================================== */
+
+/* Color de cada nivel: --pc principal, --pc2 secundario. */
+.tier-final {
+  --pc: #ffcc33;
+  --pc2: #ff8a00;
+}
+.tier-semi {
+  --pc: #39e6ff;
+  --pc2: #d8f6ff;
+}
+.tier-quarter {
+  --pc: #b46cff;
+  --pc2: #ff5cd6;
+}
+.tier-eighth {
+  --pc: #ff8a2a;
+  --pc2: #ffd23a;
+}
+.tier-round {
+  --pc: #3d8bff;
+  --pc2: #8fd0ff;
+}
+
+.phase-poster {
+  cursor: pointer;
+  width: 100%;
+  overflow: hidden;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 48%, color-mix(in srgb, var(--pc) 30%, transparent), transparent 62%),
+    rgba(3, 5, 12, 0.95);
+}
+.phase-poster > span:not(.pp-rays):not(.pp-sparks) {
+  position: relative;
+  z-index: 2;
+}
+
+/* Rayos girando detrás del título. */
+.pp-rays {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 1700px;
+  height: 1700px;
+  margin: -850px 0 0 -850px;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    color-mix(in srgb, var(--pc) 16%, transparent) 0deg 6deg,
+    transparent 6deg 18deg
+  );
+  mask-image: radial-gradient(circle, #000 0%, transparent 55%);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 55%);
+  animation: pp-spin 40s linear infinite;
+}
+@keyframes pp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Chispas que suben (solo la final las enseña todas). */
+.pp-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pp-sparks i {
+  position: absolute;
+  bottom: -20px;
+  left: calc(4% + var(--i) * 6.8%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pc);
+  box-shadow: 0 0 10px var(--pc), 0 0 20px var(--pc2);
+  opacity: 0;
+  animation: pp-spark 2.6s linear infinite;
+  animation-delay: calc(var(--i) * -0.37s);
+}
+.phase-poster:not(.tier-final) .pp-sparks i:nth-child(odd) {
+  display: none;
+}
+@keyframes pp-spark {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-720px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.pp-tournament {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  animation: pp-fade 0.5s ease-out both;
+}
+
+.pp-emblem {
+  display: grid;
+  place-items: center;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  font-size: 70px;
+  line-height: 1;
+  border: 3px solid var(--pc);
+  background: radial-gradient(circle, color-mix(in srgb, var(--pc) 28%, transparent), rgba(0, 0, 0, 0.6) 70%);
+  box-shadow: 0 0 22px var(--pc), inset 0 0 22px color-mix(in srgb, var(--pc) 50%, transparent);
+  animation: pp-pop 0.6s 0.15s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.tier-final .pp-emblem {
+  width: 150px;
+  height: 150px;
+  font-size: 84px;
+  animation:
+    pp-pop 0.6s 0.15s cubic-bezier(0.2, 1.4, 0.4, 1) both,
+    pp-glow 1.6s 0.8s ease-in-out infinite;
+}
+.pp-trophy {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px var(--pc));
+}
+@keyframes pp-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes pp-glow {
+  50% {
+    box-shadow: 0 0 46px var(--pc), 0 0 90px var(--pc2), inset 0 0 30px color-mix(in srgb, var(--pc) 60%, transparent);
+  }
+}
+
+/* Título: entra de golpe desde grande, con líneas de neón a los lados. */
+.pp-title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  width: 100%;
+  margin-top: 6px;
+}
+.pp-title {
+  font-size: 104px;
+  line-height: 1;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: #fff;
+  -webkit-text-stroke: 2px var(--pc);
+  text-shadow:
+    0 0 14px var(--pc),
+    0 0 40px var(--pc),
+    0 0 80px var(--pc2);
+  animation: pp-slam 0.55s 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.tier-final .pp-title {
+  font-size: 112px;
+  background: linear-gradient(180deg, #fff6c8 0%, #ffd34a 45%, #ff9a1a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  filter: drop-shadow(0 0 12px var(--pc)) drop-shadow(0 0 32px var(--pc2));
+}
+.pp-title.is-long {
+  font-size: 92px;
+}
+.pp-title.is-xlong {
+  font-size: 72px;
+}
+@keyframes pp-slam {
+  0% {
+    transform: scale(3);
+    opacity: 0;
+    filter: blur(8px);
+  }
+  70% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tier-final .pp-title {
+  animation-name: pp-slam-final;
+}
+@keyframes pp-slam-final {
+  0% {
+    transform: scale(3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.pp-line {
+  flex: 1;
+  max-width: 220px;
+  height: 4px;
+  border-radius: 2px;
+  box-shadow: 0 0 12px var(--pc);
+  animation: pp-line 0.5s 0.7s ease-out both;
+}
+.pp-line.left {
+  background: linear-gradient(90deg, transparent, var(--pc));
+  transform-origin: right;
+}
+.pp-line.right {
+  background: linear-gradient(90deg, var(--pc), transparent);
+  transform-origin: left;
+}
+@keyframes pp-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pp-sub {
+  padding: 6px 22px;
+  border-radius: 999px;
+  border: 2px solid var(--pc);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--pc);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--pc) 60%, transparent);
+  animation: pp-fade 0.4s 0.85s ease-out both;
+}
+
+/* Quién juega: blancos VS celestes. */
+.pp-versus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  margin-top: 14px;
+}
+.pp-team {
+  flex: 1;
+  max-width: 440px;
+  padding: 14px 22px;
+  border-radius: 16px;
+  font-size: 32px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-team.white {
+  text-align: right;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+  animation: pp-in-left 0.5s 1s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.pp-team.blue {
+  text-align: left;
+  color: #bfe8ff;
+  border: 2px solid #4cc3ff;
+  background: rgba(76, 195, 255, 0.16);
+  box-shadow: 0 0 16px rgba(76, 195, 255, 0.45);
+  animation: pp-in-right 0.5s 1s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.pp-vs {
+  font-size: 40px;
+  font-weight: 900;
+  font-style: italic;
+  color: var(--pc);
+  text-shadow: 0 0 14px var(--pc);
+  animation: pp-pop 0.4s 1.2s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes pp-in-left {
+  from {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+}
+@keyframes pp-in-right {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+@keyframes pp-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.phase-poster .overlay-hint {
+  margin-top: 10px;
+  animation: pp-fade 0.4s 1.4s both;
+}
+
+/* Chip de la fase en el marcador, durante el partido. */
+.phase-chip {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--pc);
+  background: color-mix(in srgb, var(--pc) 14%, rgba(0, 0, 0, 0.5));
+  color: var(--pc);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--pc) 45%, transparent);
+}

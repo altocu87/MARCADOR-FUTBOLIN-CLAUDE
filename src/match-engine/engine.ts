@@ -46,6 +46,8 @@ export function createMatch(
   config: MatchConfig,
   participants: ParticipantRef[],
   now: number,
+  /** Tiempo extra antes de la cuenta atrás (p. ej. el cartel de la fase de un torneo). */
+  introMs = 0,
 ): MatchState {
   const errors = [...validateConfig(config), ...validateParticipants(participants)];
   if (errors.length > 0) throw new EngineError(errors);
@@ -59,7 +61,7 @@ export function createMatch(
     phase: 'countdown',
     period: 'first',
     createdAt: now,
-    countdownEndsAt: now + COUNTDOWN_MS,
+    countdownEndsAt: now + COUNTDOWN_MS + introMs,
     periodElapsedMs: 0,
     closedPeriodsMs: 0,
     events: [],
@@ -318,6 +320,12 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
     case 'SKIP_COUNTDOWN': {
       if (s.phase !== 'countdown') return reject('invalid_state');
       return accept(startPeriodClock(s, events, now));
+    }
+
+    case 'SKIP_INTRO': {
+      // Saltar el cartel previo: queda solo la cuenta atrás normal.
+      if (s.phase !== 'countdown' || s.countdownEndsAt === undefined) return reject('invalid_state');
+      return accept({ ...s, countdownEndsAt: Math.min(s.countdownEndsAt, now + COUNTDOWN_MS) });
     }
 
     case 'GOAL': {

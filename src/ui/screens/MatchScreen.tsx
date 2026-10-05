@@ -37,6 +37,8 @@ import { VictoryScreen, swapSides } from '../components/VictoryScreen';
 import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { HandicapOverlay } from '../components/HandicapOverlay';
+import { PhasePoster } from '../components/PhasePoster';
+import { phaseInfo, type PhaseInfo } from '../../services/tournaments';
 import { VisitorOverlay } from '../components/VisitorOverlay';
 import { useMatchController, type MatchController } from './useMatchController';
 
@@ -89,7 +91,13 @@ export function MatchScreen({
 }) {
   const ctl = useMatchController(config, participants, resume, extras);
   const { state } = ctl;
-  const { repos, navigate, refresh, prefs, players, matches } = useApp();
+  const { repos, navigate, refresh, prefs, players, matches, tournaments } = useApp();
+  // Partido de torneo: su fase (semifinal, final…) para el cartel y la cabecera.
+  const [phase] = useState(() => {
+    const t = extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id);
+    const f = t && t.fixtures.find((x) => x.id === extras!.tournament!.fixtureId);
+    return t && f ? { info: phaseInfo(t, f), name: t.name } : null;
+  });
   const [confirmExit, setConfirmExit] = useState(false);
   const [save, setSave] = useState<SaveStatus | null>(null);
   const finishing = useRef(false);
@@ -132,7 +140,7 @@ export function MatchScreen({
       {state.phase === 'penalties' || (state.phase === 'finished' && state.period === 'shootout') ? (
         <PenaltiesView ctl={ctl} />
       ) : (
-        <ScoreboardView ctl={ctl} players={playersById} />
+        <ScoreboardView ctl={ctl} players={playersById} phase={phase?.info ?? null} />
       )}
 
       {/* Al marcar: pantalla completa «¡GOL! · EQUIPO …» (varía en cada gol). */}
@@ -158,7 +166,12 @@ export function MatchScreen({
         <Banner key={ctl.banner.id} text={ctl.banner.text} sub={ctl.banner.sub} tone={ctl.banner.tone} />
       )}
 
-      {state.phase === 'countdown' && <CountdownOverlay ctl={ctl} rivalry={state.period === 'first' ? rivalry : null} />}
+      {state.phase === 'countdown' &&
+        (phase && countdownRemaining(state, ctl.now) > COUNTDOWN_MS ? (
+          <PhasePoster info={phase.info} tournamentName={phase.name} participants={state.participants} onSkip={() => ctl.send({ type: 'SKIP_INTRO' })} />
+        ) : (
+          <CountdownOverlay ctl={ctl} rivalry={state.period === 'first' ? rivalry : null} />
+        ))}
       {state.phase === 'paused' && (
         <div className="overlay overlay-pause">
           <div className="overlay-title">PAUSA</div>
@@ -213,7 +226,7 @@ export function MatchScreen({
 
 // ---------------------------------------------------------------------------
 
-function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<string, Player> }) {
+function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players: Map<string, Player>; phase: PhaseInfo | null }) {
   const { demoMode, progression } = useApp();
   const { state, now, send } = ctl;
   const score = getScore(state);
@@ -326,6 +339,8 @@ function ScoreboardView({ ctl, players }: { ctl: MatchController; players: Map<s
         {/* Tipo de partido, en grande, y debajo a cuántos goles se juega. */}
         <span className={`match-mode mode-chip-${state.config.mode}`}>{MODE_LABEL[state.config.mode]}</span>
         <div className="period-goals">{info || '\u00a0'}</div>
+        {/* Torneo: la fase del partido, siempre a la vista. */}
+        {phase && <span className={`phase-chip tier-${phase.tier}`}>{phase.title}{phase.sub ? ` · ${phase.sub}` : ''}</span>}
         {/* Avisos del momento (gol de oro, bola de partido…): hueco fijo para que el reloj no salte. */}
         <div className="center-badges">
           {state.period === 'overtime' && <span className="badge badge-ranked">GOL DE ORO</span>}

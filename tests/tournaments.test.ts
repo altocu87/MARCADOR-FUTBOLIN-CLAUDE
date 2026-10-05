@@ -17,6 +17,7 @@ import {
   fixtureConfig,
   fixtureProgress,
   nextFixture,
+  phaseInfo,
   standingsMovement,
   formTeams,
   playableFixtures,
@@ -365,5 +366,24 @@ describe('Subidas y bajadas en la clasificación', () => {
     expect(mv.get(id('a'))).toBe('down');
     expect(mv.get(id('b'))).toBe('down');
     expect([...mv.values()].every((v) => ['up', 'down', 'same'].includes(v))).toBe(true);
+  });
+});
+
+describe('Cartel de fase del torneo', () => {
+  const tpl = BUILT_IN_TEMPLATES.find((x) => x.format === 'bracket')!;
+  const bracket = (n: number) => {
+    const ps = players('abcdefgh'.slice(0, n).split(''));
+    const { draft } = draftFromTemplate(tpl, 'Copa', ps.map((p) => p.id), () => 1200);
+    return createTournament(draft, ps, () => 1200, 0, seededRandom('z'));
+  };
+  it('la eliminatoria de 4 anuncia semifinal y final, con el partido de la serie', () => {
+    const t = bracket(4);
+    expect(phaseInfo(t, t.fixtures.find((f) => f.round === 1)!)).toMatchObject({ tier: 'semi', title: 'SEMIFINAL' });
+    const final = phaseInfo(t, t.fixtures.find((f) => f.round === 2)!);
+    expect(final).toMatchObject({ tier: 'final', title: 'GRAN FINAL', sub: 'PARTIDO 1 · AL MEJOR DE 3' });
+  });
+  it('la eliminatoria de 8 empieza en cuartos de final', () => {
+    const t = bracket(8);
+    expect(phaseInfo(t, t.fixtures.find((f) => f.round === 1)!)).toMatchObject({ tier: 'quarter', title: 'CUARTOS DE FINAL' });
   });
 });

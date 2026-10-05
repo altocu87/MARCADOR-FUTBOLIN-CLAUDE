@@ -83,6 +83,8 @@ export type InputSource = 'touch' | 'mouse' | 'keyboard' | 'button' | 'sensor' |
 
 export type EngineCommand =
   | { type: 'SKIP_COUNTDOWN' }
+  /** Saltar el cartel previo a la cuenta atrás (fase de torneo). */
+  | { type: 'SKIP_INTRO' }
   | { type: 'GOAL'; team: Team; source?: InputSource }
   | { type: 'MINUS_ONE'; team: Team }
   | { type: 'UNDO' }
