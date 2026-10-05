@@ -312,10 +312,12 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
   const addGuest = async () => {
     const clean = (guestName ?? '').trim();
     if (!clean) return;
-    const same = players.find((p) => p.active && p.name.toLocaleLowerCase('es') === clean.toLocaleLowerCase('es'));
+    // No puede haber dos con el mismo nombre (tampoco con alguien dado de baja: se reactiva).
+    const same = players.find((p) => p.name.trim().toLocaleLowerCase('es') === clean.toLocaleLowerCase('es'));
     if (same) {
+      if (!same.active) await savePlayer({ ...same, active: true, updatedAt: Date.now() });
       setSelected((s) => (s.includes(same.id) ? s : [...s, same.id]));
-      toast(`${same.name} ya estaba en la lista: apuntado`);
+      toast(`${same.name} ya existía: apuntado`);
     } else {
       const now = Date.now();
       const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };

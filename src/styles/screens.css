@@ -3800,3 +3800,32 @@
 .cond-box:active .num {
   transform: scale(0.96);
 }
+
+/* ---------- Invitados: fusionar con un jugador ---------- */
+.badge-guest {
+  border-color: #ff6ad5;
+  color: #ff9be4;
+}
+.merge-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  max-height: 200px;
+}
+.merge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.6);
+  color: var(--text);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.merge-item[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(98, 214, 255, 0.45);
+}

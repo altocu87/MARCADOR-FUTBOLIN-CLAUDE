@@ -27,6 +27,7 @@ import { Avatar, FormChips, MODE_LABEL, ScreenFrame, StatTile, Tabs, formatDate,
 import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics';
 import { resultLine } from '../components/MatchReport';
 import { FORMAT_LABEL } from '../../services/tournaments';
+import { GuestActions } from '../components/GuestActions';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
 
@@ -101,7 +102,18 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
   const myTournaments = tournaments.filter((t) => t.teams.some((tt) => tt.playerIds.includes(playerId)));
 
   return (
-    <ScreenFrame title="Perfil" onBack={() => navigate({ name: 'ranking', tab: 'players' })}>
+    <ScreenFrame
+      title="Perfil"
+      onBack={() => navigate({ name: 'ranking', tab: 'players' })}
+      right={
+        player.guest && (
+          <>
+            <span className="badge badge-guest">Invitado</span>
+            <GuestActions player={player} onMerged={(id) => navigate({ name: 'profile', playerId: id })} />
+          </>
+        )
+      }
+    >
       <div className={`player-card cat-${category.id}`} style={{ ['--cat' as string]: category.color }}>
         <div className="pc-photo">
           <Avatar name={player.name} photo={player.photo} size={72} />

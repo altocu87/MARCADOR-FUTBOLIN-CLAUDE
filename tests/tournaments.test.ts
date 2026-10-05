@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '../src/match-engine';
 import { DEFAULT_PROGRESSION, normalizePreferences, type Player, type StoredMatch, type Tournament } from '../src/services/persistence';
+import { mergeBlocker, mergePlayers } from '../src/services/players';
 import { computeProgression } from '../src/services/progression';
 import { seededRandom } from '../src/services/statistics/calendar';
 import {
@@ -257,5 +258,32 @@ describe('Ediciones, ficha y palmarés', () => {
     expect(c.name).toBe('Copa Rotativa');
     expect(c.editions.map((e) => e.edition)).toEqual([2, 1]);
     expect(c.honours[0]).toMatchObject({ playerId: 'a', titles: 2, mvps: 2, editions: 2 });
+  });
+});
+
+describe('Fusionar un invitado con un jugador', () => {
+  it('pasa partidos, goleadores y torneos al jugador y el invitado desaparece', () => {
+    const ps: Player[] = [...players(['a', 'b', 'c', 'd']), { id: 'g', name: 'Pepe', guest: true, active: true, createdAt: 0, updatedAt: 0 }];
+    const t0 = createTournament(poolDraft(['a', 'b', 'c', 'g']), ps, () => 1200, 0, seededRandom('m'));
+    const { t, matches } = playAll(t0, (_w, b) => (b.includes('g') ? 'B' : 'W'));
+    const withScorer = { ...matches[0], scorers: { e1: 'g' } };
+    const all = [withScorer, ...matches.slice(1)];
+    const r = mergePlayers('g', 'd', ps, all, [t], 5);
+    expect(r.players.some((p) => p.id === 'g')).toBe(false);
+    expect(r.matches.every((m) => m.participants.every((p) => p.playerId !== 'g'))).toBe(true);
+    expect(r.matches[0].scorers?.e1).toBe('d');
+    expect(r.tournaments[0].entrants).toContain('d');
+    expect(r.tournaments[0].teams.some((x) => x.playerIds.includes('g'))).toBe(false);
+    expect(r.movedTournaments).toBe(1);
+    // El campeón (era el invitado) pasa a ser «d».
+    const champ = r.tournaments[0].teams.find((x) => x.id === r.tournaments[0].winnerTeamId)!;
+    expect(champ.playerIds).toEqual(['d']);
+    expect(champ.name).toBe('D');
+  });
+
+  it('no deja fusionar a dos que jugaron en el mismo partido', () => {
+    const m = makeMatch({ white: ['a'], blue: ['g'], goals: 'WWWWW' });
+    expect(mergeBlocker('g', 'a', [m])).not.toBeNull();
+    expect(mergeBlocker('g', 'b', [m])).toBeNull();
   });
 });
