@@ -4246,3 +4246,145 @@ div > .name-clash:first-child {
   flex-direction: column;
   gap: 10px;
 }
+
+/* Torneo nuevo: nombre editable, logo y copa a los lados. */
+.tn-np-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+.tn-np-icon:hover,
+.tn-np-icon:focus-visible {
+  background: rgba(242, 201, 76, 0.12);
+}
+.tn-np-body {
+  flex: 1;
+}
+.tn-np-name {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px dashed transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+}
+.tn-np-name:hover,
+.tn-np-name:focus {
+  border-color: rgba(242, 201, 76, 0.6);
+  background: rgba(0, 0, 0, 0.3);
+  outline: none;
+}
+.tn-np-body small {
+  padding-left: 6px;
+}
+.tn-np-ed {
+  color: var(--ranked);
+}
+
+/* Parejas fijas: nombre y logo de cada equipo (se toca para cambiarlo). */
+.tn-team-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.tn-team-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.15;
+}
+.tn-team-text b {
+  font-size: 13px;
+}
+.tn-team-edit:not(.has-name) .tn-team-text b {
+  color: var(--text-2);
+  font-style: italic;
+  font-weight: 600;
+}
+.tn-team-text small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.tn-team-pen {
+  color: var(--accent);
+  font-size: 13px;
+}
+.team-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.team-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.team-editor-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-editor-players {
+  display: flex;
+  gap: 14px;
+  font-weight: 700;
+}
+.team-editor-players span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-editor .icon-grid {
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+}
+.team-editor .icon-cell {
+  height: 64px;
+}
+.tn-np-body .tn-np-ed {
+  font-size: 12px;
+  display: inline;
+}
+.team-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.td-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.next-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0b1626;
+}
+.champion-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Nombre de equipo guardado en el marco: que no se salga. */
+.pre-team-name:has(.team-name-club) {
+  max-width: 94%;
+  font-size: 21px;
+  letter-spacing: 0.03em;
+}

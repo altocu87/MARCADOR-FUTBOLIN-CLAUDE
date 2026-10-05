@@ -675,3 +675,59 @@ button.row:active {
   font-size: 30px;
   color: var(--text-3);
 }
+
+/* ---------- Logos (escudos) y copas ---------- */
+.crest {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+.crest-img {
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(98, 214, 255, 0.35));
+}
+.crest-emoji {
+  --crest: #62d6ff;
+  border-radius: 28% 28% 46% 46%;
+  border: 2px solid var(--crest);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--crest) 35%, transparent), rgba(5, 10, 20, 0.9) 70%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--crest) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--crest) 40%, transparent);
+}
+.cup {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  filter: drop-shadow(0 0 8px rgba(255, 204, 51, 0.45));
+}
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+.icon-cell {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 16, 28, 0.7);
+  cursor: pointer;
+}
+.icon-cell.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(98, 214, 255, 0.55);
+}
+.team-name-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+  max-width: 100%;
+}
+.team-name-club > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

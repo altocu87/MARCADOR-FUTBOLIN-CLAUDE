@@ -8,6 +8,8 @@ import type { ParticipantRef, Team } from '../../match-engine';
 import type { PhaseInfo } from '../../services/tournaments';
 import { AssetImage } from './assets';
 import { Avatar } from './common';
+import { Crest } from './Crest';
+import { useSideClubs } from './TeamName';
 
 const TIER_ICON: Record<PhaseInfo['tier'], string> = {
   final: '🏆',
@@ -20,17 +22,21 @@ const TIER_ICON: Record<PhaseInfo['tier'], string> = {
 export function PhasePoster({
   info,
   tournamentName,
+  logo,
   participants,
   photos,
   onSkip,
 }: {
   info: PhaseInfo;
   tournamentName: string;
+  /** Logo del torneo, junto a su nombre. */
+  logo?: string;
   participants: ParticipantRef[];
   /** Foto de cada jugador por id: siempre se enseña en su ficha. */
   photos: Map<string, string | undefined>;
   onSkip: () => void;
 }) {
+  const clubs = useSideClubs(participants);
   const team = (t: Team) =>
     participants
       .filter((p) => p.team === t)
@@ -49,7 +55,10 @@ export function PhasePoster({
           <i key={i} style={{ '--i': i } as CSSProperties} />
         ))}
       </span>
-      <span className="pp-tournament">{tournamentName}</span>
+      <span className="pp-tournament">
+        {logo && <Crest id={logo} size={34} />}
+        {tournamentName}
+      </span>
       <span className="pp-emblem" aria-hidden="true">
         {info.tier === 'final' ? <AssetImage name="trofeo" className="pp-trophy" fallback={TIER_ICON.final} /> : TIER_ICON[info.tier]}
       </span>
@@ -60,9 +69,23 @@ export function PhasePoster({
       </span>
       {info.sub && <span className="pp-sub">{info.sub}</span>}
       <span className="pp-versus">
-        <span className="pp-team white">{team('white')}</span>
+        <span className="pp-team white">
+          {clubs.white && (
+            <span className="pp-club">
+              <Crest id={clubs.white.logo} size={44} /> {clubs.white.name}
+            </span>
+          )}
+          {team('white')}
+        </span>
         <span className="pp-vs">VS</span>
-        <span className="pp-team blue">{team('blue')}</span>
+        <span className="pp-team blue">
+          {clubs.blue && (
+            <span className="pp-club">
+              <Crest id={clubs.blue.logo} size={44} /> {clubs.blue.name}
+            </span>
+          )}
+          {team('blue')}
+        </span>
       </span>
       <span className="overlay-hint">Toca para empezar</span>
     </button>

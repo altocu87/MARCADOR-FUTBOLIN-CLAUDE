@@ -2,6 +2,7 @@
  * Fichas de jugador con estilo de neón (Pronóstico y estadísticas del partido): equipo en marco de
  * neón, foto con marco del rango, datos de progresión y racha de los últimos 10 clasificatorios.
  */
+import { TeamName } from './TeamName';
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../app/AppContext';
@@ -185,7 +186,7 @@ export function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; 
   const side = (t: Team) => (
     <div className={`md-team md-${t} ${r.winner === t ? 'won' : ''}`}>
       <div className="md-team-label">
-        {t === 'white' ? 'BLANCO' : 'AZUL'}
+        <TeamName team={t} participants={match.participants} size={20} />
         {r.winner === t && ' 🏆'}
       </div>
       {names(t).map((n) => (
@@ -284,7 +285,7 @@ export function TeamFrame({
     <div ref={frame} className={`pre-team pre-${team} pre-${size} ${compact ? 'pre-compact' : ''}`}>
       <div className="pre-team-name">
         {winner && <NeonCrown />}
-        {team === 'white' ? 'BLANCO' : 'AZUL'}
+        <TeamName team={team} participants={participants} size={26} />
       </div>
       {extra}
       {list.map((p) => (

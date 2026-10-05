@@ -4,8 +4,9 @@
  * 15/30 s en partidos muy cortos, o cada 2/5 min en los largos); los goles llevan un punto que
  * brilla y los anulados una ✕ roja sobre el eje. Tocar un gol muestra su detalle.
  */
+import { TeamName } from './TeamName';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { annulledGoalIdsFromEvents, validGoalsFromEvents, type MatchEvent } from '../../match-engine';
+import { annulledGoalIdsFromEvents, validGoalsFromEvents, type MatchEvent, type ParticipantRef } from '../../match-engine';
 import { formatDuration } from '../../services/statistics';
 
 const COLORS = { white: '#ffffff', blue: '#62d6ff' };
@@ -24,7 +25,7 @@ function tickLabel(ms: number, step: number): string {
   return formatDuration(ms).replace(/^0/, '');
 }
 
-export function ScoreChart({ events, totalTimeMs }: { events: MatchEvent[]; totalTimeMs: number }) {
+export function ScoreChart({ events, totalTimeMs, participants = [] }: { events: MatchEvent[]; totalTimeMs: number; participants?: ParticipantRef[] }) {
   const goals = validGoalsFromEvents(events);
   const annulledIds = annulledGoalIdsFromEvents(events);
   const annulled = events.filter((e) => e.type === 'GOAL' && annulledIds.has(e.id));
@@ -78,10 +79,10 @@ export function ScoreChart({ events, totalTimeMs }: { events: MatchEvent[]; tota
     <div className="chart-wrap">
       <div className="chart-legend">
         <span className="chart-key white">
-          <i /> BLANCO <b>{final.white}</b>
+          <i /> <TeamName team="white" participants={participants} size={18} /> <b>{final.white}</b>
         </span>
         <span className="chart-key blue">
-          <i /> AZUL <b>{final.blue}</b>
+          <i /> <TeamName team="blue" participants={participants} size={18} /> <b>{final.blue}</b>
         </span>
         {annulled.length > 0 && (
           <span className="chart-key off">

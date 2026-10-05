@@ -88,7 +88,7 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
           <TeamFrame team="blue" participants={match.participants} compact winner={r.winner === 'blue'} />
         </div>
       )}
-      {tab === 'chart' && <ScoreChart events={match.events} totalTimeMs={r.totalTimeMs} />}
+      {tab === 'chart' && <ScoreChart events={match.events} totalTimeMs={r.totalTimeMs} participants={match.participants} />}
       {tab === 'scorers' && <ScorersEditor match={match} editable={!!saved} />}
       {tab === 'progress' && (
         <div className="scroll" style={{ flex: 1, minHeight: 0 }}>

@@ -38,6 +38,7 @@ import { Banner, CountdownRing, NeonGoal } from '../components/graphics';
 import { SevenSegment } from '../components/SevenSegment';
 import { HandicapOverlay } from '../components/HandicapOverlay';
 import { PhasePoster } from '../components/PhasePoster';
+import { TeamName, sideText, useSideClubs } from '../components/TeamName';
 import { markAbandoned, phaseInfo, type PhaseInfo } from '../../services/tournaments';
 import { VisitorOverlay } from '../components/VisitorOverlay';
 import { useMatchController, type MatchController } from './useMatchController';
@@ -49,7 +50,6 @@ export const PERIOD_LABEL: Record<Period, string> = {
   shootout: 'PENALTIS',
 };
 
-const TEAM_LABEL: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
 const CLOCK_GREEN = '#3DFF7A';
 const CLOCK_YELLOW = '#FFD43B';
 const CLOCK_RED = '#FF4D5E';
@@ -96,7 +96,7 @@ export function MatchScreen({
   const [phase] = useState(() => {
     const t = extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id);
     const f = t && t.fixtures.find((x) => x.id === extras!.tournament!.fixtureId);
-    return t && f ? { info: phaseInfo(t, f), name: t.name } : null;
+    return t && f ? { info: phaseInfo(t, f), name: t.name, logo: t.logo } : null;
   });
   const [confirmExit, setConfirmExit] = useState(false);
   const [save, setSave] = useState<SaveStatus | null>(null);
@@ -176,7 +176,7 @@ export function MatchScreen({
 
       {state.phase === 'countdown' &&
         (phase && countdownRemaining(state, ctl.now) > COUNTDOWN_MS ? (
-          <PhasePoster info={phase.info} tournamentName={phase.name} participants={state.participants} photos={photos} onSkip={() => ctl.send({ type: 'SKIP_INTRO' })} />
+          <PhasePoster info={phase.info} tournamentName={phase.name} logo={phase.logo} participants={state.participants} photos={photos} onSkip={() => ctl.send({ type: 'SKIP_INTRO' })} />
         ) : (
           <CountdownOverlay ctl={ctl} rivalry={state.period === 'first' ? rivalry : null} />
         ))}
@@ -237,6 +237,8 @@ export function MatchScreen({
 function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players: Map<string, Player>; phase: PhaseInfo | null }) {
   const { demoMode, progression } = useApp();
   const { state, now, send } = ctl;
+  const clubs = useSideClubs(state.participants);
+  const TEAM_LABEL = { white: sideText(clubs, 'white'), blue: sideText(clubs, 'blue') };
   const score = getScore(state);
   const clock = getClock(state, now);
   const lock = goalLockRemaining(state, now);
@@ -325,7 +327,9 @@ function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players
             aria-label={`Gol ${TEAM_LABEL[t]}. Marcador ${score[t]}`}
           >
             <span className="score-sheen" aria-hidden="true" />
-            <span className="score-team">{TEAM_LABEL[t]}</span>
+            <span className="score-team">
+              <TeamName team={t} participants={state.participants} size={26} />
+            </span>
             {streak && streak.team === t && streak.count >= 3 && <span className="streak-badge">🔥 x{streak.count}</span>}
             <span className={`score-num ${score[t] >= 10 ? 'two' : ''}`}>{score[t]}</span>
             {lock > 0 && (
@@ -501,6 +505,8 @@ function PeriodEndOverlay({ ctl }: { ctl: MatchController }) {
 function PenaltiesView({ ctl }: { ctl: MatchController }) {
   const { demoMode } = useApp();
   const { state, send } = ctl;
+  const clubs = useSideClubs(state.participants);
+  const TEAM_LABEL = { white: sideText(clubs, 'white'), blue: sideText(clubs, 'blue') };
   const pen = getPenaltyScore(state);
   const score = getScore(state);
   const turn = nextPenaltyTeam(state);

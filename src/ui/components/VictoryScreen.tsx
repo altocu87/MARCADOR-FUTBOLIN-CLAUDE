@@ -5,6 +5,7 @@
  * logros desbloqueados explicados y los botones Revancha · Nuevo partido ·
  * Ver estadísticas · Inicio.
  */
+import { TeamName, sideText, useSideClubs } from './TeamName';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { SaveStatus } from '../../app/matchFinalizer';
@@ -24,7 +25,6 @@ import { AssetImage } from './assets';
 import { Avatar } from './common';
 import { AchievementIcon, CategoryBadge, Confetti } from './graphics';
 
-const TEAM_LABEL: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
 const OTHER: Record<Team, Team> = { white: 'blue', blue: 'white' };
 
 /** Cambio de lado para la revancha: Blanco ↔ Azul. */
@@ -78,6 +78,8 @@ export function VictoryScreen({
   onHome: () => void;
 }) {
   const { players, progression, prefs } = useApp();
+  const clubs = useSideClubs(state.participants);
+  const TEAM_LABEL = { white: sideText(clubs, 'white'), blue: sideText(clubs, 'blue') };
   const r = state.result!;
   const byTeam = (t: Team) => state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
   const winners = byTeam(r.winner);
@@ -123,7 +125,7 @@ export function VictoryScreen({
     // Cada equipo en un marco de neón (blanco o celeste) con su nombre encajado en el borde de arriba.
     <div className={`vic-col vic-frame vic-frame-${team}`}>
       <div className="vic-frame-name">
-        {TEAM_LABEL[team]}
+        <TeamName team={team} participants={state.participants} size={24} />
         {winner && ' 🏆'}
       </div>
       {list.map((p, i) => (
@@ -166,7 +168,7 @@ export function VictoryScreen({
           </button>
         </div>
         <div className="vic-title-wrap">
-          <div className="victory-title">¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
+          <div className={`victory-title ${TEAM_LABEL[r.winner].length > 10 ? 'is-long' : ''}`}>¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
         </div>
         <div className="vic-side vic-side-right">
           {inTournament ? (
@@ -185,11 +187,15 @@ export function VictoryScreen({
       <div className="vic-head">
         {/* Marcador grande, estilo televisión. */}
         <div className="vic-score">
-          <span className={`vic-score-team vic-col-white ${r.winner === 'white' ? 'won' : ''}`}>BLANCO</span>
+          <span className={`vic-score-team vic-col-white ${r.winner === 'white' ? 'won' : ''}`}>
+            <TeamName team="white" participants={state.participants} size={30} />
+          </span>
           <span className={`vic-score-num ${r.winner === 'white' ? 'won' : ''}`}>{r.score.white}</span>
           <span className="vic-score-sep">–</span>
           <span className={`vic-score-num ${r.winner === 'blue' ? 'won' : ''}`}>{r.score.blue}</span>
-          <span className={`vic-score-team vic-col-blue ${r.winner === 'blue' ? 'won' : ''}`}>AZUL</span>
+          <span className={`vic-score-team vic-col-blue ${r.winner === 'blue' ? 'won' : ''}`}>
+            <TeamName team="blue" participants={state.participants} size={30} />
+          </span>
         </div>
         <div className="vic-facts">{facts.join(' · ')}</div>
       </div>

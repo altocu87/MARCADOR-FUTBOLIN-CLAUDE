@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import { restoreSnapshot } from '../../app/recovery';
-import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import type { ActiveMatchSnapshot, Club, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
 import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
@@ -16,6 +16,9 @@ import {
   allTemplates,
   competitions,
   editionName,
+  competitionNameKey,
+  competitionName,
+  lastEdition,
   nextEdition,
   tournamentReport,
   createTournament,
@@ -48,6 +51,8 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
+import { Crest, Cup, IconPicker, defaultCup, defaultLogo, logoCatalog } from '../components/Crest';
+import { clubNameTaken, findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
@@ -188,6 +193,75 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
   );
 }
 
+/** Nombre y logo de una pareja fija. Se guarda como equipo y sale en todas las pantallas. */
+function TeamEditor({
+  playerIds,
+  players,
+  initial,
+  clubs,
+  onSave,
+  onClose,
+}: {
+  playerIds: string[];
+  players: Player[];
+  initial: { name: string; logo: string } | null;
+  clubs: Club[];
+  onSave: (v: { name: string; logo: string }) => void;
+  onClose: () => void;
+}) {
+  const ps = playerIds.map((id) => players.find((p) => p.id === id));
+  const [name, setName] = useState(initial?.name ?? '');
+  const [logo, setLogo] = useState(initial?.logo ?? defaultLogo(playerIds.join('|')));
+  const taken = !!name.trim() && clubNameTaken(clubs, name, playerIds);
+  return (
+    <Modal
+      title="Equipo"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            disabled={!name.trim() || taken}
+            onClick={() => {
+              onSave({ name: name.trim(), logo });
+              onClose();
+            }}
+          >
+            Guardar equipo
+          </button>
+        </>
+      }
+    >
+      <div className="team-editor">
+        <div className="team-editor-head">
+          <Crest id={logo} size={72} />
+          <div className="team-editor-fields">
+            <input className="input" value={name} maxLength={22} placeholder="Nombre del equipo" aria-label="Nombre del equipo" onChange={(e) => setName(e.target.value)} autoFocus />
+            <div className="team-editor-players">
+              {ps.map((p, i) => (
+                <span key={playerIds[i]}>
+                  <Avatar name={p?.name ?? '?'} photo={p?.photo} size={30} /> {p?.name ?? '?'}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        {taken && <div className="notice warn">Ya hay otro equipo con ese nombre.</div>}
+        <div className="label">Logo</div>
+        <div className="icon-grid icon-grid-logo">
+          {logoCatalog().map((id) => (
+            <button key={id} className={`icon-cell ${id === logo ? 'is-on' : ''}`} aria-pressed={id === logo} onClick={() => setLogo(id)}>
+              <Crest id={id} size={48} />
+            </button>
+          ))}
+        </div>
+        <small className="muted">Se guarda como equipo: saldrá con este nombre y logo siempre que jueguen juntos.</small>
+      </div>
+    </Modal>
+  );
+}
+
 /** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
 const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
 
@@ -255,7 +329,8 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
               return (
                 <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
                   <span className="hon-card-head">
-                    <Trophy size={40} />
+                    {c.logo ? <Crest id={c.logo} size={40} /> : null}
+                    {c.cup ? <Cup id={c.cup} size={40} /> : <Trophy size={40} />}
                     <span>
                       <strong>{c.name}</strong>
                       <small>
@@ -304,7 +379,11 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
             const winner = t.teams.find((x) => x.id === t.winnerTeamId);
             return (
               <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' })}>
-                <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
+                {t.logo ? (
+                  <Crest id={t.logo} size={40} />
+                ) : (
+                  <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
+                )}
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <strong>{t.name}</strong>
                   <div className="muted" style={{ fontSize: 12 }}>
@@ -312,7 +391,9 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
                   </div>
                 </span>
                 {t.status === 'finished' && winner ? (
-                  <span className="badge badge-ranked">Campeón: {winner.name}</span>
+                  <span className="badge badge-ranked">
+                    {t.cup && <Cup id={t.cup} size={18} />} Campeón: {winner.name}
+                  </span>
                 ) : t.status === 'cancelled' ? (
                   <span className="badge">Cancelado</span>
                 ) : (
@@ -344,7 +425,13 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
   const photoOf = (id: string) => players.find((p) => p.id === id)?.photo;
   return (
     <ScreenFrame
-      title={c.name}
+      title={
+        <span className="td-title">
+          {c.logo && <Crest id={c.logo} size={38} />}
+          {c.name}
+          {c.cup && <Cup id={c.cup} size={38} />}
+        </span>
+      }
       subtitle={`Palmarés · ${c.format} · ${c.editions.length} edici${c.editions.length === 1 ? 'ón' : 'ones'}`}
       className="select-screen tn-screen"
       background={TN_BG}
@@ -420,7 +507,7 @@ export function TournamentNewScreen({
   initialSelected?: string[];
   initialStep?: 'players' | 'format';
 }) {
-  const { navigate, players, progression, prefs, saveTournament, savePlayer, toast, tournaments } = useApp();
+  const { navigate, players, progression, prefs, saveTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
   const [step, setStep] = useState<'players' | 'format'>(initialStep ?? (initialSelected?.length ? 'format' : 'players'));
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
@@ -436,6 +523,12 @@ export function TournamentNewScreen({
   const [rules, setRules] = useState<(MatchRules & { tplId: string }) | null>(null);
   // Y la final: a partido único o al mejor de 3, y sus propias reglas.
   const [finalPick, setFinalPick] = useState<(MatchRules & { tplId: string; bestOf: 1 | 3 }) | null>(null);
+  // Nombre, logo y copa del torneo (por defecto, los del tipo elegido y su última edición).
+  const [brand, setBrand] = useState<{ tplId: string; name?: string; logo?: string; cup?: string } | null>(null);
+  const [picker, setPicker] = useState<'logo' | 'cup' | null>(null);
+  // Nombre y logo de las parejas fijas (por pareja de jugadores); se guardan como equipos al crear.
+  const [teamEdits, setTeamEdits] = useState<Record<string, { name: string; logo: string }>>({});
+  const [editingTeam, setEditingTeam] = useState<string[] | null>(null);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
@@ -640,11 +733,39 @@ export function TournamentNewScreen({
     );
   }
 
-  // El nombre sale solo: competición (el tipo de torneo) y número de edición.
-  const edition = tpl ? nextEdition(tpl.id, tournaments) : 1;
-  const name = tpl ? editionName(tpl.name, edition) : '';
+  // Nombre de la competición: el del tipo de torneo o uno propio. Cada nombre lleva sus ediciones.
+  const myBrand = brand && tpl && brand.tplId === tpl.id ? brand : null;
+  const compName = (myBrand?.name ?? tpl?.name ?? '').replace(/\s+/g, ' ');
+  const isCustom = !!tpl && compName.trim().toLocaleLowerCase('es') !== tpl.name.toLocaleLowerCase('es');
+  const compKey = tpl ? (isCustom ? competitionNameKey(compName) : tpl.id) : '';
+  const edition = tpl ? nextEdition(compKey, tournaments) : 1;
+  const prevEdition = tpl ? lastEdition(compKey, tournaments) : undefined;
+  const logo = myBrand?.logo ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo');
+  const cup = myBrand?.cup ?? prevEdition?.cup ?? defaultCup();
+  const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
+    tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
+  const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
   const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed)) : null;
-  const draft = built ? { ...built.draft, edition } : null;
+  // Parejas fijas: su equipo guardado o lo que se haya escrito aquí.
+  const teamKey = (ids: string[]) => [...ids].sort().join('|');
+  const teamInfo = (ids: string[]) => {
+    const edit = teamEdits[teamKey(ids)];
+    const club = findClub(prefs.clubs, ids);
+    return edit ?? (club ? { name: club.name, logo: club.logo } : null);
+  };
+  const draft = built
+    ? {
+        ...built.draft,
+        edition,
+        logo,
+        cup,
+        ...(isCustom && compName.trim() ? { competition: compName.trim() } : {}),
+        teams: built.draft.teams.map((tm) => {
+          const info = tm.playerIds.length === 2 ? teamInfo(tm.playerIds) : null;
+          return info ? { ...tm, name: info.name, logo: info.logo } : tm;
+        }),
+      }
+    : null;
   const leftover = built?.leftover ?? [];
   const errors = !tpl || !draft ? ['Ningún tipo de torneo encaja con estos jugadores.'] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
   const isPool = tpl?.format === 'pool';
@@ -653,7 +774,20 @@ export function TournamentNewScreen({
   const create = async () => {
     if (!draft) return;
     try {
-      const t = createTournament(draft, players, elo, Date.now(), seededRandom(`${seed}-cal`));
+      // Las parejas con nombre se guardan como equipos (o se actualizan) y el torneo las enlaza.
+      let clubs = prefs.clubs;
+      const teams = draft.teams.map((tm) => {
+        const edit = tm.playerIds.length === 2 ? teamEdits[teamKey(tm.playerIds)] : undefined;
+        const existing = tm.playerIds.length === 2 ? findClub(clubs, tm.playerIds) : undefined;
+        if (edit) {
+          const r = saveClub(clubs, tm.playerIds, edit.name, edit.logo, Date.now());
+          clubs = r.clubs;
+          return { ...tm, clubId: r.club.id };
+        }
+        return existing ? { ...tm, clubId: existing.id } : tm;
+      });
+      if (clubs !== prefs.clubs) await savePrefs({ ...prefs, clubs });
+      const t = createTournament({ ...draft, teams }, players, elo, Date.now(), seededRandom(`${seed}-cal`));
       await saveTournament(t);
       navigate({ name: 'tournamentDetail', id: t.id });
     } catch (err) {
@@ -694,9 +828,20 @@ export function TournamentNewScreen({
       <div className="tn-plan">
         <strong>{templateFit(tpl, n).summary}</strong>
         <div className="tn-teams">
-          {draft.teams.map((t, i) => (
-            <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
-          ))}
+          {draft.teams.map((t, i) =>
+            t.playerIds.length === 2 ? (
+              <button key={i} className={`tn-team tn-team-edit ${t.name ? 'has-name' : ''}`} onClick={() => setEditingTeam(t.playerIds)}>
+                <Crest id={t.logo} size={28} />
+                <span className="tn-team-text">
+                  <b>{t.name ?? 'Sin nombre'}</b>
+                  <small>{t.playerIds.map(nameOf).join(' + ')}</small>
+                </span>
+                <span className="tn-team-pen" aria-hidden="true">✎</span>
+              </button>
+            ) : (
+              <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
+            ),
+          )}
         </div>
       </div>
     );
@@ -756,16 +901,47 @@ export function TournamentNewScreen({
         </div>
         <div className="tn-col tn-col-rules scroll">
           {tpl && (
+            <>
             <div className="tn-nameplate" aria-label={`Nombre del torneo: ${name}`}>
-              <span className="tn-np-edition">
-                {edition}
-                <small>ª edición</small>
-              </span>
+              <button className="tn-np-icon" onClick={() => setPicker('logo')} aria-label="Cambiar el logo del torneo">
+                <Crest id={logo} size={52} />
+              </button>
               <span className="tn-np-body">
-                <b>{tpl.name}</b>
-                <small>{shortDate(Date.now())} · el nombre se pone solo</small>
+                <input
+                  className="tn-np-name"
+                  value={compName}
+                  maxLength={28}
+                  onChange={(e) => setBrandField({ name: e.target.value })}
+                  aria-label="Nombre del torneo"
+                  placeholder={tpl.name}
+                />
+                <small>
+                  <b className="tn-np-ed">{edition}ª edición</b> · {shortDate(Date.now())} · {isCustom ? tpl.name : 'toca el nombre para cambiarlo'}
+                </small>
               </span>
+              <button className="tn-np-icon tn-np-cup" onClick={() => setPicker('cup')} aria-label="Cambiar la copa">
+                <Cup id={cup} size={52} />
+              </button>
             </div>
+            {picker && (
+              <IconPicker
+                kind={picker}
+                value={picker === 'logo' ? logo : cup}
+                onPick={(v) => setBrandField(picker === 'logo' ? { logo: v } : { cup: v })}
+                onClose={() => setPicker(null)}
+              />
+            )}
+            {editingTeam && (
+              <TeamEditor
+                playerIds={editingTeam}
+                players={players}
+                initial={teamInfo(editingTeam)}
+                clubs={prefs.clubs}
+                onSave={(v) => setTeamEdits((e) => ({ ...e, [teamKey(editingTeam)]: v }))}
+                onClose={() => setEditingTeam(null)}
+              />
+            )}
+            </>
           )}
           {tpl && (
             <div className="tn-rules">
@@ -969,6 +1145,16 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     );
   }
   const teamName = (tid: string | null) => (tid ? t.teams.find((x) => x.id === tid)?.name ?? '?' : '—');
+  // Nombre del equipo con su logo (si es un equipo guardado).
+  const teamLabel = (tid: string | null) => {
+    const tt = tid ? t.teams.find((x) => x.id === tid) : undefined;
+    if (!tt?.logo) return teamName(tid);
+    return (
+      <span className="team-label">
+        <Crest id={tt.logo} size={20} /> {tt.name}
+      </span>
+    );
+  };
   const nameOf = (pid: string) => players.find((p) => p.id === pid)?.name ?? '?';
   const byId = new Map(matches.map((m) => [m.id, m]));
   // Se juega en orden: el propio torneo dice cuál es el siguiente partido.
@@ -1014,14 +1200,14 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     return (
       <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''} ${isNext ? 'is-next' : ''}`}>
         <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
-          <i className="pre-dot white" aria-label="Blanco" /> {teamName(f.whiteTeamId)}
+          <i className="pre-dot white" aria-label="Blanco" /> {teamLabel(f.whiteTeamId)}
         </span>
         <span className="fx-score">
           {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
           {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
         </span>
         <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>
-          {teamName(f.blueTeamId)} <i className="pre-dot blue" aria-label="Azul" />
+          {teamLabel(f.blueTeamId)} <i className="pre-dot blue" aria-label="Azul" />
         </span>
       </div>
     );
@@ -1037,9 +1223,16 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
     const pct = (team: 'white' | 'blue') => (pr?.available ? `${team === 'white' ? pr.whitePct : pr.bluePct} %` : null);
     const resting = next.resting ?? allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool');
     const game = (next.matchIds?.length ?? 0) + 1;
-    const teamBlock = (ids: string[], team: 'white' | 'blue') => (
+    const teamBlock = (ids: string[], team: 'white' | 'blue') => {
+      const tt = t.teams.find((x) => x.id === (team === 'white' ? next.whiteTeamId : next.blueTeamId));
+      return (
       <div className={`next-side next-${team}`}>
         <span className="next-team-label">{team === 'white' ? 'BLANCO' : 'AZUL'}</span>
+        {tt?.logo && (
+          <span className="next-club">
+            <Crest id={tt.logo} size={26} /> {tt.name}
+          </span>
+        )}
         <div className="next-avatars">
           {ids.map((pid) => (
             <Avatar key={pid} name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={46} />
@@ -1048,7 +1241,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
         <b>{ids.map(nameOf).join(' + ')}</b>
         {pct(team) && <span className="next-pct">{pct(team)}</span>}
       </div>
-    );
+      );
+    };
     nextCard = (
       <div className="next-card">
         <div className="next-head">
@@ -1091,7 +1285,12 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
 
   return (
     <ScreenFrame
-      title={t.templateName && t.edition ? t.templateName : t.name}
+      title={
+        <span className="td-title">
+          {t.logo && <Crest id={t.logo} size={38} />}
+          {t.templateName && t.edition ? competitionName(t) : t.name}
+        </span>
+      }
       className="select-screen tn-screen"
       background={TN_BG}
       subtitle={t.templateName && t.edition ? `${t.edition}ª edición${t.ranked ? ' · ELO' : ''}` : `${FORMAT_LABEL[t.format]}${t.ranked ? ' · ELO' : ''}`}
@@ -1133,10 +1332,12 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
       {t.status === 'finished' && winner && (
         <div className="champion-banner">
           {prefs.effects !== 'off' && <Confetti count={30} />}
-          <Trophy size={56} />
+          {t.cup ? <Cup id={t.cup} size={60} /> : <Trophy size={56} />}
           <div>
             <div className="label" style={{ color: 'var(--ranked)' }}>Campeón</div>
-            <div className="champion-name">{winner.name}</div>
+            <div className="champion-name">
+              {winner.logo && <Crest id={winner.logo} size={30} />} {winner.name}
+            </div>
           </div>
           <div className="champion-avatars">
             {winner.playerIds.map((pid) => {
@@ -1156,8 +1357,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
                   .filter((f) => f.round === r)
                   .map((f) => (
                     <div key={f.id} className={`bracket-match ${f.winnerTeamId ? 'done' : ''}`}>
-                      <span className={f.winnerTeamId && f.winnerTeamId === f.whiteTeamId ? 'win' : ''}>{teamName(f.whiteTeamId)}</span>
-                      <span className={f.winnerTeamId && f.winnerTeamId === f.blueTeamId ? 'win' : ''}>{f.bye && !f.blueTeamId ? 'pase directo' : teamName(f.blueTeamId)}</span>
+                      <span className={f.winnerTeamId && f.winnerTeamId === f.whiteTeamId ? 'win' : ''}>{teamLabel(f.whiteTeamId)}</span>
+                      <span className={f.winnerTeamId && f.winnerTeamId === f.blueTeamId ? 'win' : ''}>{f.bye && !f.blueTeamId ? 'pase directo' : teamLabel(f.blueTeamId)}</span>
                     </div>
                   ))}
               </div>
@@ -1186,7 +1387,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
                     <td>
                       <MoveIcon move={movement.get(r.team.id)} />
                     </td>
-                    <td>{r.team.name}</td>
+                    <td>{teamLabel(r.team.id)}</td>
                     <td>{r.played}</td>
                     <td>{r.wins}</td>
                     <td>{r.losses}</td>
@@ -1232,7 +1433,7 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
                 (t.format === 'league' && !fx.some((f) => f.stage)
                   ? t.teams.filter((tt) => !fx.some((f) => f.whiteTeamId === tt.id || f.blueTeamId === tt.id)).flatMap((tt) => tt.playerIds)
                   : []);
-              const state = fx.every((f) => f.winnerTeamId) ? 'done' : fx.some((f) => f.id === next?.id) ? 'current' : 'pending';
+              const state = fx.length && fx.every((f) => f.winnerTeamId) ? 'done' : fx.some((f) => f.id === next?.id) ? 'current' : 'pending';
               return (
                 <div key={r} className={`round-block round-${state}`}>
                   <div className="round-head">
@@ -1326,7 +1527,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
   const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
 
   const info: [string, string][] = [
-    ['Competición', t.templateName ?? t.name],
+    ['Competición', competitionName(t)],
     ['Edición', t.edition ? `${t.edition}ª` : '—'],
     ['Formato', `${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}`],
     ['Empezó', shortDate(r.startedAt ?? t.createdAt)],
