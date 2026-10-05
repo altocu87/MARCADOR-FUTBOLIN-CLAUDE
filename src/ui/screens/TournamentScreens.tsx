@@ -72,6 +72,29 @@ function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]
   );
 }
 
+type MatchRules = Pick<TournamentTemplate, 'endCondition' | 'goalsPerPeriod' | 'minutesPerPeriod'>;
+const GOAL_OPTIONS: [number, string][] = [[3, 'A 3'], [5, 'A 5'], [7, 'A 7'], [10, 'A 10']];
+const MINUTE_OPTIONS: [number, string][] = [[3, '3 MIN'], [5, '5 MIN'], [8, '8 MIN'], [10, '10 MIN']];
+
+function pickRules(t: TournamentTemplate): MatchRules {
+  return { endCondition: t.endCondition, goalsPerPeriod: t.goalsPerPeriod, minutesPerPeriod: t.minutesPerPeriod };
+}
+
+/** El tipo de torneo con otras reglas de partido. La final a más goles solo se queda si sigue siendo más. */
+function withRules(t: TournamentTemplate, r: MatchRules): TournamentTemplate {
+  const finalGoals = t.finalGoals && t.finalGoals > r.goalsPerPeriod ? t.finalGoals : null;
+  return { ...t, endCondition: r.endCondition, goalsPerPeriod: r.goalsPerPeriod, minutesPerPeriod: r.minutesPerPeriod, finalGoals };
+}
+
+/** «Gana quien llegue a 5 goles» / «Partidos de 5 minutos» / …, con la final si cambia. */
+function rulesText(t: TournamentTemplate): string {
+  const g = `${t.goalsPerPeriod} goles`;
+  const m = `2 partes de ${t.minutesPerPeriod} minutos`;
+  const base =
+    t.endCondition === 'goals' ? `Gana quien llegue a ${g}` : t.endCondition === 'time' ? `${m[0].toUpperCase()}${m.slice(1)}: gana quien lleve más goles` : `A ${g} o ${m}, lo que llegue antes`;
+  return base + (t.finalGoals && t.endCondition !== 'time' && (t.format === 'bracket' || t.final !== 'none') ? ` · la final a ${t.finalGoals}` : '') + '.';
+}
+
 /** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
 const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
 
@@ -316,6 +339,8 @@ export function TournamentNewScreen({
   const [guestClash, setGuestClash] = useState<Player | null>(null);
   const guestRef = useRef<HTMLInputElement>(null);
   const [showAll, setShowAll] = useState(false);
+  // Cómo se juegan los partidos (goles, tiempo o ambas): sale del tipo elegido y se puede cambiar aquí.
+  const [rules, setRules] = useState<(MatchRules & { tplId: string }) | null>(null);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
@@ -330,7 +355,10 @@ export function TournamentNewScreen({
   const otherOk = fits.filter((x) => x.fit.ok && !shown.includes(x));
   const blocked = fits.filter((x) => !x.fit.ok);
   const pickable = showAll ? [...shown, ...otherOk] : shown.length ? shown : otherOk;
-  const tpl = pickable.find((x) => x.t.id === chosenTpl)?.t ?? pickable[0]?.t;
+  const baseTpl = pickable.find((x) => x.t.id === chosenTpl)?.t ?? pickable[0]?.t;
+  const tpl = baseTpl && rules?.tplId === baseTpl.id ? withRules(baseTpl, rules) : baseTpl;
+  const setRule = (patch: Partial<MatchRules>) =>
+    baseTpl && setRules({ ...pickRules(tpl!), ...patch, tplId: baseTpl.id });
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -639,6 +667,27 @@ export function TournamentNewScreen({
                 <b>{tpl.name}</b>
                 <small>{shortDate(Date.now())} · el nombre se pone solo</small>
               </span>
+            </div>
+          )}
+          {tpl && (
+            <div className="tn-rules">
+              <div className="label">Partidos</div>
+              <div className="tn-rules-row">
+                <Seg<MatchRules['endCondition']>
+                  value={tpl.endCondition}
+                  options={[['goals', '⚽ A GOLES'], ['time', '⏱ A TIEMPO'], ['both', 'AMBAS']]}
+                  onChange={(v) => setRule({ endCondition: v })}
+                />
+              </div>
+              <div className="tn-rules-row">
+                {tpl.endCondition !== 'time' && (
+                  <Seg value={tpl.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => setRule({ goalsPerPeriod: v })} />
+                )}
+                {tpl.endCondition !== 'goals' && (
+                  <Seg value={tpl.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => setRule({ minutesPerPeriod: v })} />
+                )}
+              </div>
+              <small className="tn-rules-note">{rulesText(tpl)}</small>
             </div>
           )}
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
