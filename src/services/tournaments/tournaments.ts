@@ -53,6 +53,8 @@ export interface TournamentDraft {
   /** Reglas de la final si difieren. */
   finalConfig?: MatchConfig;
   templateName?: string;
+  templateId?: string;
+  edition?: number;
 }
 
 export function validateDraft(d: TournamentDraft): string[] {
@@ -270,6 +272,8 @@ export function createTournament(
     ...(final !== 'none' ? { final } : {}),
     ...(draft.finalConfig ? { finalConfig: { ...draft.finalConfig, mode, testMode: false } } : {}),
     ...(draft.templateName ? { templateName: draft.templateName } : {}),
+    ...(draft.templateId ? { templateId: draft.templateId } : {}),
+    ...(draft.edition ? { edition: draft.edition } : {}),
   };
 }
 

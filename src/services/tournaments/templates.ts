@@ -24,8 +24,8 @@ const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
 };
 
 export const BUILT_IN_TEMPLATES: TournamentTemplate[] = [
-  { ...base, id: 'builtin-pool', name: 'Pool rotativo', format: 'pool', teamSize: 2, final: 'top4', finalBestOf: 3 },
-  { ...base, id: 'builtin-league', name: 'Liguilla rápida', format: 'league', goalsPerPeriod: 3 },
+  { ...base, id: 'builtin-pool', name: 'Copa Rotativa', format: 'pool', teamSize: 2, final: 'top4', finalBestOf: 3 },
+  { ...base, id: 'builtin-league', name: 'Liguilla Rápida', format: 'league', goalsPerPeriod: 3 },
   { ...base, id: 'builtin-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
   { ...base, id: 'builtin-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },
   { ...base, id: 'builtin-pairs', name: 'Copa Parejas', format: 'bracket', teamSize: 2, finalBestOf: 3, finalGoals: 7 },
@@ -99,6 +99,7 @@ export function draftFromTemplate(
     finalBestOf: hasFinal ? t.finalBestOf : 1,
     finalConfig,
     templateName: t.name,
+    templateId: t.id,
   };
   if (t.format === 'pool') {
     return {

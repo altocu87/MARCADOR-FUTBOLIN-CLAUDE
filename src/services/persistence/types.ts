@@ -111,6 +111,10 @@ export interface Tournament {
   finalConfig?: MatchConfig;
   /** Predefinido con el que se creó. */
   templateName?: string;
+  /** Competición a la que pertenece (id del predefinido): sus ediciones forman el palmarés. */
+  templateId?: string;
+  /** Número de edición dentro de su competición (1ª, 2ª…). */
+  edition?: number;
 }
 
 /** Tipo de torneo guardado como predefinido en el creador. */

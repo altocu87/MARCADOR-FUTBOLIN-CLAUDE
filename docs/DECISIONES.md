@@ -99,6 +99,11 @@ guardados sin origen y reprocesar no duplica premios.
   otros goles. Sin final, el premio va en el último partido jugado por el campeón. **Predefinidos**: 5 de fábrica
   y los que se guarden en el creador. Crear torneo en dos pasos: primero quién juega y después solo los tipos que
   encajan con ese número (los demás, apagados con el motivo), con uno recomendado.
+- **Ediciones y palmarés**: el nombre del torneo se genera solo («Copa Rotativa · 2ª edición»); cada predefinido
+  es una competición y sus torneos no cancelados se numeran como ediciones. Palmarés por competición (ediciones
+  con fechas, campeón y MVP, y cuadro de honor por títulos). Ficha de cada torneo con información, destacados y
+  estadísticas por jugador. **MVP** (propuesta) = 3 por victoria + 1 por gol marcado + ½ diferencia de goles
+  + 2 al campeón.
 - **Logros**: 54 (10 secretos) con títulos elegibles. **Sorteo de equipos**: el reparto con menor diferencia
   de ELO medio. **Avisos**: bola de partido = el siguiente gol daría la victoria (2ª parte con goles, o prórroga).
 

@@ -22,6 +22,7 @@ import { STORAGE_FORMAT_VERSION, type Player, type StoredMatch, type Tournament 
 import { autoScorers } from '../statistics/extras';
 import {
   createTournament,
+  editionName,
   effectivePoolGames,
   fixtureConfig,
   fixtureParticipants,
@@ -284,11 +285,19 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
     tournaments.push(t);
   };
 
-  runTournament('Liga de Verano', 'league', 1, 5, true, startDay + 10 * DAY);
-  runTournament('Copa Parejas', 'bracket', 2, 4, false, startDay + 45 * DAY);
-  runTournament('Torneo Relámpago', 'bracket', 1, 7, true, startDay + 80 * DAY);
-  runTournament('Pool de los Viernes', 'pool', 2, 5, false, startDay + 100 * DAY, Infinity, { final: 'top4', finalBestOf: 3 });
-  runTournament('Liga de Otoño', 'league', 1, 6, true, now - 6 * DAY, 8); // en juego
+  // Ediciones de competiciones de fábrica: así el palmarés tiene historia.
+  const edition = (templateId: string, templateName: string, n: number, more: Partial<TournamentDraft> = {}): Partial<TournamentDraft> => ({
+    templateId,
+    templateName,
+    edition: n,
+    ...more,
+  });
+  runTournament(editionName('Liguilla Rápida', 1), 'league', 1, 5, true, startDay + 10 * DAY, Infinity, edition('builtin-league', 'Liguilla Rápida', 1));
+  runTournament(editionName('Copa Parejas', 1), 'bracket', 2, 4, false, startDay + 45 * DAY, Infinity, edition('builtin-pairs', 'Copa Parejas', 1, { finalBestOf: 3 }));
+  const rotativa = { final: 'top4' as const, finalBestOf: 3 };
+  runTournament(editionName('Copa Rotativa', 1), 'pool', 2, 5, false, startDay + 80 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 1, rotativa));
+  runTournament(editionName('Copa Rotativa', 2), 'pool', 2, 6, false, startDay + 100 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 2, rotativa));
+  runTournament(editionName('Liguilla Rápida', 2), 'league', 1, 6, true, now - 6 * DAY, 8, edition('builtin-league', 'Liguilla Rápida', 2)); // en juego
 
   matches.sort((a, b) => a.finishedAt - b.finishedAt);
   return { players, matches, tournaments };

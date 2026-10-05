@@ -5,6 +5,10 @@ import { computeProgression } from '../src/services/progression';
 import { seededRandom } from '../src/services/statistics/calendar';
 import {
   BUILT_IN_TEMPLATES,
+  competitions,
+  editionName,
+  nextEdition,
+  tournamentReport,
   createTournament,
   describeTemplate,
   draftFromTemplate,
@@ -213,5 +217,36 @@ describe('Tipos de torneo según el número de jugadores', () => {
     expect(recommendedTemplateId(8)).toBe('builtin-pairs');
     expect(recommendedTemplateId(9)).toBe('builtin-pool');
     expect(recommendedTemplateId(2)).toBeNull();
+  });
+});
+
+describe('Ediciones, ficha y palmarés', () => {
+  const ps = players(['a', 'b', 'c', 'd', 'e']);
+  const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-pool')!;
+  const make = (edition: number, seed: string) => {
+    const { draft } = draftFromTemplate(tpl, editionName(tpl.name, edition), ps.map((p) => p.id), () => 1200, {}, seededRandom(seed));
+    return createTournament({ ...draft, edition, final: 'none' }, ps, () => 1200, edition * 1000, seededRandom(seed));
+  };
+
+  it('numera las ediciones y no cuenta las canceladas', () => {
+    expect(editionName('Copa Rotativa', 2)).toBe('Copa Rotativa · 2ª edición');
+    const t1 = make(1, 'e1');
+    const cancelled = { ...make(2, 'e2'), status: 'cancelled' as const };
+    expect(nextEdition(tpl.id, [t1, cancelled])).toBe(2);
+  });
+
+  it('la ficha calcula partidos, goles y MVP; el palmarés suma títulos', () => {
+    const all: StoredMatch[] = [];
+    const tA = playAll(make(1, 'p1'), (_w, b) => (b.includes('a') ? 'B' : 'W'), all).t;
+    const tB = playAll(make(2, 'p2'), (_w, b) => (b.includes('a') ? 'B' : 'W'), all).t;
+    const r = tournamentReport(tA, all, ps);
+    expect(r.matches).toHaveLength(5);
+    expect(r.totalGoals).toBe(25);
+    expect(r.mvp?.playerId).toBe('a');
+    expect(r.championIds).toEqual(['a']);
+    const [c] = competitions([tA, tB], all, ps);
+    expect(c.name).toBe('Copa Rotativa');
+    expect(c.editions.map((e) => e.edition)).toEqual([2, 1]);
+    expect(c.honours[0]).toMatchObject({ playerId: 'a', titles: 2, mvps: 2, editions: 2 });
   });
 });

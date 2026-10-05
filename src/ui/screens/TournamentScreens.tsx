@@ -13,6 +13,10 @@ import {
   FORMAT_LABEL,
   TOURNAMENT_RULES_VERSION,
   allTemplates,
+  competitions,
+  editionName,
+  nextEdition,
+  tournamentReport,
   createTournament,
   describeTemplate,
   draftFromTemplate,
@@ -30,7 +34,7 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
-import { Avatar, Modal, ScreenFrame, Toggle, formatDate } from '../components/common';
+import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { Confetti } from '../components/graphics';
 
@@ -66,13 +70,20 @@ function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]
 /** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
 const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
 
+/** «5 oct 2026». */
+function shortDate(ts: number): string {
+  return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function teamCountLabel(t: Tournament): string {
   return t.format === 'pool' ? `${t.entrants?.length ?? 0} jugadores` : `${t.teams.length} equipos · ${t.teamSize === 1 ? '1v1' : '2v2'}`;
 }
 
-export function TournamentListScreen() {
-  const { navigate, tournaments } = useApp();
+export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'honours' }) {
+  const { navigate, tournaments, matches, players } = useApp();
+  const [tab, setTab] = useState<'list' | 'honours'>(initialTab ?? 'list');
   const list = [...tournaments].sort((a, b) => b.createdAt - a.createdAt);
+  const comps = tab === 'honours' ? competitions(tournaments, matches, players) : [];
   return (
     <ScreenFrame
       title="Torneos"
@@ -80,17 +91,72 @@ export function TournamentListScreen() {
       background={TN_BG}
       onBack={() => navigate({ name: 'home' })}
       right={
-        <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
-          + Nuevo torneo
-        </button>
+        <>
+          <Tabs
+            label="Vista"
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: 'list', label: 'Torneos' },
+              { id: 'honours', label: 'Palmarés' },
+            ]}
+          />
+          <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
+            + Nuevo torneo
+          </button>
+        </>
       }
     >
-      {list.length === 0 ? (
+      {tab === 'honours' ? (
+        comps.length === 0 ? (
+          <div className="empty">
+            <div>
+              <Trophy size={70} />
+              <strong>Palmarés vacío</strong>
+              Cuando termine el primer torneo, aquí saldrá su campeón.
+            </div>
+          </div>
+        ) : (
+          <div className="hon-grid scroll">
+            {comps.map((c) => {
+              const top = c.honours[0];
+              return (
+                <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
+                  <span className="hon-card-head">
+                    <Trophy size={40} />
+                    <span>
+                      <strong>{c.name}</strong>
+                      <small>
+                        {c.format} · {c.editions.length} edici{c.editions.length === 1 ? 'ón' : 'ones'}
+                      </small>
+                    </span>
+                  </span>
+                  {c.lastChampion ? (
+                    <span className="hon-last">
+                      <small>Último campeón · {c.lastChampion.edition}ª edición · {shortDate(c.lastChampion.date)}</small>
+                      <b>{c.lastChampion.champion}</b>
+                    </span>
+                  ) : (
+                    <span className="hon-last">
+                      <small>1ª edición en juego</small>
+                    </span>
+                  )}
+                  {top && top.titles > 0 && (
+                    <span className="hon-top">
+                      Más títulos: <b>{top.name}</b> · {top.titles} 🏆
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )
+      ) : list.length === 0 ? (
         <div className="empty">
           <div style={{ maxWidth: 520 }}>
             <Trophy size={80} />
             <strong>Aún no hay torneos</strong>
-            Elige un tipo (Pool rotativo, liguilla, eliminatoria…) o crea el tuyo y guárdalo como predefinido.
+            Elige quién juega y la app te propone los tipos de torneo que encajan.
             <div style={{ marginTop: 12 }}>
               <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentNew' })}>
                 Crear torneo
@@ -105,12 +171,12 @@ export function TournamentListScreen() {
             const done = real.filter((f) => f.winnerTeamId).length;
             const winner = t.teams.find((x) => x.id === t.winnerTeamId);
             return (
-              <button key={t.id} className="row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
+              <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
                 <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
-                <span style={{ flex: 1 }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
                   <strong>{t.name}</strong>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    {FORMAT_LABEL[t.format]} · {teamCountLabel(t)} · {t.ranked ? 'cuenta para ELO' : 'sin ELO'} · {formatDate(t.createdAt)}
+                    {FORMAT_LABEL[t.format]} · {teamCountLabel(t)} · {t.ranked ? 'cuenta para ELO' : 'sin ELO'} · {shortDate(t.createdAt)}
                   </div>
                 </span>
                 {t.status === 'finished' && winner ? (
@@ -132,17 +198,92 @@ export function TournamentListScreen() {
   );
 }
 
+/** Palmarés de una competición: todas sus ediciones con campeón y MVP, y quién suma más títulos. */
+export function TournamentHonoursScreen({ competitionKey }: { competitionKey: string }) {
+  const { navigate, tournaments, matches, players } = useApp();
+  const c = competitions(tournaments, matches, players).find((x) => x.key === competitionKey);
+  if (!c) {
+    return (
+      <ScreenFrame title="Palmarés" onBack={() => navigate({ name: 'tournament', tab: 'honours' })}>
+        <div className="empty">Competición no encontrada.</div>
+      </ScreenFrame>
+    );
+  }
+  const photoOf = (id: string) => players.find((p) => p.id === id)?.photo;
+  return (
+    <ScreenFrame
+      title={c.name}
+      subtitle={`Palmarés · ${c.format} · ${c.editions.length} edici${c.editions.length === 1 ? 'ón' : 'ones'}`}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      onBack={() => navigate({ name: 'tournament', tab: 'honours' })}
+    >
+      <div className="td-layout">
+        <div className="td-panel scroll">
+          <div className="label">Ediciones</div>
+          <div className="hon-editions">
+            {c.editions.map((e) => (
+              <button key={e.tournament.id} className="hon-edition" onClick={() => navigate({ name: 'tournamentDetail', id: e.tournament.id })}>
+                <span className="hon-ed-num">
+                  {e.edition}
+                  <small>ª</small>
+                </span>
+                <span className="hon-ed-body">
+                  <small>
+                    {e.tournament.status === 'finished' ? shortDate(e.date) : `En juego desde ${shortDate(e.tournament.createdAt)}`}
+                  </small>
+                  {e.champion ? <b>🏆 {e.champion}</b> : <b className="dim">Sin campeón todavía</b>}
+                  {e.mvp && <span>MVP: {e.mvp.name}</span>}
+                </span>
+                <span className="hon-ed-avatars">
+                  {e.championIds.map((id) => (
+                    <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photoOf(id)} size={34} />
+                  ))}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="td-panel scroll">
+          <div className="label">Cuadro de honor</div>
+          <table className="rep-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Jugador</th>
+                <th title="Títulos">🏆</th>
+                <th title="Veces MVP">MVP</th>
+                <th title="Ediciones jugadas">Ed.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.honours.map((h, i) => (
+                <tr key={h.playerId} className={i === 0 && h.titles > 0 ? 'leader' : ''}>
+                  <td>{i + 1}</td>
+                  <td>{h.name}</td>
+                  <td><strong>{h.titles}</strong></td>
+                  <td>{h.mvps}</td>
+                  <td>{h.editions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ScreenFrame>
+  );
+}
+
 /**
  * Crear un torneo en dos pasos: primero quién juega (fichas con foto) y después el tipo de torneo.
  * La lista de tipos se ordena según el número de jugadores: arriba los que se pueden jugar (con el
  * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
  */
 export function TournamentNewScreen({ templateId, initialSelected }: { templateId?: string; initialSelected?: string[] }) {
-  const { navigate, players, progression, prefs, saveTournament, toast } = useApp();
+  const { navigate, players, progression, prefs, saveTournament, toast, tournaments } = useApp();
   const [step, setStep] = useState<'players' | 'format'>(initialSelected?.length ? 'format' : 'players');
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
-  const [name, setName] = useState(`Torneo ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`);
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
   const [creating, setCreating] = useState(false);
@@ -226,9 +367,12 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
     );
   }
 
-  const { draft, leftover } = tpl
-    ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed))
-    : { draft: null, leftover: [] as string[] };
+  // El nombre sale solo: competición (el tipo de torneo) y número de edición.
+  const edition = tpl ? nextEdition(tpl.id, tournaments) : 1;
+  const name = tpl ? editionName(tpl.name, edition) : '';
+  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed)) : null;
+  const draft = built ? { ...built.draft, edition } : null;
+  const leftover = built?.leftover ?? [];
   const errors = !tpl || !draft ? ['Ningún tipo de torneo encaja con estos jugadores.'] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
   const isPool = tpl?.format === 'pool';
   const usesDraw = !!tpl && (isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random'));
@@ -326,8 +470,18 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
           </div>
         </div>
         <div className="tn-col">
-          <div className="label">Nombre</div>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Nombre del torneo" maxLength={30} />
+          {tpl && (
+            <div className="tn-nameplate" aria-label={`Nombre del torneo: ${name}`}>
+              <span className="tn-np-edition">
+                {edition}
+                <small>ª edición</small>
+              </span>
+              <span className="tn-np-body">
+                <b>{tpl.name}</b>
+                <small>{shortDate(Date.now())} · el nombre se pone solo</small>
+              </span>
+            </div>
+          )}
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ flex: 1 }}>
               {isPool ? 'Cómo se jugará' : `Equipos${tpl?.teamSize === 2 ? (tpl.pairing === 'elo' ? ' · parejas equilibradas' : ' · parejas al azar') : ''}`}
@@ -489,10 +643,12 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
   );
 }
 
-export function TournamentDetailScreen({ id }: { id: string }) {
+export function TournamentDetailScreen({ id, view: initialView }: { id: string; view?: 'report' | 'play' }) {
   const { navigate, tournaments, matches, players, saveTournament, prefs } = useApp();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const t = tournaments.find((x) => x.id === id);
+  // Terminado: se abre en la ficha; en juego: en los partidos.
+  const [view, setView] = useState<'report' | 'play'>(initialView ?? (t?.status === 'finished' ? 'report' : 'play'));
   if (!t) {
     return (
       <ScreenFrame title="Torneo" onBack={() => navigate({ name: 'tournament' })}>
@@ -559,13 +715,28 @@ export function TournamentDetailScreen({ id }: { id: string }) {
       subtitle={`${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}${t.ranked ? ' · ELO' : ''}`}
       onBack={() => navigate({ name: 'tournament' })}
       right={
-        t.status === 'active' && (
-          <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
-            Cancelar torneo
-          </button>
-        )
+        <>
+          <Tabs
+            label="Vista del torneo"
+            value={view}
+            onChange={setView}
+            tabs={[
+              { id: 'play', label: t.format === 'bracket' ? 'Cuadro' : 'Clasificación' },
+              { id: 'report', label: 'Ficha' },
+            ]}
+          />
+          {t.status === 'active' && (
+            <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
+              Cancelar
+            </button>
+          )}
+        </>
       }
     >
+      {view === 'report' ? (
+        <TournamentReportView t={t} />
+      ) : (
+      <>
       {t.status === 'finished' && winner && (
         <div className="champion-banner">
           {prefs.effects !== 'off' && <Confetti count={30} />}
@@ -650,6 +821,8 @@ export function TournamentDetailScreen({ id }: { id: string }) {
             })}
         </div>
       </div>
+      </>
+      )}
       {confirmCancel && (
         <Modal
           title="¿Cancelar el torneo?"
@@ -674,5 +847,145 @@ export function TournamentDetailScreen({ id }: { id: string }) {
         </Modal>
       )}
     </ScreenFrame>
+  );
+}
+
+/**
+ * Ficha completa del torneo: campeón y MVP arriba; información, destacados y estadísticas
+ * de cada jugador debajo. Los destacados abren el partido.
+ */
+function TournamentReportView({ t }: { t: Tournament }) {
+  const { matches, players, navigate, prefs } = useApp();
+  const r = tournamentReport(t, matches, players);
+  const champ = t.teams.find((x) => x.id === t.winnerTeamId);
+  const photo = (id: string) => players.find((p) => p.id === id)?.photo;
+  const openMatch = (matchId: string) => navigate({ name: 'matchDetail', matchId, fromTournament: true });
+  const anyScored = r.players.some((p) => p.scored > 0);
+  const total = t.fixtures.filter((f) => !f.bye).length;
+  const minutes = (ms: number) => `${Math.max(1, Math.round(ms / 60000))} min`;
+  const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+  const info: [string, string][] = [
+    ['Competición', t.templateName ?? t.name],
+    ['Edición', t.edition ? `${t.edition}ª` : '—'],
+    ['Formato', `${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}`],
+    ['Empezó', shortDate(r.startedAt ?? t.createdAt)],
+    ['Terminó', t.status === 'finished' && r.finishedAt ? shortDate(r.finishedAt) : t.status === 'cancelled' ? 'Cancelado' : 'En juego'],
+    ['Partidos', t.status === 'finished' ? String(r.matches.length) : `${r.matches.length} de ${total}`],
+    ['Goles', `${r.totalGoals}${r.matches.length ? ` · ${r.avgGoals.toFixed(1)} por partido` : ''}`],
+    ['Tiempo de juego', r.matches.length ? minutes(r.playTimeMs) : '—'],
+    ['Prórroga o penaltis', String(r.extraTime)],
+    ['Cuenta para ELO', t.ranked ? 'Sí' : 'No'],
+  ];
+  if (r.finalScore) info.splice(6, 0, ['Final', r.finalScore]);
+
+  const highlights: { icon: string; label: string; text: string; matchId?: string }[] = [];
+  if (r.topScorer) highlights.push({ icon: '⚽', label: 'Pichichi', text: `${r.topScorer.name} · ${r.topScorer.scored} goles` });
+  if (r.biggestWin) highlights.push({ icon: '💥', label: 'Mayor goleada', text: r.biggestWin.label, matchId: r.biggestWin.match.id });
+  if (r.highestScoring) highlights.push({ icon: '🔥', label: 'Partido con más goles', text: r.highestScoring.label, matchId: r.highestScoring.match.id });
+  if (r.longest) highlights.push({ icon: '⏱', label: `Partido más largo · ${minutes(r.longest.match.result.totalTimeMs)}`, text: r.longest.label, matchId: r.longest.match.id });
+
+  return (
+    <div className="rp-layout scroll">
+      <div className="rp-hero">
+        <div className={`rp-champ ${champ ? '' : 'is-pending'}`}>
+          {champ && prefs.effects !== 'off' && <Confetti count={24} />}
+          <Trophy size={58} />
+          <div className="rp-champ-body">
+            <div className="label">{champ ? 'Campeón' : t.status === 'cancelled' ? 'Cancelado' : 'En juego'}</div>
+            <div className="rp-champ-name">{champ?.name ?? 'Por decidir'}</div>
+            {r.finalScore && <small>Final: {r.finalScore}</small>}
+          </div>
+          {champ && (
+            <div className="rp-avatars">
+              {champ.playerIds.map((id) => (
+                <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photo(id)} size={46} />
+              ))}
+            </div>
+          )}
+        </div>
+        {r.mvp && (
+          <div className="rp-mvp">
+            <Avatar name={r.mvp.name} photo={photo(r.mvp.playerId)} size={52} />
+            <div className="rp-mvp-body">
+              <div className="label">★ MVP{t.status === 'finished' ? '' : ' provisional'}</div>
+              <div className="rp-mvp-name">{r.mvp.name}</div>
+              <small>
+                {r.mvp.wins} G · {r.mvp.losses} P{r.mvp.scored ? ` · ${r.mvp.scored} goles` : ''} · {sign(r.mvp.goalsFor - r.mvp.goalsAgainst)} · {r.mvp.mvp} pts
+              </small>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="rp-grid">
+        <div className="rp-side">
+          <div className="rp-card">
+            <div className="label">Información</div>
+            <dl className="rp-info">
+              {info.map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          {highlights.length > 0 && (
+            <div className="rp-card">
+              <div className="label">Destacados</div>
+              {highlights.map((h) => (
+                <button key={h.label} className="rp-hl" disabled={!h.matchId} onClick={() => h.matchId && openMatch(h.matchId)}>
+                  <span aria-hidden="true">{h.icon}</span>
+                  <span>
+                    <small>{h.label}</small>
+                    <b>{h.text}</b>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rp-card">
+          <div className="label">Jugadores</div>
+          <table className="rep-table rp-table">
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>PJ</th>
+                <th>G</th>
+                <th>P</th>
+                {anyScored && <th title="Goles marcados">Goles</th>}
+                <th title="Diferencia de goles de su equipo">Dif</th>
+                <th>% vic.</th>
+                <th title="Puntuación MVP">MVP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.players.map((p, i) => (
+                <tr key={p.playerId} className={i === 0 && r.mvp ? 'leader' : ''}>
+                  <td>
+                    <span className="rp-player">
+                      <Avatar name={p.name} photo={photo(p.playerId)} size={24} />
+                      {p.name}
+                      {p.champion && <span title="Campeón"> 🏆</span>}
+                    </span>
+                  </td>
+                  <td>{p.played}</td>
+                  <td>{p.wins}</td>
+                  <td>{p.losses}</td>
+                  {anyScored && <td>{p.scored}</td>}
+                  <td>{sign(p.goalsFor - p.goalsAgainst)}</td>
+                  <td>{p.played ? `${Math.round(p.winPct)} %` : '—'}</td>
+                  <td><strong>{p.mvp}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="dim" style={{ fontSize: 10, marginTop: 6 }}>
+            MVP = 3 por victoria + 1 por gol marcado + la mitad de la diferencia de goles + 2 al campeón.
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
