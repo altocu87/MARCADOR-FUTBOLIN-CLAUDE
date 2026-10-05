@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '../src/match-engine';
 import { DEFAULT_PROGRESSION, normalizePreferences, type Player, type StoredMatch, type Tournament } from '../src/services/persistence';
-import { mergeBlocker, mergePlayers } from '../src/services/players';
+import { findNameClash, mergeBlocker, mergePlayers, nameKey, validatePlayerDraft } from '../src/services/players';
 import { computeProgression } from '../src/services/progression';
 import { seededRandom } from '../src/services/statistics/calendar';
 import {
@@ -314,5 +314,23 @@ describe('Siguiente partido', () => {
     expect(seen).toEqual([...seen].sort((a, b) => a - b));
     expect(nextFixture(t)).toBeUndefined();
     expect(fixtureProgress(t)).toEqual({ done: 10, total: 10 });
+  });
+});
+
+describe('Nombres repetidos', () => {
+  const ps: Player[] = [
+    { id: 'j', name: 'José', active: true, createdAt: 0, updatedAt: 0 },
+    { id: 'g', name: 'Pepe', guest: true, active: true, createdAt: 0, updatedAt: 0 },
+  ];
+  it('detecta el mismo nombre sin tildes, mayúsculas ni espacios', () => {
+    expect(nameKey('  José  ')).toBe('jose');
+    expect(findNameClash('jose', ps)?.id).toBe('j');
+    expect(findNameClash('PEPE', ps)?.id).toBe('g');
+    expect(findNameClash('Pepa', ps)).toBeUndefined();
+    // Al editar a uno, su propio nombre no cuenta.
+    expect(findNameClash('José', ps, 'j')).toBeUndefined();
+  });
+  it('no deja guardar un jugador con un nombre que ya existe', () => {
+    expect(validatePlayerDraft({ name: 'pepe' }, ps)).toContain('Ya existe un jugador con ese nombre.');
   });
 });

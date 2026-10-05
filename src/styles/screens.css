@@ -3993,3 +3993,44 @@
   font-size: 11px;
   color: var(--text-2);
 }
+
+/* ---------- Nombre repetido ---------- */
+.name-clash {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.modal .name-clash,
+div > .name-clash:first-child {
+  margin-top: 0;
+}
+.name-clash {
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid #f2994a;
+  background: rgba(242, 153, 74, 0.1);
+  box-shadow: 0 0 10px rgba(242, 153, 74, 0.35);
+}
+.name-clash-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.name-clash-head span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.name-clash-head b {
+  font-size: 14px;
+}
+.name-clash-head small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.name-clash-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

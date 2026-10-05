@@ -44,7 +44,7 @@ export function GuestActions({ player, onMerged }: { player: Player; onMerged?: 
       <button className="btn btn-sm" onClick={() => setMerging(true)} disabled={candidates.length === 0}>
         Fusionar con…
       </button>
-      {promoting && <PlayerEditor player={player} promote onClose={() => setPromoting(false)} />}
+      {promoting && <PlayerEditor player={player} promote onClose={() => setPromoting(false)} onMerged={onMerged} />}
       {merging && (
         <Modal
           title={`Fusionar a ${player.name} con…`}

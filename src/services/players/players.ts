@@ -12,14 +12,29 @@ export interface PlayerDraft {
   photo?: string;
 }
 
+/** Nombre comparable: sin mayúsculas, tildes ni espacios de más («José» = «jose »). */
+export function nameKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+/** Jugador o invitado que ya usa ese nombre (no puede haber dos iguales). */
+export function findNameClash(name: string, players: Player[], exceptId?: string): Player | undefined {
+  const key = nameKey(name);
+  return key ? players.find((p) => p.id !== exceptId && nameKey(p.name) === key) : undefined;
+}
+
 export function validatePlayerDraft(draft: PlayerDraft, others: Player[], editingId?: string): string[] {
   const errors: string[] = [];
   const name = draft.name.trim();
   if (!name) errors.push('El nombre es obligatorio.');
   if (name.length > NAME_MAX) errors.push(`El nombre admite como máximo ${NAME_MAX} caracteres.`);
   if ((draft.alias ?? '').trim().length > ALIAS_MAX) errors.push(`El alias admite como máximo ${ALIAS_MAX} caracteres.`);
-  const clash = others.some((p) => p.id !== editingId && p.name.trim().toLowerCase() === name.toLowerCase());
-  if (clash) errors.push('Ya existe un jugador con ese nombre.');
+  if (findNameClash(name, others, editingId)) errors.push('Ya existe un jugador con ese nombre.');
   return errors;
 }
 

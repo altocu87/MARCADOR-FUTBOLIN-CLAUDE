@@ -2,11 +2,11 @@
  * Torneos: lista, creación a partir de un predefinido, creador de predefinidos y detalle
  * (clasificación, cuadro o Pool rotativo, final y partidos).
  */
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
-import type { Fixture, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
-import { initials, sortPlayers } from '../../services/players';
+import type { Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
@@ -36,6 +36,7 @@ import {
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
+import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { newId } from '../../services/ids';
 import { Confetti } from '../components/graphics';
@@ -298,6 +299,9 @@ export function TournamentNewScreen({
   const [seed, setSeed] = useState(() => String(Date.now()));
   const [creating, setCreating] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
+  // Jugador o invitado que ya tiene el nombre escrito.
+  const [guestClash, setGuestClash] = useState<Player | null>(null);
+  const guestRef = useRef<HTMLInputElement>(null);
   const [showAll, setShowAll] = useState(false);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
@@ -317,22 +321,30 @@ export function TournamentNewScreen({
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se apunta a ese.
+  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se pregunta si es la misma persona.
   const addGuest = async () => {
     const clean = (guestName ?? '').trim();
     if (!clean) return;
-    // No puede haber dos con el mismo nombre (tampoco con alguien dado de baja: se reactiva).
-    const same = players.find((p) => p.name.trim().toLocaleLowerCase('es') === clean.toLocaleLowerCase('es'));
+    // No puede haber dos con el mismo nombre (ni jugador ni invitado): se pregunta qué hacer.
+    const same = findNameClash(clean, players);
     if (same) {
-      if (!same.active) await savePlayer({ ...same, active: true, updatedAt: Date.now() });
-      setSelected((s) => (s.includes(same.id) ? s : [...s, same.id]));
-      toast(`${same.name} ya existía: apuntado`);
-    } else {
-      const now = Date.now();
-      const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
-      await savePlayer(guest);
-      setSelected((s) => [...s, guest.id]);
+      setGuestClash(same);
+      return;
     }
+    const now = Date.now();
+    const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
+    await savePlayer(guest);
+    setSelected((s) => [...s, guest.id]);
+    setGuestName(null);
+  };
+
+  // «Es la misma persona»: se apunta al que ya existe (si estaba de baja, se reactiva).
+  const useExisting = async () => {
+    if (!guestClash) return;
+    if (!guestClash.active) await savePlayer({ ...guestClash, active: true, updatedAt: Date.now() });
+    setSelected((s) => (s.includes(guestClash.id) ? s : [...s, guestClash.id]));
+    toast(`${guestClash.name} apuntado`);
+    setGuestClash(null);
     setGuestName(null);
   };
 
@@ -433,24 +445,53 @@ export function TournamentNewScreen({
         {guestName !== null && (
           <Modal
             title="Añadir invitado"
-            onClose={() => setGuestName(null)}
+            onClose={() => {
+              setGuestName(null);
+              setGuestClash(null);
+            }}
             actions={
               <>
-                <button className="btn btn-ghost" onClick={() => setGuestName(null)}>Cancelar</button>
-                <button className="btn btn-primary" disabled={!guestName.trim()} onClick={addGuest}>Añadir</button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setGuestName(null);
+                    setGuestClash(null);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button className="btn btn-primary" disabled={!guestName.trim() || !!guestClash} onClick={addGuest}>
+                  Aceptar
+                </button>
               </>
             }
           >
             <input
+              ref={guestRef}
               className="input"
               autoFocus
               value={guestName}
-              maxLength={20}
+              maxLength={NAME_MAX}
               placeholder="Nombre del invitado"
               aria-label="Nombre del invitado"
-              onChange={(e) => setGuestName(e.target.value)}
+              onChange={(e) => {
+                setGuestName(e.target.value);
+                setGuestClash(null);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && void addGuest()}
             />
+            {guestClash && (
+              <NameClashNotice
+                clash={guestClash}
+                sameLabel="Es la misma persona: apuntarlo"
+                onSame={() => void useExisting()}
+                onRename={() => {
+                  setGuestClash(null);
+                  guestRef.current?.focus();
+                  guestRef.current?.select();
+                }}
+              />
+            )}
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
               Juega el torneo con su nombre y no sale en el ranking. Queda guardado para la próxima vez.
             </p>
