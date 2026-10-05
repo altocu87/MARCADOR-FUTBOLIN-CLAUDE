@@ -16,7 +16,12 @@ import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { SetupScreen } from '../ui/screens/SetupScreen';
 import { ChallengesScreen } from '../ui/screens/ChallengesScreen';
 import { MatchDetailScreen } from '../ui/screens/SimpleScreens';
-import { TournamentDetailScreen, TournamentListScreen, TournamentNewScreen } from '../ui/screens/TournamentScreens';
+import {
+  TournamentDetailScreen,
+  TournamentListScreen,
+  TournamentNewScreen,
+  TournamentTemplateScreen,
+} from '../ui/screens/TournamentScreens';
 import { SummaryScreen } from '../ui/screens/SummaryScreen';
 import { AppProvider, useApp } from './AppContext';
 
@@ -100,7 +105,10 @@ function Router() {
       screen = <TournamentListScreen />;
       break;
     case 'tournamentNew':
-      screen = <TournamentNewScreen />;
+      screen = <TournamentNewScreen key={route.templateId ?? ''} templateId={route.templateId} initialSelected={route.selected} />;
+      break;
+    case 'tournamentTemplate':
+      screen = <TournamentTemplateScreen key={`${route.templateId ?? ''}|${route.baseId ?? ''}`} templateId={route.templateId} baseId={route.baseId} selected={route.selected} />;
       break;
     case 'tournamentDetail':
       screen = <TournamentDetailScreen key={route.id} id={route.id} />;

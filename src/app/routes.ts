@@ -21,7 +21,9 @@ export type Route =
   | { name: 'matchDetail'; matchId: string }
   | { name: 'profile'; playerId: string }
   | { name: 'tournament' }
-  | { name: 'tournamentNew' }
+  | { name: 'tournamentNew'; templateId?: string; selected?: string[] }
+  /** Creador de predefinidos: `templateId` edita uno guardado; `baseId` parte de otro. `selected` se devuelve al volver. */
+  | { name: 'tournamentTemplate'; templateId?: string; baseId?: string; selected?: string[] }
   | { name: 'tournamentDetail'; id: string }
   | { name: 'challenges' }
   | { name: 'settings'; tab?: SettingsTab };

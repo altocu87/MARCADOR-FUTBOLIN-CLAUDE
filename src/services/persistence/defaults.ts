@@ -30,6 +30,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   challenges: true,
   keepAwake: true,
   hardware: { wsUrl: '', autoConnect: false },
+  tournamentTemplates: [],
 };
 
 /** Completa preferencias guardadas con valores por defecto (migración suave). */
@@ -44,5 +45,6 @@ export function normalizePreferences(raw: unknown): Preferences {
     progression: { ...base.progression, ...(r.progression ?? {}) },
     chaosRules: { ...base.chaosRules, ...(r.chaosRules ?? {}) },
     hardware: { ...base.hardware, ...(r.hardware ?? {}) },
+    tournamentTemplates: Array.isArray(r.tournamentTemplates) ? r.tournamentTemplates : [],
   };
 }

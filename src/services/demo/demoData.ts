@@ -20,7 +20,15 @@ import {
 import { newId } from '../ids';
 import { STORAGE_FORMAT_VERSION, type Player, type StoredMatch, type Tournament } from '../persistence';
 import { autoScorers } from '../statistics/extras';
-import { createTournament, fixtureParticipants, playableFixtures, recordFixtureResult } from '../tournaments';
+import {
+  createTournament,
+  effectivePoolGames,
+  fixtureConfig,
+  fixtureParticipants,
+  playableFixtures,
+  recordFixtureResult,
+  type TournamentDraft,
+} from '../tournaments';
 
 const DAY = 86_400_000;
 
@@ -232,15 +240,17 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
   const tournaments: Tournament[] = [];
   const runTournament = (
     name: string,
-    format: 'league' | 'bracket',
+    format: 'league' | 'bracket' | 'pool',
     teamSize: 1 | 2,
-    teamCount: number,
+    count: number,
     ranked: boolean,
     firstDay: number,
     maxMatches = Infinity,
+    extra: Partial<TournamentDraft> = {},
   ) => {
-    const ids = shuffled(players).slice(0, teamCount * teamSize).map((p) => p.id);
-    const teams = Array.from({ length: teamCount }, (_, i) => ({ playerIds: ids.slice(i * teamSize, (i + 1) * teamSize) }));
+    // En el Pool `count` son jugadores; en el resto, equipos.
+    const ids = shuffled(players).slice(0, format === 'pool' ? count : count * teamSize).map((p) => p.id);
+    const teams = format === 'pool' ? [] : Array.from({ length: count }, (_, i) => ({ playerIds: ids.slice(i * teamSize, (i + 1) * teamSize) }));
     let t = createTournament(
       {
         name,
@@ -250,6 +260,8 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
         config: { ...DEFAULT_CONFIG, goalsPerPeriod: 5, testMode: false },
         teams,
         seeding: 'random',
+        ...(format === 'pool' ? { entrants: ids, gamesPerPlayer: effectivePoolGames(count, 4), pairing: 'random' as const } : {}),
+        ...extra,
       },
       players,
       () => 1200,
@@ -258,10 +270,10 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
     );
     let clock = t.createdAt + 10 * 60_000;
     let played = 0;
-    for (let guard = 0; guard < 40 && played < maxMatches; guard += 1) {
+    for (let guard = 0; guard < 60 && played < maxMatches; guard += 1) {
       const fx = playableFixtures(t)[0];
       if (!fx) break;
-      const match = play(t.config, fixtureParticipants(t, fx, players), clock);
+      const match = play(fixtureConfig(t, fx), fixtureParticipants(t, fx, players), clock);
       match.tournament = { id: t.id, fixtureId: fx.id };
       matches.push(match);
       t = recordFixtureResult(t, fx.id, match, matches);
@@ -275,6 +287,7 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
   runTournament('Liga de Verano', 'league', 1, 5, true, startDay + 10 * DAY);
   runTournament('Copa Parejas', 'bracket', 2, 4, false, startDay + 45 * DAY);
   runTournament('Torneo Relámpago', 'bracket', 1, 7, true, startDay + 80 * DAY);
+  runTournament('Pool de los Viernes', 'pool', 2, 5, false, startDay + 100 * DAY, Infinity, { final: 'top4', finalBestOf: 3 });
   runTournament('Liga de Otoño', 'league', 1, 6, true, now - 6 * DAY, 8); // en juego
 
   matches.sort((a, b) => a.finishedAt - b.finishedAt);

@@ -10,7 +10,7 @@ describe('datos de prueba', () => {
   it('genera jugadores, más de 100 partidos y torneos', () => {
     expect(data.players.length).toBeGreaterThanOrEqual(10);
     expect(data.matches.length).toBeGreaterThanOrEqual(100);
-    expect(data.tournaments.filter((t) => t.status === 'finished').length).toBe(3);
+    expect(data.tournaments.filter((t) => t.status === 'finished').length).toBe(4);
     expect(data.tournaments.filter((t) => t.status === 'active').length).toBe(1);
   });
 

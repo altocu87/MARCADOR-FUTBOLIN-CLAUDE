@@ -52,7 +52,10 @@ export interface StoredMatch {
   tournament?: { id: string; fixtureId: string };
 }
 
-export type TournamentFormat = 'league' | 'bracket';
+/** Liguilla, cuadro eliminatorio o Pool (parejas rotativas con puntos individuales). */
+export type TournamentFormat = 'league' | 'bracket' | 'pool';
+/** Final tras la fase regular: sin final, 1º contra 2º o (Pool) 1º+4º contra 2º+3º. */
+export type TournamentFinal = 'none' | 'top2' | 'top4';
 
 export interface TournamentTeam {
   id: string;
@@ -71,6 +74,16 @@ export interface Fixture {
   bye?: boolean;
   nextFixtureId?: string;
   nextSlot?: 'white' | 'blue';
+  /** Final añadida tras la fase regular (liguilla y Pool); sus equipos se rellenan al acabar esa fase. */
+  stage?: 'final';
+  /** Pool: jugadores que descansan en esta ronda. */
+  resting?: string[];
+  /** Serie al mejor de N partidos (por defecto 1). */
+  bestOf?: number;
+  /** Victorias de cada lado en la serie. */
+  series?: { white: number; blue: number };
+  /** Partidos de la serie, en orden (`matchId` es siempre el último). */
+  matchIds?: string[];
 }
 
 export interface Tournament {
@@ -90,6 +103,40 @@ export interface Tournament {
   winnerTeamId?: string;
   /** Partido que cerró el torneo (para conceder el premio una vez). */
   finalMatchId?: string;
+  /** Pool: jugadores inscritos (las parejas cambian en cada partido). */
+  entrants?: string[];
+  /** Final tras la fase regular (liguilla y Pool). */
+  final?: TournamentFinal;
+  /** Reglas de la final si difieren de las del resto (p. ej. a más goles). */
+  finalConfig?: MatchConfig;
+  /** Predefinido con el que se creó. */
+  templateName?: string;
+}
+
+/** Tipo de torneo guardado como predefinido en el creador. */
+export interface TournamentTemplate {
+  id: string;
+  name: string;
+  /** Predefinido de fábrica (no se puede borrar). */
+  builtIn?: boolean;
+  format: TournamentFormat;
+  /** Liguilla y cuadro: 1 jugador o parejas fijas. El Pool siempre es por parejas rotativas. */
+  teamSize: 1 | 2;
+  /** Cómo se forman las parejas: equilibradas por ELO o al azar. */
+  pairing: 'elo' | 'random';
+  /** Cuadro: orden de siembra. */
+  seeding: 'elo' | 'random';
+  /** Pool: partidos que juega cada jugador (se ajusta para que todos jueguen los mismos). */
+  gamesPerPlayer: number;
+  final: TournamentFinal;
+  /** Final al mejor de 1 o de 3. */
+  finalBestOf: 1 | 3;
+  ranked: boolean;
+  endCondition: MatchConfig['endCondition'];
+  goalsPerPeriod: number;
+  minutesPerPeriod: number;
+  /** Goles de la final (null = los mismos que el resto). */
+  finalGoals: number | null;
 }
 
 export type EffectsLevel = 'full' | 'reduced' | 'off';
@@ -134,6 +181,8 @@ export interface Preferences {
   keepAwake: boolean;
   /** Conexión con placas (Arduino/ESP32). */
   hardware: HardwarePrefs;
+  /** Tipos de torneo guardados en el creador (los de fábrica van aparte). */
+  tournamentTemplates: TournamentTemplate[];
 }
 
 export interface HardwarePrefs {
