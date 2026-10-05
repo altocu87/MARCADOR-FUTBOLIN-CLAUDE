@@ -14,8 +14,10 @@ import {
   playableFixtures,
   poolGameOptions,
   poolStandings,
+  recommendedTemplateId,
   recordFixtureResult,
   schedulePool,
+  templateFit,
   validateDraft,
   type TournamentDraft,
 } from '../src/services/tournaments';
@@ -186,5 +188,30 @@ describe('Parejas fijas y predefinidos', () => {
 
   it('las preferencias antiguas se completan con la lista de predefinidos vacía', () => {
     expect(normalizePreferences({ volume: 0.2 }).tournamentTemplates).toEqual([]);
+  });
+});
+
+describe('Tipos de torneo según el número de jugadores', () => {
+  const tpl = (id: string) => BUILT_IN_TEMPLATES.find((x) => x.id === id)!;
+  it('las parejas fijas no encajan con número impar y dicen por qué', () => {
+    const fit = templateFit(tpl('builtin-pairs'), 7);
+    expect(fit.ok).toBe(false);
+    expect(fit.reason).toMatch(/par/);
+    expect(templateFit(tpl('builtin-pairs'), 8).ok).toBe(true);
+  });
+  it('el Pool encaja con pares e impares y resume los descansos', () => {
+    expect(templateFit(tpl('builtin-pool'), 5).summary).toMatch(/descansa 1/);
+    expect(templateFit(tpl('builtin-pool'), 8).summary).toMatch(/sin descansos/);
+    expect(templateFit(tpl('builtin-pool'), 3).ok).toBe(false);
+  });
+  it('la liguilla individual tiene tope de 8', () => {
+    expect(templateFit(tpl('builtin-league'), 9).ok).toBe(false);
+  });
+  it('recomienda según cuántos son', () => {
+    expect(recommendedTemplateId(3)).toBe('builtin-league');
+    expect(recommendedTemplateId(5)).toBe('builtin-pool');
+    expect(recommendedTemplateId(8)).toBe('builtin-pairs');
+    expect(recommendedTemplateId(9)).toBe('builtin-pool');
+    expect(recommendedTemplateId(2)).toBeNull();
   });
 });

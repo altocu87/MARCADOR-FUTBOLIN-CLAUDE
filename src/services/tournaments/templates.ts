@@ -5,8 +5,8 @@
 import { DEFAULT_CONFIG, type MatchConfig } from '../../match-engine';
 import type { TournamentTemplate } from '../persistence';
 import { newId } from '../ids';
-import { effectivePoolGames } from './pool';
-import { FORMAT_LABEL, formTeams, type TournamentDraft } from './tournaments';
+import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, effectivePoolGames } from './pool';
+import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, type TournamentDraft } from './tournaments';
 
 const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   builtIn: true,
@@ -28,6 +28,7 @@ export const BUILT_IN_TEMPLATES: TournamentTemplate[] = [
   { ...base, id: 'builtin-league', name: 'Liguilla rápida', format: 'league', goalsPerPeriod: 3 },
   { ...base, id: 'builtin-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
   { ...base, id: 'builtin-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },
+  { ...base, id: 'builtin-pairs', name: 'Copa Parejas', format: 'bracket', teamSize: 2, finalBestOf: 3, finalGoals: 7 },
 ];
 
 export function allTemplates(saved: TournamentTemplate[]): TournamentTemplate[] {
@@ -114,4 +115,52 @@ export function draftFromTemplate(
   }
   const { teams, leftover } = formTeams(selected, t.teamSize, t.pairing, eloOf, rnd);
   return { draft: { ...common, teamSize: t.teamSize, teams }, leftover };
+}
+
+export interface TemplateFit {
+  ok: boolean;
+  /** Por qué no se puede jugar con este número de jugadores. */
+  reason?: string;
+  /** Lo que saldría: «5 partidos · cada uno juega 4 y descansa 1». */
+  summary?: string;
+}
+
+/** ¿Se puede jugar este tipo de torneo con `n` jugadores? Y, si se puede, cómo saldría. */
+export function templateFit(t: TournamentTemplate, n: number): TemplateFit {
+  const finalExtra = t.format !== 'bracket' && t.final !== 'none' ? ' + final' + (t.finalBestOf > 1 ? ' al mejor de 3' : '') : '';
+  if (t.format === 'pool') {
+    if (n < POOL_MIN_PLAYERS) return { ok: false, reason: `Mínimo ${POOL_MIN_PLAYERS} jugadores` };
+    if (n > POOL_MAX_PLAYERS) return { ok: false, reason: `Máximo ${POOL_MAX_PLAYERS} jugadores` };
+    const g = effectivePoolGames(n, t.gamesPerPlayer);
+    const rest = n % 4;
+    const resting = rest === 0 ? 'sin descansos' : `descansa${rest > 1 ? 'n' : ''} ${rest} por ronda`;
+    return { ok: true, summary: `${(n * g) / 4} partidos${finalExtra} · cada uno juega ${g} · ${resting}` };
+  }
+  const size = t.teamSize;
+  const unit = size === 1 ? 'jugadores' : 'parejas';
+  if (size === 2 && n % 2 === 1) return { ok: false, reason: 'Necesita número par de jugadores' };
+  const teams = Math.floor(n / size);
+  if (teams < MIN_TEAMS) return { ok: false, reason: `Mínimo ${MIN_TEAMS * size} jugadores${size === 2 ? ` (${MIN_TEAMS} parejas)` : ''}` };
+  if (teams > MAX_TEAMS) return { ok: false, reason: `Máximo ${MAX_TEAMS} ${unit}` };
+  if (t.format === 'league') {
+    return { ok: true, summary: `${(teams * (teams - 1)) / 2} partidos${finalExtra} · ${teams} ${unit}, todos contra todos` };
+  }
+  const byes = (teams <= 4 ? 4 : 8) - teams;
+  const path = teams <= 4 ? 'semifinales y final' : 'cuartos, semis y final';
+  return {
+    ok: true,
+    summary: `${teams} ${unit} · ${path}${t.finalBestOf > 1 ? ' al mejor de 3' : ''}${byes ? ` · ${byes} pase${byes > 1 ? 's' : ''} directo${byes > 1 ? 's' : ''}` : ''}`,
+  };
+}
+
+/**
+ * Tipo de fábrica recomendado para `n` jugadores: con 3, liguilla; de 4 a 7, Pool rotativo
+ * (sirve igual con número par o impar); con 8 o más, Copa Parejas si son pares y si no, Pool.
+ */
+export function recommendedTemplateId(n: number): string | null {
+  const pick = (id: string) => (templateFit(BUILT_IN_TEMPLATES.find((x) => x.id === id)!, n).ok ? id : null);
+  if (n === 3) return pick('builtin-league');
+  if (n >= 4 && n <= 7) return pick('builtin-pool');
+  if (n >= 8) return (n % 2 === 0 ? pick('builtin-pairs') : null) ?? pick('builtin-pool');
+  return null;
 }

@@ -93,6 +93,12 @@ guardados sin origen y reprocesar no duplica premios.
   goles → goles a favor → enfrentamiento directo → nombre) o cuadro eliminatorio 3–8 con pases directos y
   siembra por ELO o sorteo. Parejas automáticas equilibradas (mejor ELO con peor). Si «cuenta para ELO», los
   partidos son Clasificatorio. Ganar el torneo da +300 XP una vez. Cancelar conserva los partidos jugados.
+- **Torneos «torneos-2»** (amplía la anterior): formato **Pool** de parejas rotativas (4–16 jugadores, 2 contra 2
+  con parejas nuevas en cada partido, puntos individuales; si sobran jugadores descansan por turnos y todos juegan
+  el mismo número de partidos). Final opcional (1º vs 2º; en el Pool también 1º+4º vs 2º+3º), al mejor de 3 y con
+  otros goles. Sin final, el premio va en el último partido jugado por el campeón. **Predefinidos**: 5 de fábrica
+  y los que se guarden en el creador. Crear torneo en dos pasos: primero quién juega y después solo los tipos que
+  encajan con ese número (los demás, apagados con el motivo), con uno recomendado.
 - **Logros**: 54 (10 secretos) con títulos elegibles. **Sorteo de equipos**: el reparto con menor diferencia
   de ELO medio. **Avisos**: bola de partido = el siguiente gol daría la victoria (2ª parte con goles, o prórroga).
 

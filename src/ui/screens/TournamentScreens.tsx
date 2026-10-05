@@ -6,15 +6,11 @@ import { useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import type { Fixture, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
-import { sortPlayers } from '../../services/players';
+import { initials, sortPlayers } from '../../services/players';
+import { displayTitle } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
-  BUILT_IN_TEMPLATES,
   FORMAT_LABEL,
-  MAX_TEAMS,
-  MIN_TEAMS,
-  POOL_MAX_PLAYERS,
-  POOL_MIN_PLAYERS,
   TOURNAMENT_RULES_VERSION,
   allTemplates,
   createTournament,
@@ -26,12 +22,16 @@ import {
   fixtureScore,
   newTemplate,
   playableFixtures,
+  recommendedTemplateId,
   roundLabel,
   standings,
+  templateFit,
   validateDraft,
+  type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
 import { Avatar, Modal, ScreenFrame, Toggle, formatDate } from '../components/common';
+import { PlayerEditor } from '../components/PlayerEditor';
 import { Confetti } from '../components/graphics';
 
 const FINAL_LABEL: Record<TournamentFinal, string> = {
@@ -63,6 +63,9 @@ function Seg<T>({ value, options, onChange }: { value: T; options: [T, string][]
   );
 }
 
+/** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
+const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
+
 function teamCountLabel(t: Tournament): string {
   return t.format === 'pool' ? `${t.entrants?.length ?? 0} jugadores` : `${t.teams.length} equipos · ${t.teamSize === 1 ? '1v1' : '2v2'}`;
 }
@@ -73,6 +76,8 @@ export function TournamentListScreen() {
   return (
     <ScreenFrame
       title="Torneos"
+      className="select-screen tn-screen"
+      background={TN_BG}
       onBack={() => navigate({ name: 'home' })}
       right={
         <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
@@ -127,33 +132,109 @@ export function TournamentListScreen() {
   );
 }
 
-/** Crear un torneo: se elige el predefinido, los jugadores y se revisa el reparto. */
+/**
+ * Crear un torneo en dos pasos: primero quién juega (fichas con foto) y después el tipo de torneo.
+ * La lista de tipos se ordena según el número de jugadores: arriba los que se pueden jugar (con el
+ * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
+ */
 export function TournamentNewScreen({ templateId, initialSelected }: { templateId?: string; initialSelected?: string[] }) {
   const { navigate, players, progression, prefs, saveTournament, toast } = useApp();
-  const templates = allTemplates(prefs.tournamentTemplates);
-  const [tplId, setTplId] = useState(templateId ?? BUILT_IN_TEMPLATES[0].id);
-  const [name, setName] = useState(`Torneo ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`);
+  const [step, setStep] = useState<'players' | 'format'>(initialSelected?.length ? 'format' : 'players');
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
+  const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
+  const [name, setName] = useState(`Torneo ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`);
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
-  const tpl = templates.find((x) => x.id === tplId) ?? templates[0];
+  const [creating, setCreating] = useState(false);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
+  const n = selected.length;
+
+  // Tipos ordenados: los que encajan primero (el recomendado el primero de todos).
+  const recommended = recommendedTemplateId(n);
+  const fits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
+  const usable = fits.filter((x) => x.fit.ok).sort((a, b) => Number(b.t.id === recommended) - Number(a.t.id === recommended));
+  const blocked = fits.filter((x) => !x.fit.ok);
+  const tpl = usable.find((x) => x.t.id === chosenTpl)?.t ?? usable[0]?.t;
+
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  const { draft, leftover } = draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed));
-  const errors = leftover.length
-    ? [`Parejas fijas: sobra ${nameOf(leftover[0])}.`]
-    : validateDraft(draft);
-  const isPool = tpl.format === 'pool';
-  const usesDraw = isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random');
-  const range = isPool
-    ? `${POOL_MIN_PLAYERS}–${POOL_MAX_PLAYERS}`
-    : tpl.teamSize === 1
-      ? `${MIN_TEAMS}–${MAX_TEAMS}`
-      : `${MIN_TEAMS * 2}–${MAX_TEAMS * 2}, número par`;
+  if (step === 'players') {
+    const available = sortPlayers(players.filter((p) => p.active));
+    return (
+      <ScreenFrame
+        title="¿Quién juega?"
+        subtitle="Nuevo torneo"
+        className="select-screen tn-screen"
+        background={TN_BG}
+        onBack={() => navigate({ name: 'tournament' })}
+        right={<button className="btn btn-sm" onClick={() => setCreating(true)}>+ Nuevo</button>}
+        footer={
+          <>
+            <span className="tn-count" aria-live="polite">
+              <b>{n}</b> {n === 1 ? 'jugador' : 'jugadores'}
+            </span>
+            <span className="notice select-status">
+              {n < 3 ? `Marca al menos ${3 - n} más` : `${usable.length} tipo${usable.length === 1 ? '' : 's'} de torneo disponible${usable.length === 1 ? '' : 's'}`}
+            </span>
+            <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
+              {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
+            </button>
+            <button className="btn btn-primary btn-lg" disabled={n < 3} onClick={() => setStep('format')}>
+              Siguiente
+            </button>
+          </>
+        }
+      >
+        <div className="pick-grid tn-pick-grid scroll">
+          {available.length === 0 ? (
+            <div className="empty" style={{ gridColumn: '1 / -1' }}>
+              <div>
+                <strong>Sin jugadores</strong>
+                Crea jugadores para montar un torneo.
+              </div>
+            </div>
+          ) : (
+            available.map((p) => {
+              const on = selected.includes(p.id);
+              const prog = progression?.players.get(p.id);
+              const title = displayTitle(prog, p.titleId);
+              return (
+                <button
+                  key={p.id}
+                  className={`pick-card tn-pick ${on ? 'is-picked' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => toggle(p.id)}
+                  aria-label={`${on ? 'Quitar a' : 'Apuntar a'} ${p.name}`}
+                >
+                  <span className="pick-photo">
+                    {p.photo ? <img src={p.photo} alt="" draggable={false} /> : <span className="pick-initials">{initials(p.name)}</span>}
+                    {on && <span className="tn-check" aria-hidden="true">✓</span>}
+                  </span>
+                  <span className="pick-info">
+                    <span className="pick-name">{p.name}</span>
+                    <span className="pick-meta">{prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
+                    {title && <span className="pick-title">{title}</span>}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => setSelected((s) => [...s, p.id])} />}
+      </ScreenFrame>
+    );
+  }
+
+  const { draft, leftover } = tpl
+    ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed))
+    : { draft: null, leftover: [] as string[] };
+  const errors = !tpl || !draft ? ['Ningún tipo de torneo encaja con estos jugadores.'] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
+  const isPool = tpl?.format === 'pool';
+  const usesDraw = !!tpl && (isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random'));
 
   const create = async () => {
+    if (!draft) return;
     try {
       const t = createTournament(draft, players, elo, Date.now(), seededRandom(`${seed}-cal`));
       await saveTournament(t);
@@ -163,50 +244,59 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
     }
   };
 
-  let preview: ReactNode;
-  if (selected.length === 0) preview = <span className="dim">Selecciona jugadores.</span>;
-  else if (isPool) {
-    const n = selected.length;
-    const g = draft.gamesPerPlayer ?? 0;
-    const rest = n % 4;
-    preview =
-      n < POOL_MIN_PLAYERS ? (
-        <span className="dim">Faltan {POOL_MIN_PLAYERS - n} jugador(es) para el primer 2 contra 2.</span>
-      ) : (
-        <div className="pool-preview">
-          <strong>{(n * g) / 4} partidos de 2 contra 2</strong>
-          <span>Cada jugador juega {g} partido(s) con parejas distintas{g !== tpl.gamesPerPlayer ? ` (ajustado de ${tpl.gamesPerPlayer} para que todos jueguen lo mismo)` : ''}.</span>
-          <span>{rest === 0 ? 'En cada ronda juegan todos.' : `En cada ronda descansa${rest > 1 ? 'n' : ''} ${rest}, por turnos.`}</span>
-          {draft.final !== 'none' && <span>Final: {FINAL_LABEL[draft.final!]}{tpl.finalBestOf > 1 ? ', al mejor de 3' : ''}.</span>}
+  const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => (
+    <button
+      key={t.id}
+      className={`tpl-card ${fit.ok ? '' : 'is-off'}`}
+      aria-pressed={fit.ok && t.id === tpl?.id}
+      disabled={!fit.ok}
+      onClick={() => setChosenTpl(t.id)}
+    >
+      <strong>
+        {t.name}
+        {t.id === recommended && <span className="tpl-rec">Recomendado</span>}
+        {!t.builtIn && <span className="tpl-mine">mío</span>}
+      </strong>
+      {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
+      <span>{describeTemplate(t)}</span>
+    </button>
+  );
+
+  let preview: ReactNode = null;
+  if (tpl && draft) {
+    preview = isPool ? (
+      <div className="tn-plan">
+        <strong>{templateFit(tpl, n).summary}</strong>
+        <span>Las parejas cambian en cada partido y puntúa cada jugador.{draft.gamesPerPlayer !== tpl.gamesPerPlayer ? ` Ajustado a ${draft.gamesPerPlayer} partidos por jugador para que todos jueguen los mismos.` : ''}</span>
+        {draft.final !== 'none' && <span>Final: {FINAL_LABEL[draft.final!]}{tpl.finalBestOf > 1 ? ', al mejor de 3' : ''}.</span>}
+        <div className="tn-teams" style={{ marginTop: 4 }}>
+          {selected.map((id) => <span key={id} className="tn-team">{nameOf(id)}</span>)}
         </div>
-      );
-  } else {
-    preview = (
-      <div className="tn-teams">
-        {draft.teams.map((t, i) => (
-          <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
-        ))}
-        {leftover.map((id) => (
-          <span key={id} className="tn-team tn-team-out">{nameOf(id)} · sin pareja</span>
-        ))}
+      </div>
+    ) : (
+      <div className="tn-plan">
+        <strong>{templateFit(tpl, n).summary}</strong>
+        <div className="tn-teams">
+          {draft.teams.map((t, i) => (
+            <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <ScreenFrame
-      title="Nuevo torneo"
-      onBack={() => navigate({ name: 'tournament' })}
+      title="Elige el torneo"
+      subtitle={`${n} jugadores`}
+      className="select-screen tn-screen"
+      background={TN_BG}
+      onBack={() => setStep('players')}
       footer={
         <>
-          <span className={`notice ${errors.length ? 'warn' : ''}`} style={{ marginRight: 'auto' }}>
-            {errors[0] ?? (isPool ? `${selected.length} jugadores listos` : `${draft.teams.length} equipos listos`)}
+          <span className={`notice select-status ${errors.length ? 'warn' : ''}`}>
+            {errors[0] ?? (isPool ? `${n} jugadores listos` : `${draft?.teams.length ?? 0} equipos listos`)}
           </span>
-          {leftover.length > 0 && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setTplId(BUILT_IN_TEMPLATES[0].id)}>
-              Pasar a Pool rotativo
-            </button>
-          )}
           <button className="btn btn-primary btn-lg" disabled={errors.length > 0} onClick={create}>
             Crear torneo
           </button>
@@ -215,45 +305,34 @@ export function TournamentNewScreen({ templateId, initialSelected }: { templateI
     >
       <div className="tn-layout">
         <div className="tn-col">
-          <div className="label">Tipo de torneo</div>
+          <div className="label">Tipos de torneo para {n} jugadores</div>
           <div className="tpl-list scroll">
-            {templates.map((t) => (
-              <button key={t.id} className="tpl-card" aria-pressed={t.id === tpl.id} onClick={() => setTplId(t.id)}>
-                <strong>
-                  {t.name}
-                  {!t.builtIn && <span className="badge" style={{ marginLeft: 6 }}>mío</span>}
-                </strong>
-                <span>{describeTemplate(t)}</span>
-              </button>
-            ))}
+            {usable.map(tplCard)}
+            {blocked.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
+            {blocked.map(tplCard)}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected })}>
               + Crear tipo
             </button>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => navigate(tpl.builtIn ? { name: 'tournamentTemplate', baseId: tpl.id, selected } : { name: 'tournamentTemplate', templateId: tpl.id, selected })}
-            >
-              {tpl.builtIn ? 'Copiar y ajustar' : 'Editar tipo'}
-            </button>
+            {tpl && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigate(tpl.builtIn ? { name: 'tournamentTemplate', baseId: tpl.id, selected } : { name: 'tournamentTemplate', templateId: tpl.id, selected })}
+              >
+                {tpl.builtIn ? 'Copiar y ajustar' : 'Editar tipo'}
+              </button>
+            )}
           </div>
         </div>
         <div className="tn-col">
+          <div className="label">Nombre</div>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Nombre del torneo" maxLength={30} />
-          <div className="label">Jugadores ({selected.length}) · {range}</div>
-          <div className="chip-wrap scroll" style={{ maxHeight: 110 }}>
-            {sortPlayers(players.filter((p) => p.active)).map((p) => (
-              <button key={p.id} className={`pick-chip ${selected.includes(p.id) ? 'pick-blue' : ''}`} onClick={() => toggle(p.id)}>
-                {p.name}
-              </button>
-            ))}
-          </div>
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ flex: 1 }}>
-              {isPool ? 'Cómo se jugará' : `Equipos${tpl.teamSize === 2 ? (tpl.pairing === 'elo' ? ' (parejas equilibradas por ELO)' : ' (parejas al azar)') : ''}`}
+              {isPool ? 'Cómo se jugará' : `Equipos${tpl?.teamSize === 2 ? (tpl.pairing === 'elo' ? ' · parejas equilibradas' : ' · parejas al azar') : ''}`}
             </span>
-            {usesDraw && selected.length > 0 && (
+            {usesDraw && (
               <button className="btn btn-ghost btn-sm" onClick={() => setSeed(String(Date.now()))}>
                 ↻ Sortear otra vez
               </button>
@@ -307,6 +386,8 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
   return (
     <ScreenFrame
       title={existing ? 'Editar tipo de torneo' : 'Crear tipo de torneo'}
+      className="select-screen tn-screen"
+      background={TN_BG}
       onBack={() => navigate({ name: 'tournamentNew', templateId: existing?.id ?? baseId, selected })}
       footer={
         <>
@@ -473,6 +554,8 @@ export function TournamentDetailScreen({ id }: { id: string }) {
   return (
     <ScreenFrame
       title={t.name}
+      className="select-screen tn-screen"
+      background={TN_BG}
       subtitle={`${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}${t.ranked ? ' · ELO' : ''}`}
       onBack={() => navigate({ name: 'tournament' })}
       right={
