@@ -19,6 +19,7 @@ import {
   poolGameOptions,
   poolStandings,
   recommendedTemplateId,
+  recommendedTemplateIds,
   recordFixtureResult,
   schedulePool,
   templateFit,
@@ -217,6 +218,14 @@ describe('Tipos de torneo según el número de jugadores', () => {
     expect(recommendedTemplateId(8)).toBe('builtin-pairs');
     expect(recommendedTemplateId(9)).toBe('builtin-pool');
     expect(recommendedTemplateId(2)).toBeNull();
+  });
+  it('de 4 a 6 jugadores propone pocos torneos y todos se pueden jugar', () => {
+    expect(recommendedTemplateIds(4)).toEqual(['builtin-pool', 'builtin-league', 'builtin-league-final']);
+    expect(recommendedTemplateIds(5)).toEqual(['builtin-pool', 'builtin-league']);
+    expect(recommendedTemplateIds(6)).toEqual(['builtin-pool', 'builtin-pairs-league', 'builtin-bracket']);
+    for (const n of [4, 5, 6]) {
+      for (const id of recommendedTemplateIds(n)) expect(templateFit(tpl(id), n).ok).toBe(true);
+    }
   });
 });
 

@@ -51,7 +51,9 @@ export function RankingScreen({ tab: initialTab }: { tab?: RankingTab }) {
 }
 
 function Standings() {
-  const { players, matches, progression, navigate, prefs } = useApp();
+  const { players: allPlayers, matches, progression, navigate, prefs } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const [scope, setScope] = useState<'season' | 'all'>('season');
   const now = Date.now();
   const currentSeason = seasonKey(now, prefs.seasonLength);
@@ -143,7 +145,9 @@ function Standings() {
 }
 
 function History() {
-  const { matches, players, navigate } = useApp();
+  const { matches, players: allPlayers, navigate } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const [mode, setMode] = useState<MatchMode | 'all'>('all');
   const [playerId, setPlayerId] = useState<string>('all');
   const [page, setPage] = useState(0);
@@ -213,7 +217,9 @@ function History() {
 }
 
 function PlayersGrid() {
-  const { players, progression, navigate } = useApp();
+  const { players: allPlayers, progression, navigate } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const list = sortPlayers(players);
   if (list.length === 0) {
     return (
@@ -244,7 +250,9 @@ function PlayersGrid() {
 }
 
 function HallOfFame() {
-  const { players, matches, progression, navigate, prefs } = useApp();
+  const { players: allPlayers, matches, progression, navigate, prefs } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const rows = useMemo(() => computeHallOfFame(players, matches, progression), [players, matches, progression]);
   const champions = useMemo(
     () => seasonChampions(players, matches, prefs.progression, prefs.seasonLength, Date.now()),
@@ -289,7 +297,9 @@ function HallOfFame() {
 }
 
 function Records() {
-  const { players, matches, progression, navigate } = useApp();
+  const { players: allPlayers, matches, progression, navigate } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const records = useMemo(() => computeRecords(players, matches, progression), [players, matches, progression]);
   if (records.length === 0) {
     return (
@@ -361,7 +371,9 @@ function Pairs() {
 }
 
 function Digest() {
-  const { matches, players, navigate } = useApp();
+  const { matches, players: allPlayers, navigate } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const [span, setSpan] = useState<'week' | 'month'>('week');
   const now = Date.now();
   const from = now - (span === 'week' ? 7 : 30) * 86_400_000;
@@ -404,7 +416,9 @@ function Digest() {
 }
 
 function Duel() {
-  const { players, matches, progression, navigate } = useApp();
+  const { players: allPlayers, matches, progression, navigate } = useApp();
+  // Los invitados no salen en el ranking.
+  const players = useMemo(() => allPlayers.filter((p) => !p.guest), [allPlayers]);
   const list = sortPlayers(players);
   const [a, setA] = useState(list[0]?.id ?? '');
   const [b, setB] = useState(list[1]?.id ?? '');

@@ -123,7 +123,8 @@ export function HomeScreen() {
             <button
               key={item.route}
               className={`menu-btn menu-${item.route}${pressed === item.route ? ' is-pressed' : ''}`}
-              onClick={() => press(item.route, () => navigate({ name: item.route }))}
+              // Torneo empieza eligiendo quién juega.
+              onClick={() => press(item.route, () => navigate(item.route === 'tournament' ? { name: 'tournamentNew' } : { name: item.route }))}
             >
               <svg className="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
                 {item.icon}
