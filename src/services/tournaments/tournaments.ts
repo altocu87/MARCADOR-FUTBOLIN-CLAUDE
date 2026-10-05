@@ -494,3 +494,42 @@ export function fixtureScore(f: Fixture, byId: Map<string, StoredMatch>): string
   if (!m) return null;
   return `${m.result.score.white}–${m.result.score.blue}${m.result.penaltyScore ? ` (p ${m.result.penaltyScore.white}–${m.result.penaltyScore.blue})` : ''}`;
 }
+
+/** Nivel de la fase: decide el color y la ornamentación del cartel. */
+export type PhaseTier = 'final' | 'semi' | 'quarter' | 'eighth' | 'round';
+
+export interface PhaseInfo {
+  tier: PhaseTier;
+  /** Título grande: «GRAN FINAL», «SEMIFINAL», «CUARTOS DE FINAL», «JORNADA 3»… */
+  title: string;
+  /** Debajo: serie («PARTIDO 2 · AL MEJOR DE 3», «¡PARTIDO DECISIVO!») o nada. */
+  sub?: string;
+}
+
+/** Cartel de la fase de un partido de torneo. */
+export function phaseInfo(t: Tournament, f: Fixture): PhaseInfo {
+  let tier: PhaseTier = 'round';
+  let title = roundLabel(t, f.round).toUpperCase();
+  if (f.stage === 'final') {
+    tier = 'final';
+    title = 'GRAN FINAL';
+  } else if (t.format === 'bracket') {
+    const fromEnd = Math.max(...t.fixtures.map((x) => x.round)) - f.round;
+    const names: [PhaseTier, string][] = [
+      ['final', 'GRAN FINAL'],
+      ['semi', 'SEMIFINAL'],
+      ['quarter', 'CUARTOS DE FINAL'],
+      ['eighth', 'OCTAVOS DE FINAL'],
+    ];
+    if (fromEnd < names.length) [tier, title] = names[fromEnd];
+  }
+  let sub: string | undefined;
+  const bestOf = f.bestOf ?? 1;
+  if (bestOf > 1) {
+    const w = f.series?.white ?? 0;
+    const b = f.series?.blue ?? 0;
+    const need = Math.ceil(bestOf / 2);
+    sub = w === need - 1 && b === need - 1 ? '¡PARTIDO DECISIVO!' : `PARTIDO ${w + b + 1} · AL MEJOR DE ${bestOf}`;
+  }
+  return { tier, title, ...(sub ? { sub } : {}) };
+}

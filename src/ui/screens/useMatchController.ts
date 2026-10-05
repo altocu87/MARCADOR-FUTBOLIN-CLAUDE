@@ -11,6 +11,8 @@ import { hardwareHub } from '../../inputs/hardware/hub';
 import { annulTeamFromCommand, teamFromCommand, inputBus } from '../../inputs/inputBus';
 import {
   advance,
+  COUNTDOWN_MS,
+  countdownRemaining,
   createMatch,
   dispatch,
   firstHandicapAtMs,
@@ -97,6 +99,9 @@ export interface MatchController {
   skipHandicapIntro(): void;
 }
 
+/** Cartel de la fase de un torneo antes de la cuenta atrás. */
+export const PHASE_POSTER_MS = 3500;
+
 /** Duración de la cuenta atrás que precede a cada hándicap (3 · 2 · 1). */
 export const HANDICAP_INTRO_MS = 3000;
 /** Tras un gol, se espera a que acabe la celebración antes de sacar un hándicap. */
@@ -123,7 +128,8 @@ export function useMatchController(
 ): MatchController {
   const { repos } = useApp();
   const [state, setState] = useState<MatchState>(
-    () => resume ?? createMatch(newId('m'), config, participants, Date.now()),
+    // En un torneo, antes del 3·2·1 se ve el cartel de la fase (semifinal, final…).
+    () => resume ?? createMatch(newId('m'), config, participants, Date.now(), extras?.tournament ? PHASE_POSTER_MS : 0),
   );
   const [now, setNow] = useState(() => Date.now());
   const [lastGoal, setLastGoal] = useState<MatchEvent | null>(null);
@@ -398,8 +404,9 @@ export function useMatchController(
           return;
         }
         if (s.phase === 'countdown' && (team || command === 'SALTAR')) {
-          // La pulsación se consume como salto y no registra además un gol.
-          send({ type: 'SKIP_COUNTDOWN' });
+          // La pulsación se consume como salto y no registra además un gol. Con el cartel de la
+          // fase en pantalla, primero salta el cartel (luego viene el 3·2·1).
+          send({ type: countdownRemaining(s, Date.now()) > COUNTDOWN_MS ? 'SKIP_INTRO' : 'SKIP_COUNTDOWN' });
           return;
         }
         if (team && s.phase === 'penalties') {

@@ -527,3 +527,15 @@ describe('Reloj y pausa', () => {
     expect(c.totalElapsedMs).toBe(75_000);
   });
 });
+
+describe('Cartel de fase antes de la cuenta atrás', () => {
+  it('la intro alarga la cuenta atrás y SKIP_INTRO la recorta a la cuenta normal', () => {
+    const plain = createMatch('m0', cfg(), P2, 0);
+    const s = createMatch('m1', cfg(), P2, 0, 3500);
+    expect(s.countdownEndsAt).toBe(plain.countdownEndsAt! + 3500);
+    const out = dispatch(s, { type: 'SKIP_INTRO' }, 1000);
+    expect(out.accepted).toBe(true);
+    expect(out.state.countdownEndsAt).toBe(1000 + plain.countdownEndsAt!);
+    expect(out.state.phase).toBe('countdown');
+  });
+});
