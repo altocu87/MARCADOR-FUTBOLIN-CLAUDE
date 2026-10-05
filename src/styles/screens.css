@@ -4120,3 +4120,32 @@ div > .name-clash:first-child {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Torneo nuevo: cómo se juegan los partidos (a goles, a tiempo o ambas). */
+.tn-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--accent);
+  background: rgba(7, 16, 28, 0.78);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 50%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.tn-rules .label {
+  margin: 0;
+}
+.tn-rules-row {
+  display: flex;
+  gap: 8px;
+}
+.tn-rules-row .segmented {
+  flex: 1;
+}
+.tn-rules-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+}
