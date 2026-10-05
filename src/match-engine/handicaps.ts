@@ -5,7 +5,7 @@
  * mínima). El sorteo recibe el generador de azar para que las pruebas sean reproducibles; lo
  * que se sortea queda guardado en el evento HANDICAP_START, así el partido se puede repasar.
  */
-import { getClock, getScore, goalTarget, otherTeam, periodTimeLimitMs } from './engine';
+import { getScore, goalTarget, otherTeam, periodTimeLimitMs } from './engine';
 import type { Bar, Handicap, HandicapKind, MatchState, ParticipantRef, Team, Visitor } from './types';
 
 export const HANDICAP_MIN_GAP_MS = 30_000;
@@ -234,7 +234,7 @@ const MINUTE = 60_000;
 export const ANIMAL_NAME: Record<Visitor['animal'], string> = {
   squirrel: 'la ardilla ladrona',
   snail: 'el caracol',
-  cat: 'el gato del futuro',
+  cat: 'el gato vomitón',
 };
 
 /**
@@ -257,11 +257,10 @@ export function scheduleVisitAtMs(
 }
 
 /** Elige el animal y su travesura sin decidir el partido; null si ninguno puede salir ahora. */
-export function pickVisitor(state: MatchState, id: string, now: number, rnd: () => number = Math.random): Visitor | null {
+export function pickVisitor(state: MatchState, id: string, _now: number, rnd: () => number = Math.random): Visitor | null {
   const score = getScore(state);
   const target = goalTarget(state);
   const timed = periodTimeLimitMs(state.config, state.period) !== null;
-  const remaining = getClock(state, now).remainingMs;
   const options: Visitor[] = [];
 
   // Ardilla: roba a un equipo con goles (mejor al que va ganando), sin hacer ganar al otro.
@@ -278,9 +277,15 @@ export function pickVisitor(state: MatchState, id: string, now: number, rnd: () 
   // Caracol: alarga (tiempo o meta), como mucho dos veces.
   const snails = state.events.filter((e) => e.type === 'VISIT' && e.visitor?.animal === 'snail').length;
   if (snails < 2) options.push(timed ? { id, animal: 'snail', timeMs: MINUTE } : { id, animal: 'snail', goals: 1 });
-  // Gato del futuro: acorta, pero nunca hasta decidir el partido.
-  if (timed && remaining !== null && remaining > 90_000) options.push({ id, animal: 'cat', timeMs: -MINUTE });
-  if (!timed && target - 1 > Math.max(score.white, score.blue) && target - 1 >= 2) options.push({ id, animal: 'cat', goals: -1 });
+  // Gato vomitón: vomita en el marcador de un equipo y le da un gol (mejor al que va perdiendo),
+  // sin que ese gol decida el partido.
+  const goalsDecide = !(timed && state.config.endCondition === 'time');
+  const lucky = (['white', 'blue'] as Team[]).filter((t) => !goalsDecide || score[t] + 1 < target);
+  if (lucky.length) {
+    const loser = score.white === score.blue ? null : score.white < score.blue ? 'white' : 'blue';
+    const to = loser && lucky.includes(loser) && rnd() < 0.65 ? loser : lucky[Math.floor(rnd() * lucky.length)];
+    options.push({ id, animal: 'cat', to });
+  }
 
   if (!options.length) return null;
   return options[Math.floor(rnd() * options.length) % options.length];
@@ -297,6 +302,10 @@ export function visitorText(v: Visitor): { title: string; detail: string } {
     return v.timeMs
       ? { title: '¡EL CARACOL!', detail: 'Atrasa el reloj: un minuto más de partido.' }
       : { title: '¡EL CARACOL!', detail: 'Sube la meta: ahora hace falta un gol más para ganar.' };
+  }
+  if (v.to) {
+    const team = v.to === 'white' ? 'blanco' : 'azul';
+    return { title: '¡EL GATO VOMITÓN!', detail: `Vomita un pescado y una bola de pelo en el marcador ${team}: gol para el equipo ${team}.` };
   }
   return v.timeMs
     ? { title: '¡EL GATO DEL FUTURO!', detail: 'Adelanta el reloj: un minuto menos de partido.' }

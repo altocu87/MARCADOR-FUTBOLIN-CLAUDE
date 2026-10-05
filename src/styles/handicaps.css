@@ -961,3 +961,211 @@
     transform: translateY(-120%);
   }
 }
+
+/* ---------- Gato vomitón ---------- */
+.visit-actor.animal-cat {
+  height: 22%;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+.vcat {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.vcat-body {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end center;
+  font-size: min(13vh, 110px);
+  line-height: 1;
+  transform-origin: 50% 100%;
+}
+.vcat-walk .vcat-body {
+  animation: vcat-walk 0.32s ease-in-out infinite alternate;
+}
+@keyframes vcat-walk {
+  to {
+    translate: 0 -7%;
+    rotate: 4deg;
+  }
+}
+.vcat-jump .vcat-body {
+  scale: 1.05 0.95;
+}
+/* Arcadas: el lomo se encoge y se estira a golpes. */
+.vcat-retch .vcat-body {
+  animation: vcat-retch 0.55s ease-in-out infinite;
+}
+@keyframes vcat-retch {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  30% {
+    scale: 1.12 0.8;
+  }
+  55% {
+    scale: 0.9 1.15;
+    translate: 0 -4%;
+  }
+}
+.vcat-puke .vcat-body {
+  animation: vcat-puke 0.35s ease-out 2;
+}
+@keyframes vcat-puke {
+  0% {
+    scale: 1.1 0.85;
+  }
+  40% {
+    scale: 0.85 1.2;
+    translate: 0 -8%;
+  }
+  100% {
+    scale: 1 1;
+  }
+}
+.vcat-proud .vcat-body {
+  scale: 1.08;
+}
+.vcat-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 92%;
+  translate: -50% 0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(10, 18, 30, 0.85);
+  border: 2px solid #9acd32;
+  font-size: 28px;
+  line-height: 1.1;
+  white-space: nowrap;
+  animation: vcat-bubble 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.vcat-bubble.is-word {
+  font-size: 24px;
+  font-weight: 900;
+  font-style: italic;
+  color: #c6e86b;
+  text-shadow: 0 0 10px #9acd32;
+}
+@keyframes vcat-bubble {
+  from {
+    scale: 0;
+  }
+}
+/* La gatera: una puertecita de neón con su trampilla. */
+.cat-door {
+  position: absolute;
+  width: 120px;
+  height: 104px;
+  transform: translate(-50%, -100%) scale(0);
+  z-index: 1;
+}
+.cat-door-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 46px 46px 10px 10px;
+  border: 5px solid #ffcc33;
+  background: radial-gradient(ellipse at 50% 70%, #1a0f05, #000 70%);
+  box-shadow: 0 0 16px rgba(255, 204, 51, 0.8), inset 0 0 18px rgba(255, 204, 51, 0.35);
+}
+.cat-door-flap {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 12px;
+  bottom: 8px;
+  border-radius: 34px 34px 6px 6px;
+  background: linear-gradient(180deg, rgba(120, 200, 255, 0.55), rgba(40, 80, 140, 0.75));
+  border: 2px solid rgba(160, 220, 255, 0.9);
+  transform-origin: 50% 0;
+}
+.cat-door-sign {
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  translate: -50% 0;
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px #ffcc33);
+}
+/* Lo vomitado: el pescado apestoso, la bola de pelo y el charco verde. */
+.cat-fish,
+.cat-hair,
+.cat-splat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  z-index: 2;
+}
+.cat-fish {
+  font-size: 72px;
+  line-height: 1;
+  filter: sepia(0.6) hue-rotate(40deg) saturate(1.6) brightness(0.8) drop-shadow(0 0 6px #9acd32);
+}
+.cat-fly {
+  position: absolute;
+  right: -6px;
+  top: -14px;
+  font-size: 30px;
+  color: #222;
+  animation: cat-fly 0.25s linear infinite alternate;
+}
+@keyframes cat-fly {
+  to {
+    translate: -18px 8px;
+  }
+}
+.cat-hair {
+  width: 58px;
+  height: 50px;
+  border-radius: 50% 45% 55% 48%;
+  background:
+    repeating-linear-gradient(35deg, rgba(0, 0, 0, 0.25) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-50deg, rgba(255, 255, 255, 0.15) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 40% 35%, #b08a5a, #6b4a2b 70%);
+  box-shadow: 0 0 0 3px rgba(107, 74, 43, 0.5), 0 0 10px rgba(154, 205, 50, 0.6);
+}
+.cat-splat {
+  width: 200px;
+  height: 134px;
+  filter: drop-shadow(0 0 10px rgba(154, 205, 50, 0.7));
+}
+.cat-splat svg {
+  width: 100%;
+  height: 100%;
+}
+.cat-stink {
+  position: absolute;
+  font-size: 30px;
+  font-weight: 900;
+  color: #9acd32;
+  rotate: -90deg;
+  animation: cat-stink 1.2s ease-out infinite;
+}
+.cat-stink.s1 {
+  left: 30%;
+  top: 0;
+}
+.cat-stink.s2 {
+  left: 50%;
+  top: -10px;
+  animation-delay: 0.4s;
+}
+.cat-stink.s3 {
+  left: 68%;
+  top: 0;
+  animation-delay: 0.8s;
+}
+@keyframes cat-stink {
+  from {
+    translate: 0 0;
+    opacity: 0.9;
+  }
+  to {
+    translate: 0 -40px;
+    opacity: 0;
+  }
+}

@@ -134,13 +134,16 @@ export type Animal = 'squirrel' | 'snail' | 'cat';
  * Travesura de un animal:
  * - ardilla: roba un gol al equipo `from` y se lo da al otro;
  * - caracol: +1 min al reloj (por tiempo) o sube la meta un gol (por goles);
- * - gato del futuro: −1 min al reloj (por tiempo) o baja la meta un gol (por goles).
+ * - gato vomitón: sale por una gatera y vomita encima del marcador del equipo `to`: gol para ese equipo.
+ *   (Partidos antiguos: el «gato del futuro» quitaba 1 min o bajaba la meta con `timeMs`/`goals`.)
  */
 export interface Visitor {
   id: string;
   animal: Animal;
   /** Ardilla: equipo al que le roba el gol. */
   from?: Team;
+  /** Gato: equipo en cuyo marcador vomita (se lleva un gol). */
+  to?: Team;
   /** Caracol / gato: cambio de tiempo de la parte en ms (±60 000). */
   timeMs?: number;
   /** Caracol / gato: cambio de la meta de goles (±1). */
@@ -202,7 +205,7 @@ export const HANDICAP_END_PAUSE_MS = 3000;
 export const VISIT_TIMING: Record<Animal, { apply: number; end: number }> = {
   squirrel: { apply: 4700, end: 7800 },
   snail: { apply: 3800, end: 6600 },
-  cat: { apply: 2800, end: 5600 },
+  cat: { apply: 5600, end: 8600 },
 };
 
 export interface Score {
