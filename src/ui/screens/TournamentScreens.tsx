@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import { restoreSnapshot } from '../../app/recovery';
-import type { ActiveMatchSnapshot, Club, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
 import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
@@ -51,8 +51,9 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage } from '../components/assets';
-import { Crest, Cup, IconGrid, IconPicker, defaultCup, defaultLogo } from '../components/Crest';
-import { clubNameTaken, findClub, saveClub } from '../../services/clubs';
+import { Crest, Cup, IconPicker, defaultCup, defaultLogo } from '../components/Crest';
+import { ClubEditor } from '../components/ClubEditor';
+import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
@@ -188,69 +189,6 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
           </div>
         )}
         <small className="tn-rules-note">Solo cambia lo que queda por jugar; los partidos jugados se quedan como están.</small>
-      </div>
-    </Modal>
-  );
-}
-
-/** Nombre y logo de una pareja fija. Se guarda como equipo y sale en todas las pantallas. */
-function TeamEditor({
-  playerIds,
-  players,
-  initial,
-  clubs,
-  onSave,
-  onClose,
-}: {
-  playerIds: string[];
-  players: Player[];
-  initial: { name: string; logo: string } | null;
-  clubs: Club[];
-  onSave: (v: { name: string; logo: string }) => void;
-  onClose: () => void;
-}) {
-  const ps = playerIds.map((id) => players.find((p) => p.id === id));
-  const [name, setName] = useState(initial?.name ?? '');
-  const [logo, setLogo] = useState(initial?.logo ?? defaultLogo(playerIds.join('|')));
-  const taken = !!name.trim() && clubNameTaken(clubs, name, playerIds);
-  return (
-    <Modal
-      title="Equipo"
-      onClose={onClose}
-      actions={
-        <>
-          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button
-            className="btn btn-primary"
-            disabled={!name.trim() || taken}
-            onClick={() => {
-              onSave({ name: name.trim(), logo });
-              onClose();
-            }}
-          >
-            Guardar equipo
-          </button>
-        </>
-      }
-    >
-      <div className="team-editor">
-        <div className="team-editor-head">
-          <Crest id={logo} size={72} />
-          <div className="team-editor-fields">
-            <input className="input" value={name} maxLength={22} placeholder="Nombre del equipo" aria-label="Nombre del equipo" onChange={(e) => setName(e.target.value)} autoFocus />
-            <div className="team-editor-players">
-              {ps.map((p, i) => (
-                <span key={playerIds[i]}>
-                  <Avatar name={p?.name ?? '?'} photo={p?.photo} size={30} /> {p?.name ?? '?'}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-        {taken && <div className="notice warn">Ya hay otro equipo con ese nombre.</div>}
-        <div className="label">Logo</div>
-        <IconGrid kind="logo" value={logo} onPick={setLogo} playerIds={playerIds} size={48} />
-        <small className="muted">Se guarda como equipo: saldrá con este nombre y logo siempre que jueguen juntos.</small>
       </div>
     </Modal>
   );
@@ -739,7 +677,7 @@ export function TournamentNewScreen({
   const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
     tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
   const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
-  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed)) : null;
+  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed), prefs.clubs.map((c) => c.playerIds)) : null;
   // Parejas fijas: su equipo guardado o lo que se haya escrito aquí.
   const teamKey = (ids: string[]) => [...ids].sort().join('|');
   const teamInfo = (ids: string[]) => {
@@ -927,12 +865,10 @@ export function TournamentNewScreen({
               />
             )}
             {editingTeam && (
-              <TeamEditor
-                playerIds={editingTeam}
-                players={players}
+              <ClubEditor
+                fixedPlayers={editingTeam}
                 initial={teamInfo(editingTeam)}
-                clubs={prefs.clubs}
-                onSave={(v) => setTeamEdits((e) => ({ ...e, [teamKey(editingTeam)]: v }))}
+                onSave={(v) => setTeamEdits((e) => ({ ...e, [teamKey(editingTeam)]: { name: v.name, logo: v.logo } }))}
                 onClose={() => setEditingTeam(null)}
               />
             )}

@@ -469,3 +469,16 @@ describe('Corregir un torneo ya empezado', () => {
     expect(recordFixtureResult(marked, f.id, m, [m]).fixtures.find((x) => x.id === f.id)!.abandonedAt).toBeUndefined();
   });
 });
+
+describe('Equipos guardados en torneos de parejas', () => {
+  it('si están los dos de un equipo, juegan juntos; el resto se empareja como siempre', () => {
+    const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-pairs')!;
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const elo = (id: string) => ({ a: 1500, b: 1490, c: 1200, d: 1100, e: 1000, f: 900 })[id]!;
+    // Por ELO, a y b irían separados; como son equipo, van juntos.
+    const { draft, leftover } = draftFromTemplate(tpl, 'Copa', ids, elo, {}, () => 0.3, [['a', 'b'], ['x', 'y']]);
+    expect(leftover).toEqual([]);
+    expect(draft.teams.map((t) => [...t.playerIds].sort().join(''))).toContain('ab');
+    expect(draft.teams).toHaveLength(3);
+  });
+});

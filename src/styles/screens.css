@@ -4388,3 +4388,15 @@ div > .name-clash:first-child {
   font-size: 21px;
   letter-spacing: 0.03em;
 }
+.club-row-players {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.club-row-players span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}

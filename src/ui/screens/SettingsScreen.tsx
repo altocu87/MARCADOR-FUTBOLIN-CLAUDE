@@ -26,6 +26,9 @@ import { Avatar, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components
 import { downloadJson } from '../components/download';
 import { GuestActions } from '../components/GuestActions';
 import { PlayerEditor } from '../components/PlayerEditor';
+import { ClubEditor } from '../components/ClubEditor';
+import { Crest } from '../components/Crest';
+import { saveClub, type Club } from '../../services/clubs';
 import { ConnectionsTab } from './ConnectionsTab';
 import { DiyTab } from './DiyTab';
 
@@ -218,6 +221,116 @@ function General() {
 }
 
 function Players() {
+  const [view, setView] = useState<'players' | 'teams'>('players');
+  return (
+    <>
+      <div className="segmented" style={{ marginBottom: 10, maxWidth: 360 }}>
+        <button className="seg seg-compact" aria-pressed={view === 'players'} onClick={() => setView('players')}>
+          JUGADORES
+        </button>
+        <button className="seg seg-compact" aria-pressed={view === 'teams'} onClick={() => setView('teams')}>
+          EQUIPOS
+        </button>
+      </div>
+      {view === 'players' ? <PlayerList /> : <TeamList />}
+    </>
+  );
+}
+
+/** Equipos fijos: una pareja con nombre y logo, que se reconoce sola cuando juegan juntos. */
+function TeamList() {
+  const { players, prefs, savePrefs, toast } = useApp();
+  const [editing, setEditing] = useState<Club | 'new' | null>(null);
+  const [removing, setRemoving] = useState<Club | null>(null);
+  const nameOf = (id: string) => players.find((p) => p.id === id);
+  const clubs = [...prefs.clubs].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const save = async (v: { name: string; logo: string; playerIds: string[] }) => {
+    try {
+      let list = prefs.clubs;
+      // Si se cambian los jugadores de un equipo, el antiguo se sustituye.
+      if (editing && editing !== 'new') list = list.filter((c) => c.id !== editing.id);
+      const r = saveClub(list, v.playerIds, v.name, v.logo, Date.now());
+      const club = editing && editing !== 'new' ? { ...r.club, id: editing.id, createdAt: editing.createdAt } : r.club;
+      await savePrefs({ ...prefs, clubs: r.clubs.map((c) => (c.id === r.club.id ? club : c)) });
+      toast(`Equipo «${v.name}» guardado`);
+    } catch {
+      toast('No se pudo guardar');
+    }
+  };
+  const remove = async (c: Club) => {
+    await savePrefs({ ...prefs, clubs: prefs.clubs.filter((x) => x.id !== c.id) });
+    setRemoving(null);
+    toast(`Equipo «${c.name}» borrado`);
+  };
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <span className="muted" style={{ flex: 1, fontSize: 13 }}>
+          {clubs.length} equipo{clubs.length === 1 ? "" : "s"} · cuando los dos juegan juntos salen con su nombre y logo, y en los torneos de parejas van siempre juntos.
+        </span>
+        <button className="btn btn-primary btn-sm" onClick={() => setEditing('new')}>
+          + Nuevo equipo
+        </button>
+      </div>
+      {clubs.length === 0 ? (
+        <div className="empty">
+          <div>
+            <strong>Sin equipos</strong>
+            Crea el primero con «Nuevo equipo».
+          </div>
+        </div>
+      ) : (
+        <div className="list">
+          {clubs.map((c) => (
+            <div key={c.id} className="row">
+              <Crest id={c.logo} size={40} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <strong>{c.name}</strong>
+                <span className="club-row-players">
+                  {c.playerIds.map((id) => {
+                    const p = nameOf(id);
+                    return (
+                      <span key={id}>
+                        <Avatar name={p?.name ?? '?'} photo={p?.photo} size={24} /> {p?.name ?? '?'}
+                      </span>
+                    );
+                  })}
+                </span>
+              </span>
+              <button className="btn btn-sm" onClick={() => setEditing(c)}>
+                Editar
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={() => setRemoving(c)}>
+                Borrar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {editing && <ClubEditor club={editing === 'new' ? undefined : editing} onSave={(v) => void save(v)} onClose={() => setEditing(null)} />}
+      {removing && (
+        <Modal
+          title={`¿Borrar «${removing.name}»?`}
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="btn btn-ghost" onClick={() => setRemoving(null)}>
+                No
+              </button>
+              <button className="btn btn-danger" onClick={() => void remove(removing)}>
+                Borrar
+              </button>
+            </>
+          }
+        >
+          <p style={{ margin: 0 }}>Los jugadores no se borran y los torneos ya jugados conservan el nombre. Solo deja de reconocerse esta pareja como equipo.</p>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function PlayerList() {
   const { players, savePlayer, toast } = useApp();
   const [editing, setEditing] = useState<Player | 'new' | null>(null);
   const list = sortPlayers(players);
