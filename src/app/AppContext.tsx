@@ -2,6 +2,7 @@
  * Composición de servicios de la aplicación: repositorios locales, datos cargados,
  * progresión derivada y navegación. La interfaz consume este contexto.
  */
+import { mergeClubPlayer } from '../services/clubs';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   DEFAULT_PREFERENCES,
@@ -147,6 +148,13 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
       await repos.matches.saveAll(r.matches);
       await repos.tournaments.saveAll(r.tournaments);
       await repos.players.saveAll(r.players);
+      // Sus equipos guardados pasan al jugador que se queda.
+      const pr = await repos.preferences.load();
+      const clubs = mergeClubPlayer(pr.clubs, fromId, intoId);
+      if (clubs !== pr.clubs) {
+        await repos.preferences.save({ ...pr, clubs });
+        setPrefs({ ...pr, clubs });
+      }
       await refresh();
       return { movedMatches: r.movedMatches, movedTournaments: r.movedTournaments };
     },

@@ -2330,3 +2330,8 @@
 .vic-many .vic-ach-desc {
   display: none;
 }
+
+/* Equipo con nombre propio: título más pequeño para que quepa entre los botones. */
+.overlay-victory .vic-title-wrap .victory-title.is-long {
+  font-size: 34px;
+}

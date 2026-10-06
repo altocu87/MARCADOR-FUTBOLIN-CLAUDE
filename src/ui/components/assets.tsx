@@ -16,6 +16,11 @@ for (const [path, url] of Object.entries(files)) {
   byName.set(base, url);
 }
 
+/** Nombres de las imágenes que empiezan por `prefix`, en orden (`escudo-01`, `escudo-02`…). */
+export function assetNames(prefix: string): string[] {
+  return [...byName.keys()].filter((n) => n.startsWith(prefix)).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+}
+
 export function assetUrl(name: string): string | undefined {
   return byName.get(name);
 }

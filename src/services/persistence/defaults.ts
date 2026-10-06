@@ -31,6 +31,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   keepAwake: true,
   hardware: { wsUrl: '', autoConnect: false },
   tournamentTemplates: [],
+  clubs: [],
 };
 
 /** Completa preferencias guardadas con valores por defecto (migración suave). */
@@ -46,5 +47,6 @@ export function normalizePreferences(raw: unknown): Preferences {
     chaosRules: { ...base.chaosRules, ...(r.chaosRules ?? {}) },
     hardware: { ...base.hardware, ...(r.hardware ?? {}) },
     tournamentTemplates: Array.isArray(r.tournamentTemplates) ? r.tournamentTemplates : [],
+    clubs: Array.isArray(r.clubs) ? r.clubs : [],
   };
 }

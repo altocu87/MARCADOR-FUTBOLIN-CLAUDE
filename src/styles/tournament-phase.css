@@ -100,6 +100,9 @@
 }
 
 .pp-tournament {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.3em;
@@ -361,4 +364,35 @@
   letter-spacing: 0.12em;
   white-space: nowrap;
   box-shadow: 0 0 10px color-mix(in srgb, var(--pc) 45%, transparent);
+}
+.phase-poster:has(.pp-club) {
+  gap: 4px;
+}
+.phase-poster:has(.pp-club) .pp-emblem {
+  width: 96px;
+  height: 96px;
+  font-size: 52px;
+}
+.phase-poster:has(.pp-club) .pp-player .avatar {
+  width: 46px !important;
+  height: 46px !important;
+  font-size: 18px !important;
+}
+.phase-poster:has(.pp-club) .pp-team {
+  font-size: 24px;
+  gap: 4px;
+}
+.pp-club {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 900;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-team.white .pp-club {
+  flex-direction: row-reverse;
 }

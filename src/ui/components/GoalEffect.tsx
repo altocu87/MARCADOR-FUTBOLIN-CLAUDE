@@ -3,6 +3,8 @@
  * «GOL ANULADO» al restar o deshacer un gol. Solo CSS (sin temporizadores)
  * y sin capturar toques.
  */
+import { useApp } from '../../app/AppContext';
+import { findClub } from '../../services/clubs';
 import type { CSSProperties } from 'react';
 import type { Team } from '../../match-engine';
 import type { EffectsLevel } from '../../services/persistence';
@@ -101,6 +103,8 @@ export function GoalShow({
   label?: string | null;
   people: { id: string; name: string; photo?: string }[];
 }) {
+  const { prefs } = useApp();
+  const club = findClub(prefs.clubs, people.map((p) => p.id));
   if (level === 'off') return null;
   const variant = pickGoalShowVariant(seed);
   const word = WORD[variant] ?? '¡GOL!';
@@ -143,7 +147,7 @@ export function GoalShow({
           </span>
         ))}
       </div>
-      <div className="gs-team">EQUIPO {team === 'white' ? 'BLANCO' : 'AZUL'}</div>
+      <div className="gs-team">{club ? club.name.toLocaleUpperCase('es') : `EQUIPO ${team === 'white' ? 'BLANCO' : 'AZUL'}`}</div>
       {label && <div className="gs-label">{label}</div>}
       <div className="gs-people">
         {people.map((p) => (

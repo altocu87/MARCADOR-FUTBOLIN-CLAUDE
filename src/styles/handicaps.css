@@ -961,3 +961,178 @@
     transform: translateY(-120%);
   }
 }
+
+/* ---------- Gato vomitón ---------- */
+.visit-actor.animal-cat {
+  height: 26%;
+  aspect-ratio: 1.15;
+  /* Contorno de neón cálido para que encaje con el resto del juego. */
+  filter: drop-shadow(0 0 2px rgba(255, 236, 200, 0.9)) drop-shadow(0 0 10px rgba(255, 170, 80, 0.55)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+.vcat {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.vcat-body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transform-origin: 50% 100%;
+}
+.vcat-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+.vcat-walk .vcat-body img {
+  animation: vcat-walk 0.17s ease-in-out infinite alternate;
+}
+@keyframes vcat-walk {
+  to {
+    translate: 0 -3%;
+  }
+}
+.vcat-retch .vcat-body img {
+  transform-origin: 50% 100%;
+  animation: vcat-retch 0.5s ease-in-out infinite;
+}
+@keyframes vcat-retch {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  35% {
+    scale: 1.08 0.88;
+  }
+  60% {
+    scale: 0.94 1.1;
+  }
+}
+.vcat-puke .vcat-body img {
+  transform-origin: 50% 100%;
+  animation: vcat-puke 0.35s ease-out 3;
+}
+@keyframes vcat-puke {
+  0% {
+    scale: 1.08 0.9;
+  }
+  45% {
+    scale: 0.92 1.12;
+    translate: 3% -4%;
+  }
+  100% {
+    scale: 1 1;
+  }
+}
+.vcat-sick .vcat-body img {
+  animation: vcat-sway 0.8s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+@keyframes vcat-sway {
+  from {
+    rotate: -3deg;
+  }
+  to {
+    rotate: 3deg;
+  }
+}
+.vcat-bubble {
+  position: absolute;
+  left: 60%;
+  bottom: 88%;
+  translate: -50% 0;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: rgba(10, 18, 30, 0.9);
+  border: 2px solid #9acd32;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  color: #c6e86b;
+  text-shadow: 0 0 10px #9acd32;
+  white-space: nowrap;
+  animation: vcat-bubble 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes vcat-bubble {
+  from {
+    scale: 0;
+  }
+}
+/* La gatera: imagen cerrada o abierta según pase el gato. */
+.cat-door {
+  position: absolute;
+  width: 112px;
+  transform: translate(-50%, -100%) scale(0);
+  z-index: 1;
+  filter: drop-shadow(0 0 12px rgba(255, 204, 51, 0.55));
+}
+.cat-door-img {
+  display: block;
+  width: 100%;
+}
+.cat-door-img.open {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.cat-door.is-open .cat-door-img.open {
+  opacity: 1;
+}
+.cat-door.is-open .cat-door-img.closed {
+  opacity: 0;
+}
+/* Lo vomitado: el pescado apestoso, la bola de pelo y el charco con tropezones y una mosca. */
+.cat-fish,
+.cat-hair,
+.cat-splat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  z-index: 2;
+}
+.cat-fish img {
+  display: block;
+  width: 96px;
+}
+.cat-hair img {
+  display: block;
+  width: 78px;
+}
+.cat-splat {
+  width: 175px;
+}
+.cat-splat-img {
+  display: block;
+  width: 100%;
+}
+.cat-chunks {
+  position: absolute;
+  width: 46%;
+  right: -8%;
+  bottom: -10%;
+}
+.cat-fly-img {
+  position: absolute;
+  width: 26%;
+  left: -6%;
+  top: -24%;
+  animation: cat-fly 0.6s ease-in-out infinite alternate;
+}
+@keyframes cat-fly {
+  0% {
+    translate: 0 0;
+    rotate: -8deg;
+  }
+  50% {
+    translate: 20px -12px;
+  }
+  100% {
+    translate: 6px 8px;
+    rotate: 8deg;
+  }
+}

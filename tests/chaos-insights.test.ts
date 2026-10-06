@@ -249,7 +249,7 @@ describe('Partido Loco: animales', () => {
     expect(s.events.filter((e) => e.type === 'GOAL').pop()?.scoreAfter).toEqual({ white: 0, blue: 2 });
   });
 
-  it('caracol y gato cambian la meta en partidos por goles', () => {
+  it('caracol y gato del futuro (partidos antiguos) cambian la meta en partidos por goles', () => {
     let s = loco();
     s = visit(s, { id: 'v1', animal: 'snail', goals: 1 }, 10_000);
     expect(goalTarget(s)).toBe(6);
@@ -277,9 +277,33 @@ describe('Partido Loco: animales', () => {
     const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
     for (let i = 0; i < 200; i += 1) {
       const v = pickVisitor(s, `v${i}`, 20_000, rnd);
-      // 2–2 a 3 goles: ni ardilla (daría la victoria) ni gato (bajaría la meta a 2).
+      // 2–2 a 3 goles: ni ardilla ni gato (su gol daría la victoria).
       expect(v?.animal).toBe('snail');
     }
+  });
+
+  it('el gato vomitón da un gol al equipo en cuyo marcador vomita', () => {
+    let s = loco();
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1000).state;
+    s = visit(s, { id: 'v1', animal: 'cat', to: 'blue' }, 10_000);
+    expect(getScore(s)).toEqual({ white: 1, blue: 1 });
+    const ev = s.events.filter((e) => e.type === 'VISIT').pop();
+    expect(ev?.team).toBe('blue');
+    // Un gol posterior lleva el marcador correcto.
+    s = dispatch(s, { type: 'GOAL', team: 'blue' }, 20_000).state;
+    expect(s.events.filter((e) => e.type === 'GOAL').pop()?.scoreAfter).toEqual({ white: 1, blue: 2 });
+  });
+
+  it('el gato prefiere al que va perdiendo y solo vomita a quien no gana con ese gol', () => {
+    let s = loco({ goalsPerPeriod: 3 });
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 1000).state;
+    s = dispatch(s, { type: 'GOAL', team: 'white' }, 5000).state;
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    const cats = Array.from({ length: 300 }, (_, i) => pickVisitor(s, `v${i}`, 9000, rnd)).filter((v) => v?.animal === 'cat');
+    expect(cats.length).toBeGreaterThan(0);
+    // 2–0 a 3: al blanco le daría la victoria, así que siempre vomita en el azul.
+    expect(cats.every((v) => v!.to === 'blue')).toBe(true);
   });
 });
 

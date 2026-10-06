@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { VISIT_TIMING, otherTeam, type Visitor } from '../../match-engine';
 import { assetUrl } from './assets';
 
-type Pose = 'hidden' | 'pop' | 'run' | 'sneak' | 'lift' | 'carry' | 'mock' | 'wink' | 'dive' | 'ball' | 'grab';
+type Pose = 'hidden' | 'pop' | 'run' | 'sneak' | 'lift' | 'carry' | 'mock' | 'wink' | 'dive' | 'ball' | 'grab' | 'walk' | 'crouch' | 'jump' | 'sick' | 'retch' | 'puke' | 'proud';
 
 /** Postura de cuerpo entero de la ardilla para cada momento de la escena. */
 const SQUIRREL_POSE: Partial<Record<Pose, string>> = {
@@ -47,6 +47,13 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   const box = useRef<HTMLDivElement>(null);
   const actor = useRef<HTMLDivElement>(null);
   const portal = useRef<HTMLDivElement>(null);
+  // Gato vomitón: su gatera, lo que vomita y el charco.
+  const door = useRef<HTMLDivElement>(null);
+  const fish = useRef<HTMLSpanElement>(null);
+  const hair = useRef<HTMLSpanElement>(null);
+  const splat = useRef<HTMLSpanElement>(null);
+  const vomitCat = visitor.animal === 'cat' && !!visitor.to;
+  const [doorOpen, setDoorOpen] = useState(false);
   const [pose, setPose] = useState<Pose>('hidden');
   const [facing, setFacing] = useState<1 | -1>(1);
   const [frame, setFrame] = useState(0);
@@ -56,7 +63,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
 
   // Fotogramas de la carrera (12 por segundo).
   useEffect(() => {
-    if (pose !== 'run' && pose !== 'carry') return;
+    if (pose !== 'run' && pose !== 'carry' && pose !== 'walk') return;
     const id = window.setInterval(() => setFrame((f) => (f + 1) % 6), 85);
     return () => window.clearInterval(id);
   }, [pose]);
@@ -64,14 +71,20 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   useLayoutEffect(() => {
     const root = box.current?.closest('.match') as HTMLElement | null;
     const el = actor.current;
-    const hole = portal.current;
-    if (!root || !el || !hole || !box.current) return;
+    if (!root || !el || !box.current) return;
     const W = root.clientWidth;
     const H = root.clientHeight;
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
     const pop = (p: Pt, text: string, tone: 'plus' | 'minus') =>
       setPops((list) => [...list, { id: Date.now() + Math.random(), x: p.x, y: p.y, text, tone }]);
+
+    if (vomitCat) {
+      catScene({ root, el, W, H, T: timing.end, apply: timing.apply, to: visitor.to!, door: door.current, fish: fish.current, hair: hair.current, splat: splat.current, at, pop, setPose, setFacing, setGlow, setDoorOpen });
+      return () => timers.forEach((id) => window.clearTimeout(id));
+    }
+    const hole = portal.current;
+    if (!hole) return;
 
     // El agujero de gusano se abre abajo, en el centro.
     const P: Pt = { x: W / 2, y: H * 0.93 };
@@ -198,7 +211,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
       at(timing.apply + 900, () => setGlow(null));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [visitor, timing]);
+  }, [visitor, timing, vomitCat]);
 
   return (
     <div className={`visit-layer visit-${visitor.animal} ${glow ? `glow-${glow}` : ''}`} ref={box} aria-live="polite">
@@ -217,14 +230,41 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
           </div>
         </>
       )}
-      <div className="wh-portal" ref={portal} aria-hidden="true">
-        <span className="wh-ring" />
-        <span className="wh-ring r2" />
-        <span className="wh-core" />
-        <span className="wh-beam" />
-      </div>
+      {vomitCat ? (
+        <>
+          {/* La gatera: marco de neón con su trampilla, que se balancea al pasar el gato. */}
+          <div className={`cat-door ${doorOpen ? 'is-open' : ''}`} ref={door} aria-hidden="true">
+            <img className="cat-door-img closed" src={assetUrl('gatera-cerrada')} alt="" draggable={false} />
+            <img className="cat-door-img open" src={assetUrl('gatera-abierta')} alt="" draggable={false} />
+          </div>
+          <span className="cat-splat" ref={splat} aria-hidden="true">
+            <img className="cat-splat-img" src={assetUrl('vomito-charco')} alt="" draggable={false} />
+            <img className="cat-chunks" src={assetUrl('vomito-tropezones')} alt="" draggable={false} />
+            <img className="cat-fly-img" src={assetUrl('vomito-mosca')} alt="" draggable={false} />
+          </span>
+          <span className="cat-fish" ref={fish} aria-hidden="true">
+            <img src={assetUrl('vomito-pescado-vuelo')} alt="" draggable={false} />
+          </span>
+          <span className="cat-hair" ref={hair} aria-hidden="true">
+            <img src={assetUrl('vomito-bola-pelo')} alt="" draggable={false} />
+          </span>
+        </>
+      ) : (
+        <div className="wh-portal" ref={portal} aria-hidden="true">
+          <span className="wh-ring" />
+          <span className="wh-ring r2" />
+          <span className="wh-core" />
+          <span className="wh-beam" />
+        </div>
+      )}
       <div className={`visit-actor animal-${visitor.animal} pose-${pose}`} ref={actor}>
-        {visitor.animal === 'squirrel' ? <Squirrel pose={pose} facing={facing} frame={frame} /> : <Provisional animal={visitor.animal} facing={facing} />}
+        {visitor.animal === 'squirrel' ? (
+          <Squirrel pose={pose} facing={facing} frame={frame} />
+        ) : vomitCat ? (
+          <VomitCat pose={pose} facing={facing} frame={frame} />
+        ) : (
+          <Provisional animal={visitor.animal} facing={facing} />
+        )}
       </div>
       {pops.map((p) => (
         <span key={p.id} className={`visit-pop ${p.tone}`} style={{ left: p.x, top: p.y }}>
@@ -255,6 +295,179 @@ function Provisional({ animal, facing }: { animal: Visitor['animal']; facing: 1 
     <div className="visit-prov" style={{ transform: `scaleX(${-facing})` }}>
       {animal === 'snail' ? '🐌' : '🐈‍⬛'}
       {animal === 'cat' && <span className="visit-visor" aria-hidden="true" />}
+    </div>
+  );
+}
+
+/**
+ * Escena del gato vomitón (8,6 s): sale por una gatera abajo en el centro, va andando hasta el
+ * marcador del equipo, salta encima, le dan arcadas y vomita un pescado apestoso y una bola de pelo
+ * sobre el número (gol para ese equipo), se queda tan ancho y vuelve a meterse por la gatera.
+ */
+function catScene({
+  root,
+  el,
+  W,
+  H,
+  T,
+  apply,
+  to,
+  door,
+  fish,
+  hair,
+  splat,
+  at,
+  pop,
+  setPose,
+  setFacing,
+  setGlow,
+  setDoorOpen,
+}: {
+  root: HTMLElement;
+  el: HTMLElement;
+  W: number;
+  H: number;
+  T: number;
+  apply: number;
+  to: 'white' | 'blue';
+  door: HTMLElement | null;
+  fish: HTMLElement | null;
+  hair: HTMLElement | null;
+  splat: HTMLElement | null;
+  at: (ms: number, fn: () => void) => void;
+  pop: (p: Pt, text: string, tone: 'plus' | 'minus') => void;
+  setPose: (p: Pose) => void;
+  setFacing: (f: 1 | -1) => void;
+  setGlow: (g: string | null) => void;
+  setDoorOpen: (o: boolean) => void;
+}) {
+  const card = rectOf(root, `.score-${to}`);
+  if (!card || !door || !fish || !hair || !splat) return;
+  const D: Pt = { x: W / 2, y: H * 0.97 };
+  // Al pie de la tarjeta (por el lado del centro) y encima de ella.
+  const side = to === 'white' ? 1 : -1;
+  // Abajo, junto a la tarjeta (por el lado del centro); luego salta a la esquina de abajo de la tarjeta.
+  const foot: Pt = { x: card.x + card.w / 2 + side * (card.w / 2 + 40), y: card.y + card.h + 6 };
+  const top: Pt = { x: card.x + card.w / 2 + side * card.w * 0.3, y: card.y + card.h - 4 };
+  const face: 1 | -1 = side === 1 ? -1 : 1; // en la tarjeta mira hacia el número
+  const big = 1.35;
+  const mouth: Pt = { x: top.x + face * 46, y: top.y - H * 0.13 };
+  const hit: Pt = { x: card.x + card.w / 2, y: card.y + card.h * 0.45 };
+
+  door.style.left = `${D.x}px`;
+  door.style.top = `${D.y}px`;
+  door.animate(
+    [
+      { transform: 'translate(-50%, -100%) scale(0)', opacity: 0 },
+      { transform: 'translate(-50%, -100%) scale(1.1)', opacity: 1, offset: 450 / T },
+      { transform: 'translate(-50%, -100%) scale(1)', opacity: 1, offset: 650 / T },
+      { transform: 'translate(-50%, -100%) scale(1)', opacity: 1, offset: (T - 500) / T },
+      { transform: 'translate(-50%, -100%) scale(0)', opacity: 0 },
+    ],
+    { duration: T, fill: 'forwards', easing: 'ease-in-out' },
+  );
+  // La trampilla se abre al salir y al volver a entrar.
+  at(650, () => setDoorOpen(true));
+  at(1500, () => setDoorOpen(false));
+  at(T - 1400, () => setDoorOpen(true));
+  at(T - 650, () => setDoorOpen(false));
+
+  const move = (points: { t: number; p: Pt; s?: number; r?: number; o?: number }[]) =>
+    el.animate(
+      points.map(({ t, p, s = 1, r = 0, o = 1 }) => ({
+        offset: Math.min(1, t / T),
+        transform: `translate(${p.x}px, ${p.y}px) translate(-50%, -100%) scale(${s}) rotate(${r}deg)`,
+        opacity: o,
+      })),
+      { duration: T, fill: 'forwards', easing: 'linear' },
+    );
+  const arc = (a: Pt, b: Pt, h: number): Pt => ({ x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - h });
+  const back = { x: D.x, y: D.y - 4 };
+  move([
+    { t: 0, p: { x: D.x, y: D.y }, s: 0.4, o: 0 },
+    { t: 700, p: { x: D.x, y: D.y }, s: 0.4, o: 0 },
+    { t: 1000, p: { x: D.x, y: D.y - 6 }, s: 1 },
+    { t: 2500, p: foot },
+    { t: 2800, p: arc(foot, top, 70), r: side * -12, s: 1.2 },
+    { t: 3100, p: top, s: big },
+    { t: apply + 900, p: top, s: big },
+    { t: apply + 1250, p: arc(top, foot, 50), r: side * 12, s: 1.2 },
+    { t: apply + 1500, p: foot },
+    { t: T - 1100, p: back },
+    { t: T - 800, p: { x: D.x, y: D.y }, s: 0.5, o: 0 },
+    { t: T, p: { x: D.x, y: D.y }, s: 0.2, o: 0 },
+  ]);
+  const toward = (a: Pt, b: Pt): 1 | -1 => (b.x >= a.x ? 1 : -1);
+  at(700, () => setPose('walk'));
+  at(1000, () => setFacing(toward(D, foot)));
+  at(2250, () => setPose('crouch'));
+  at(2500, () => setPose('jump'));
+  at(3100, () => {
+    setPose('sick');
+    setFacing(face);
+  });
+  at(3900, () => setPose('retch'));
+  at(apply - 800, () => setPose('puke'));
+
+  // Lo que vomita: primero el pescado y luego la bola de pelo, en arco hasta el número.
+  const fly = (node: HTMLElement, delay: number, end: Pt, spin: number) =>
+    node.animate(
+      [
+        { transform: `translate(${mouth.x}px, ${mouth.y}px) translate(-50%, -50%) scale(0.2) rotate(0deg)`, opacity: 1 },
+        { transform: `translate(${(mouth.x + end.x) / 2}px, ${Math.min(mouth.y, end.y) - 60}px) translate(-50%, -50%) scale(1.1) rotate(${spin / 2}deg)`, opacity: 1, offset: 0.45 },
+        { transform: `translate(${end.x}px, ${end.y}px) translate(-50%, -50%) scale(1) rotate(${spin}deg)`, opacity: 1, offset: 0.7 },
+        { transform: `translate(${end.x}px, ${end.y}px) translate(-50%, -50%) scale(1.05, 0.9) rotate(${spin}deg)`, opacity: 1, offset: 0.78 },
+        { transform: `translate(${end.x}px, ${end.y}px) translate(-50%, -50%) scale(1) rotate(${spin}deg)`, opacity: 1, offset: 0.93 },
+        { transform: `translate(${end.x}px, ${end.y + 30}px) translate(-50%, -50%) scale(0.9) rotate(${spin}deg)`, opacity: 0 },
+      ],
+      { duration: T - (apply - 700) - 300, delay: delay, fill: 'forwards', easing: 'cubic-bezier(0.3, 0.7, 0.5, 1)' },
+    );
+  fly(fish, apply - 700, { x: hit.x - 34, y: hit.y + 6 }, face * 300);
+  fly(hair, apply - 350, { x: hit.x + 38, y: hit.y + 30 }, face * -260);
+  splat.animate(
+    [
+      { transform: `translate(${hit.x}px, ${hit.y}px) translate(-50%, -50%) scale(0)`, opacity: 0 },
+      { transform: `translate(${hit.x}px, ${hit.y}px) translate(-50%, -50%) scale(1.25)`, opacity: 1, offset: 0.12 },
+      { transform: `translate(${hit.x}px, ${hit.y}px) translate(-50%, -50%) scale(1)`, opacity: 0.95, offset: 0.2 },
+      { transform: `translate(${hit.x}px, ${hit.y + 18}px) translate(-50%, -50%) scale(1, 1.15)`, opacity: 0.9, offset: 0.85 },
+      { transform: `translate(${hit.x}px, ${hit.y + 30}px) translate(-50%, -50%) scale(1, 1.2)`, opacity: 0 },
+    ],
+    { duration: T - apply + 200, delay: apply - 300, fill: 'both', easing: 'ease-out' },
+  );
+  at(apply, () => {
+    setGlow(to);
+    pop({ x: hit.x, y: card.y + card.h * 0.18 }, '+1', 'plus');
+  });
+  at(apply + 400, () => setPose('proud'));
+  at(apply + 900, () => {
+    setGlow(null);
+    setPose('jump');
+  });
+  at(apply + 1500, () => {
+    setPose('walk');
+    setFacing(toward(foot, back));
+  });
+}
+
+const CAT_POSE: Partial<Record<Pose, string>> = {
+  crouch: 'gato-pose-agazapado',
+  jump: 'gato-pose-salto',
+  sick: 'gato-pose-mareado',
+  retch: 'gato-pose-arcada',
+  puke: 'gato-pose-vomito',
+  proud: 'gato-pose-orgulloso',
+};
+
+/** El gato vomitón: ciclo de andar de 6 fotogramas o una de sus posturas (las imágenes miran a la derecha). */
+function VomitCat({ pose, facing, frame }: { pose: Pose; facing: 1 | -1; frame: number }) {
+  if (pose === 'hidden') return null;
+  const src = pose === 'walk' ? `gato-andar-${frame}` : CAT_POSE[pose];
+  return (
+    <div className={`vcat vcat-${pose}`}>
+      <span className="vcat-body" style={{ transform: `scaleX(${facing})` }}>
+        <img key={pose === 'walk' ? 'walk' : pose} src={src ? assetUrl(src) : undefined} alt="" draggable={false} />
+      </span>
+      {pose === 'puke' && <span className="vcat-bubble is-word">¡BLUARGH!</span>}
     </div>
   );
 }

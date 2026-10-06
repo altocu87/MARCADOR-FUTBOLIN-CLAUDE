@@ -128,13 +128,17 @@ function sumGoals(goals: MatchEvent[]): Score {
   return { white: Math.max(0, score.white), blue: Math.max(0, score.blue) };
 }
 
-/** Goles robados por la ardilla (Partido Loco): +1 al que recibe, −1 al robado. */
+/** Partido Loco: la ardilla roba un gol (+1 al que recibe, −1 al robado) y el gato regala uno al vomitar. */
 function applyVisits(score: Score, events: MatchEvent[], period?: Period): Score {
   for (const e of events) {
-    if (e.type !== 'VISIT' || e.visitor?.animal !== 'squirrel' || !e.visitor.from) continue;
+    if (e.type !== 'VISIT' || !e.visitor) continue;
     if (period && e.period !== period) continue;
-    score[e.visitor.from] -= 1;
-    score[otherTeam(e.visitor.from)] += 1;
+    if (e.visitor.animal === 'squirrel' && e.visitor.from) {
+      score[e.visitor.from] -= 1;
+      score[otherTeam(e.visitor.from)] += 1;
+    } else if (e.visitor.animal === 'cat' && e.visitor.to) {
+      score[e.visitor.to] += 1;
+    }
   }
   return { white: Math.max(0, score.white), blue: Math.max(0, score.blue) };
 }
@@ -553,7 +557,8 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       let next: MatchState = { ...s, visit: { spec: v, applied: true } };
       if (v.timeMs) next = { ...next, timeAdjustMs: (next.timeAdjustMs ?? 0) + v.timeMs };
       if (v.goals) next = { ...next, goalTargetAdjust: (next.goalTargetAdjust ?? 0) + v.goals };
-      next = pushEvent(next, events, now, { type: 'VISIT', visitor: v, ...(v.from ? { team: otherTeam(v.from) } : {}) });
+      const team = v.from ? otherTeam(v.from) : v.to;
+      next = pushEvent(next, events, now, { type: 'VISIT', visitor: v, ...(team ? { team } : {}) });
       rescoreLast(next);
       return accept(next);
     }

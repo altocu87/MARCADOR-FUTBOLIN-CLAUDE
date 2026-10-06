@@ -104,6 +104,8 @@ export function draftFromTemplate(
   eloOf: (id: string) => number,
   defaults: Partial<MatchConfig> = {},
   rnd: () => number = Math.random,
+  /** Parejas que ya son un equipo guardado: juegan juntas (solo con parejas fijas). */
+  fixedPairs: string[][] = [],
 ): { draft: TournamentDraft; leftover: string[] } {
   const config = templateMatchConfig(t, defaults);
   const hasFinal = hasTemplateFinal(t);
@@ -134,8 +136,11 @@ export function draftFromTemplate(
       leftover: [],
     };
   }
-  const { teams, leftover } = formTeams(selected, t.teamSize, t.pairing, eloOf, rnd);
-  return { draft: { ...common, teamSize: t.teamSize, teams }, leftover };
+  // Los equipos guardados se respetan; el resto se empareja como diga el tipo de torneo.
+  const fixed = t.teamSize === 2 ? keepPairs(fixedPairs, selected) : [];
+  const rest = selected.filter((id) => !fixed.some((p) => p.includes(id)));
+  const formed = formTeams(rest, t.teamSize, t.pairing, eloOf, rnd);
+  return { draft: { ...common, teamSize: t.teamSize, teams: [...fixed.map((p) => ({ playerIds: [...p] })), ...formed.teams] }, leftover: formed.leftover };
 }
 
 export interface TemplateFit {
@@ -195,4 +200,16 @@ export function recommendedTemplateIds(n: number): string[] {
 /** El más recomendado para `n` jugadores. */
 export function recommendedTemplateId(n: number): string | null {
   return recommendedTemplateIds(n)[0] ?? null;
+}
+
+/** Parejas cuyos dos jugadores están apuntados, sin repetir jugador. */
+function keepPairs(pairs: string[][], selected: string[]): string[][] {
+  const used = new Set<string>();
+  const out: string[][] = [];
+  for (const p of pairs) {
+    if (p.length !== 2 || !p.every((id) => selected.includes(id) && !used.has(id))) continue;
+    p.forEach((id) => used.add(id));
+    out.push(p);
+  }
+  return out;
 }

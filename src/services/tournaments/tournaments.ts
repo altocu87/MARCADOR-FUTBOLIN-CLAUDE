@@ -57,8 +57,8 @@ export interface TournamentDraft {
   teamSize: 1 | 2;
   ranked: boolean;
   config: MatchConfig;
-  /** Liguilla y cuadro: equipos ya formados. */
-  teams: { playerIds: string[] }[];
+  /** Liguilla y cuadro: equipos ya formados (con nombre y logo si son un equipo guardado). */
+  teams: { playerIds: string[]; name?: string; logo?: string; clubId?: string }[];
   seeding: 'elo' | 'random';
   /** Pool: jugadores inscritos. */
   entrants?: string[];
@@ -73,6 +73,10 @@ export interface TournamentDraft {
   templateName?: string;
   templateId?: string;
   edition?: number;
+  /** Nombre propio de la competición, logo y copa. */
+  competition?: string;
+  logo?: string;
+  cup?: string;
 }
 
 export function validateDraft(d: TournamentDraft): string[] {
@@ -248,7 +252,13 @@ export function createTournament(
       })),
     );
   } else {
-    teams = draft.teams.map((t) => ({ id: newId('tt'), name: teamName(t.playerIds, players), playerIds: [...t.playerIds] }));
+    teams = draft.teams.map((t) => ({
+      id: newId('tt'),
+      name: t.name?.trim() || teamName(t.playerIds, players),
+      playerIds: [...t.playerIds],
+      ...(t.logo ? { logo: t.logo } : {}),
+      ...(t.clubId ? { clubId: t.clubId } : {}),
+    }));
     if (draft.seeding === 'elo') {
       const avg = (t: TournamentTeam) => t.playerIds.reduce((s, id) => s + eloOf(id), 0) / t.playerIds.length;
       teams = [...teams].sort((a, b) => avg(b) - avg(a));
@@ -292,6 +302,9 @@ export function createTournament(
     ...(draft.templateName ? { templateName: draft.templateName } : {}),
     ...(draft.templateId ? { templateId: draft.templateId } : {}),
     ...(draft.edition ? { edition: draft.edition } : {}),
+    ...(draft.competition?.trim() ? { competition: draft.competition.trim() } : {}),
+    ...(draft.logo ? { logo: draft.logo } : {}),
+    ...(draft.cup ? { cup: draft.cup } : {}),
   };
 }
 

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { MAX_PER_TEAM, validateParticipants, type MatchConfig, type ParticipantRef, type Slot, type Team } from '../../match-engine';
 import type { Player } from '../../services/persistence';
@@ -7,6 +7,9 @@ import { displayTitle } from '../../services/progression';
 import { AssetImage } from '../components/assets';
 import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
+import { Crest } from '../components/Crest';
+import { findClub, type Club } from '../../services/clubs';
+import { sound } from '../../services/sound/sound';
 
 const TEAM_NAME: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
 const OTHER: Record<Team, Team> = { white: 'blue', blue: 'white' };
@@ -27,13 +30,25 @@ function fromParticipants(parts?: ParticipantRef[]): Teams {
  * otra vez vuelve a la lista.
  */
 export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; initial?: ParticipantRef[] }) {
-  const { players, navigate, progression, demoMode, toast } = useApp();
+  const { players, navigate, progression, demoMode, toast, prefs } = useApp();
   const [teams, setTeams] = useState<Teams>(() => fromParticipants(initial));
   // Si se vuelve con los dos equipos hechos, se abre en el turno del azul (listo para continuar).
   const [step, setStep] = useState<Team>(() => (fromParticipants(initial).blue.length > 0 ? 'blue' : 'white'));
   const [creating, setCreating] = useState(false);
 
   const available = useMemo(() => sortPlayers(players.filter((p) => p.active)), [players]);
+  // Equipo guardado de cada lado: si los dos de un equipo están juntos, el lado pasa a ser ese equipo.
+  const clubs: Record<Team, Club | undefined> = { white: findClub(prefs.clubs, teams.white), blue: findClub(prefs.clubs, teams.blue) };
+  const sideName = (t: Team) => clubs[t]?.name ?? TEAM_NAME[t];
+  // Al formarse un equipo suena un aviso (no al abrir la pantalla con el equipo ya hecho).
+  const seen = useRef<Record<Team, string | undefined>>({ white: clubs.white?.id, blue: clubs.blue?.id });
+  useEffect(() => {
+    for (const t of ['white', 'blue'] as Team[]) {
+      const id = clubs[t]?.id;
+      if (id && seen.current[t] !== id) sound.play('levelUp');
+      seen.current[t] = id;
+    }
+  }, [clubs.white?.id, clubs.blue?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   // Animación de movimiento (técnica «FLIP»): antes de cambiar los equipos se apunta dónde
@@ -81,7 +96,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
     const current = teams[step];
     if (current.includes(playerId) || teams[OTHER[step]].includes(playerId)) return;
     if (current.length >= MAX_PER_TEAM) {
-      toast(`El equipo ${TEAM_NAME[step]} ya tiene ${MAX_PER_TEAM} jugadores (máximo)`);
+      toast(`El equipo ${sideName(step)} ya tiene ${MAX_PER_TEAM} jugadores (máximo)`);
       return;
     }
     updateTeams({ ...teams, [step]: [...current, playerId] });
@@ -107,8 +122,8 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
     step === 'blue' && valid
       ? `${teams.white.length} contra ${teams.blue.length} listo`
       : count === 0
-        ? `Equipo ${TEAM_NAME[step]}: elige de 1 a ${MAX_PER_TEAM} jugadores`
-        : `Equipo ${TEAM_NAME[step]}: ${count} de ${MAX_PER_TEAM} jugadores`;
+        ? `Equipo ${sideName(step)}: elige de 1 a ${MAX_PER_TEAM} jugadores`
+        : `Equipo ${sideName(step)}: ${count} de ${MAX_PER_TEAM} jugadores`;
   // Equilibrar/Aleatorio reparten a partes iguales: solo con 4, 6 u 8 elegidos.
   const chosenCount = teams.white.length + teams.blue.length;
   const canSplit = step === 'blue' && valid && chosenCount >= 4 && chosenCount % 2 === 0;
@@ -140,48 +155,74 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
     p.photo ? <img src={p.photo} alt="" draggable={false} /> : <span className="pick-initials">{initials(p.name)}</span>;
 
   // Columna de un equipo: 4 plazas; las ocupadas muestran la ficha en horizontal.
-  const teamColumn = (team: Team) => (
-    <div
-      className={`team-col team-col-${team} ${step === team ? 'is-active' : ''}`}
-      onClick={() => setStep(team)}
-      role="button"
-      aria-pressed={step === team}
-      aria-label={`Elegir jugadores del equipo ${TEAM_NAME[team]}`}
-    >
-      <div className="team-col-label">{TEAM_NAME[team]}</div>
-      {Array.from({ length: MAX_PER_TEAM }, (_, i) => {
-        const id = teams[team][i];
-        const p = id ? byId.get(id) : undefined;
-        if (!p) {
-          return (
-            <div key={`empty-${i}`} className="team-slot">
-              <span className="team-slot-empty">{i === 0 ? 'Plaza 1' : `Plaza ${i + 1} · opcional`}</span>
-            </div>
-          );
-        }
-        const { meta, title } = metaOf(p);
+  // Si los dos jugadores forman un equipo guardado, se «fusionan»: sale su escudo con un efecto
+  // holográfico, el nombre del lado cambia al del equipo y un marco de energía engloba a los dos.
+  const teamColumn = (team: Team) => {
+    const club = clubs[team];
+    const slot = (i: number) => {
+      const id = teams[team][i];
+      const p = id ? byId.get(id) : undefined;
+      if (!p) {
         return (
-          <button
-            key={p.id}
-            data-flip={p.id}
-            className={`team-card team-card-${team}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              remove(team, p.id);
-            }}
-            aria-label={`${p.name}: devolver a la lista de jugadores`}
-          >
-            <span className="team-card-photo">{photoOf(p)}</span>
-            <span className="team-card-info">
-              <span className="team-card-name">{p.name}</span>
-              <span className="pick-meta">{meta}</span>
-              {title && <span className="pick-title">{title}</span>}
-            </span>
-          </button>
+          <div key={`empty-${i}`} className="team-slot">
+            <span className="team-slot-empty">{i === 0 ? 'Plaza 1' : `Plaza ${i + 1} · opcional`}</span>
+          </div>
         );
-      })}
-    </div>
-  );
+      }
+      const { meta, title } = metaOf(p);
+      return (
+        <button
+          key={p.id}
+          data-flip={p.id}
+          className={`team-card team-card-${team}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            remove(team, p.id);
+          }}
+          aria-label={`${p.name}: devolver a la lista de jugadores`}
+        >
+          <span className="team-card-photo">{photoOf(p)}</span>
+          <span className="team-card-info">
+            <span className="team-card-name">{p.name}</span>
+            <span className="pick-meta">{meta}</span>
+            {title && <span className="pick-title">{title}</span>}
+          </span>
+        </button>
+      );
+    };
+    return (
+      <div
+        className={`team-col team-col-${team} ${step === team ? 'is-active' : ''} ${club ? 'has-club' : ''}`}
+        onClick={() => setStep(team)}
+        role="button"
+        aria-pressed={step === team}
+        aria-label={`Elegir jugadores del equipo ${sideName(team)}`}
+      >
+        {club ? (
+          <div key={club.id} className="team-col-label club-label">
+            <Crest id={club.logo} size={30} />
+            <span>{club.name}</span>
+          </div>
+        ) : (
+          <div className="team-col-label">{TEAM_NAME[team]}</div>
+        )}
+        {club ? (
+          <>
+            <div key={club.id} className="club-bond">
+              <span className="club-bond-sweep" aria-hidden="true" />
+              {slot(0)}
+              {slot(1)}
+            </div>
+            {slot(2)}
+            {slot(3)}
+            <ClubFormation key={`fx-${club.id}`} club={club} />
+          </>
+        ) : (
+          Array.from({ length: MAX_PER_TEAM }, (_, i) => slot(i))
+        )}
+      </div>
+    );
+  };
 
   // Ficha de jugador libre: la imagen ocupa toda la tarjeta y debajo va su información.
   const playerCard = (p: Player) => {
@@ -202,7 +243,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
 
   return (
     <ScreenFrame
-      title={`Equipo ${TEAM_NAME[step]}`}
+      title={`Equipo ${sideName(step)}`}
       subtitle={MODE_LABEL[config.mode]}
       className={`select-screen select-${step}`}
       background={
@@ -274,5 +315,30 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       </div>
       {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => pick(p.id)} />}
     </ScreenFrame>
+  );
+}
+
+/**
+ * Efecto al formarse un equipo: el escudo aparece como un holograma (anillos que giran, haz de
+ * escaneo y destellos) con «¡EQUIPO FORMADO!» y su nombre, y luego sube a la cabecera de la columna.
+ */
+function ClubFormation({ club }: { club: Club }) {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDone(true), 2200);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (done) return null;
+  return (
+    <div className="club-fx" aria-hidden="true">
+      <span className="club-fx-scan" />
+      <span className="club-fx-ring r1" />
+      <span className="club-fx-ring r2" />
+      <span className="club-fx-crest">
+        <Crest id={club.logo} size={120} />
+      </span>
+      <span className="club-fx-kicker">¡EQUIPO FORMADO!</span>
+      <span className="club-fx-name">{club.name}</span>
+    </div>
   );
 }

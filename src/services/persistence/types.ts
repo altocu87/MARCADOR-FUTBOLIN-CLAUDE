@@ -63,6 +63,21 @@ export interface TournamentTeam {
   id: string;
   name: string;
   playerIds: string[];
+  /** Logo del equipo (id del muestrario), si es un equipo guardado con nombre propio. */
+  logo?: string;
+  /** Equipo guardado del que sale (nombre y logo). */
+  clubId?: string;
+}
+
+/** Equipo fijo guardado (una pareja con nombre y logo): se reconoce en cualquier partido que jueguen juntos. */
+export interface Club {
+  id: string;
+  name: string;
+  /** Id del logo en el muestrario (`escudo-07`, `emoji:🦅`…). */
+  logo: string;
+  /** Jugadores, ordenados. */
+  playerIds: string[];
+  createdAt: number;
 }
 
 export interface Fixture {
@@ -119,6 +134,11 @@ export interface Tournament {
   templateId?: string;
   /** Número de edición dentro de su competición (1ª, 2ª…). */
   edition?: number;
+  /** Nombre propio de la competición (p. ej. «Copa del Almacén»); sin él, la del tipo de torneo. */
+  competition?: string;
+  /** Logo del torneo y copa que se lleva el campeón (ids del muestrario). */
+  logo?: string;
+  cup?: string;
 }
 
 /** Tipo de torneo guardado como predefinido en el creador. */
@@ -195,6 +215,8 @@ export interface Preferences {
   hardware: HardwarePrefs;
   /** Tipos de torneo guardados en el creador (los de fábrica van aparte). */
   tournamentTemplates: TournamentTemplate[];
+  /** Equipos fijos guardados con nombre y logo. */
+  clubs: Club[];
 }
 
 export interface HardwarePrefs {

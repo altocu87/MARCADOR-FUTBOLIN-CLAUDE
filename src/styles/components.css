@@ -675,3 +675,133 @@ button.row:active {
   font-size: 30px;
   color: var(--text-3);
 }
+
+/* ---------- Logos (escudos) y copas ---------- */
+.crest {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+.crest-img {
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(98, 214, 255, 0.35));
+}
+.crest-emoji {
+  --crest: #62d6ff;
+  border-radius: 28% 28% 46% 46%;
+  border: 2px solid var(--crest);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--crest) 35%, transparent), rgba(5, 10, 20, 0.9) 70%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--crest) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--crest) 40%, transparent);
+}
+.cup {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  filter: drop-shadow(0 0 8px rgba(255, 204, 51, 0.45));
+}
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+.icon-cell {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 16, 28, 0.7);
+  cursor: pointer;
+}
+.icon-cell.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(98, 214, 255, 0.55);
+}
+.team-name-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+  max-width: 100%;
+}
+.team-name-club > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.icon-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.icon-tab {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(7, 16, 28, 0.7);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.icon-tab.is-on {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(98, 214, 255, 0.45);
+}
+.icon-tab.is-locked {
+  opacity: 0.7;
+}
+.icon-lock-note {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ranked);
+  background: rgba(30, 22, 4, 0.8);
+  color: var(--ranked);
+  font-size: 13px;
+  font-weight: 700;
+}
+.icon-grid.is-locked .icon-cell {
+  cursor: not-allowed;
+  filter: grayscale(1) brightness(0.55);
+}
+.club-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.club-pick-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 16, 28, 0.7);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.club-pick-cell span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.club-pick-cell.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(98, 214, 255, 0.5);
+}

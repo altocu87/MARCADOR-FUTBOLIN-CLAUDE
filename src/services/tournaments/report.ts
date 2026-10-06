@@ -10,18 +10,32 @@ import type { Player, StoredMatch, Tournament } from '../persistence';
 import { personalGoalsInMatch } from '../statistics/extras';
 import { FORMAT_LABEL } from './tournaments';
 
-/** Clave de la competición: el predefinido; los torneos antiguos, por su nombre. */
+/** Clave de un nombre de competición (sin mayúsculas ni espacios de más). */
+export function competitionNameKey(name: string): string {
+  return `name:${name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es')}`;
+}
+
+/**
+ * Clave de la competición: su nombre propio si lo tiene; si no, el tipo de torneo; los torneos
+ * antiguos, por su nombre.
+ */
 export function competitionKey(t: Tournament): string {
-  return t.templateId ?? `name:${t.templateName ?? t.name}`;
+  if (t.competition) return competitionNameKey(t.competition);
+  return t.templateId ?? competitionNameKey(t.templateName ?? t.name);
 }
 
 export function competitionName(t: Tournament): string {
-  return t.templateName ?? t.name;
+  return t.competition ?? t.templateName ?? t.name;
 }
 
-/** Número de la siguiente edición de una competición. */
-export function nextEdition(templateId: string, tournaments: Tournament[]): number {
-  return tournaments.filter((t) => t.templateId === templateId && t.status !== 'cancelled').length + 1;
+/** Número de la siguiente edición de una competición (por su clave). */
+export function nextEdition(key: string, tournaments: Tournament[]): number {
+  return tournaments.filter((t) => competitionKey(t) === key && t.status !== 'cancelled').length + 1;
+}
+
+/** Última edición de una competición: de ella salen el logo y la copa por defecto. */
+export function lastEdition(key: string, tournaments: Tournament[]): Tournament | undefined {
+  return tournaments.filter((t) => competitionKey(t) === key && t.status !== 'cancelled').sort((a, b) => b.createdAt - a.createdAt)[0];
 }
 
 /** «Copa Rotativa · 2ª edición». */
@@ -189,6 +203,9 @@ export interface HonourRow {
 export interface Competition {
   key: string;
   name: string;
+  /** Logo y copa de la última edición. */
+  logo?: string;
+  cup?: string;
   format: string;
   editions: EditionRow[];
   /** Jugadores con más títulos (luego MVP y ediciones jugadas). */
@@ -235,6 +252,8 @@ export function competitions(tournaments: Tournament[], matches: StoredMatch[], 
     out.push({
       key,
       name: competitionName(sorted[sorted.length - 1]),
+      logo: [...sorted].reverse().find((x) => x.logo)?.logo,
+      cup: [...sorted].reverse().find((x) => x.cup)?.cup,
       format: FORMAT_LABEL[sorted[sorted.length - 1].format],
       editions: [...editions].reverse(),
       honours: [...honours.values()].sort((a, b) => b.titles - a.titles || b.mvps - a.mvps || b.editions - a.editions || a.name.localeCompare(b.name, 'es')),

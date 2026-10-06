@@ -21,7 +21,8 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
 - `ardilla-*`: la ardilla ladrona del Partido Loco, recortada de sus hojas de personaje: `ardilla-carrera-0…5`
   (ciclo de carrera de perfil), `ardilla-cuerpo-34` y `ardilla-cuerpo-perfil` (sin cola), `ardilla-cola-1…5`,
   `ardilla-mano-*` y `ardilla-cara-*` (picara, risa, guino, ladrona, sorpresa, enfado, satisfecha, burla).
-  `ardilla-pose-*` (pie, sorpresa, sigilosa, brazos-arriba, burla, victoria, salto, bola). El caracol y el gato aún no tienen imágenes (provisionales).
+  `ardilla-pose-*` (pie, sorpresa, sigilosa, brazos-arriba, burla, victoria, salto, bola). El caracol aún no tiene imágenes (provisional).
+- Gato vomitón: `gato-andar-0…5`, `gato-pose-*` (asomado, andando, agazapado, salto, mareado, arcada, vomito, orgulloso), `gatera-cerrada/abierta` y `vomito-*` (pescado, pescado-vuelo, bola-pelo, charco, tropezones, mosca).
 - `fondo-estadisticas`: fondo de las estadísticas del partido y del detalle del historial (1280×720 .webp, ya desenfocado).
 - `fondo-equipo-blanco` y `fondo-equipo-azul`: fondos de la selección de jugadores; se ve uno u otro según el
   equipo que está eligiendo (1280×720 .webp).
@@ -31,3 +32,11 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
   - `categoria-elite` ya no se usa (el rango Élite desapareció).
   - Fila inferior de `plantilla-logros-03` (imagen cortada): `logro-hat_trick`, `logro-scorer50`,
     `logro-first_blood`, `logro-ranked_debut`, `logro-platinum`.
+
+## Logos y copas (muestrario por categorías)
+- Logos: `escudo-<categoría>-NN` (p. ej. `escudo-retro80-03`); copas: `copa-<categoría>-NN` (`copa-retro90-01`).
+  Sin categoría (`escudo-07`) van a «Genéricos». Recortados, fondo transparente, ~256 px, .webp.
+- Las categorías y sus bloqueos (nivel, rango, logro o torneos ganados) están en `src/services/icons.ts`.
+  Una categoría sin imágenes no sale.
+- Integrados: `escudo-generico-01…16` y `copa-generico-01…09` (recortados de sus hojas, fondo magenta quitado).
+  También `escudo-retro80-01…16` y `copa-retro90-01…09` (fondo exterior quitado; conservan sus rosas).
