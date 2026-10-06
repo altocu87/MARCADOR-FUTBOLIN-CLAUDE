@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { VISIT_TIMING, otherTeam, type Visitor } from '../../match-engine';
 import { assetUrl } from './assets';
 
-type Pose = 'hidden' | 'pop' | 'run' | 'sneak' | 'lift' | 'carry' | 'mock' | 'wink' | 'dive' | 'ball' | 'grab' | 'walk' | 'jump' | 'retch' | 'puke' | 'proud';
+type Pose = 'hidden' | 'pop' | 'run' | 'sneak' | 'lift' | 'carry' | 'mock' | 'wink' | 'dive' | 'ball' | 'grab' | 'walk' | 'crouch' | 'jump' | 'sick' | 'retch' | 'puke' | 'proud';
 
 /** Postura de cuerpo entero de la ardilla para cada momento de la escena. */
 const SQUIRREL_POSE: Partial<Record<Pose, string>> = {
@@ -53,6 +53,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
   const hair = useRef<HTMLSpanElement>(null);
   const splat = useRef<HTMLSpanElement>(null);
   const vomitCat = visitor.animal === 'cat' && !!visitor.to;
+  const [doorOpen, setDoorOpen] = useState(false);
   const [pose, setPose] = useState<Pose>('hidden');
   const [facing, setFacing] = useState<1 | -1>(1);
   const [frame, setFrame] = useState(0);
@@ -62,7 +63,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
 
   // Fotogramas de la carrera (12 por segundo).
   useEffect(() => {
-    if (pose !== 'run' && pose !== 'carry') return;
+    if (pose !== 'run' && pose !== 'carry' && pose !== 'walk') return;
     const id = window.setInterval(() => setFrame((f) => (f + 1) % 6), 85);
     return () => window.clearInterval(id);
   }, [pose]);
@@ -79,7 +80,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
       setPops((list) => [...list, { id: Date.now() + Math.random(), x: p.x, y: p.y, text, tone }]);
 
     if (vomitCat) {
-      catScene({ root, el, W, H, T: timing.end, apply: timing.apply, to: visitor.to!, door: door.current, fish: fish.current, hair: hair.current, splat: splat.current, at, pop, setPose, setFacing, setGlow });
+      catScene({ root, el, W, H, T: timing.end, apply: timing.apply, to: visitor.to!, door: door.current, fish: fish.current, hair: hair.current, splat: splat.current, at, pop, setPose, setFacing, setGlow, setDoorOpen });
       return () => timers.forEach((id) => window.clearTimeout(id));
     }
     const hole = portal.current;
@@ -232,31 +233,21 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
       {vomitCat ? (
         <>
           {/* La gatera: marco de neón con su trampilla, que se balancea al pasar el gato. */}
-          <div className="cat-door" ref={door} aria-hidden="true">
-            <span className="cat-door-frame" />
-            <span className="cat-door-flap" />
-            <span className="cat-door-sign">🐾</span>
+          <div className={`cat-door ${doorOpen ? 'is-open' : ''}`} ref={door} aria-hidden="true">
+            <img className="cat-door-img closed" src={assetUrl('gatera-cerrada')} alt="" draggable={false} />
+            <img className="cat-door-img open" src={assetUrl('gatera-abierta')} alt="" draggable={false} />
           </div>
           <span className="cat-splat" ref={splat} aria-hidden="true">
-            <svg viewBox="0 0 120 80">
-              <path
-                d="M18 46c-9-2-14-10-6-15 6-4 13 1 16-3 3-6-4-13 4-16 7-3 11 6 17 4 6-2 5-11 13-11 9 0 9 10 15 12 7 2 12-6 18-2 7 5 0 12 5 16 5 4 15 1 16 8 1 7-9 9-11 14-2 6 5 12-2 15-8 3-11-6-18-5-7 1-8 10-17 9-9-1-8-10-15-11-7-1-10 8-18 5-7-3-2-11-7-15-4-3-10 0-10-5z"
-                fill="#9acd32"
-                stroke="#5d8a1c"
-                strokeWidth="3"
-              />
-              <circle cx="36" cy="38" r="5" fill="#c6e86b" />
-              <circle cx="72" cy="30" r="4" fill="#c6e86b" />
-              <circle cx="86" cy="50" r="3" fill="#c6e86b" />
-            </svg>
-            <span className="cat-stink s1">〰</span>
-            <span className="cat-stink s2">〰</span>
-            <span className="cat-stink s3">〰</span>
+            <img className="cat-splat-img" src={assetUrl('vomito-charco')} alt="" draggable={false} />
+            <img className="cat-chunks" src={assetUrl('vomito-tropezones')} alt="" draggable={false} />
+            <img className="cat-fly-img" src={assetUrl('vomito-mosca')} alt="" draggable={false} />
           </span>
           <span className="cat-fish" ref={fish} aria-hidden="true">
-            🐟<span className="cat-fly">·</span>
+            <img src={assetUrl('vomito-pescado-vuelo')} alt="" draggable={false} />
           </span>
-          <span className="cat-hair" ref={hair} aria-hidden="true" />
+          <span className="cat-hair" ref={hair} aria-hidden="true">
+            <img src={assetUrl('vomito-bola-pelo')} alt="" draggable={false} />
+          </span>
         </>
       ) : (
         <div className="wh-portal" ref={portal} aria-hidden="true">
@@ -270,7 +261,7 @@ export function VisitorOverlay({ visitor }: { visitor: Visitor }) {
         {visitor.animal === 'squirrel' ? (
           <Squirrel pose={pose} facing={facing} frame={frame} />
         ) : vomitCat ? (
-          <VomitCat pose={pose} facing={facing} />
+          <VomitCat pose={pose} facing={facing} frame={frame} />
         ) : (
           <Provisional animal={visitor.animal} facing={facing} />
         )}
@@ -330,6 +321,7 @@ function catScene({
   setPose,
   setFacing,
   setGlow,
+  setDoorOpen,
 }: {
   root: HTMLElement;
   el: HTMLElement;
@@ -347,6 +339,7 @@ function catScene({
   setPose: (p: Pose) => void;
   setFacing: (f: 1 | -1) => void;
   setGlow: (g: string | null) => void;
+  setDoorOpen: (o: boolean) => void;
 }) {
   const card = rectOf(root, `.score-${to}`);
   if (!card || !door || !fish || !hair || !splat) return;
@@ -374,20 +367,10 @@ function catScene({
     { duration: T, fill: 'forwards', easing: 'ease-in-out' },
   );
   // La trampilla se abre al salir y al volver a entrar.
-  const flap = door.querySelector<HTMLElement>('.cat-door-flap');
-  const swing = (delay: number) =>
-    flap?.animate(
-      [
-        { transform: 'perspective(200px) rotateX(0deg)' },
-        { transform: 'perspective(200px) rotateX(-75deg)', offset: 0.25 },
-        { transform: 'perspective(200px) rotateX(35deg)', offset: 0.55 },
-        { transform: 'perspective(200px) rotateX(-15deg)', offset: 0.8 },
-        { transform: 'perspective(200px) rotateX(0deg)' },
-      ],
-      { duration: 900, delay, easing: 'ease-out' },
-    );
-  swing(700);
-  swing(T - 1300);
+  at(650, () => setDoorOpen(true));
+  at(1500, () => setDoorOpen(false));
+  at(T - 1400, () => setDoorOpen(true));
+  at(T - 650, () => setDoorOpen(false));
 
   const move = (points: { t: number; p: Pt; s?: number; r?: number; o?: number }[]) =>
     el.animate(
@@ -417,11 +400,13 @@ function catScene({
   const toward = (a: Pt, b: Pt): 1 | -1 => (b.x >= a.x ? 1 : -1);
   at(700, () => setPose('walk'));
   at(1000, () => setFacing(toward(D, foot)));
+  at(2250, () => setPose('crouch'));
   at(2500, () => setPose('jump'));
   at(3100, () => {
-    setPose('retch');
+    setPose('sick');
     setFacing(face);
   });
+  at(3900, () => setPose('retch'));
   at(apply - 800, () => setPose('puke'));
 
   // Lo que vomita: primero el pescado y luego la bola de pelo, en arco hasta el número.
@@ -464,21 +449,25 @@ function catScene({
   });
 }
 
-const CAT_BUBBLE: Partial<Record<Pose, string>> = {
-  retch: '🤢',
-  puke: '¡BLUARGH!',
-  proud: '😼',
+const CAT_POSE: Partial<Record<Pose, string>> = {
+  crouch: 'gato-pose-agazapado',
+  jump: 'gato-pose-salto',
+  sick: 'gato-pose-mareado',
+  retch: 'gato-pose-arcada',
+  puke: 'gato-pose-vomito',
+  proud: 'gato-pose-orgulloso',
 };
 
-/** Gato vomitón provisional (hasta tener su hoja de personaje): anda, salta, arcadas y vómito. */
-function VomitCat({ pose, facing }: { pose: Pose; facing: 1 | -1 }) {
+/** El gato vomitón: ciclo de andar de 6 fotogramas o una de sus posturas (las imágenes miran a la derecha). */
+function VomitCat({ pose, facing, frame }: { pose: Pose; facing: 1 | -1; frame: number }) {
   if (pose === 'hidden') return null;
+  const src = pose === 'walk' ? `gato-andar-${frame}` : CAT_POSE[pose];
   return (
     <div className={`vcat vcat-${pose}`}>
-      <span className="vcat-body" style={{ transform: `scaleX(${-facing})` }}>
-        🐈
+      <span className="vcat-body" style={{ transform: `scaleX(${facing})` }}>
+        <img key={pose === 'walk' ? 'walk' : pose} src={src ? assetUrl(src) : undefined} alt="" draggable={false} />
       </span>
-      {CAT_BUBBLE[pose] && <span className={`vcat-bubble ${pose === 'puke' ? 'is-word' : ''}`}>{CAT_BUBBLE[pose]}</span>}
+      {pose === 'puke' && <span className="vcat-bubble is-word">¡BLUARGH!</span>}
     </div>
   );
 }
