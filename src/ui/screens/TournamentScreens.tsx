@@ -2,7 +2,7 @@
  * Torneos: lista, creación a partir de un predefinido, creador de predefinidos y detalle
  * (clasificación, cuadro o Pool rotativo, final y partidos).
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import { restoreSnapshot } from '../../app/recovery';
@@ -441,7 +441,14 @@ export function TournamentNewScreen({
 }) {
   const { navigate, players, progression, prefs, saveTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
   const [step, setStep] = useState<'players' | 'format'>(initialStep ?? (initialSelected?.length ? 'format' : 'players'));
-  const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
+  const [picked, setSelected] = useState<string[]>(initialSelected ?? []);
+  // Solo cuentan los jugadores que siguen existiendo y están en activo: al volver de un torneo
+  // anterior la lista puede traer jugadores borrados, fusionados o dados de baja que no se ven
+  // en pantalla y que inflarían la cuenta («hay 9» con 6 marcados).
+  const selected = useMemo(() => {
+    const ok = new Set(players.filter((p) => p.active).map((p) => p.id));
+    return [...new Set(picked)].filter((id) => ok.has(id));
+  }, [picked, players]);
   const [chosenTpl, setChosenTpl] = useState<string | undefined>(templateId);
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
