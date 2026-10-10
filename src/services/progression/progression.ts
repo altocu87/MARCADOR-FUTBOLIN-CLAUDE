@@ -2,6 +2,8 @@
  * Servicio de progresión: recalcula ELO, XP, niveles, logros, retos y premios de torneo
  * reprocesando el historial en orden cronológico. No hay totales guardados sin origen:
  * todo se deriva de partidos válidos, por lo que reprocesar no duplica premios.
+ * Los partidos de un torneo que sigue en juego solo mueven el ELO: su XP, sus logros y sus retos
+ * se conceden cuando el torneo termina (y desaparecen si se descarta, porque se borran sus partidos).
  */
 import { validGoalsFromEvents, type Team } from '../../match-engine';
 import type { ProgressionSettings, StoredMatch, Tournament } from '../persistence';
@@ -63,6 +65,8 @@ export interface MatchProgressEntry {
   categoryAfter: CategoryDef;
   unlocked: string[];
   challenges: string[];
+  /** Partido de un torneo aún en juego: la XP y los logros esperan a que termine. */
+  deferred?: boolean;
 }
 
 export interface ProgressionSnapshot {
@@ -108,6 +112,9 @@ export function computeProgression(
       tournamentWinners.set(t.finalMatchId, t.teams.find((x) => x.id === t.winnerTeamId)?.playerIds ?? []);
     }
   }
+
+  // Torneos en juego: sus partidos aún no dan XP ni logros.
+  const pendingTournaments = new Set((options.tournaments ?? []).filter((t) => t.status === 'active').map((t) => t.id));
 
   const ensure = (id: string): PlayerProgress => {
     let p = players.get(id);
@@ -176,6 +183,40 @@ export function computeProgression(
         const delta = Math.round(k * mult * (s - expected));
         eloChanges.set(part.playerId, { before: p.elo, after: p.elo + delta, delta, k });
       }
+    }
+
+    if (match.tournament && pendingTournaments.has(match.tournament.id)) {
+      for (const part of match.participants) {
+        const p = ensure(part.playerId);
+        const change = eloChanges.get(part.playerId);
+        const categoryBefore = p.category;
+        if (change) {
+          p.elo = change.after;
+          p.maxElo = Math.max(p.maxElo, p.elo);
+          p.rankedPlayed += 1;
+          p.category = categoryFor(p.elo);
+          p.eloHistory.push({ matchId: match.id, at: match.finishedAt, elo: p.elo });
+        }
+        entries.set(part.playerId, {
+          playerId: part.playerId,
+          eloBefore: change?.before,
+          eloAfter: change?.after,
+          eloDelta: change?.delta,
+          k: change?.k,
+          xpGained: 0,
+          xpAfter: p.xp,
+          xpBreakdown: [],
+          levelBefore: p.level,
+          levelAfter: p.level,
+          categoryBefore,
+          categoryAfter: p.category,
+          unlocked: [],
+          challenges: [],
+          deferred: true,
+        });
+      }
+      byMatch.set(match.id, entries);
+      continue;
     }
 
     for (const part of match.participants) {

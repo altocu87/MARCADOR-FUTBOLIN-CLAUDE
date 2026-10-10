@@ -121,6 +121,9 @@ export function MatchScreen({
     })();
   }, [state, repos, refresh, extras]);
 
+  // Este partido ha cerrado el torneo: al volver se nombra al campeón y se reparten XP y logros.
+  const tournamentDone = !!extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id)?.status === 'finished';
+
   const goSummary = () => {
     if (!save) return;
     navigate({ name: 'summary', match: toStoredMatch(state, extras), save, live: state, extras });
@@ -201,9 +204,12 @@ export function MatchScreen({
           matchId={state.id}
           save={save}
           inTournament={!!extras?.tournament}
+          tournamentDone={tournamentDone}
           onStats={goSummary}
           onRematch={() => navigate({ name: 'match', config: state.config, participants: swapSides(state.participants), extras: undefined })}
-          onTournament={() => extras?.tournament && navigate({ name: 'tournamentDetail', id: extras.tournament.id })}
+          onTournament={() =>
+            extras?.tournament && navigate({ name: 'tournamentDetail', id: extras.tournament.id, ...(tournamentDone ? { ceremony: true } : {}) })
+          }
           onHome={() => navigate({ name: 'home' })}
         />
       )}

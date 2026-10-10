@@ -21,7 +21,8 @@ export function SummaryScreen({
   live: MatchState;
   extras?: MatchExtras;
 }) {
-  const { navigate, repos, refresh, matches, demoMode } = useApp();
+  const { navigate, repos, refresh, matches, demoMode, tournaments } = useApp();
+  const tournamentDone = !!extras?.tournament && tournaments.find((x) => x.id === extras.tournament!.id)?.status === 'finished';
   const [status, setStatus] = useState<SaveStatus>(save);
 
   const retry = async () => {
@@ -56,8 +57,8 @@ export function SummaryScreen({
             Inicio
           </button>
           {extras?.tournament ? (
-            <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentDetail', id: extras.tournament!.id })}>
-              Volver al torneo
+            <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentDetail', id: extras.tournament!.id, ...(tournamentDone ? { ceremony: true } : {}) })}>
+              {tournamentDone ? '🏆 Ver campeón' : 'Volver al torneo'}
             </button>
           ) : (
             <button

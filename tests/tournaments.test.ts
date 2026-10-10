@@ -16,6 +16,7 @@ import {
   effectivePoolGames,
   fixtureConfig,
   fixtureProgress,
+  finalRanking,
   nextFixture,
   undoMatch,
   updateTournamentRules,
@@ -480,5 +481,96 @@ describe('Equipos guardados en torneos de parejas', () => {
     expect(leftover).toEqual([]);
     expect(draft.teams.map((t) => [...t.playerIds].sort().join(''))).toContain('ab');
     expect(draft.teams).toHaveLength(3);
+  });
+});
+
+describe('XP y logros al terminar el torneo', () => {
+  const leagueDraft = (ids: string[]): TournamentDraft => ({
+    name: 'Liga',
+    format: 'league',
+    teamSize: 1,
+    ranked: true,
+    config: DEFAULT_CONFIG,
+    teams: ids.map((id) => ({ playerIds: [id] })),
+    seeding: 'random',
+  });
+  // Gana el de menor letra.
+  const byLetter = (w: string[], b: string[]) => (w[0] < b[0] ? 'W' : 'B') as 'W' | 'B';
+
+  it('con el torneo en juego sus partidos mueven el ELO pero no dan XP ni logros', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament(leagueDraft(ps.map((p) => p.id)), ps, () => 1200, 0, seededRandom('liga'));
+    const matches: StoredMatch[] = [];
+    let t = t0;
+    // Solo los dos primeros partidos.
+    for (const f of playableFixtures(t0).slice(0, 2)) {
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const m = { ...makeMatch({ white, blue, goals: byLetter(white, blue) === 'W' ? 'WWWWB' : 'BBBBW', at: 1000 + matches.length * 1000, mode: 'ranked' }), tournament: { id: t.id, fixtureId: f.id } };
+      matches.push(m);
+      t = recordFixtureResult(t, f.id, m, matches);
+    }
+    expect(t.status).toBe('active');
+    const prog = computeProgression(ps.map((p) => p.id), matches, DEFAULT_PROGRESSION, { tournaments: [t], challenges: true });
+    for (const p of ps) {
+      expect(prog.players.get(p.id)!.xp).toBe(0);
+      expect(prog.players.get(p.id)!.achievements).toEqual([]);
+    }
+    expect([...prog.players.values()].some((p) => p.elo !== DEFAULT_PROGRESSION.eloInitial)).toBe(true);
+    const e = prog.byMatch.get(matches[0].id)!.values().next().value!;
+    expect(e.deferred).toBe(true);
+    expect(e.xpGained).toBe(0);
+  });
+
+  it('al terminar se reparte toda la XP de golpe (con el premio al campeón)', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament(leagueDraft(ps.map((p) => p.id)), ps, () => 1200, 0, seededRandom('liga'));
+    const { t, matches } = playAll(t0, byLetter);
+    expect(t.status).toBe('finished');
+    const prog = computeProgression(ps.map((p) => p.id), matches, DEFAULT_PROGRESSION, { tournaments: [t], challenges: false });
+    expect(prog.players.get('a')!.xp).toBeGreaterThan(0);
+    expect(prog.players.get('a')!.tournamentsWon).toBe(1);
+    expect(prog.players.get('a')!.achievements.some((x) => x.id === 'champion')).toBe(true);
+    expect(prog.players.get('d')!.xp).toBeGreaterThan(0);
+    expect([...prog.byMatch.values()].every((m) => [...m.values()].every((e) => !e.deferred))).toBe(true);
+  });
+
+  it('clasificación final: del campeón al último', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament(leagueDraft(ps.map((p) => p.id)), ps, () => 1200, 0, seededRandom('liga'));
+    const { t, matches } = playAll(t0, byLetter);
+    const r = finalRanking(t, matches);
+    expect(r.map((x) => x.team.playerIds[0])).toEqual(['a', 'b', 'c', 'd']);
+    expect(r[0].champion).toBe(true);
+    expect(r.slice(1).every((x) => !x.champion)).toBe(true);
+  });
+
+  it('con final, el que la gana va primero aunque fuera segundo en la liguilla', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament({ ...leagueDraft(ps.map((p) => p.id)), final: 'top2' }, ps, () => 1200, 0, seededRandom('liga'));
+    // En la liguilla gana el de menor letra; en la final (segundo a contra b), gana «b».
+    let ab = 0;
+    const { t, matches } = playAll(t0, (w, b) => {
+      const both = [...w, ...b];
+      if (both.includes('a') && both.includes('b') && ++ab === 2) return w.includes('b') ? 'W' : 'B';
+      return byLetter(w, b);
+    });
+    expect(t.status).toBe('finished');
+    const r = finalRanking(t, matches);
+    expect(r.map((x) => x.team.playerIds[0])).toEqual(['b', 'a', 'c', 'd']);
+    expect(r[0].champion).toBe(true);
+    expect(r).toHaveLength(4);
+  });
+
+  it('cuadro: por la ronda a la que llega cada uno', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament({ ...leagueDraft(ps.map((p) => p.id)), format: 'bracket', seeding: 'elo' }, ps, (id) => 2000 - id.charCodeAt(0), 0);
+    const { t, matches } = playAll(t0, byLetter);
+    const r = finalRanking(t, matches);
+    expect(r[0].team.playerIds).toEqual(['a']);
+    expect(r[0].champion).toBe(true);
+    // El finalista que perdió va segundo.
+    expect(r[1].team.playerIds).toEqual(['b']);
+    expect(r.map((x) => x.place)).toEqual([1, 2, 3, 4]);
   });
 });

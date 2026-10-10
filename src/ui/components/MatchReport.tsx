@@ -111,7 +111,9 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
                         {e.levelAfter !== e.levelBefore && ` → ${e.levelAfter}`}
                       </span>
                       <div className="dim" style={{ fontSize: 12 }}>
-                        {e.xpBreakdown.map((l) => `${l.label} +${l.xp}`).join(' · ')}
+                        {e.deferred
+                          ? 'Torneo en juego: la experiencia y los logros se dan al terminarlo.'
+                          : e.xpBreakdown.map((l) => `${l.label} +${l.xp}`).join(' · ')}
                       </div>
                       {e.unlocked.length > 0 && (
                         <div style={{ fontSize: 12, color: 'var(--ranked)' }}>
@@ -120,7 +122,7 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
                       )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: 'var(--accent)' }}>+{e.xpGained} XP</div>
+                      {!e.deferred && <div style={{ fontWeight: 800, color: 'var(--accent)' }}>+{e.xpGained} XP</div>}
                       {e.eloDelta !== undefined && (
                         <div style={{ fontWeight: 800, color: e.eloDelta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>
                           ELO {e.eloDelta >= 0 ? '+' : ''}

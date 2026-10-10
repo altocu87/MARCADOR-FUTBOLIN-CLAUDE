@@ -59,6 +59,7 @@ import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { newId } from '../../services/ids';
 import { Confetti } from '../components/graphics';
+import { TournamentCeremony } from '../components/TournamentCeremony';
 
 const FINAL_LABEL: Record<TournamentFinal, string> = {
   none: 'Sin final',
@@ -198,6 +199,47 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
 const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
 
 /** «5 oct 2026». */
+function TrashIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Confirmación para descartar un torneo en juego: se borra con todos sus partidos. */
+function DiscardModal({ t, playedCount, onClose, onConfirm }: { t: Tournament; playedCount: number; onClose: () => void; onConfirm: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal
+      title="¿Descartar el torneo?"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>No, seguir</button>
+          <button
+            className="btn btn-danger"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onConfirm();
+            }}
+          >
+            🗑 Descartar
+          </button>
+        </>
+      }
+    >
+      <p style={{ margin: 0 }}>
+        <b>{t.name}</b> se borra{playedCount > 0 ? ` junto con sus ${playedCount} partido${playedCount === 1 ? '' : 's'} jugado${playedCount === 1 ? '' : 's'}` : ''}.
+      </p>
+      <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>
+        Esos partidos desaparecen del historial y no cuentan para estadísticas, ELO, experiencia ni logros. No se puede deshacer.
+      </p>
+    </Modal>
+  );
+}
+
 function shortDate(ts: number): string {
   return new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -439,7 +481,9 @@ export function TournamentNewScreen({
   initialSelected?: string[];
   initialStep?: 'players' | 'format';
 }) {
-  const { navigate, players, progression, prefs, saveTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
+  const { navigate, players, progression, prefs, saveTournament, discardTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
+  // Torneo en juego que se quiere descartar (pide confirmación).
+  const [discarding, setDiscarding] = useState<Tournament | null>(null);
   const [step, setStep] = useState<'players' | 'format'>(initialStep ?? (initialSelected?.length ? 'format' : 'players'));
   const [picked, setSelected] = useState<string[]>(initialSelected ?? []);
   // Solo cuentan los jugadores que siguen existiendo y están en activo: al volver de un torneo
@@ -574,9 +618,24 @@ export function TournamentNewScreen({
               <button className="neon-go tn-resume-go" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
                 ▶ CONTINUAR
               </button>
+              <button className="tn-discard" onClick={() => setDiscarding(t)} aria-label={`Descartar ${t.name}`} title="Descartar torneo">
+                <TrashIcon />
+              </button>
             </div>
           );
         })}
+        {discarding && (
+          <DiscardModal
+            t={discarding}
+            playedCount={fixtureProgress(discarding).done}
+            onClose={() => setDiscarding(null)}
+            onConfirm={async () => {
+              await discardTournament(discarding.id);
+              setDiscarding(null);
+              toast('Torneo descartado');
+            }}
+          />
+        )}
         <div className="pick-grid tn-pick-grid scroll">
           {available.length === 0 ? (
             <div className="empty" style={{ gridColumn: '1 / -1' }}>
@@ -1062,9 +1121,22 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
   );
 }
 
-export function TournamentDetailScreen({ id, view: initialView, from }: { id: string; view?: 'report' | 'play'; from?: 'list' }) {
-  const { navigate, tournaments, matches, players, saveTournament, deleteMatch, repos, prefs, progression, toast } = useApp();
+export function TournamentDetailScreen({
+  id,
+  view: initialView,
+  from,
+  ceremony: openCeremony,
+}: {
+  id: string;
+  view?: 'report' | 'play';
+  from?: 'list';
+  /** Abrir el resumen final (al volver del partido que cierra el torneo). */
+  ceremony?: boolean;
+}) {
+  const { navigate, tournaments, matches, players, saveTournament, discardTournament, deleteMatch, repos, prefs, progression, toast } = useApp();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // Resumen final (campeón y reparto de XP y logros): se abre solo al acabar el torneo.
+  const [ceremony, setCeremony] = useState(!!openCeremony);
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [editRules, setEditRules] = useState(false);
   // Partido de este torneo que se quedó a medias (app cerrada o recargada): se puede seguir.
@@ -1255,8 +1327,8 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
               >
                 Guardar y salir
               </button>
-              <button className="btn btn-danger btn-sm" onClick={() => setConfirmCancel(true)}>
-                Cancelar
+              <button className="tn-discard tn-discard-sm" onClick={() => setConfirmCancel(true)} aria-label="Descartar torneo" title="Descartar torneo">
+                <TrashIcon />
               </button>
             </>
           )}
@@ -1283,6 +1355,9 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
               return <Avatar key={pid} name={p?.name ?? '?'} photo={p?.photo} size={48} />;
             })}
           </div>
+          <button className="btn btn-sm champion-replay" onClick={() => setCeremony(true)}>
+            🎬 Resumen
+          </button>
         </div>
       )}
       <div className="td-layout">
@@ -1421,30 +1496,20 @@ export function TournamentDetailScreen({ id, view: initialView, from }: { id: st
         />
       )}
       {confirmCancel && (
-        <Modal
-          title="¿Cancelar el torneo?"
+        <DiscardModal
+          t={t}
+          playedCount={progress.done}
           onClose={() => setConfirmCancel(false)}
-          actions={
-            <>
-              <button className="btn btn-ghost" onClick={() => setConfirmCancel(false)}>Seguir</button>
-              <button
-                className="btn btn-danger"
-                onClick={async () => {
-                  const cancelled: Tournament = { ...t, status: 'cancelled' };
-                  await saveTournament(cancelled);
-                  setConfirmCancel(false);
-                  // De vuelta a elegir jugadores, con los mismos ya marcados.
-                  navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' });
-                }}
-              >
-                Cancelar torneo
-              </button>
-            </>
-          }
-        >
-          <p style={{ margin: 0 }}>Los partidos ya jugados se conservan en el historial; el torneo queda sin campeón.</p>
-        </Modal>
+          onConfirm={async () => {
+            await discardTournament(t.id);
+            setConfirmCancel(false);
+            toast('Torneo descartado');
+            // De vuelta a elegir jugadores, con los mismos ya marcados.
+            navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' });
+          }}
+        />
       )}
+      {ceremony && t.status === 'finished' && <TournamentCeremony t={t} onClose={() => setCeremony(false)} />}
     </ScreenFrame>
   );
 }

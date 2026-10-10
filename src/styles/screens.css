@@ -4664,3 +4664,373 @@ div > .name-clash:first-child {
     display: none;
   }
 }
+
+/* ---------- Descartar torneo (papelera roja) ---------- */
+.tn-discard {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 2px solid var(--danger);
+  background: rgba(255, 90, 110, 0.14);
+  color: var(--danger);
+  box-shadow: 0 0 10px rgba(255, 90, 110, 0.35);
+  cursor: pointer;
+}
+.tn-discard:hover,
+.tn-discard:focus-visible {
+  background: rgba(255, 90, 110, 0.3);
+  color: #fff;
+}
+.tn-discard-sm {
+  width: 38px;
+  height: 38px;
+}
+.champion-replay {
+  flex: none;
+}
+
+/* ---------- Resumen final del torneo ---------- */
+.tn-ceremony {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px;
+  overflow: hidden;
+  color: var(--text);
+  background: radial-gradient(ellipse at center, rgba(15, 40, 70, 0.96), rgba(4, 8, 15, 0.98) 70%);
+}
+/* Algunas pantallas ponen «position: relative» a sus hijos directos: el resumen cubre la pantalla entera. */
+.screen > .tn-ceremony {
+  position: absolute !important;
+  z-index: 60 !important;
+}
+.tn-ceremony.is-gold {
+  background: radial-gradient(ellipse at center, rgba(90, 70, 10, 0.92), rgba(4, 8, 15, 0.98) 70%);
+}
+.tn-ceremony.is-last {
+  background: radial-gradient(ellipse at center, rgba(90, 10, 22, 0.92), rgba(4, 8, 15, 0.98) 70%);
+}
+.tn-ceremony .victory-rays {
+  z-index: 0;
+}
+.tn-ceremony > * {
+  position: relative;
+  z-index: 1;
+}
+.cer-top,
+.cer-nav {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cer-count {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.cer-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cer-dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cer-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.cer-dots i.seen {
+  background: var(--text-3);
+}
+.cer-dots i.on {
+  background: var(--ranked);
+  box-shadow: 0 0 8px var(--ranked);
+}
+
+/* Cartel del campeón */
+.cer-champion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  animation: cer-in 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.cer-kicker {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.cer-champ-title {
+  font-size: 52px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  color: var(--ranked);
+  text-shadow: 0 0 24px rgba(242, 201, 76, 0.8);
+}
+.cer-cup {
+  filter: drop-shadow(0 0 18px rgba(242, 201, 76, 0.8));
+}
+.cer-champ-photos {
+  display: flex;
+  gap: 24px;
+}
+.cer-champ-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 22px;
+}
+.cer-champ-name {
+  font-size: 26px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cer-sub {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+/* Ficha de cada puesto */
+.cer-card {
+  width: min(960px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 2px solid var(--accent);
+  background: rgba(7, 16, 28, 0.85);
+  box-shadow: var(--glow);
+  animation: cer-in 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.cer-card.cer-gold {
+  border-color: var(--ranked);
+  box-shadow: 0 0 28px rgba(242, 201, 76, 0.45);
+}
+.cer-card.cer-shame {
+  border-color: var(--danger);
+  box-shadow: 0 0 28px rgba(255, 90, 110, 0.5);
+  animation: cer-in 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both, cer-shake 0.5s 0.5s both;
+}
+.cer-place {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+.cer-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cer-place-num {
+  font-size: 72px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  color: var(--accent);
+}
+.cer-gold .cer-place-num {
+  color: var(--ranked);
+  text-shadow: 0 0 16px rgba(242, 201, 76, 0.7);
+}
+.cer-shame .cer-place-num {
+  color: var(--danger);
+}
+.cer-tag {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  padding: 2px 12px;
+  border-radius: 8px;
+  background: var(--ranked);
+  color: #1b1300;
+}
+.cer-shame .cer-tag {
+  background: var(--danger);
+  color: #fff;
+  transform: rotate(-3deg);
+}
+.cer-team-name {
+  font-size: 24px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cer-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.cer-stats b {
+  color: var(--text);
+  font-size: 18px;
+}
+.cer-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px 18px;
+}
+.cer-player {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.cer-photo {
+  position: relative;
+  flex: none;
+}
+.cer-stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  padding: 2px 8px;
+  border: 3px solid var(--danger);
+  border-radius: 6px;
+  background: rgba(20, 0, 4, 0.7);
+  color: var(--danger);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  animation: cer-stamp 0.4s 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.cer-player-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cer-player-name {
+  font-size: 24px;
+}
+.cer-nick {
+  color: var(--danger);
+  font-size: 18px;
+}
+.cer-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cer-xp {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.cer-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cer-level .vic-bar {
+  flex: 1;
+  max-width: 320px;
+}
+.cer-level .vic-lv {
+  width: auto;
+  white-space: nowrap;
+}
+.cer-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.cer-achs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cer-ach {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(17, 34, 59, 0.85);
+  font-size: 13px;
+  font-weight: 700;
+  animation: cer-in 0.4s var(--d, 0.8s) both;
+}
+@keyframes cer-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cer-stamp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-18deg) scale(2.4);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-18deg) scale(1);
+  }
+}
+@keyframes cer-shake {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -6px 0;
+  }
+  75% {
+    translate: 6px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cer-champion,
+  .cer-card,
+  .cer-card.cer-shame,
+  .cer-ach,
+  .cer-stamp {
+    animation: none;
+  }
+}

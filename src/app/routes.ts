@@ -27,6 +27,7 @@ export type Route =
   /** Creador de predefinidos: `templateId` edita uno guardado; `baseId` parte de otro. `selected` se devuelve al volver. */
   | { name: 'tournamentTemplate'; templateId?: string; baseId?: string; selected?: string[] }
   /** `from: 'list'`: se abrió desde «Mis torneos» (volver allí); si no, se vuelve a «¿Quién juega?». */
-  | { name: 'tournamentDetail'; id: string; view?: 'report' | 'play'; from?: 'list' }
+  /** `ceremony`: abrir el resumen final (al volver del partido que cierra el torneo). */
+  | { name: 'tournamentDetail'; id: string; view?: 'report' | 'play'; from?: 'list'; ceremony?: boolean }
   | { name: 'challenges' }
   | { name: 'settings'; tab?: SettingsTab };

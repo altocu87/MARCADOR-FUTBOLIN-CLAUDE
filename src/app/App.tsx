@@ -115,7 +115,7 @@ function Router() {
       screen = <TournamentTemplateScreen key={`${route.templateId ?? ''}|${route.baseId ?? ''}`} templateId={route.templateId} baseId={route.baseId} selected={route.selected} />;
       break;
     case 'tournamentDetail':
-      screen = <TournamentDetailScreen key={route.id} id={route.id} view={route.view} from={route.from} />;
+      screen = <TournamentDetailScreen key={route.id} id={route.id} view={route.view} from={route.from} ceremony={route.ceremony} />;
       break;
     case 'challenges':
       screen = <ChallengesScreen />;

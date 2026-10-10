@@ -63,6 +63,7 @@ export function VictoryScreen({
   matchId,
   save,
   inTournament,
+  tournamentDone,
   onStats,
   onRematch,
   onTournament,
@@ -72,6 +73,8 @@ export function VictoryScreen({
   matchId: string;
   save: SaveStatus | null;
   inTournament: boolean;
+  /** Este partido cierra el torneo (la XP y los logros se ven en el resumen del torneo). */
+  tournamentDone?: boolean;
   onStats: () => void;
   onRematch: () => void;
   onTournament: () => void;
@@ -95,7 +98,12 @@ export function VictoryScreen({
   }, [anthem]);
 
   // El progreso solo existe si el partido se ha guardado.
-  const entries = save?.kind === 'saved' ? progression?.byMatch.get(matchId) : undefined;
+  // En un torneo la XP y los logros se reparten al final, en el resumen del torneo: aquí solo el ELO.
+  const raw = save?.kind === 'saved' ? progression?.byMatch.get(matchId) : undefined;
+  const tournamentXp = inTournament && !!raw;
+  const entries = tournamentXp
+    ? new Map([...raw!].map(([id, e]) => [id, { ...e, xpGained: 0, xpAfter: e.xpAfter - e.xpGained, xpBreakdown: [], unlocked: [], levelAfter: e.levelBefore, deferred: true }]))
+    : raw;
   const levelUps = entries ? [...entries.values()].some((e) => e.levelAfter > e.levelBefore) : false;
   useEffect(() => {
     if (!levelUps) return;
@@ -173,7 +181,7 @@ export function VictoryScreen({
         <div className="vic-side vic-side-right">
           {inTournament ? (
             <button className="btn btn-primary vic-main" onClick={onTournament} disabled={!save}>
-              Volver al torneo
+              {tournamentDone ? '🏆 Ver campeón' : 'Volver al torneo'}
             </button>
           ) : (
             <button className="btn btn-primary vic-main" onClick={onRematch} disabled={!save} title="Mismos jugadores cambiando de lado">
@@ -204,6 +212,12 @@ export function VictoryScreen({
         <div className="vic-note">Guardando el partido…</div>
       ) : save.kind === 'test' ? (
         <div className="vic-note">Modo prueba: el partido no se guarda y no da experiencia.</div>
+      ) : save.kind === 'saved' && tournamentXp ? (
+        <div className="vic-note">
+          {tournamentDone
+            ? '¡Torneo terminado! La experiencia y los logros se reparten ahora, en el resumen del torneo.'
+            : 'Partido de torneo: la experiencia y los logros se dan al terminar el torneo.'}
+        </div>
       ) : save.kind === 'error' ? (
         <div className="vic-note warn">No se pudo guardar. Entra en Ver estadísticas para reintentarlo.</div>
       ) : null}
@@ -331,16 +345,16 @@ function PlayerProgressRow({
     <button
       className={`vic-row ${open ? 'open' : ''} ${mark ?? ''}`}
       style={{ '--d': `${delay - 0.3}s` } as CSSProperties}
-      onClick={() => entry && setOpen((o) => !o)}
+      onClick={() => entry && !entry.deferred && setOpen((o) => !o)}
       aria-expanded={open}
-      aria-label={`${name}${entry ? `: +${entry.xpGained} XP. Toca para ver el desglose.` : ''}`}
+      aria-label={`${name}${entry && !entry.deferred ? `: +${entry.xpGained} XP. Toca para ver el desglose.` : ''}`}
     >
       <Avatar name={name} photo={photo} size={avatarSize} />
       <span className="vic-row-main">
         <span className="vic-row-top">
           <strong className="vic-name">{name}</strong>
           {/* XP en columna fija: queda alineada en todas las filas. */}
-          {entry && <span className="vic-xp">+{shownXp} XP</span>}
+          {entry && !entry.deferred && <span className="vic-xp">+{shownXp} XP</span>}
           {entry?.eloDelta !== undefined && (
             <span className={`vic-elo ${entry.eloDelta >= 0 ? 'up' : 'down'}`}>
               ELO {entry.eloDelta >= 0 ? '+' : ''}
@@ -361,7 +375,7 @@ function PlayerProgressRow({
             </span>
           )}
         </span>
-        {entry && span && (
+        {entry && span && !entry.deferred && (
           <>
             <span className="vic-level">
               <span className={`vic-lv ${levelReached ? 'leveled' : ''}`}>NV {span.level}</span>

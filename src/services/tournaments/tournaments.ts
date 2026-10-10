@@ -621,3 +621,41 @@ export function finalSeriesEditable(t: Tournament): boolean {
 export function markAbandoned(t: Tournament, fixtureId: string, now: number): Tournament {
   return { ...t, fixtures: t.fixtures.map((f) => (f.id === fixtureId && !f.winnerTeamId ? { ...f, abandonedAt: now } : f)) };
 }
+
+export interface FinalPlace {
+  /** Equipo (liguilla y cuadro) o jugador (Pool, su equipo de 1). */
+  team: TournamentTeam;
+  place: number;
+  champion: boolean;
+}
+
+/**
+ * Clasificación final del torneo, del campeón al último.
+ * - Liguilla y Pool: la clasificación de la fase regular; si hubo final, sus finalistas van delante
+ *   (primero los campeones y luego los que la perdieron).
+ * - Cuadro: por la ronda a la que llegó cada uno; a igual ronda, por victorias y goles.
+ */
+export function finalRanking(t: Tournament, matches: StoredMatch[]): FinalPlace[] {
+  const winner = t.teams.find((x) => x.id === t.winnerTeamId);
+  let order = (t.format === 'bracket' ? leagueStandings(t, matches) : standings(t, matches)).map((r) => r.team);
+  if (t.format === 'bracket') {
+    // Ronda más alta a la que llegó cada uno (el campeón, el primero); el orden estable deja el desempate.
+    const reached = (id: string) =>
+      id === t.winnerTeamId ? Infinity : Math.max(0, ...t.fixtures.filter((f) => !f.bye && (f.whiteTeamId === id || f.blueTeamId === id)).map((f) => f.round));
+    order = [...order].sort((a, b) => reached(b.id) - reached(a.id));
+  } else {
+    const fin = t.fixtures.find((f) => f.stage === 'final' && f.winnerTeamId);
+    if (fin && winner) {
+      const loserId = fin.winnerTeamId === fin.whiteTeamId ? fin.blueTeamId : fin.whiteTeamId;
+      const loser = t.teams.find((x) => x.id === loserId)?.playerIds ?? [];
+      const within = (tt: TournamentTeam, ids: string[]) => tt.playerIds.every((p) => ids.includes(p));
+      const rank = (tt: TournamentTeam) => (within(tt, winner.playerIds) ? 0 : within(tt, loser) ? 1 : 2);
+      order = [...order].sort((a, b) => rank(a) - rank(b));
+    }
+  }
+  return order.map((team, i) => ({
+    team,
+    place: i + 1,
+    champion: !!winner && team.playerIds.every((p) => winner.playerIds.includes(p)),
+  }));
+}

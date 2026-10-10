@@ -38,6 +38,8 @@ interface AppContextValue {
   saveMatch(match: StoredMatch): Promise<void>;
   deleteMatch(id: string): Promise<void>;
   saveTournament(tournament: Tournament): Promise<void>;
+  /** Descarta un torneo: se borran el torneo y todos sus partidos (no cuentan para nada). */
+  discardTournament(id: string): Promise<void>;
   /** Pasa todo lo de un jugador (p. ej. un invitado) a otro y borra el primero. */
   mergePlayers(fromId: string, intoId: string): Promise<{ movedMatches: number; movedTournaments: number }>;
   savePrefs(prefs: Preferences): Promise<void>;
@@ -141,6 +143,18 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [repos],
   );
 
+  const discardTournament = useCallback(
+    async (id: string) => {
+      const [m, t, active] = await Promise.all([repos.matches.list(), repos.tournaments.list(), repos.activeMatch.load()]);
+      await repos.matches.saveAll(m.filter((x) => x.tournament?.id !== id));
+      await repos.tournaments.saveAll(t.filter((x) => x.id !== id));
+      // Si había un partido suyo a medias, también se va.
+      if (active?.extras?.tournament?.id === id) await repos.activeMatch.clear();
+      await refresh();
+    },
+    [repos, refresh],
+  );
+
   const mergePlayersCb = useCallback(
     async (fromId: string, intoId: string) => {
       const [p, m, t] = await Promise.all([repos.players.list(), repos.matches.list(), repos.tournaments.list()]);
@@ -224,6 +238,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     saveMatch,
     deleteMatch,
     saveTournament,
+    discardTournament,
     mergePlayers: mergePlayersCb,
     savePrefs,
     demoMode,
