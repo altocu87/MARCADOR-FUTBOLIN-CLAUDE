@@ -98,12 +98,6 @@ function pickRules(t: MatchRules): MatchRules {
   return { endCondition: t.endCondition, goalsPerPeriod: t.goalsPerPeriod, minutesPerPeriod: t.minutesPerPeriod };
 }
 
-/** El tipo de torneo con otras reglas de partido. La final a más goles solo se queda si sigue siendo más. */
-function withRules(t: TournamentTemplate, r: MatchRules): TournamentTemplate {
-  const finalGoals = t.finalGoals && t.finalGoals > r.goalsPerPeriod ? t.finalGoals : null;
-  return { ...t, endCondition: r.endCondition, goalsPerPeriod: r.goalsPerPeriod, minutesPerPeriod: r.minutesPerPeriod, finalGoals };
-}
-
 /** «Gana quien llegue a 5 goles» / «2 partes de 5 minutos: gana quien lleve más goles» / … */
 function rulesText(r: MatchRules): string {
   const g = `${r.goalsPerPeriod} goles`;
@@ -604,10 +598,6 @@ export function TournamentNewScreen({
   }, [kindSelected]);
   // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
   const [showBlocked, setShowBlocked] = useState(false);
-  // Cómo se juegan los partidos (goles, tiempo o ambas): sale del tipo elegido y se puede cambiar aquí.
-  const [rules, setRules] = useState<(MatchRules & { tplId: string }) | null>(null);
-  // Y la final: a partido único o al mejor de 3, y sus propias reglas.
-  const [finalPick, setFinalPick] = useState<(MatchRules & { tplId: string; bestOf: 1 | 3 }) | null>(null);
   // Nombre, logo y copa del torneo (por defecto, los del tipo elegido y su última edición).
   const [brand, setBrand] = useState<{ tplId: string; name?: string; logo?: string; cup?: string } | null>(null);
   const [picker, setPicker] = useState<'logo' | 'cup' | null>(null);
@@ -628,13 +618,8 @@ export function TournamentNewScreen({
   const fits = allFits.filter((x) => x.t.format === kind);
   const shown = fits.filter((x) => x.fit.ok).sort((a, b) => rank(a.t.id) - rank(b.t.id));
   const blocked = fits.filter((x) => !x.fit.ok);
-  const baseTpl = shown.find((x) => x.t.id === chosenTpl)?.t ?? shown[0]?.t;
-  const ruledTpl = baseTpl && rules?.tplId === baseTpl.id ? withRules(baseTpl, rules) : baseTpl;
-  const tpl =
-    ruledTpl && finalPick?.tplId === ruledTpl.id ? { ...withFinalRules(ruledTpl, finalPick), finalBestOf: finalPick.bestOf } : ruledTpl;
-  const setRule = (patch: Partial<MatchRules>) => baseTpl && setRules({ ...pickRules(tpl!), ...patch, tplId: baseTpl.id });
-  const setFinal = (patch: Partial<MatchRules & { bestOf: 1 | 3 }>) =>
-    baseTpl && setFinalPick({ ...finalRulesOf(tpl!), bestOf: tpl!.finalBestOf, ...patch, tplId: baseTpl.id });
+  // Las reglas (goles, tiempo, final) son las del tipo elegido: aquí solo se resumen y se cambian con «Editar».
+  const tpl = shown.find((x) => x.t.id === chosenTpl)?.t ?? shown[0]?.t;
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -963,23 +948,30 @@ export function TournamentNewScreen({
     }
   };
 
-  const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => (
-    <button
-      key={t.id}
-      className={`tpl-card ${fit.ok ? '' : 'is-off'}`}
-      aria-pressed={fit.ok && t.id === tpl?.id}
-      disabled={!fit.ok}
-      onClick={() => setChosenTpl(t.id)}
-    >
-      <strong>
-        {t.name}
-        {t.id === recommended && <span className="tpl-rec">Recomendado</span>}
-        {!t.builtIn && <span className="tpl-mine">mío</span>}
-      </strong>
-      {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
-      <span>{describeTemplate(t)}</span>
-    </button>
-  );
+  // «Editar» abre el editor del tipo: el propio se edita; uno de fábrica no se toca, se copia y se ajusta.
+  const editTemplate = (t: TournamentTemplate) =>
+    navigate(t.builtIn ? { name: 'tournamentTemplate', baseId: t.id, selected } : { name: 'tournamentTemplate', templateId: t.id, selected });
+  const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => {
+    const on = fit.ok && t.id === tpl?.id;
+    return (
+      <div key={t.id} className="tpl-row">
+        <button className={`tpl-card ${fit.ok ? '' : 'is-off'}`} aria-pressed={on} disabled={!fit.ok} onClick={() => setChosenTpl(t.id)}>
+          <strong>
+            {t.name}
+            {t.id === recommended && <span className="tpl-rec">Recomendado</span>}
+            {!t.builtIn && <span className="tpl-mine">mío</span>}
+          </strong>
+          {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
+          <span>{describeTemplate(t)}</span>
+        </button>
+        {on && (
+          <button className="btn btn-sm tpl-edit" onClick={() => editTemplate(t)}>
+            Editar
+          </button>
+        )}
+      </div>
+    );
+  };
 
   let preview: ReactNode = null;
   if (tpl && draft) {
@@ -987,7 +979,6 @@ export function TournamentNewScreen({
       <div className="tn-plan">
         <strong>{templateFit(tpl, n).summary}</strong>
         <span>Las parejas cambian en cada partido y puntúa cada jugador.{draft.gamesPerPlayer !== tpl.gamesPerPlayer ? ` Ajustado a ${draft.gamesPerPlayer} partidos por jugador para que todos jueguen los mismos.` : ''}</span>
-        {draft.final !== 'none' && <span>Final: {FINAL_LABEL[draft.final!]}{tpl.finalBestOf > 1 ? ', al mejor de 3' : ''}.</span>}
         <div className="tn-teams" style={{ marginTop: 4 }}>
           {selected.map((id) => <span key={id} className="tn-team">{nameOf(id)}</span>)}
         </div>
@@ -1022,13 +1013,30 @@ export function TournamentNewScreen({
       className="select-screen tn-screen"
       background={TN_BG}
       onBack={() => setStep('kind')}
+      right={
+        <>
+          <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
+            + Crear {kindInfo.noun}
+          </button>
+          {tpl && (
+            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', baseId: tpl.id, selected })}>
+              Copiar y ajustar
+            </button>
+          )}
+        </>
+      }
       footer={
         <>
-          <span className={`notice select-status ${errors.length ? 'warn' : ''}`}>
+          <span className={`notice select-status tn-status ${errors.length ? 'warn' : ''}`}>
             {errors[0] ?? (isPool ? `${n} jugadores listos` : `${draft?.teams.length ?? 0} equipos listos`)}
           </span>
-          <button className="btn btn-primary btn-lg" disabled={errors.length > 0} onClick={create}>
-            Crear torneo
+          {blocked.length > 0 && (
+            <button className="tpl-more tn-foot-more" onClick={() => setShowBlocked((v) => !v)}>
+              {showBlocked ? 'Ocultar las que no encajan' : `Ver las que no encajan (${blocked.length})`}
+            </button>
+          )}
+          <button className="btn btn-primary btn-lg tn-continue" disabled={errors.length > 0} onClick={create}>
+            Continuar
           </button>
         </>
       }
@@ -1039,30 +1047,11 @@ export function TournamentNewScreen({
           <div className="tpl-list scroll">
             {shown.map(tplCard)}
             {shown.length === 0 && <div className="tpl-sep">Ninguna encaja con {n} jugadores</div>}
-            {showBlocked ? (
+            {showBlocked && (
               <>
                 {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
                 {blocked.map(tplCard)}
               </>
-            ) : (
-              blocked.length > 0 && (
-                <button className="tpl-more" onClick={() => setShowBlocked(true)}>
-                  Ver las que no encajan ({blocked.length})
-                </button>
-              )
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
-              + Crear {kindInfo.noun}
-            </button>
-            {tpl && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => navigate(tpl.builtIn ? { name: 'tournamentTemplate', baseId: tpl.id, selected } : { name: 'tournamentTemplate', templateId: tpl.id, selected })}
-              >
-                {tpl.builtIn ? 'Copiar y ajustar' : 'Editar tipo'}
-              </button>
             )}
           </div>
         </div>
@@ -1110,29 +1099,20 @@ export function TournamentNewScreen({
             </>
           )}
           {tpl && (
-            <div className="tn-rules">
-              <div className="tn-rules-head">
-                <div className="label">Partidos</div>
-                <ConditionSeg rules={tpl} onChange={setRule} />
+            // Resumen de reglas: se cambian con «Editar» en la tarjeta del tipo.
+            <div className="tn-summary">
+              <div>
+                <span className="label">Partidos</span>
+                <span>{rulesText(tpl)}</span>
               </div>
-              <AmountRow rules={tpl} onChange={setRule} />
-              <small className="tn-rules-note">{rulesText(tpl)}</small>
-            </div>
-          )}
-          {tpl && hasTemplateFinal(tpl) && (
-            <div className="tn-rules tn-rules-final">
-              <div className="tn-rules-head">
-                <div className="label">🏆 Final</div>
-                <ConditionSeg rules={finalRulesOf(tpl)} onChange={setFinal} />
+              <div className={hasTemplateFinal(tpl) ? 'tn-summary-final' : ''}>
+                <span className="label">🏆 Final</span>
+                <span>
+                  {hasTemplateFinal(tpl)
+                    ? `${tpl.format === 'bracket' ? '' : `${FINAL_LABEL[tpl.final]}, `}${tpl.finalBestOf > 1 ? 'al mejor de 3' : 'a un partido'}. ${rulesText(finalRulesOf(tpl))}`
+                    : 'Sin final: gana el primero de la clasificación.'}
+                </span>
               </div>
-              <div className="tn-rules-row">
-                <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, '1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => setFinal({ bestOf: v })} />
-              </div>
-              <AmountRow rules={finalRulesOf(tpl)} onChange={setFinal} />
-              <small className="tn-rules-note">
-                {tpl.finalBestOf > 1 ? 'Al mejor de 3. ' : 'A un partido. '}
-                {rulesText(finalRulesOf(tpl))}
-              </small>
             </div>
           )}
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

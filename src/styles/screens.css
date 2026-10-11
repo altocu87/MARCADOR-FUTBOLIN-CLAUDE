@@ -2609,6 +2609,50 @@
   padding: 2px 4px 2px 2px;
 }
 /* Tarjeta de tipo de torneo: cristal oscuro con marco de neón celeste; la elegida se enciende. */
+/* «Elige la liga/copa/pool»: la tarjeta elegida lleva su «Editar» (abre el editor del tipo). */
+.tpl-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.tpl-row .tpl-card[aria-pressed='true'] {
+  padding-right: 96px;
+}
+.tpl-edit {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+/* Resumen de reglas bajo el nombre del torneo (solo lectura). */
+.tn-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #62d6ff 45%, transparent);
+  background: rgba(7, 16, 28, 0.72);
+}
+.tn-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+}
+.tn-summary .label {
+  flex: none;
+  width: 84px;
+  margin: 0;
+}
+.tn-summary-final .label {
+  color: var(--ranked);
+}
+.tn-foot-more {
+  flex: none;
+  width: auto;
+  padding: 8px 14px;
+}
 /* «¿Qué torneo jugamos?»: los tres tipos (liga, copa, pool) en tarjetas grandes. */
 .tn-kinds {
   display: grid;
