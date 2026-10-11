@@ -272,6 +272,14 @@ describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () =>
     expect(fn).toContain('not bloqueado');
   });
 
+  it('las guardias frenan a quien entra por la API, pero no al dueño desde el SQL Editor', async () => {
+    const { default: sql } = await import('../supabase/migrations/20261011130000_guardias_sql_editor.sql?raw');
+    for (const fn of ['guard_profile', 'guard_order']) {
+      const body = new RegExp(`function public\\.${fn}\\(\\)[\\s\\S]*?end \\$\\$`).exec(sql)![0];
+      expect(body, fn).toContain("current_user not in ('anon', 'authenticated')");
+    }
+  });
+
   it('cada colección tiene su tabla y la conversión es reversible', () => {
     expect(Object.keys(TABLES)).toHaveLength(8);
     const o = { createdAt: 5, venueId: 'v', nombre: 'n' };
