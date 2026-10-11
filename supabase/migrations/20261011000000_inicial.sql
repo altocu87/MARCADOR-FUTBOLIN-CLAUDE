@@ -1,6 +1,8 @@
 -- =====================================================================================
 -- MARCADOR FUTBOLÍN · base de datos del servicio de pago (Supabase / PostgreSQL)
--- Puesta en marcha: Supabase → SQL Editor → pegar y ejecutar (pasos completos en docs/ADMIN.md).
+-- Migración inicial. Se aplica sola al subir a main (GitHub Actions → «Base de datos»), o a mano:
+-- Supabase → SQL Editor → pegar y ejecutar en una base de datos vacía. Pasos completos en docs/ADMIN.md.
+-- Para cambiar algo más adelante NO se edita este archivo: se añade otro en supabase/migrations/ con fecha posterior.
 --
 -- El equipo (admin y soporte) solo tiene permisos si a la vez:
 --   1) su perfil tiene ese rol, 2) su cuenta no está bloqueada y 3) ha entrado con la verificación en dos pasos

@@ -1,0 +1,3 @@
+# Configuración mínima de la CLI de Supabase (las migraciones están en supabase/migrations/).
+# El proyecto real se elige al enlazar: supabase link --project-ref <Project ID> (lo hace GitHub Actions).
+project_id = "marcador-futbolin"

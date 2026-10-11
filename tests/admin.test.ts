@@ -266,7 +266,7 @@ describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () =>
   });
 
   it('en el servidor, el equipo solo tiene rol con verificación en dos pasos y cuenta sin bloquear', async () => {
-    const { default: sql } = await import('../supabase/schema.sql?raw');
+    const { default: sql } = await import('../supabase/migrations/20261011000000_inicial.sql?raw');
     const fn = /function public\.staff_role\(\)[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(sql)![1];
     expect(fn).toContain("'aal2'");
     expect(fn).toContain('not bloqueado');
@@ -287,7 +287,7 @@ describe('Panel · rango de fechas de los datos de ejemplo', () => {
 
 describe('Panel · la base de datos preparada coincide con el panel', () => {
   it('cada tabla existe y tiene todas las columnas que el panel guarda', async () => {
-    const { default: sql } = await import('../supabase/schema.sql?raw');
+    const { default: sql } = await import('../supabase/migrations/20261011000000_inicial.sql?raw');
     const d = seedData(NOW);
     const samples: Record<string, object> = {
       users: { ...d.users.find((u) => u.venueId)! },

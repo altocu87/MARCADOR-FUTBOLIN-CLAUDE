@@ -54,9 +54,9 @@ Todas las entradas llegan al mismo motor y respetan el bloqueo de 3 s.
 ## Panel de administración
 
 En `/admin/` de la web (guía: [`docs/ADMIN.md`](docs/ADMIN.md)): resumen con gráficos, ventas y reembolsos, envíos de
-kits, usuarios y roles, bares, licencias Pro, tienda y cupones, avisos, registro de actividad y ajustes. Hoy funciona en
-**modo demostración** (datos de ejemplo en el navegador). La base de datos real está preparada en
-`supabase/schema.sql` (tablas, roles y permisos en el servidor) y **no se ha aplicado**.
+kits, usuarios y roles, bares, licencias Pro, tienda y cupones, avisos, registro de actividad y ajustes. También se abre
+desde la app (Ajustes → Sistema). Entrar pide contraseña y código de verificación en dos pasos. La base de datos
+(Supabase) se define con migraciones en `supabase/migrations/`, que GitHub aplica solas al subir a `main`.
 
 ## Qué incluye
 

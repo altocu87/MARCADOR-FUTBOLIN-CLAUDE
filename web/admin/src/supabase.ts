@@ -3,7 +3,7 @@
  *   - Entrar: correo y contraseña (/auth/v1/token) y después, SIEMPRE, el código de 6 cifras de una app
  *     de verificación (TOTP, /auth/v1/factors). La primera vez se da de alta escaneando un código QR.
  *   - Datos: /rest/v1/<tabla>, con el token del usuario. Los permisos los decide el SERVIDOR
- *     (políticas RLS de supabase/schema.sql): sin rol admin/soporte, sin cuenta bloqueada y sin haber
+ *     (políticas RLS de supabase/migrations/): sin rol admin/soporte, sin cuenta bloqueada y sin haber
  *     pasado la verificación en dos pasos (aal2), la base de datos no devuelve nada, aunque alguien trucase el panel.
  * La clave «anon» de Supabase es pública por diseño; lo que protege los datos son esas políticas.
  * La sesión vive solo en esta pestaña (sessionStorage), se renueva sola y al salir se revoca en el servidor.

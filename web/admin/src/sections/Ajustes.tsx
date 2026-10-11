@@ -124,7 +124,7 @@ export function Ajustes() {
             </p>
           ) : backend.mode === 'demo' ? (
             <>
-              <p className="a-muted small">Cuando el servicio sea de pago: crea el proyecto en Supabase, ejecuta supabase/schema.sql y pega aquí su dirección y su clave «anon» (pública).</p>
+              <p className="a-muted small">Cuando el servicio sea de pago: crea el proyecto en Supabase, aplica las migraciones de supabase/migrations/ y pega aquí su dirección y su clave «anon» (pública).</p>
               <Field label="Dirección del proyecto (URL)">
                 <input className="a-input mono" value={url} disabled={!editable} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" />
               </Field>

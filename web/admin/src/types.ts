@@ -1,6 +1,6 @@
 /**
  * Datos del negocio que gestiona el panel de administración.
- * Las mismas tablas existen en supabase/schema.sql para cuando el servicio sea de pago.
+ * Las mismas tablas existen en supabase/migrations/ para cuando el servicio sea de pago.
  * Importes siempre en céntimos (enteros) para no arrastrar errores de redondeo.
  */
 

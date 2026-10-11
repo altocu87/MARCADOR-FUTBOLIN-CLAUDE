@@ -47,13 +47,22 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 | **Dueño de bar** | No | (Su local, en la app, cuando exista el servicio online) |
 | **Jugador** | No | (Su perfil y sus compras) |
 
-En modo real los permisos los comprueba **el servidor** (`supabase/schema.sql`), no el panel: aunque alguien
+En modo real los permisos los comprueba **el servidor** (`supabase/migrations/`), no el panel: aunque alguien
 modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 
 ## Puesta en marcha con Supabase
 
 1. **Base de datos**: un proyecto en [Supabase](https://supabase.com) en la UE (p. ej. Irlanda o Frankfurt).
-2. En **SQL Editor**, pega y ejecuta `supabase/schema.sql` en una base de datos **vacía**. Crea las tablas, los roles y los permisos.
+2. **Migraciones automáticas** (crean tablas, roles y permisos; la base de datos debe empezar **vacía**). En GitHub,
+   *Settings → Secrets and variables → Actions*:
+   - Variable `SUPABASE_PROJECT_ID`: el Project ID (Supabase → *Project Settings → General*).
+   - Secreto `SUPABASE_ACCESS_TOKEN`: token personal (Supabase → avatar → *Account preferences → Access Tokens*).
+   - Secreto `SUPABASE_DB_PASSWORD`: la contraseña de la base de datos del proyecto.
+
+   Al subir a `main` cualquier archivo nuevo de `supabase/migrations/`, el flujo «Base de datos» lo aplica
+   (`supabase db push`). También se puede lanzar a mano desde *Actions*. En una PR solo se comprueba qué aplicaría.
+   Sin GitHub: pega `supabase/migrations/20261011000000_inicial.sql` en el **SQL Editor** y ejecútalo.
+   **Para cambiar la base de datos** no se edita una migración ya aplicada: se añade otra con fecha posterior.
 3. **Cerrar el registro**: *Authentication → Sign In / Providers* → desactiva «Allow new users to sign up».
    *Authentication → Policies/Passwords*: longitud mínima 12 o más.
 4. **Tu cuenta**: *Authentication → Users → Add user* con tu correo y una contraseña larga. Después, en el SQL Editor:
@@ -78,5 +87,5 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 - El conector real habla con la API REST de Supabase sin bibliotecas extra. Para modificar usa `PATCH` y solo
   crea con `POST` si no existía (así Soporte puede actualizar envíos sin permiso de crear pedidos).
 - Importes en céntimos, fechas en milisegundos, columnas en `snake_case`. Una prueba comprueba que cada columna
-  que guarda el panel existe en `schema.sql`.
+  que guarda el panel existe en la migración inicial.
 - Los gráficos son SVG propios, de una sola serie y con alternativa en tabla. El color se ha validado sobre el fondo oscuro.
