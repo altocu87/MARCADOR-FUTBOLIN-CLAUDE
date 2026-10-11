@@ -5034,3 +5034,106 @@ div > .name-clash:first-child {
     animation: none;
   }
 }
+
+/* ---------- Torneos: En curso y Palmarés ---------- */
+.tn-running,
+.tn-honours {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tn-honours .hon-grid {
+  flex: none;
+}
+.tn-run-card {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 16px;
+  border: 2px solid #3ddc84;
+  background: rgba(7, 16, 28, 0.82);
+  box-shadow:
+    0 0 12px rgba(61, 220, 132, 0.45),
+    inset 0 0 14px rgba(61, 220, 132, 0.1);
+}
+.tn-run-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tn-run-icon {
+  font-size: 30px;
+}
+.tn-run-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tn-run-body b {
+  font-size: 18px;
+}
+.tn-run-body b,
+.tn-run-body small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tn-run-body small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.tn-run-progress {
+  display: block;
+  height: 8px;
+  max-width: 320px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.tn-run-progress span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2fb8ec, #3ddc84);
+}
+.tn-faces {
+  display: inline-flex;
+  flex: none;
+}
+.tn-faces .avatar + .avatar {
+  margin-left: -8px;
+}
+.tn-faces .avatar {
+  box-shadow: 0 0 0 2px var(--bg-deep);
+}
+.tn-faces-more {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-2);
+}
+.tn-champ-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ranked);
+}
+.tn-champ-line b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

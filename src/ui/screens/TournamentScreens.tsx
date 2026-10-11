@@ -12,7 +12,6 @@ import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
   FORMAT_LABEL,
-  TOURNAMENT_RULES_VERSION,
   allTemplates,
   competitions,
   editionName,
@@ -259,11 +258,29 @@ function teamCountLabel(t: Tournament): string {
   return t.format === 'pool' ? `${t.entrants?.length ?? 0} jugadores` : `${t.teams.length} equipos · ${t.teamSize === 1 ? '1v1' : '2v2'}`;
 }
 
+/**
+ * Torneos, en dos pestañas con una sola función cada una:
+ * - En curso: los torneos empezados, para seguir jugando (o descartarlos).
+ * - Palmarés: lo ya jugado; las competiciones con su campeón y los últimos torneos terminados.
+ */
 export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'honours' }) {
-  const { navigate, tournaments, matches, players } = useApp();
-  const [tab, setTab] = useState<'list' | 'honours'>(initialTab ?? 'list');
-  const list = [...tournaments].sort((a, b) => b.createdAt - a.createdAt);
-  const comps = tab === 'honours' ? competitions(tournaments, matches, players) : [];
+  const { navigate, tournaments, matches, players, discardTournament, toast } = useApp();
+  const running = tournaments.filter((t) => t.status === 'active').sort((a, b) => b.createdAt - a.createdAt);
+  // Sin torneos en curso se abre directamente el palmarés.
+  const [tab, setTab] = useState<'list' | 'honours'>(initialTab ?? (running.length ? 'list' : 'honours'));
+  const [discarding, setDiscarding] = useState<Tournament | null>(null);
+  const played = tournaments.filter((t) => t.status !== 'active').sort((a, b) => (b.finishedAt ?? b.createdAt) - (a.finishedAt ?? a.createdAt));
+  const comps = tab === 'honours' ? competitions(tournaments, matches, players).filter((c) => c.lastChampion) : [];
+  const playerOf = (id: string) => players.find((p) => p.id === id);
+  const faces = (ids: string[], size: number) => (
+    <span className="tn-faces">
+      {ids.map((id) => (
+        <Avatar key={id} name={playerOf(id)?.name ?? '?'} photo={playerOf(id)?.photo} size={size} />
+      ))}
+    </span>
+  );
+  const open = (t: Tournament) => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' });
+
   return (
     <ScreenFrame
       title="Torneos"
@@ -277,7 +294,7 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
             value={tab}
             onChange={setTab}
             tabs={[
-              { id: 'list', label: 'Torneos' },
+              { id: 'list', label: running.length ? `En curso · ${running.length}` : 'En curso' },
               { id: 'honours', label: 'Palmarés' },
             ]}
           />
@@ -287,100 +304,149 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
         </>
       }
     >
-      {tab === 'honours' ? (
-        comps.length === 0 ? (
+      {tab === 'list' ? (
+        running.length === 0 ? (
           <div className="empty">
-            <div>
-              <Trophy size={70} />
-              <strong>Palmarés vacío</strong>
-              Cuando termine el primer torneo, aquí saldrá su campeón.
+            <div style={{ maxWidth: 520 }}>
+              <Trophy size={80} />
+              <strong>No hay ningún torneo en curso</strong>
+              Elige quién juega y la app te propone el torneo que mejor encaja.
+              <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentNew' })}>
+                  Crear torneo
+                </button>
+                {played.length > 0 && (
+                  <button className="btn" onClick={() => setTab('honours')}>
+                    Ver palmarés
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="hon-grid scroll">
-            {comps.map((c) => {
-              const top = c.honours[0];
+          <div className="tn-running scroll">
+            {running.map((t) => {
+              const pr = fixtureProgress(t);
+              const nx = nextFixture(t);
+              const side = (tid: string | null) => t.teams.find((x) => x.id === tid);
+              const ids = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
               return (
-                <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
-                  <span className="hon-card-head">
-                    {c.logo ? <Crest id={c.logo} size={40} /> : null}
-                    {c.cup ? <Cup id={c.cup} size={40} /> : <Trophy size={40} />}
-                    <span>
-                      <strong>{c.name}</strong>
+                <div key={t.id} className="tn-run-card">
+                  <button className="tn-run-main" onClick={() => open(t)}>
+                    {t.logo ? <Crest id={t.logo} size={44} /> : <span className="tn-run-icon" aria-hidden="true">⚔</span>}
+                    <span className="tn-run-body">
+                      <b>{t.name}</b>
                       <small>
-                        {c.format} · {c.editions.length} edici{c.editions.length === 1 ? 'ón' : 'ones'}
+                        {FORMAT_LABEL[t.format]} · empezó el {shortDate(t.createdAt)}
+                      </small>
+                      <span className="tn-run-progress" aria-label={`${pr.done} de ${pr.total} partidos`}>
+                        <span style={{ width: `${pr.total ? (pr.done / pr.total) * 100 : 0}%` }} />
+                      </span>
+                      <small>
+                        {pr.done} de {pr.total} partidos
+                        {nx ? ` · siguiente: ${side(nx.whiteTeamId)?.name ?? '?'} vs ${side(nx.blueTeamId)?.name ?? '?'}` : ''}
                       </small>
                     </span>
+                    {faces(ids.slice(0, 6), 34)}
+                    {ids.length > 6 && <span className="tn-faces-more">+{ids.length - 6}</span>}
+                  </button>
+                  <button className="neon-go tn-resume-go" onClick={() => open(t)}>
+                    ▶ CONTINUAR
+                  </button>
+                  <button className="tn-discard" onClick={() => setDiscarding(t)} aria-label={`Descartar ${t.name}`} title="Descartar torneo">
+                    <TrashIcon />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : played.length === 0 ? (
+        <div className="empty">
+          <div>
+            <Trophy size={70} />
+            <strong>Palmarés vacío</strong>
+            Cuando termine el primer torneo, aquí saldrá su campeón.
+          </div>
+        </div>
+      ) : (
+        <div className="tn-honours scroll">
+          {comps.length > 0 && (
+            <>
+              <div className="label">Competiciones</div>
+              <div className="hon-grid">
+                {comps.map((c) => {
+                  const top = c.honours[0];
+                  const last = c.lastChampion!;
+                  return (
+                    <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
+                      <span className="hon-card-head">
+                        {c.logo ? <Crest id={c.logo} size={40} /> : null}
+                        {c.cup ? <Cup id={c.cup} size={40} /> : <Trophy size={40} />}
+                        <span>
+                          <strong>{c.name}</strong>
+                          <small>
+                            {c.editions.length} edici{c.editions.length === 1 ? 'ón' : 'ones'}
+                          </small>
+                        </span>
+                      </span>
+                      <span className="hon-last">
+                        <small>Último campeón · {shortDate(last.date)}</small>
+                        <span className="tn-champ-line">
+                          {faces(last.championIds, 28)}
+                          <b>{last.champion}</b>
+                        </span>
+                      </span>
+                      {top && top.titles > 1 && (
+                        <span className="hon-top">
+                          Más títulos: <b>{top.name}</b> · {top.titles} 🏆
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          <div className="label" style={{ marginTop: comps.length ? 12 : 0 }}>Últimos torneos jugados</div>
+          <div className="list">
+            {played.map((t) => {
+              const winner = t.teams.find((x) => x.id === t.winnerTeamId);
+              return (
+                <button key={t.id} className="row tn-row" onClick={() => open(t)}>
+                  {t.cup && winner ? <Cup id={t.cup} size={34} /> : <span style={{ fontSize: 24 }} aria-hidden="true">{winner ? '🏆' : '✕'}</span>}
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <strong>{t.name}</strong>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {FORMAT_LABEL[t.format]} · {shortDate(t.finishedAt ?? t.createdAt)}
+                    </div>
                   </span>
-                  {c.lastChampion ? (
-                    <span className="hon-last">
-                      <small>Último campeón · {c.lastChampion.edition}ª edición · {shortDate(c.lastChampion.date)}</small>
-                      <b>{c.lastChampion.champion}</b>
+                  {winner ? (
+                    <span className="tn-champ-line">
+                      {faces(winner.playerIds, 30)}
+                      <b>{winner.name}</b>
                     </span>
                   ) : (
-                    <span className="hon-last">
-                      <small>1ª edición en juego</small>
-                    </span>
-                  )}
-                  {top && top.titles > 0 && (
-                    <span className="hon-top">
-                      Más títulos: <b>{top.name}</b> · {top.titles} 🏆
-                    </span>
+                    <span className="badge">Cancelado</span>
                   )}
                 </button>
               );
             })}
           </div>
-        )
-      ) : list.length === 0 ? (
-        <div className="empty">
-          <div style={{ maxWidth: 520 }}>
-            <Trophy size={80} />
-            <strong>Aún no hay torneos</strong>
-            Elige quién juega y la app te propone los tipos de torneo que encajan.
-            <div style={{ marginTop: 12 }}>
-              <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentNew' })}>
-                Crear torneo
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="list scroll" style={{ flex: 1, minHeight: 0 }}>
-          {list.map((t) => {
-            const real = t.fixtures.filter((f) => !f.bye);
-            const done = real.filter((f) => f.winnerTeamId).length;
-            const winner = t.teams.find((x) => x.id === t.winnerTeamId);
-            return (
-              <button key={t.id} className="row tn-row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' })}>
-                {t.logo ? (
-                  <Crest id={t.logo} size={40} />
-                ) : (
-                  <span style={{ fontSize: 26 }} aria-hidden="true">{t.status === 'finished' ? '🏆' : t.status === 'cancelled' ? '✕' : '⚔'}</span>
-                )}
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <strong>{t.name}</strong>
-                  <div className="muted" style={{ fontSize: 12 }}>
-                    {FORMAT_LABEL[t.format]} · {teamCountLabel(t)} · {t.ranked ? 'cuenta para ELO' : 'sin ELO'} · {shortDate(t.createdAt)}
-                  </div>
-                </span>
-                {t.status === 'finished' && winner ? (
-                  <span className="badge badge-ranked">
-                    {t.cup && <Cup id={t.cup} size={18} />} Campeón: {winner.name}
-                  </span>
-                ) : t.status === 'cancelled' ? (
-                  <span className="badge">Cancelado</span>
-                ) : (
-                  <span className="badge badge-accent">{done}/{real.length} partidos</span>
-                )}
-              </button>
-            );
-          })}
         </div>
       )}
-      <div className="dim" style={{ fontSize: 11 }}>
-        Formato propuesto «{TOURNAMENT_RULES_VERSION}»: victoria = 3 puntos; desempate por diferencia de goles y goles a favor. En el Pool puntúa cada jugador. Ganar un torneo da +300 XP.
-      </div>
+      {discarding && (
+        <DiscardModal
+          t={discarding}
+          playedCount={fixtureProgress(discarding).done}
+          onClose={() => setDiscarding(null)}
+          onConfirm={async () => {
+            await discardTournament(discarding.id);
+            setDiscarding(null);
+            toast('Torneo descartado');
+          }}
+        />
+      )}
     </ScreenFrame>
   );
 }
@@ -577,8 +643,8 @@ export function TournamentNewScreen({
         onBack={() => navigate({ name: 'home' })}
         right={
           <>
-            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournament' })}>
-              {running ? `Mis torneos · ${running} en juego` : 'Mis torneos'}
+            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournament', tab: running ? 'list' : 'honours' })}>
+              {running ? `En curso · ${running}` : 'Palmarés'}
             </button>
             <button className="btn btn-sm" onClick={() => setCreating(true)}>+ Jugador</button>
             <button className="btn btn-sm tn-guest-btn" onClick={() => setGuestName('')}>+ Invitado</button>
@@ -612,7 +678,7 @@ export function TournamentNewScreen({
                 <b>{t.name}</b>
                 <small>
                   {pr.done} de {pr.total} partidos{nx ? ` · siguiente: ${teamOf(nx.whiteTeamId)} vs ${teamOf(nx.blueTeamId)}` : ''}
-                  {running > 1 ? ` · y ${running - 1} más en «Mis torneos»` : ''}
+                  {running > 1 ? ` · y ${running - 1} más en «En curso»` : ''}
                 </small>
               </span>
               <button className="neon-go tn-resume-go" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
@@ -1175,7 +1241,7 @@ export function TournamentDetailScreen({
   // Subidas y bajadas de puesto con el último partido.
   const movement = standingsMovement(t, matches);
   const allPlayerIds = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
-  const back = () => (from === 'list' ? navigate({ name: 'tournament' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
+  const back = () => (from === 'list' ? navigate({ name: 'tournament', tab: t.status === 'active' ? 'list' : 'honours' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
 
   // Siempre pasa por la pantalla de Previsión (pronóstico, últimos enfrentamientos) antes de jugar.
   const play = (f: Fixture) => {
