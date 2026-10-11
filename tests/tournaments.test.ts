@@ -5,14 +5,15 @@ import { findNameClash, mergeBlocker, mergePlayers, nameKey, validatePlayerDraft
 import { computeProgression } from '../src/services/progression';
 import { seededRandom } from '../src/services/statistics/calendar';
 import {
-  BUILT_IN_TEMPLATES,
   competitions,
   editionName,
   nextEdition,
   tournamentReport,
   createTournament,
   describeTemplate,
+  allTemplates,
   draftFromTemplate,
+  newTemplate,
   effectivePoolGames,
   fixtureConfig,
   fixtureProgress,
@@ -29,15 +30,13 @@ import {
   playableFixtures,
   poolGameOptions,
   poolStandings,
-  recommendedTemplateId,
-  recommendedTemplateIds,
   recordFixtureResult,
   schedulePool,
   templateFit,
   validateDraft,
   type TournamentDraft,
 } from '../src/services/tournaments';
-import { makeMatch } from './helpers';
+import { SAMPLE_TEMPLATES, makeMatch } from './helpers';
 
 const players = (ids: string[]): Player[] =>
   ids.map((id) => ({ id, name: id.toUpperCase(), active: true, createdAt: 0, updatedAt: 0 }));
@@ -179,9 +178,9 @@ describe('Parejas fijas y predefinidos', () => {
     expect(teams[0].playerIds).toEqual(['a', 'e']);
   });
 
-  it('los predefinidos de fábrica producen torneos válidos', () => {
+  it('los tipos de ejemplo producen torneos válidos', () => {
     const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
-    for (const tpl of BUILT_IN_TEMPLATES) {
+    for (const tpl of SAMPLE_TEMPLATES) {
       const { draft, leftover } = draftFromTemplate(tpl, tpl.name, ids, () => 1200, {}, seededRandom(tpl.id));
       expect(leftover).toEqual([]);
       expect(validateDraft(draft)).toEqual([]);
@@ -189,8 +188,8 @@ describe('Parejas fijas y predefinidos', () => {
     }
   });
 
-  it('la eliminatoria de fábrica juega la final al mejor de 3 y a 7 goles', () => {
-    const tpl = BUILT_IN_TEMPLATES.find((x) => x.format === 'bracket')!;
+  it('la eliminatoria de ejemplo juega la final al mejor de 3 y a 7 goles', () => {
+    const tpl = SAMPLE_TEMPLATES.find((x) => x.format === 'bracket')!;
     const ps = players(['a', 'b', 'c', 'd']);
     const { draft } = draftFromTemplate(tpl, 'Copa', ps.map((p) => p.id), () => 1200);
     const t0 = createTournament(draft, ps, () => 1200, 0, seededRandom('z'));
@@ -208,41 +207,26 @@ describe('Parejas fijas y predefinidos', () => {
 });
 
 describe('Tipos de torneo según el número de jugadores', () => {
-  const tpl = (id: string) => BUILT_IN_TEMPLATES.find((x) => x.id === id)!;
+  const tpl = (id: string) => SAMPLE_TEMPLATES.find((x) => x.id === id)!;
   it('las parejas fijas no encajan con número impar y dicen por qué', () => {
-    const fit = templateFit(tpl('builtin-pairs'), 7);
+    const fit = templateFit(tpl('sample-pairs'), 7);
     expect(fit.ok).toBe(false);
     expect(fit.reason).toMatch(/par/);
-    expect(templateFit(tpl('builtin-pairs'), 8).ok).toBe(true);
+    expect(templateFit(tpl('sample-pairs'), 8).ok).toBe(true);
   });
   it('el Pool encaja con pares e impares y resume los descansos', () => {
-    expect(templateFit(tpl('builtin-pool'), 5).summary).toMatch(/descansa 1/);
-    expect(templateFit(tpl('builtin-pool'), 8).summary).toMatch(/sin descansos/);
-    expect(templateFit(tpl('builtin-pool'), 3).ok).toBe(false);
+    expect(templateFit(tpl('sample-pool'), 5).summary).toMatch(/descansa 1/);
+    expect(templateFit(tpl('sample-pool'), 8).summary).toMatch(/sin descansos/);
+    expect(templateFit(tpl('sample-pool'), 3).ok).toBe(false);
   });
   it('la liguilla individual tiene tope de 8', () => {
-    expect(templateFit(tpl('builtin-league'), 9).ok).toBe(false);
-  });
-  it('recomienda según cuántos son', () => {
-    expect(recommendedTemplateId(3)).toBe('builtin-league');
-    expect(recommendedTemplateId(5)).toBe('builtin-pool');
-    expect(recommendedTemplateId(8)).toBe('builtin-pairs');
-    expect(recommendedTemplateId(9)).toBe('builtin-pool');
-    expect(recommendedTemplateId(2)).toBeNull();
-  });
-  it('de 4 a 6 jugadores propone pocos torneos y todos se pueden jugar', () => {
-    expect(recommendedTemplateIds(4)).toEqual(['builtin-pool', 'builtin-league', 'builtin-league-final']);
-    expect(recommendedTemplateIds(5)).toEqual(['builtin-pool', 'builtin-league']);
-    expect(recommendedTemplateIds(6)).toEqual(['builtin-pool', 'builtin-pairs-league', 'builtin-bracket']);
-    for (const n of [4, 5, 6]) {
-      for (const id of recommendedTemplateIds(n)) expect(templateFit(tpl(id), n).ok).toBe(true);
-    }
+    expect(templateFit(tpl('sample-league'), 9).ok).toBe(false);
   });
 });
 
 describe('Ediciones, ficha y palmarés', () => {
   const ps = players(['a', 'b', 'c', 'd', 'e']);
-  const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-pool')!;
+  const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-pool')!;
   const make = (edition: number, seed: string) => {
     const { draft } = draftFromTemplate(tpl, editionName(tpl.name, edition), ps.map((p) => p.id), () => 1200, {}, seededRandom(seed));
     return createTournament({ ...draft, edition, final: 'none' }, ps, () => 1200, edition * 1000, seededRandom(seed));
@@ -376,7 +360,7 @@ describe('Subidas y bajadas en la clasificación', () => {
 });
 
 describe('Cartel de fase del torneo', () => {
-  const tpl = BUILT_IN_TEMPLATES.find((x) => x.format === 'bracket')!;
+  const tpl = SAMPLE_TEMPLATES.find((x) => x.format === 'bracket')!;
   const bracket = (n: number) => {
     const ps = players('abcdefgh'.slice(0, n).split(''));
     const { draft } = draftFromTemplate(tpl, 'Copa', ps.map((p) => p.id), () => 1200);
@@ -396,7 +380,7 @@ describe('Cartel de fase del torneo', () => {
 
 describe('Reglas propias de la final', () => {
   const ps = players(['a', 'b', 'c', 'd']);
-  const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-league-final')!;
+  const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-league-final')!;
   it('la final puede jugarse a tiempo aunque la liguilla sea a goles, y a partido único', () => {
     const custom = { ...withFinalRules(tpl, { endCondition: 'time', goalsPerPeriod: 5, minutesPerPeriod: 8 }), finalBestOf: 1 as const };
     const { draft } = draftFromTemplate(custom, 'Liga', ps.map((p) => p.id), () => 1200);
@@ -414,8 +398,8 @@ describe('Reglas propias de la final', () => {
 });
 
 describe('Corregir un torneo ya empezado', () => {
-  const tplB = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-bracket')!;
-  const tplL = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-league-final')!;
+  const tplB = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-bracket')!;
+  const tplL = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-league-final')!;
   const ps = players(['a', 'b', 'c', 'd']);
   const make = (tpl: typeof tplB) => {
     const { draft } = draftFromTemplate(tpl, 'T', ps.map((p) => p.id), () => 1200);
@@ -473,7 +457,7 @@ describe('Corregir un torneo ya empezado', () => {
 
 describe('Equipos guardados en torneos de parejas', () => {
   it('si están los dos de un equipo, juegan juntos; el resto se empareja como siempre', () => {
-    const tpl = BUILT_IN_TEMPLATES.find((x) => x.id === 'builtin-pairs')!;
+    const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-pairs')!;
     const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
     const elo = (id: string) => ({ a: 1500, b: 1490, c: 1200, d: 1100, e: 1000, f: 900 })[id]!;
     // Por ELO, a y b irían separados; como son equipo, van juntos.
@@ -572,5 +556,17 @@ describe('XP y logros al terminar el torneo', () => {
     // El finalista que perdió va segundo.
     expect(r[1].team.playerIds).toEqual(['b']);
     expect(r.map((x) => x.place)).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('Creador de tipos de torneo', () => {
+  it('ya no hay tipos de fábrica: solo los guardados', () => {
+    expect(allTemplates([])).toEqual([]);
+    const mine = newTemplate(undefined, 'bracket');
+    expect(allTemplates([mine, { ...mine, id: 'viejo', builtIn: true }])).toEqual([mine]);
+  });
+  it('uno nuevo parte de los valores por defecto del formato', () => {
+    expect(newTemplate(undefined, 'pool')).toMatchObject({ format: 'pool', teamSize: 2, final: 'none', goalsPerPeriod: 5, name: '' });
+    expect(newTemplate(undefined, 'league')).toMatchObject({ format: 'league', teamSize: 1 });
   });
 });

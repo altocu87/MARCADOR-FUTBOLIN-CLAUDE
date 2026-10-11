@@ -1,6 +1,6 @@
 /**
- * Predefinidos de torneo: los de fábrica y los guardados desde el creador.
- * Un predefinido guarda las reglas; los jugadores se eligen al crear cada torneo.
+ * Tipos de torneo guardados desde el creador (no hay de fábrica: cada uno se crea a su gusto).
+ * Un tipo guarda las reglas; los jugadores se eligen al crear cada torneo.
  */
 import { DEFAULT_CONFIG, type MatchConfig } from '../../match-engine';
 import type { TournamentTemplate } from '../persistence';
@@ -8,8 +8,8 @@ import { newId } from '../ids';
 import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, effectivePoolGames } from './pool';
 import { FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, rulesShort, sameRules, type MatchRules, type TournamentDraft } from './tournaments';
 
-const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
-  builtIn: true,
+/** Punto de partida de un tipo nuevo en el creador: 1 contra 1, a 5 goles, sin final. */
+export const TEMPLATE_DEFAULTS: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   teamSize: 1,
   pairing: 'elo',
   seeding: 'elo',
@@ -23,22 +23,15 @@ const base: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   finalGoals: null,
 };
 
-export const BUILT_IN_TEMPLATES: TournamentTemplate[] = [
-  { ...base, id: 'builtin-pool', name: 'Copa Rotativa', format: 'pool', teamSize: 2, final: 'top4', finalBestOf: 3 },
-  { ...base, id: 'builtin-league', name: 'Liguilla Rápida', format: 'league', goalsPerPeriod: 3 },
-  { ...base, id: 'builtin-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
-  { ...base, id: 'builtin-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },
-  { ...base, id: 'builtin-pairs', name: 'Copa Parejas', format: 'bracket', teamSize: 2, finalBestOf: 3, finalGoals: 7 },
-  { ...base, id: 'builtin-pairs-league', name: 'Liga Parejas', format: 'league', teamSize: 2, final: 'top2', finalBestOf: 3 },
-];
-
+/** Los tipos de torneo guardados. Los de fábrica que hubo se retiraron: ya no se ofrecen. */
 export function allTemplates(saved: TournamentTemplate[]): TournamentTemplate[] {
-  return [...BUILT_IN_TEMPLATES, ...saved];
+  return saved.filter((t) => !t.builtIn);
 }
 
-export function newTemplate(from?: TournamentTemplate): TournamentTemplate {
-  const src = from ?? BUILT_IN_TEMPLATES[0];
-  return { ...src, id: newId('tpl'), name: from ? `${from.name} (mío)` : 'Mi torneo', builtIn: false };
+/** Tipo nuevo: copia de otro o, sin él, los valores por defecto del formato dado. */
+export function newTemplate(from?: TournamentTemplate, format: TournamentTemplate['format'] = 'league'): TournamentTemplate {
+  if (from) return { ...from, id: newId('tpl'), name: `${from.name} (copia)`, builtIn: false };
+  return { ...TEMPLATE_DEFAULTS, id: newId('tpl'), name: '', format, teamSize: format === 'pool' ? 2 : 1 };
 }
 
 const FINAL_LABEL: Record<TournamentTemplate['final'], string> = {
@@ -177,29 +170,6 @@ export function templateFit(t: TournamentTemplate, n: number): TemplateFit {
     ok: true,
     summary: `${teams} ${unit} · ${path}${t.finalBestOf > 1 ? ' al mejor de 3' : ''}${byes ? ` · ${byes} pase${byes > 1 ? 's' : ''} directo${byes > 1 ? 's' : ''}` : ''}`,
   };
-}
-
-/**
- * Tipos de fábrica recomendados para `n` jugadores, del más al menos aconsejable. Pensado sobre todo
- * para grupos de 4 a 6: torneos de una tarde, con pocos partidos y sin nadie mucho rato parado.
- */
-const RECOMMENDED: Record<number, string[]> = {
-  3: ['builtin-league', 'builtin-league-final'],
-  4: ['builtin-pool', 'builtin-league', 'builtin-league-final'],
-  5: ['builtin-pool', 'builtin-league'],
-  6: ['builtin-pool', 'builtin-pairs-league', 'builtin-bracket'],
-  7: ['builtin-pool', 'builtin-bracket'],
-  8: ['builtin-pairs', 'builtin-pool', 'builtin-pairs-league'],
-};
-
-export function recommendedTemplateIds(n: number): string[] {
-  const ids = RECOMMENDED[n] ?? (n > 8 ? (n % 2 === 0 ? ['builtin-pool', 'builtin-pairs'] : ['builtin-pool']) : []);
-  return ids.filter((id) => templateFit(BUILT_IN_TEMPLATES.find((x) => x.id === id)!, n).ok);
-}
-
-/** El más recomendado para `n` jugadores. */
-export function recommendedTemplateId(n: number): string | null {
-  return recommendedTemplateIds(n)[0] ?? null;
 }
 
 /** Parejas cuyos dos jugadores están apuntados, sin repetir jugador. */

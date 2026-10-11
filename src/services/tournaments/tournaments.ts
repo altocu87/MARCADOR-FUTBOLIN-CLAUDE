@@ -28,9 +28,9 @@ export const MIN_TEAMS = 3;
 export const MAX_TEAMS = 8;
 
 export const FORMAT_LABEL: Record<TournamentFormat, string> = {
-  league: 'Liguilla',
-  bracket: 'Cuadro eliminatorio',
-  pool: 'Pool rotativo',
+  league: 'Liga',
+  bracket: 'Copa',
+  pool: 'Pool',
 };
 
 /** Lo que decide cómo se acaba un partido. */

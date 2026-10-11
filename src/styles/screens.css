@@ -2609,6 +2609,127 @@
   padding: 2px 4px 2px 2px;
 }
 /* Tarjeta de tipo de torneo: cristal oscuro con marco de neón celeste; la elegida se enciende. */
+/* Lista vacía de un tipo (liga, copa o pool): se invita a crear el primero. */
+.tpl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, #62d6ff 45%, transparent);
+  color: var(--text-2);
+}
+
+/* ---------- Creador de torneos (asistente por pasos) ---------- */
+.cr-steps {
+  display: flex;
+  gap: 4px;
+}
+.cr-step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px 5px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.6);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cr-step b {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+}
+.cr-step.is-done b {
+  background: color-mix(in srgb, #62d6ff 35%, transparent);
+}
+.cr-step.is-on {
+  border-color: #62d6ff;
+  color: var(--text);
+  box-shadow: 0 0 10px color-mix(in srgb, #62d6ff 55%, transparent);
+}
+.cr-step.is-on b {
+  background: #62d6ff;
+  color: #04121f;
+}
+.cr-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 4px 8px;
+}
+.cr-body.cr-body-kinds {
+  max-width: none;
+}
+.cr-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.cr-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.cr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cr-field .label {
+  margin: 0;
+}
+.cr-note {
+  color: var(--text-2);
+  font-size: 13px;
+}
+.cr-name {
+  font-size: 20px;
+  font-weight: 800;
+}
+.cr-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #62d6ff 45%, transparent);
+  background: rgba(7, 16, 28, 0.72);
+  font-size: 13px;
+}
+.cr-summary .label {
+  margin: 0;
+}
+.cr-summary .tpl-fit {
+  color: #62d6ff;
+  font-weight: 800;
+}
+.cr-summary .tpl-why {
+  color: #ff8a8a;
+  font-weight: 800;
+}
+/* En el creador el tipo se elige con un solo toque: la tarjeta elegida se queda encendida. */
+.cr-kinds {
+  padding: 0;
+}
 /* «Elige la liga/copa/pool»: la tarjeta elegida lleva su «Editar» (abre el editor del tipo). */
 .tpl-row {
   position: relative;

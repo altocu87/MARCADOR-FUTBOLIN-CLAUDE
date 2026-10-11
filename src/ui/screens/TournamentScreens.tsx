@@ -11,7 +11,6 @@ import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/p
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
-  BUILT_IN_TEMPLATES,
   FORMAT_LABEL,
   allTemplates,
   competitions,
@@ -41,7 +40,6 @@ import {
   newTemplate,
   fixtureProgress,
   nextFixture,
-  recommendedTemplateIds,
   roundLabel,
   standings,
   standingsMovement,
@@ -538,10 +536,10 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * Los tres tipos de torneo, tal y como se le enseñan al jugador en «¿Qué torneo jugamos?».
  * `noun`/`the` van en la pantalla siguiente («Elige la liga», «+ Crear copa»).
  */
-const KINDS: { format: TournamentFormat; file: string; title: string; noun: string; the: string; desc: string }[] = [
-  { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
-  { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
-  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
+const KINDS: { format: TournamentFormat; file: string; title: string; noun: string; the: string; none: string; desc: string }[] = [
+  { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', none: 'ninguna', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
+  { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', none: 'ninguna', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
+  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', none: 'ningún', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
 ];
 
 /** Igual que las tarjetas de modo del inicio: la elegida se apaga sola si nadie confirma, y la pulsada
@@ -608,15 +606,12 @@ export function TournamentNewScreen({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
 
-  // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de sus predefinidos.
-  // Los recomendados para este número de jugadores van delante; los que no encajan, plegados al final.
-  const recIds = recommendedTemplateIds(n);
-  const recommended = recIds[0] ?? null;
+  // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de los creados.
+  // Los que no encajan con este número de jugadores, plegados al final.
   const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
-  const rank = (id: string) => (recIds.includes(id) ? recIds.indexOf(id) : recIds.length);
   const kindInfo = KINDS.find((k) => k.format === kind);
   const fits = allFits.filter((x) => x.t.format === kind);
-  const shown = fits.filter((x) => x.fit.ok).sort((a, b) => rank(a.t.id) - rank(b.t.id));
+  const shown = fits.filter((x) => x.fit.ok);
   const blocked = fits.filter((x) => !x.fit.ok);
   // Las reglas (goles, tiempo, final) son las del tipo elegido: aquí solo se resumen y se cambian con «Editar».
   const tpl = shown.find((x) => x.t.id === chosenTpl)?.t ?? shown[0]?.t;
@@ -817,8 +812,6 @@ export function TournamentNewScreen({
   }
 
   if (step === 'kind' || !kindInfo) {
-    // Tipo recomendado: el del predefinido más aconsejable para este número de jugadores.
-    const recFormat = allFits.find((x) => x.t.id === recommended)?.t.format;
     return (
       <ScreenFrame
         title="¿Qué torneo jugamos?"
@@ -829,15 +822,15 @@ export function TournamentNewScreen({
       >
         <div className="tn-kinds">
           {KINDS.map((k) => {
+            const total = allFits.filter((x) => x.t.format === k.format).length;
             const ok = allFits.filter((x) => x.t.format === k.format && x.fit.ok).length;
             const why = allFits.find((x) => x.t.format === k.format && !x.fit.ok)?.fit;
-            const rec = k.format === recFormat && <span className="tpl-rec">Recomendado</span>;
             // Cartel con el título dentro, en reposo (-off) y pulsado (-on); sin imágenes, la tarjeta de texto.
             const art = !!assetUrl(`tarjeta-${k.file}-off`);
             return (
               <button
                 key={k.format}
-                className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok ? '' : 'is-off'}${kindSelected === k.format ? ' is-selected' : ''}${kindPressed === k.format ? ' is-pressed' : ''}`}
+                className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok || !total ? '' : 'is-off'}${kindSelected === k.format ? ' is-selected' : ''}${kindPressed === k.format ? ' is-pressed' : ''}`}
                 aria-label={`${k.title}: ${k.desc}`}
                 aria-pressed={kindSelected === k.format}
                 onClick={() => {
@@ -850,6 +843,11 @@ export function TournamentNewScreen({
                   }
                   setKindPressed(k.format);
                   kindTimer.current = window.setTimeout(() => {
+                    // Sin ninguna creada de este tipo, directo al creador (con el tipo ya elegido).
+                    if (!total) {
+                      navigate({ name: 'tournamentTemplate', selected, format: k.format });
+                      return;
+                    }
                     setKind(k.format);
                     setShowBlocked(false);
                     setKindSelected(null);
@@ -862,16 +860,14 @@ export function TournamentNewScreen({
                   <span className="tn-kind-art">
                     <AssetImage name={`tarjeta-${k.file}-off`} className="tn-kind-img" fallback={null} />
                     <AssetImage name={`tarjeta-${k.file}-on`} className="tn-kind-img tn-kind-img-on" fallback={null} />
-                    {rec}
                   </span>
                 ) : (
-                  <strong>
-                    {k.title}
-                    {rec}
-                  </strong>
+                  <strong>{k.title}</strong>
                 )}
                 <span className="tn-kind-desc">{k.desc}</span>
-                {ok ? (
+                {!total ? (
+                  <span className="tpl-fit">Sin crear todavía · toca para crear</span>
+                ) : ok ? (
                   <span className="tpl-fit">
                     {ok} disponible{ok === 1 ? '' : 's'} para {n} jugadores
                   </span>
@@ -948,9 +944,9 @@ export function TournamentNewScreen({
     }
   };
 
-  // «Editar» abre el editor del tipo: el propio se edita; uno de fábrica no se toca, se copia y se ajusta.
+  // «Editar» abre el creador con este tipo cargado.
   const editTemplate = (t: TournamentTemplate) =>
-    navigate(t.builtIn ? { name: 'tournamentTemplate', baseId: t.id, selected } : { name: 'tournamentTemplate', templateId: t.id, selected });
+    navigate({ name: 'tournamentTemplate', templateId: t.id, selected });
   const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => {
     const on = fit.ok && t.id === tpl?.id;
     return (
@@ -958,8 +954,6 @@ export function TournamentNewScreen({
         <button className={`tpl-card ${fit.ok ? '' : 'is-off'}`} aria-pressed={on} disabled={!fit.ok} onClick={() => setChosenTpl(t.id)}>
           <strong>
             {t.name}
-            {t.id === recommended && <span className="tpl-rec">Recomendado</span>}
-            {!t.builtIn && <span className="tpl-mine">mío</span>}
           </strong>
           {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
           <span>{describeTemplate(t)}</span>
@@ -1020,7 +1014,7 @@ export function TournamentNewScreen({
           </button>
           {tpl && (
             <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', baseId: tpl.id, selected })}>
-              Copiar y ajustar
+              Duplicar
             </button>
           )}
         </>
@@ -1046,7 +1040,14 @@ export function TournamentNewScreen({
           <div className="label">{kindInfo.title}: disponibles para {n} jugadores</div>
           <div className="tpl-list scroll">
             {shown.map(tplCard)}
-            {shown.length === 0 && <div className="tpl-sep">Ninguna encaja con {n} jugadores</div>}
+            {shown.length === 0 && (
+              <div className="tpl-empty">
+                <span>{fits.length ? `Con ${n} jugadores no encaja ${kindInfo.none} ${kindInfo.noun} de las creadas.` : `Aún no has creado ${kindInfo.none} ${kindInfo.noun}.`}</span>
+                <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
+                  + Crear {kindInfo.noun}
+                </button>
+              </div>
+            )}
             {showBlocked && (
               <>
                 {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
@@ -1132,7 +1133,31 @@ export function TournamentNewScreen({
   );
 }
 
-/** Creador de tipos de torneo: se guardan como predefinidos para reutilizarlos. */
+/** Pasos del creador de torneos, en orden. */
+const CREATOR_STEPS = [
+  { id: 'kind', label: 'Tipo' },
+  { id: 'players', label: 'Jugadores' },
+  { id: 'rules', label: 'Partidos' },
+  { id: 'final', label: 'Final' },
+  { id: 'name', label: 'Nombre' },
+] as const;
+type CreatorStep = (typeof CREATOR_STEPS)[number]['id'];
+
+/** Una opción del creador: título, botones y una línea que explica lo elegido. */
+function CreatorField({ label, children, note }: { label: string; children: ReactNode; note?: ReactNode }) {
+  return (
+    <div className="cr-field">
+      <div className="label">{label}</div>
+      {children}
+      {note && <small className="cr-note">{note}</small>}
+    </div>
+  );
+}
+
+/**
+ * Creador de torneos: un asistente por pasos (tipo → jugadores → partidos → final → nombre). Lo que se
+ * guarda es un tipo de torneo reutilizable; los jugadores de cada edición se eligen al crearla.
+ */
 export function TournamentTemplateScreen({
   templateId,
   baseId,
@@ -1149,125 +1174,219 @@ export function TournamentTemplateScreen({
   const existing = saved.find((x) => x.id === templateId);
   const [tpl, setTpl] = useState<TournamentTemplate>(() => {
     if (existing) return { ...existing };
-    const base = allTemplates(saved).find((x) => x.id === baseId);
-    if (base || !format) return newTemplate(base);
-    // Uno nuevo desde «+ Crear liga/copa/pool»: parte del primer predefinido de ese tipo.
-    const proto = BUILT_IN_TEMPLATES.find((x) => x.format === format);
-    return { ...newTemplate(proto), name: `Mi ${KINDS.find((k) => k.format === format)?.noun ?? 'torneo'}` };
+    const base = saved.find((x) => x.id === baseId);
+    return newTemplate(base, format);
   });
+  // Si ya se sabe el tipo (se viene de «+ Crear liga») o se edita uno, se empieza por los jugadores.
+  const [step, setStep] = useState<CreatorStep>(existing || baseId || format ? 'players' : 'kind');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = <K extends keyof TournamentTemplate>(key: K, value: TournamentTemplate[K]) => setTpl((t) => ({ ...t, [key]: value }));
+  const kind = KINDS.find((k) => k.format === tpl.format)!;
   const isPool = tpl.format === 'pool';
   const finals = finalOptions(tpl.format);
-  const hasFinal = tpl.format === 'bracket' || tpl.final !== 'none';
+  const hasFinal = hasTemplateFinal(tpl);
+  // La final «con sus propias reglas» solo si alguna difiere de las del resto de partidos.
+  const ownFinalRules = tpl.finalEndCondition !== undefined || tpl.finalGoals !== null || tpl.finalMinutes !== undefined;
+  const idx = CREATOR_STEPS.findIndex((x) => x.id === step);
+  const last = idx === CREATOR_STEPS.length - 1;
+  const n = selected?.length ?? 0;
+  const fit = n ? templateFit(tpl, n) : null;
 
-  const setFormat = (format: TournamentTemplate['format']) =>
+  const setFormat = (f: TournamentFormat) =>
     setTpl((t) => ({
       ...t,
-      format,
-      teamSize: format === 'pool' ? 2 : t.teamSize,
-      final: finalOptions(format).includes(t.final) ? t.final : 'none',
+      format: f,
+      teamSize: f === 'pool' ? 2 : t.format === 'pool' ? 1 : t.teamSize,
+      final: finalOptions(f).includes(t.final) ? t.final : 'none',
     }));
+  const setOwnFinal = (own: boolean) =>
+    setTpl((t) => (own ? withFinalRules(t, finalRulesOf(t)) : { ...t, finalEndCondition: undefined, finalGoals: null, finalMinutes: undefined }));
 
+  const back = () => navigate({ name: 'tournamentNew', templateId: existing?.id, selected, format: tpl.format });
   const save = async () => {
     const clean: TournamentTemplate = { ...tpl, name: tpl.name.trim(), builtIn: false };
     const list = existing ? saved.map((x) => (x.id === clean.id ? clean : x)) : [...saved, clean];
     await savePrefs({ ...prefs, tournamentTemplates: list });
-    toast('Predefinido guardado');
-    navigate({ name: 'tournamentNew', templateId: clean.id, selected });
+    toast(existing ? 'Cambios guardados' : `«${clean.name}» guardado`);
+    navigate({ name: 'tournamentNew', templateId: clean.id, selected, format: clean.format });
   };
-
   const remove = async () => {
     await savePrefs({ ...prefs, tournamentTemplates: saved.filter((x) => x.id !== tpl.id) });
-    toast('Predefinido borrado');
+    toast('Borrado');
     navigate({ name: 'tournamentNew', selected, format: tpl.format });
   };
 
+  let body: ReactNode = null;
+  if (step === 'kind') {
+    body = (
+      <div className="tn-kinds cr-kinds">
+        {KINDS.map((k) => {
+          const art = !!assetUrl(`tarjeta-${k.file}-off`);
+          const on = tpl.format === k.format;
+          return (
+            <button
+              key={k.format}
+              className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''}${on ? ' is-selected' : ''}`}
+              aria-pressed={on}
+              aria-label={`${k.title}: ${k.desc}`}
+              onClick={() => setFormat(k.format)}
+            >
+              {art ? (
+                <span className="tn-kind-art">
+                  <AssetImage name={`tarjeta-${k.file}-off`} className="tn-kind-img" fallback={null} />
+                  <AssetImage name={`tarjeta-${k.file}-on`} className="tn-kind-img tn-kind-img-on" fallback={null} />
+                </span>
+              ) : (
+                <strong>{k.title}</strong>
+              )}
+              <span className="tn-kind-desc">{k.desc}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  } else if (step === 'players') {
+    body = isPool ? (
+      <>
+        <CreatorField label="Partidos por jugador" note="Se ajusta al crear el torneo para que todos jueguen los mismos.">
+          <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
+        </CreatorField>
+        <CreatorField
+          label="Parejas de cada partido"
+          note={tpl.pairing === 'elo' ? 'Se juntan fuertes con flojos para que los partidos estén igualados.' : 'Las parejas salen por sorteo en cada partido.'}
+        >
+          <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
+        </CreatorField>
+        <small className="cr-note">Vale con número par o impar de jugadores: si sobra alguien, descansa por turnos.</small>
+      </>
+    ) : (
+      <>
+        <CreatorField
+          label="Quién juega"
+          note={tpl.teamSize === 1 ? 'Cada jugador va por su cuenta.' : 'Parejas fijas durante todo el torneo (necesita número par de jugadores).'}
+        >
+          <Seg<1 | 2> value={tpl.teamSize} options={[[1, '1 CONTRA 1'], [2, 'PAREJAS FIJAS']]} onChange={(v) => set('teamSize', v)} />
+        </CreatorField>
+        {tpl.teamSize === 2 && (
+          <CreatorField
+            label="Cómo se forman las parejas"
+            note={tpl.pairing === 'elo' ? 'Fuerte con flojo, para que las parejas estén igualadas.' : 'Por sorteo. Los equipos ya guardados siempre juegan juntos.'}
+          >
+            <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
+          </CreatorField>
+        )}
+        {tpl.format === 'bracket' && (
+          <CreatorField
+            label="Cruces"
+            note={tpl.seeding === 'elo' ? 'Los mejores no se cruzan hasta el final; los huecos pasan directos.' : 'Los cruces salen por sorteo.'}
+          >
+            <Seg<'elo' | 'random'> value={tpl.seeding} options={[['elo', 'POR ELO'], ['random', 'SORTEO']]} onChange={(v) => set('seeding', v)} />
+          </CreatorField>
+        )}
+      </>
+    );
+  } else if (step === 'rules') {
+    body = (
+      <CreatorField label="Cómo se gana un partido" note={rulesText(tpl)}>
+        <RulesPicker rules={tpl} onChange={(patch) => setTpl((t) => ({ ...t, ...patch }))} />
+      </CreatorField>
+    );
+  } else if (step === 'final') {
+    body = (
+      <div className="cr-cols">
+        <div className="cr-col">
+        {finals.length > 0 ? (
+          <CreatorField label="¿Acaba con final?" note={tpl.final === 'none' ? 'Gana el primero de la clasificación.' : 'Al acabar la fase regular, la final decide el campeón.'}>
+            <Seg value={tpl.final} options={finals.map((f) => [f, f === 'none' ? 'SIN FINAL' : FINAL_LABEL[f].toUpperCase()] as [TournamentFinal, string])} onChange={(v) => set('final', v)} />
+          </CreatorField>
+        ) : (
+          <small className="cr-note">La copa siempre acaba en final: la juegan los dos que llegan.</small>
+        )}
+        {hasFinal && (
+          <CreatorField label="La final se juega">
+            <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
+          </CreatorField>
+        )}
+        </div>
+        {hasFinal && (
+          <div className="cr-col">
+            <CreatorField label="Reglas de la final" note={ownFinalRules ? rulesText(finalRulesOf(tpl)) : `Como el resto: ${rulesText(tpl).toLowerCase()}`}>
+              <Seg<boolean> value={ownFinalRules} options={[[false, 'IGUAL QUE LOS PARTIDOS'], [true, 'DISTINTAS']]} onChange={setOwnFinal} />
+              {ownFinalRules && <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />}
+            </CreatorField>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    body = (
+      <>
+        <CreatorField label={`Nombre ${kind.format === 'pool' ? 'del pool' : `de ${kind.the}`}`} note="Así se llamará cada edición: «1ª edición», «2ª edición»…">
+          <input
+            className="input cr-name"
+            value={tpl.name}
+            autoFocus
+            onChange={(e) => set('name', e.target.value)}
+            aria-label="Nombre del torneo"
+            maxLength={24}
+            placeholder={`Ej.: ${kind.format === 'league' ? 'Liga del Almacén' : kind.format === 'bracket' ? 'Copa del Viernes' : 'Pool de los Jueves'}`}
+          />
+        </CreatorField>
+        <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio y suben o bajan el ELO." />
+        <div className="cr-summary">
+          <div className="label">Resumen</div>
+          <span>{describeTemplate(tpl)}</span>
+          {fit && <span className={fit.ok ? 'tpl-fit' : 'tpl-why'}>{fit.ok ? `Con ${n} jugadores: ${fit.summary}` : `✕ Con ${n} jugadores: ${fit.reason}`}</span>}
+        </div>
+      </>
+    );
+  }
+
   return (
     <ScreenFrame
-      title={existing ? 'Editar tipo de torneo' : 'Crear tipo de torneo'}
-      className="select-screen tn-screen"
+      title={existing ? `Editar ${kind.noun}` : 'Crear torneo'}
+      className="select-screen tn-screen cr-screen"
       background={TN_BG}
-      onBack={() => navigate({ name: 'tournamentNew', templateId: existing?.id ?? baseId, selected, format: existing?.format ?? format })}
+      onBack={back}
+      right={
+        <nav className="cr-steps" aria-label="Pasos">
+          {CREATOR_STEPS.map((x, i) => (
+            <button key={x.id} className={`cr-step${i === idx ? ' is-on' : ''}${i < idx ? ' is-done' : ''}`} aria-current={i === idx ? 'step' : undefined} onClick={() => setStep(x.id)}>
+              <b>{i < idx ? '✓' : i + 1}</b>
+              {x.id === 'kind' && i !== idx ? kind.title : x.label}
+            </button>
+          ))}
+        </nav>
+      }
       footer={
         <>
-          <span className="notice" style={{ marginRight: 'auto', maxWidth: 470 }}>{describeTemplate(tpl)}</span>
+          {last ? <span className="select-status" /> : <span className="notice select-status">{describeTemplate(tpl)}</span>}
           {existing && (
             <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)}>
               Borrar
             </button>
           )}
-          <button className="btn btn-primary btn-lg" disabled={!tpl.name.trim()} onClick={save}>
-            Guardar predefinido
-          </button>
+          {idx > 0 && (
+            <button className="btn btn-lg" onClick={() => setStep(CREATOR_STEPS[idx - 1].id)}>
+              Atrás
+            </button>
+          )}
+          {last ? (
+            <button className="btn btn-primary btn-lg" disabled={!tpl.name.trim()} onClick={save}>
+              Guardar {kind.noun}
+            </button>
+          ) : (
+            <button className="btn btn-primary btn-lg" onClick={() => setStep(CREATOR_STEPS[idx + 1].id)}>
+              Siguiente
+            </button>
+          )}
         </>
       }
     >
-      <div className="tn-layout">
-        <div className="tn-col scroll">
-          <input className="input" value={tpl.name} onChange={(e) => set('name', e.target.value)} aria-label="Nombre del predefinido" maxLength={24} placeholder="Nombre del predefinido" />
-          <div className="label">Formato</div>
-          <Seg<TournamentTemplate['format']> value={tpl.format} options={[['pool', 'POOL'], ['league', 'LIGUILLA'], ['bracket', 'CUADRO']]} onChange={setFormat} />
-          <div className="dim" style={{ fontSize: 11 }}>
-            {isPool
-              ? 'Parejas que cambian en cada partido; puntúa cada jugador. Vale con número par o impar: si sobra alguien, descansa por turnos.'
-              : tpl.format === 'league'
-                ? 'Todos contra todos a una vuelta.'
-                : 'Eliminación directa; los huecos pasan directos.'}
-          </div>
-          {isPool ? (
-            <>
-              <div className="label">Partidos por jugador</div>
-              <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
-              <div className="dim" style={{ fontSize: 11 }}>Se ajusta al crear para que todos jueguen los mismos.</div>
-            </>
-          ) : (
-            <>
-              <div className="label">Equipos</div>
-              <Seg<1 | 2> value={tpl.teamSize} options={[[1, '1 JUGADOR'], [2, 'PAREJAS FIJAS']]} onChange={(v) => set('teamSize', v)} />
-            </>
-          )}
-          {(isPool || tpl.teamSize === 2) && (
-            <>
-              <div className="label">Parejas</div>
-              <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
-            </>
-          )}
-          {tpl.format === 'bracket' && (
-            <>
-              <div className="label">Siembra</div>
-              <Seg<'elo' | 'random'> value={tpl.seeding} options={[['elo', 'POR ELO'], ['random', 'SORTEO']]} onChange={(v) => set('seeding', v)} />
-            </>
-          )}
-        </div>
-        <div className="tn-col scroll">
-          <div className="label">Partidos</div>
-          <Seg<TournamentTemplate['endCondition']> value={tpl.endCondition} options={[['goals', 'GOLES'], ['time', 'TIEMPO'], ['both', 'AMBAS']]} onChange={(v) => set('endCondition', v)} />
-          {tpl.endCondition !== 'time' && (
-            <Seg value={tpl.goalsPerPeriod} options={[[3, '3'], [5, '5'], [7, '7'], [10, '10']]} onChange={(v) => set('goalsPerPeriod', v)} />
-          )}
-          {tpl.endCondition !== 'goals' && (
-            <Seg value={tpl.minutesPerPeriod} options={[[3, '3 min'], [5, '5 min'], [8, '8 min']]} onChange={(v) => set('minutesPerPeriod', v)} />
-          )}
-          {finals.length > 0 && (
-            <>
-              <div className="label">Final</div>
-              <Seg value={tpl.final} options={finals.map((f) => [f, FINAL_LABEL[f].toUpperCase()] as [TournamentFinal, string])} onChange={(v) => set('final', v)} />
-            </>
-          )}
-          {hasFinal && (
-            <>
-              <div className="label">La final se juega</div>
-              <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
-              <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />
-            </>
-          )}
-          <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio." />
-        </div>
-      </div>
+      <div className={`cr-body scroll${step === 'kind' ? ' cr-body-kinds' : ''}`}>{body}</div>
       {confirmDelete && (
         <Modal
-          title="¿Borrar este predefinido?"
+          title={`¿Borrar «${tpl.name}»?`}
           onClose={() => setConfirmDelete(false)}
           actions={
             <>
@@ -1276,7 +1395,7 @@ export function TournamentTemplateScreen({
             </>
           }
         >
-          <p style={{ margin: 0 }}>Los torneos ya creados con él no cambian.</p>
+          <p style={{ margin: 0 }}>Los torneos ya jugados con él no cambian.</p>
         </Modal>
       )}
     </ScreenFrame>

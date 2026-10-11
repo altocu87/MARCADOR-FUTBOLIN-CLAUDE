@@ -1,5 +1,6 @@
 import { DEFAULT_CONFIG, type MatchEvent, type MatchMode, type Team } from '../src/match-engine';
-import { STORAGE_FORMAT_VERSION, type StoredMatch } from '../src/services/persistence';
+import { STORAGE_FORMAT_VERSION, type StoredMatch, type TournamentTemplate } from '../src/services/persistence';
+import { TEMPLATE_DEFAULTS } from '../src/services/tournaments';
 
 let counter = 0;
 
@@ -63,3 +64,14 @@ export function makeMatch(opts: {
     penalties: [],
   };
 }
+
+/** Tipos de torneo de ejemplo para las pruebas (la app ya no trae ninguno de fábrica). */
+const tplBase = { ...TEMPLATE_DEFAULTS };
+export const SAMPLE_TEMPLATES: TournamentTemplate[] = [
+  { ...tplBase, id: 'sample-pool', name: 'Copa Rotativa', format: 'pool', teamSize: 2, final: 'top4', finalBestOf: 3 },
+  { ...tplBase, id: 'sample-league', name: 'Liguilla Rápida', format: 'league', goalsPerPeriod: 3 },
+  { ...tplBase, id: 'sample-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
+  { ...tplBase, id: 'sample-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },
+  { ...tplBase, id: 'sample-pairs', name: 'Copa Parejas', format: 'bracket', teamSize: 2, finalBestOf: 3, finalGoals: 7 },
+  { ...tplBase, id: 'sample-pairs-league', name: 'Liga Parejas', format: 'league', teamSize: 2, final: 'top2', finalBestOf: 3 },
+];
