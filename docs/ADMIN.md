@@ -34,6 +34,7 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 | **Bares y clubes** | Plan, mesas, estado de la suscripción y cuota (se calcula con los precios de Ajustes) |
 | **Licencias Pro** | Generar códigos (se descargan en CSV), comprobar un código (detecta errores de tecleo), asignar a un cliente, revocar, reactivar, reiniciar activaciones |
 | **Tienda y cupones** | Productos (precio, a la venta u oculto, stock de kits) y cupones (porcentaje o importe, usos máximos, caducidad) |
+| **Catálogo** | Copas, escudos, avatares, marcos, fondos, podios, títulos, colores y sonidos, en colecciones con rareza, cómo se consiguen (gratis, nivel, rango, logro, torneos, partidos, evento, monedas, dinero, código o regalo; la colección entera o pieza a pieza) y cuándo (siempre, entre fechas o cada año: Navidad, Halloween…). Se suben varios archivos a la vez y se ajustan solos al formato. Solo administradores |
 | **Avisos** | Mensajes para los usuarios de la app (novedades, mantenimiento) con fechas y vista previa |
 | **Actividad** | Registro de todo lo que se cambia en el panel: quién, cuándo y qué. No se puede editar. Exportar CSV |
 | **Ajustes** | Nombre y correo de soporte, precios, IVA incluido, modo mantenimiento, plataforma de pagos, equipo, conexión con la base de datos, exportar todo |

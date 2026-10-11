@@ -4,6 +4,7 @@ import { ROLE_LABEL, type Permission } from './logic';
 import { Ajustes } from './sections/Ajustes';
 import { Actividad, Avisos } from './sections/Avisos';
 import { Bares } from './sections/Bares';
+import { Catalogo } from './sections/Catalogo';
 import { Envios } from './sections/Envios';
 import { Licencias } from './sections/Licencias';
 import { Resumen } from './sections/Resumen';
@@ -22,6 +23,7 @@ const SECTIONS: { id: string; label: string; perm?: Permission }[] = [
   { id: 'bares', label: 'Bares y clubes' },
   { id: 'licencias', label: 'Licencias Pro' },
   { id: 'tienda', label: 'Tienda y cupones' },
+  { id: 'catalogo', label: 'Catálogo', perm: 'editar_catalogo' },
   { id: 'avisos', label: 'Avisos' },
   { id: 'actividad', label: 'Actividad' },
   { id: 'ajustes', label: 'Ajustes' },
@@ -306,6 +308,7 @@ function Shell({ onOut }: { onOut: () => void }) {
           {current === 'bares' && <Bares />}
           {current === 'licencias' && <Licencias />}
           {current === 'tienda' && <Tienda />}
+          {current === 'catalogo' && <Catalogo />}
           {current === 'avisos' && <Avisos />}
           {current === 'actividad' && <Actividad />}
           {current === 'ajustes' && <Ajustes />}

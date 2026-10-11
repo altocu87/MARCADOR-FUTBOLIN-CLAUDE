@@ -281,7 +281,7 @@ describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () =>
   });
 
   it('cada colección tiene su tabla y la conversión es reversible', () => {
-    expect(Object.keys(TABLES)).toHaveLength(8);
+    expect(Object.keys(TABLES)).toHaveLength(10);
     const o = { createdAt: 5, venueId: 'v', nombre: 'n' };
     expect(fromDb(toDb(o) as Record<string, unknown>)).toEqual(o);
   });
@@ -295,7 +295,9 @@ describe('Panel · rango de fechas de los datos de ejemplo', () => {
 
 describe('Panel · la base de datos preparada coincide con el panel', () => {
   it('cada tabla existe y tiene todas las columnas que el panel guarda', async () => {
-    const { default: sql } = await import('../supabase/migrations/20261011000000_inicial.sql?raw');
+    // Todas las migraciones juntas, en orden.
+    const files = import.meta.glob('../supabase/migrations/*.sql', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+    const sql = Object.keys(files).sort().map((k) => files[k]).join('\n');
     const d = seedData(NOW);
     const samples: Record<string, object> = {
       users: { ...d.users.find((u) => u.venueId)! },
@@ -306,6 +308,8 @@ describe('Panel · la base de datos preparada coincide con el panel', () => {
       coupons: { ...d.coupons[2] },
       announcements: d.announcements[1],
       audit: d.audit[0],
+      catalogCollections: { ...d.catalogCollections[0], premioCompletar: 1 },
+      catalogItems: { ...d.catalogItems[1], archivo: 'x', ruta: 'x', rareza: 'epica' },
     };
     for (const [col, table] of Object.entries(TABLES)) {
       const m = new RegExp(`create table if not exists public\\.${table} \\(([\\s\\S]*?)\\n\\);`).exec(sql);

@@ -21,7 +21,12 @@ export const TABLES: Record<Collection, string> = {
   coupons: 'coupons',
   announcements: 'announcements',
   audit: 'audit_log',
+  catalogCollections: 'catalog_collections',
+  catalogItems: 'catalog_items',
 };
+
+/** Almacén público de los archivos del catálogo (imágenes y sonidos). */
+export const CATALOG_BUCKET = 'catalogo';
 
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const toCamel = (k: string) => k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
@@ -187,7 +192,7 @@ export class SupabaseBackend implements AdminBackend {
       (await this.req<Record<string, unknown>[]>(`/rest/v1/${TABLES[c]}?select=*&order=${order}&limit=10000`, { headers: this.headers() })).map(
         (r) => fromDb<ItemOf<C>>(r),
       ) as AdminData[C];
-    const [users, venues, products, orders, licenses, coupons, announcements, audit, settings] = await Promise.all([
+    const [users, venues, products, orders, licenses, coupons, announcements, audit, catalogCollections, catalogItems, settings] = await Promise.all([
       get('users', 'created_at.desc'),
       get('venues', 'desde.desc'),
       get('products', 'precio.asc'),
@@ -196,9 +201,14 @@ export class SupabaseBackend implements AdminBackend {
       get('coupons', 'code.asc'),
       get('announcements', 'desde.desc'),
       get('audit', 'at.desc'),
+      get('catalogCollections', 'orden.asc'),
+      get('catalogItems', 'orden.asc'),
       this.req<Record<string, unknown>[]>(`/rest/v1/settings?id=eq.ajustes&select=*`, { headers: this.headers() }),
     ]);
-    return { users, venues, products, orders, licenses, coupons, announcements, audit, settings: fromDb<Settings>(settings[0] ?? {}) };
+    return {
+      users, venues, products, orders, licenses, coupons, announcements, audit, catalogCollections, catalogItems,
+      settings: fromDb<Settings>(settings[0] ?? {}),
+    };
   }
 
   /**
@@ -220,6 +230,25 @@ export class SupabaseBackend implements AdminBackend {
   async remove(col: Collection, id: string): Promise<void> {
     await this.fresh();
     await this.req(`/rest/v1/${TABLES[col]}?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers() });
+  }
+
+  /** Sube (o reemplaza) un archivo del catálogo y devuelve su dirección pública. */
+  async uploadFile(path: string, file: Blob): Promise<string> {
+    await this.fresh();
+    const s = this.session();
+    await this.req(`/storage/v1/object/${CATALOG_BUCKET}/${path}`, {
+      method: 'POST',
+      headers: { apikey: this.anonKey, Authorization: `Bearer ${s?.token ?? this.anonKey}`, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true', 'cache-control': '3600' },
+      body: file,
+    });
+    // La versión en la dirección evita que el navegador enseñe la imagen antigua al reemplazarla.
+    return `${this.url}/storage/v1/object/public/${CATALOG_BUCKET}/${path}?v=${Date.now().toString(36)}`;
+  }
+
+  async removeFiles(paths: string[]): Promise<void> {
+    if (!paths.length) return;
+    await this.fresh();
+    await this.req(`/storage/v1/object/${CATALOG_BUCKET}`, { method: 'DELETE', headers: this.headers(), body: JSON.stringify({ prefixes: paths }) });
   }
 
   async saveSettings(s: Settings): Promise<void> {

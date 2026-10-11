@@ -175,7 +175,39 @@ export function seedData(now: number = Date.now(), seed = 7): AdminData {
     licenses,
     coupons,
     announcements,
+    ...seedCatalog(now),
     audit: [{ id: 'au_0', at: now, actor: 'sistema', accion: 'Datos de demostración', detalle: 'Se han creado los datos de ejemplo.' }],
     settings: { ...DEFAULT_SETTINGS },
   };
+}
+
+/** Catálogo de ejemplo: unos títulos, unos colores y una colección de Navidad (sin imágenes). */
+function seedCatalog(now: number): Pick<AdminData, 'catalogCollections' | 'catalogItems'> {
+  const catalogCollections: AdminData['catalogCollections'] = [
+    {
+      id: 'cc_titulos', tipo: 'titulo', nombre: 'Títulos de vestuario', descripcion: 'Para presumir bajo el nombre.', rareza: 'rara',
+      estado: 'publicada', ambito: 'elemento', obtencion: { tipo: 'nivel', nivel: 5 }, disponibilidad: { modo: 'siempre' }, premioCompletar: 200, orden: 0, creada: now - 30 * DAY,
+    },
+    {
+      id: 'cc_colores', tipo: 'color', nombre: 'Neón', descripcion: 'Colores de torneo.', rareza: 'comun',
+      estado: 'publicada', ambito: 'coleccion', obtencion: { tipo: 'gratis' }, disponibilidad: { modo: 'siempre' }, orden: 0, creada: now - 30 * DAY,
+    },
+    {
+      id: 'cc_navidad', tipo: 'copa', nombre: 'Navidad', descripcion: 'Copas que solo se consiguen jugando en Navidad.', rareza: 'epica',
+      estado: 'borrador', ambito: 'coleccion', obtencion: { tipo: 'evento', partidos: 5 },
+      disponibilidad: { modo: 'anual', desdeDia: '12-20', hastaDia: '01-06' }, orden: 0, creada: now - 2 * DAY,
+    },
+  ];
+  const t = (id: string, nombre: string, orden: number, extra: Partial<AdminData['catalogItems'][number]> = {}) => ({
+    id, coleccionId: 'cc_titulos', nombre, valor: nombre, orden, activo: true, ...extra,
+  });
+  const catalogItems: AdminData['catalogItems'] = [
+    t('ci_t1', 'El Muro', 0),
+    t('ci_t2', 'Pichichi', 1, { obtencion: { tipo: 'logro', logro: 'hat_trick' }, rareza: 'epica' }),
+    t('ci_t3', 'Leyenda del bar', 2, { obtencion: { tipo: 'torneos', cantidad: 5 }, rareza: 'legendaria' }),
+    { id: 'ci_c1', coleccionId: 'cc_colores', nombre: 'Cian', valor: '#62D6FF', orden: 0, activo: true },
+    { id: 'ci_c2', coleccionId: 'cc_colores', nombre: 'Rosa', valor: '#FF5CD6 #B46CFF', orden: 1, activo: true },
+    { id: 'ci_c3', coleccionId: 'cc_colores', nombre: 'Lima', valor: '#3DFF9A', orden: 2, activo: true },
+  ];
+  return { catalogCollections, catalogItems };
 }

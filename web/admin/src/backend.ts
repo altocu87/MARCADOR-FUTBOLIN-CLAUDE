@@ -31,6 +31,9 @@ export interface AdminBackend {
   upsert<C extends Collection>(col: C, item: ItemOf<C>): Promise<void>;
   remove(col: Collection, id: string): Promise<void>;
   saveSettings(s: Settings): Promise<void>;
+  /** Catálogo: sube un archivo (ruta dentro del almacén) y devuelve su dirección. */
+  uploadFile(path: string, file: Blob): Promise<string>;
+  removeFiles(paths: string[]): Promise<void>;
   /** Solo demo: vuelve a los datos de ejemplo. */
   reset?(): Promise<void>;
 }
@@ -118,6 +121,8 @@ export class LocalBackend implements AdminBackend {
     if (this.data) return this.data;
     const raw = this.store.getItem(DATA_KEY);
     this.data = raw ? (JSON.parse(raw) as AdminData) : seedData(this.now());
+    this.data.catalogCollections ??= [];
+    this.data.catalogItems ??= [];
     if (!raw) this.persist();
     return this.data;
   }
@@ -150,6 +155,18 @@ export class LocalBackend implements AdminBackend {
     d.settings = s;
     this.persist();
   }
+
+  /** Demo: el archivo se guarda dentro de los datos (en este navegador). */
+  async uploadFile(_path: string, file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async removeFiles(): Promise<void> {}
 
   async reset(): Promise<void> {
     this.data = seedData(this.now());

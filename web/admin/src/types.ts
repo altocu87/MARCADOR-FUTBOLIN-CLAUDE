@@ -135,6 +135,8 @@ export interface Settings {
   mantenimiento: boolean;
 }
 
+import type { CatalogCollection, CatalogItem } from './catalog';
+
 export interface AdminData {
   users: User[];
   venues: Venue[];
@@ -144,6 +146,9 @@ export interface AdminData {
   coupons: Coupon[];
   announcements: Announcement[];
   audit: AuditEntry[];
+  /** Catálogo de personalización (copas, escudos, marcos, títulos…). */
+  catalogCollections: CatalogCollection[];
+  catalogItems: CatalogItem[];
   settings: Settings;
 }
 

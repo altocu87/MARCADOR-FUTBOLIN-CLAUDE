@@ -195,10 +195,11 @@ export type Permission =
   | 'editar_tienda'
   | 'gestionar_licencias'
   | 'editar_avisos'
-  | 'editar_ajustes';
+  | 'editar_ajustes'
+  | 'editar_catalogo';
 
 const ROLE_PERMS: Record<Role, Permission[]> = {
-  admin: ['ver_panel', 'editar_usuarios', 'cambiar_roles', 'gestionar_envios', 'reembolsar', 'editar_tienda', 'gestionar_licencias', 'editar_avisos', 'editar_ajustes'],
+  admin: ['ver_panel', 'editar_usuarios', 'cambiar_roles', 'gestionar_envios', 'reembolsar', 'editar_tienda', 'gestionar_licencias', 'editar_avisos', 'editar_ajustes', 'editar_catalogo'],
   soporte: ['ver_panel', 'editar_usuarios', 'gestionar_envios', 'gestionar_licencias'],
   bar: [],
   jugador: [],

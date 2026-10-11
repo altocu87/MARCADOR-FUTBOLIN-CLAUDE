@@ -14,6 +14,9 @@ interface Ctx {
   can: (p: Permission) => boolean;
   save: <C extends Collection>(col: C, item: ItemOf<C>, accion: string, detalle: string) => Promise<void>;
   remove: (col: Collection, id: string, accion: string, detalle: string) => Promise<void>;
+  /** Varios a la vez con una sola línea en el registro de actividad. */
+  saveMany: <C extends Collection>(col: C, items: ItemOf<C>[], accion: string, detalle: string) => Promise<void>;
+  removeMany: (col: Collection, ids: string[], accion: string, detalle: string) => Promise<void>;
   saveSettings: (s: Settings, detalle: string) => Promise<void>;
   reload: () => Promise<void>;
   toast: (msg: string) => void;
@@ -86,6 +89,24 @@ export function AdminProvider({ backend, session, children }: { backend: AdminBa
       async remove(col, id, accion, detalle) {
         await backend.remove(col, id);
         setData((d) => (d ? { ...d, [col]: (d[col] as { id: string }[]).filter((x) => x.id !== id) } : d));
+        await audit(accion, detalle);
+      },
+      async saveMany(col, items, accion, detalle) {
+        for (const item of items) await backend.upsert(col, item);
+        setData((d) => {
+          if (!d) return d;
+          let list = d[col] as ItemOf<typeof col>[];
+          for (const item of items) {
+            const i = list.findIndex((x) => x.id === item.id);
+            list = i >= 0 ? list.map((x, j) => (j === i ? item : x)) : [...list, item];
+          }
+          return { ...d, [col]: list };
+        });
+        await audit(accion, detalle);
+      },
+      async removeMany(col, ids, accion, detalle) {
+        for (const id of ids) await backend.remove(col, id);
+        setData((d) => (d ? { ...d, [col]: (d[col] as { id: string }[]).filter((x) => !ids.includes(x.id)) } : d));
         await audit(accion, detalle);
       },
       async saveSettings(s, detalle) {
