@@ -58,6 +58,7 @@ import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { newId } from '../../services/ids';
+import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
 import { TournamentCeremony } from '../components/TournamentCeremony';
 
@@ -549,6 +550,11 @@ const KINDS: { format: TournamentFormat; file: string; title: string; noun: stri
   { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
 ];
 
+/** Igual que las tarjetas de modo del inicio: la elegida se apaga sola si nadie confirma, y la pulsada
+ * se ve hundida un instante antes de entrar. */
+const KIND_SELECT_TIMEOUT_MS = 8000;
+const KIND_PRESS_MS = 180;
+
 export function TournamentNewScreen({
   templateId,
   initialSelected,
@@ -586,6 +592,16 @@ export function TournamentNewScreen({
   // Jugador o invitado que ya tiene el nombre escrito.
   const [guestClash, setGuestClash] = useState<Player | null>(null);
   const guestRef = useRef<HTMLInputElement>(null);
+  // Dos toques para entrar en un tipo, como en el inicio: el primero lo enciende y el segundo entra.
+  const [kindSelected, setKindSelected] = useState<TournamentFormat | null>(null);
+  const [kindPressed, setKindPressed] = useState<TournamentFormat | null>(null);
+  const kindTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(kindTimer.current), []);
+  useEffect(() => {
+    if (!kindSelected) return;
+    const id = window.setTimeout(() => setKindSelected(null), KIND_SELECT_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [kindSelected]);
   // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
   const [showBlocked, setShowBlocked] = useState(false);
   // Cómo se juegan los partidos (goles, tiempo o ambas): sale del tipo elegido y se puede cambiar aquí.
@@ -836,12 +852,25 @@ export function TournamentNewScreen({
             return (
               <button
                 key={k.format}
-                className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok ? '' : 'is-off'}`}
+                className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok ? '' : 'is-off'}${kindSelected === k.format ? ' is-selected' : ''}${kindPressed === k.format ? ' is-pressed' : ''}`}
                 aria-label={`${k.title}: ${k.desc}`}
+                aria-pressed={kindSelected === k.format}
                 onClick={() => {
-                  setKind(k.format);
-                  setShowBlocked(false);
-                  setStep('format');
+                  if (kindPressed) return;
+                  sound.unlock();
+                  sound.play('ui');
+                  if (kindSelected !== k.format) {
+                    setKindSelected(k.format);
+                    return;
+                  }
+                  setKindPressed(k.format);
+                  kindTimer.current = window.setTimeout(() => {
+                    setKind(k.format);
+                    setShowBlocked(false);
+                    setKindSelected(null);
+                    setKindPressed(null);
+                    setStep('format');
+                  }, KIND_PRESS_MS);
                 }}
               >
                 {art ? (

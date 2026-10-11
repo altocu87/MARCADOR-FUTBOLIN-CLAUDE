@@ -2671,17 +2671,30 @@
   object-fit: contain;
   transition: opacity 0.15s ease;
 }
-/* Pulsado (o con el ratón encima / foco de teclado): se enciende la versión «-on» y se hunde un poco. */
+/* Dos toques, como en el inicio: el primero enciende la versión «-on» y el segundo la hunde y entra. */
 .tn-kind-img-on {
   opacity: 0;
 }
-.tpl-card.tn-kind.has-art:hover .tn-kind-img-on,
-.tpl-card.tn-kind.has-art:focus-visible .tn-kind-img-on,
-.tpl-card.tn-kind.has-art:active .tn-kind-img-on {
+.tpl-card.tn-kind.has-art.is-selected .tn-kind-img-on,
+.tpl-card.tn-kind.has-art.is-pressed .tn-kind-img-on,
+.tpl-card.tn-kind.has-art:focus-visible .tn-kind-img-on {
   opacity: 1;
 }
-.tpl-card.tn-kind.has-art:active {
-  transform: scale(0.97) translateY(2px);
+.tpl-card.tn-kind.has-art:active,
+.tpl-card.tn-kind.has-art.is-pressed {
+  transform: scale(0.96) translateY(2px);
+  filter: brightness(1.2);
+}
+/* El marco de selección de las tarjetas de texto sobra: el cartel ya trae el suyo, que se enciende. */
+.tpl-card.tn-kind.has-art[aria-pressed='true'] {
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+/* Sin imágenes: el marco de la tarjeta de texto se enciende igual. */
+.tpl-card.tn-kind.is-selected {
+  border: 2px solid var(--neon);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--neon) 70%, transparent);
 }
 .tpl-card .tn-kind-art .tpl-rec {
   position: absolute;
