@@ -50,7 +50,7 @@ import {
   type Movement,
   type TemplateFit,
 } from '../../services/tournaments';
-import { AssetImage } from '../components/assets';
+import { AssetImage, assetUrl } from '../components/assets';
 import { Crest, Cup, IconPicker, defaultCup, defaultLogo } from '../components/Crest';
 import { ClubEditor } from '../components/ClubEditor';
 import { findClub, saveClub } from '../../services/clubs';
@@ -543,10 +543,10 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * Los tres tipos de torneo, tal y como se le enseñan al jugador en «¿Qué torneo jugamos?».
  * `noun`/`the` van en la pantalla siguiente («Elige la liga», «+ Crear copa»).
  */
-const KINDS: { format: TournamentFormat; title: string; noun: string; the: string; desc: string }[] = [
-  { format: 'league', title: 'Liga', noun: 'liga', the: 'la liga', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
-  { format: 'bracket', title: 'Copa', noun: 'copa', the: 'la copa', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
-  { format: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
+const KINDS: { format: TournamentFormat; file: string; title: string; noun: string; the: string; desc: string }[] = [
+  { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
+  { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
+  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
 ];
 
 export function TournamentNewScreen({
@@ -830,20 +830,32 @@ export function TournamentNewScreen({
           {KINDS.map((k) => {
             const ok = allFits.filter((x) => x.t.format === k.format && x.fit.ok).length;
             const why = allFits.find((x) => x.t.format === k.format && !x.fit.ok)?.fit;
+            const rec = k.format === recFormat && <span className="tpl-rec">Recomendado</span>;
+            // Cartel con el título dentro, en reposo (-off) y pulsado (-on); sin imágenes, la tarjeta de texto.
+            const art = !!assetUrl(`tarjeta-${k.file}-off`);
             return (
               <button
                 key={k.format}
-                className={`tpl-card tn-kind ${ok ? '' : 'is-off'}`}
+                className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok ? '' : 'is-off'}`}
+                aria-label={`${k.title}: ${k.desc}`}
                 onClick={() => {
                   setKind(k.format);
                   setShowBlocked(false);
                   setStep('format');
                 }}
               >
-                <strong>
-                  {k.title}
-                  {k.format === recFormat && <span className="tpl-rec">Recomendado</span>}
-                </strong>
+                {art ? (
+                  <span className="tn-kind-art">
+                    <AssetImage name={`tarjeta-${k.file}-off`} className="tn-kind-img" fallback={null} />
+                    <AssetImage name={`tarjeta-${k.file}-on`} className="tn-kind-img tn-kind-img-on" fallback={null} />
+                    {rec}
+                  </span>
+                ) : (
+                  <strong>
+                    {k.title}
+                    {rec}
+                  </strong>
+                )}
                 <span className="tn-kind-desc">{k.desc}</span>
                 {ok ? (
                   <span className="tpl-fit">

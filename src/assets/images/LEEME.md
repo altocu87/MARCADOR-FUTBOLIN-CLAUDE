@@ -16,6 +16,9 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
   `boton-sumar-off/on` (verde, hacia arriba) y `boton-restar-off/on` (rojo, hacia abajo), 600 px de ancho, .webp
   transparente y recortados justo al borde del triángulo para que encajen a ras del recuadro.
   Ahora no se usan: la configuración dibuja unas pestañas con flecha en SVG (se pueden volver a poner).
+- Tarjetas de «¿Qué torneo jugamos?» con el título dentro y dos estados (`-off` en reposo, `-on` al pulsar o pasar
+  el ratón): `tarjeta-liga-off/on`, `tarjeta-copa-off/on` y `tarjeta-pool-off/on` (600×800 .webp, esquinas redondeadas
+  transparentes, recortadas de una sola hoja de 3×2).
 - `fondo-configuracion`: fondo de la pantalla de configuración del partido (1280×768 .webp).
 - `fondo-prevision`: fondo de la Previsión del Clasificatorio (1280×720 .webp, ya desenfocado).
 - `ardilla-*`: la ardilla ladrona del Partido Loco, recortada de sus hojas de personaje: `ardilla-carrera-0…5`
