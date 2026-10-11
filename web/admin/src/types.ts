@@ -156,4 +156,7 @@ export interface AdminSession {
   role: Role;
   /** Token del servidor en modo real; vacío en modo demostración. */
   token?: string;
+  /** Modo real: para renovar el token sin volver a pedir contraseña ni código. */
+  refreshToken?: string;
+  expiresAt?: number;
 }

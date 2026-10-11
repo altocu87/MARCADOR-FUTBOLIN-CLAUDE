@@ -819,3 +819,29 @@ textarea.a-input {
     display: none;
   }
 }
+
+/* Verificación en dos pasos */
+.a-qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 16px auto;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fff;
+}
+.a-secret {
+  word-break: break-all;
+  user-select: all;
+}
+.a-code {
+  font-size: 28px;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.a-linkbtn {
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+}

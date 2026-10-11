@@ -511,6 +511,15 @@ function Progression() {
   );
 }
 
+/** Web publicada (la app vive en su carpeta «app/» y el panel en «admin/»). */
+const WEB_URL = 'https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/';
+
+/** Panel de administración: junto a la app si se abre desde la web; si no (placa, instalada…), el de la web publicada. */
+function adminUrl(): string {
+  const { href, pathname } = window.location;
+  return /\/app\/(index\.html)?$/.test(pathname) ? new URL('../admin/', href).href : `${WEB_URL}admin/`;
+}
+
 function SystemTab() {
   const { repos, refresh, persistent, players, matches, toast } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -604,6 +613,16 @@ function SystemTab() {
           Borrar todos los datos locales
         </button>
         <p className="dim" style={{ fontSize: 12 }}>Firmware, OTA, Wi-Fi y reinicio remoto: pendientes del bloque de hardware/conectividad.</p>
+      </div>
+      <div className="card">
+        <div className="label">Administración</div>
+        <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>
+          Panel de control de la aplicación. Solo personal autorizado: pide correo, contraseña y el código de una app de
+          verificación.
+        </p>
+        <button className="btn btn-sm" onClick={() => window.open(adminUrl(), '_blank', 'noopener,noreferrer')}>
+          🔒 Abrir panel de administración ↗
+        </button>
       </div>
 
       {pending && (

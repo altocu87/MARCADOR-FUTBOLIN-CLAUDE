@@ -1,7 +1,19 @@
 # Panel de administración
 
 Dirección: **`/admin/`** de la web (por ejemplo `https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/admin/`).
+También desde la app: **Ajustes → Sistema → Administración → «Abrir panel de administración»**.
 No aparece en el menú de la web y pide a los buscadores que no lo indexen.
+
+## Seguridad
+
+- **Entrar pide tres cosas**: correo, contraseña y el **código de 6 cifras** de una app de verificación
+  (Google Authenticator, Microsoft Authenticator, 1Password…). La primera vez se da de alta escaneando un QR.
+- **Lo comprueba el servidor**, no la página: sin rol admin/soporte, con la cuenta bloqueada o sin haber pasado el
+  código (nivel «aal2»), la base de datos no devuelve nada aunque alguien modificase el panel.
+- La sesión vive solo en esa pestaña, se cierra sola tras **15 minutos sin actividad** y al salir se revoca en el servidor.
+- El panel publicado solo carga su propio código y solo habla con Supabase (política de seguridad de contenidos),
+  y no se deja abrir dentro de otra página.
+- Con la conexión fijada al publicar (variables de abajo), el modo demostración desaparece.
 
 ## Hoy: modo demostración
 
@@ -38,15 +50,20 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 En modo real los permisos los comprueba **el servidor** (`supabase/schema.sql`), no el panel: aunque alguien
 modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 
-## Cuando el servicio sea de pago: puesta en marcha
+## Puesta en marcha con Supabase
 
-1. **Base de datos**: crea un proyecto en [Supabase](https://supabase.com) (región UE, p. ej. Frankfurt).
-2. En **SQL Editor**, pega y ejecuta `supabase/schema.sql`. Crea las tablas, los roles y los permisos.
-3. **Tu cuenta**: en *Authentication → Users → Add user*, crea tu usuario. Después, en el SQL Editor:
+1. **Base de datos**: un proyecto en [Supabase](https://supabase.com) en la UE (p. ej. Irlanda o Frankfurt).
+2. En **SQL Editor**, pega y ejecuta `supabase/schema.sql` en una base de datos **vacía**. Crea las tablas, los roles y los permisos.
+3. **Cerrar el registro**: *Authentication → Sign In / Providers* → desactiva «Allow new users to sign up».
+   *Authentication → Policies/Passwords*: longitud mínima 12 o más.
+4. **Tu cuenta**: *Authentication → Users → Add user* con tu correo y una contraseña larga. Después, en el SQL Editor:
    `update public.profiles set role = 'admin' where email = 'tu-correo@ejemplo.com';`
-4. **Conectar el panel**: entra en el panel (modo demo) → *Ajustes → Conexión*, pega la URL del proyecto y la
-   clave **anon** (Project Settings → API) y pulsa «Conectar con la base de datos real». Entra con tu usuario de Supabase.
-5. **Activa la verificación en dos pasos** en Supabase y en GitHub.
+5. **Conectar la web publicada**: en GitHub, *Settings → Secrets and variables → Actions → Variables*, crea
+   `SUPABASE_URL` (`https://<id-del-proyecto>.supabase.co`) y `SUPABASE_ANON_KEY` (Supabase → *Project Settings → API*,
+   clave **anon / publishable**). Al subir a `main` la web se publica ya conectada.
+   La clave **service_role / secret** no se pone **nunca** ahí ni en el repositorio.
+6. Entra en el panel: la primera vez escanea el QR con tu app de verificación.
+7. **Activa también la verificación en dos pasos** en tu cuenta de Supabase y en la de GitHub.
 6. **Pagos** (siguiente bloque de trabajo): elegir plataforma (Lemon Squeezy o Paddle si no quieres gestionar el IVA
    de cada país; Stripe si sí) y crear su *webhook* como función de Supabase. Ese webhook es el que crea los pedidos y
    las licencias al cobrar, con la clave de **servicio** de Supabase. Esa clave y la de la plataforma de pagos

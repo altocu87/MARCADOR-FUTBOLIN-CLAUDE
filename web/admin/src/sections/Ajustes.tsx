@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { saveConnection, loadConnection } from '../backend';
+import { builtInConnection, saveConnection, loadConnection } from '../backend';
 import { ROLE_LABEL, money } from '../logic';
 import { useAdmin } from '../store';
 import type { PaymentProvider, Settings } from '../types';
@@ -117,7 +117,12 @@ export function Ajustes() {
             Ahora: {backend.mode === 'demo' ? <Badge tone="warn">Modo demostración</Badge> : <Badge tone="ok">Base de datos real</Badge>}{' '}
             <span className="a-muted">· sesión de {session.email}</span>
           </p>
-          {backend.mode === 'demo' ? (
+          {builtInConnection() ? (
+            <p className="a-muted small">
+              Conexión fijada al publicar la web: el panel siempre trabaja con la base de datos real y pide verificación en dos
+              pasos. No se puede cambiar desde aquí.
+            </p>
+          ) : backend.mode === 'demo' ? (
             <>
               <p className="a-muted small">Cuando el servicio sea de pago: crea el proyecto en Supabase, ejecuta supabase/schema.sql y pega aquí su dirección y su clave «anon» (pública).</p>
               <Field label="Dirección del proyecto (URL)">

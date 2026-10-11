@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { LocalBackend, loadConnection, type AdminBackend } from './backend';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { LocalBackend, builtInConnection, loadConnection, type AdminBackend, type MfaStep } from './backend';
 import { ROLE_LABEL, type Permission } from './logic';
 import { Ajustes } from './sections/Ajustes';
 import { Actividad, Avisos } from './sections/Avisos';
@@ -28,19 +28,53 @@ const SECTIONS: { id: string; label: string; perm?: Permission }[] = [
 ];
 
 function makeBackend(): AdminBackend {
-  const conn = loadConnection();
+  // La conexión fijada al publicar manda; si no, la pegada en Ajustes; si no, demostración.
+  const conn = builtInConnection() ?? loadConnection();
   return conn ? new SupabaseBackend(conn.url, conn.anonKey, sessionStorage) : new LocalBackend();
+}
+
+/** Minutos sin tocar nada tras los que se cierra la sesión. */
+const IDLE_MINUTES = 15;
+
+/** Cierra la sesión tras un rato sin actividad (ratón, teclado o pantalla táctil). */
+function useIdleLogout(active: boolean, onIdle: () => void) {
+  useEffect(() => {
+    if (!active) return undefined;
+    let timer = 0;
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(onIdle, IDLE_MINUTES * 60_000);
+    };
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [active, onIdle]);
 }
 
 export function AdminApp() {
   const backend = useMemo(makeBackend, []);
   const [session, setSession] = useState<AdminSession | null>(() => backend.session());
-  if (!session) return <Login backend={backend} onIn={setSession} />;
+  const [notice, setNotice] = useState<string | null>(null);
+  const out = useCallback(
+    (why?: string) => {
+      backend.signOut();
+      setSession(null);
+      setNotice(why ?? null);
+    },
+    [backend],
+  );
+  const idle = useCallback(() => out(`Sesión cerrada tras ${IDLE_MINUTES} minutos sin actividad.`), [out]);
+  useIdleLogout(!!session && backend.mode === 'real', idle);
+  if (!session) return <Login backend={backend} notice={notice} onIn={(s) => { setNotice(null); setSession(s); }} />;
   return (
     <AdminProvider backend={backend} session={session}>
       {(ready, error) =>
         ready ? (
-          <Shell onOut={() => { backend.signOut(); setSession(null); }} />
+          <Shell onOut={() => out()} />
         ) : (
           <div className="a-center">
             {error ? (
@@ -61,36 +95,104 @@ export function AdminApp() {
   );
 }
 
-function Login({ backend, onIn }: { backend: AdminBackend; onIn: (s: AdminSession) => void }) {
+function Login({ backend, notice, onIn }: { backend: AdminBackend; notice: string | null; onIn: (s: AdminSession) => void }) {
   const setup = backend.needsSetup();
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
+  const [code, setCode] = useState('');
+  // Segundo paso (modo real): código de la app de verificación.
+  const [mfa, setMfa] = useState<MfaStep | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const run = async (fn: () => Promise<void>) => {
     setErr(null);
-    if (setup && pw !== pw2) return setErr('Las contraseñas no coinciden');
     setBusy(true);
     try {
-      onIn(setup ? await backend.createAdmin(email, pw) : await backend.signIn(email, pw));
+      await fn();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : String(ex));
     } finally {
       setBusy(false);
     }
   };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (setup && pw !== pw2) return setErr('Las contraseñas no coinciden');
+    return run(async () => {
+      const r = setup ? await backend.createAdmin(email, pw) : await backend.signIn(email, pw);
+      setPw('');
+      setPw2('');
+      if ('kind' in r) setMfa(r);
+      else onIn(r);
+    });
+  };
+  const submitCode = (e: FormEvent) => {
+    e.preventDefault();
+    return run(async () => {
+      onIn(await backend.verifyMfa!(mfa!, code));
+    }).finally(() => setCode(''));
+  };
+
+  if (mfa) {
+    return (
+      <div className="a-center">
+        <form className="a-card a-login" onSubmit={submitCode}>
+          <p className="a-kicker">Marcador Futbolín · Administración</p>
+          <h1>Verificación en dos pasos</h1>
+          {mfa.enroll ? (
+            <>
+              <p className="a-muted">
+                Es la primera vez: abre una app de verificación en tu móvil (Google Authenticator, Microsoft Authenticator,
+                1Password…) y escanea este código. A partir de ahora te pedirá el código de 6 cifras cada vez que entres.
+              </p>
+              <img className="a-qr" src={mfa.enroll.qr} alt="Código QR para la app de verificación" />
+              <p className="a-muted small">
+                ¿No puedes escanearlo? Escribe esta clave en la app: <code className="a-secret">{mfa.enroll.secret}</code>
+              </p>
+            </>
+          ) : (
+            <p className="a-muted">Escribe el código de 6 cifras que muestra tu app de verificación.</p>
+          )}
+          <label className="a-field">
+            <span className="a-field-label">Código</span>
+            <input
+              className="a-input mono a-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              autoFocus
+              required
+            />
+          </label>
+          {err && <p className="a-error">{err}</p>}
+          <button className="a-btn primary wide" disabled={busy || code.length !== 6}>
+            {busy ? 'Comprobando…' : 'Entrar'}
+          </button>
+          <button type="button" className="a-back a-linkbtn" onClick={() => { backend.signOut(); setMfa(null); setErr(null); }}>
+            ← Volver
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="a-center">
       <form className="a-card a-login" onSubmit={submit}>
         <p className="a-kicker">Marcador Futbolín · Administración</p>
         <h1>{setup ? 'Crea tu cuenta de administrador' : 'Entrar'}</h1>
-        {backend.mode === 'demo' && (
+        {notice && <p className="a-demo-note">{notice}</p>}
+        {backend.mode === 'demo' ? (
           <p className="a-demo-note">
             Modo demostración: datos de ejemplo guardados solo en este navegador. La contraseña evita miradas casuales, pero la
             seguridad real llega al conectar la base de datos.
           </p>
+        ) : (
+          <p className="a-muted small">Solo personal autorizado. Después de la contraseña se pide el código de tu app de verificación.</p>
         )}
         <label className="a-field">
           <span className="a-field-label">Correo</span>
@@ -108,7 +210,7 @@ function Login({ backend, onIn }: { backend: AdminBackend; onIn: (s: AdminSessio
         )}
         {err && <p className="a-error">{err}</p>}
         <button className="a-btn primary wide" disabled={busy}>
-          {busy ? 'Un momento…' : setup ? 'Crear cuenta y entrar' : 'Entrar'}
+          {busy ? 'Un momento…' : setup ? 'Crear cuenta y entrar' : 'Continuar'}
         </button>
         <a className="a-back" href="../">
           ← Volver a la web

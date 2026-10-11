@@ -43,7 +43,12 @@ jobs:
           else
             echo "Aún no hay programas publicados: la web saldrá con el instalador en preparación."
           fi
+      # Conexión del panel con Supabase (Settings → Secrets and variables → Actions → Variables).
+      # Son datos públicos por diseño: lo que protege la información son los permisos del servidor.
       - run: npm run build:web
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       # Requiere activar Pages una vez: Settings → Pages → Source: «GitHub Actions».
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

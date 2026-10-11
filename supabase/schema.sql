@@ -1,6 +1,10 @@
 -- =====================================================================================
 -- MARCADOR FUTBOLÍN · base de datos del servicio de pago (Supabase / PostgreSQL)
--- PREPARADO, SIN APLICAR. Cuando se active el negocio: Supabase → SQL Editor → pegar y ejecutar.
+-- Puesta en marcha: Supabase → SQL Editor → pegar y ejecutar (pasos completos en docs/ADMIN.md).
+--
+-- El equipo (admin y soporte) solo tiene permisos si a la vez:
+--   1) su perfil tiene ese rol, 2) su cuenta no está bloqueada y 3) ha entrado con la verificación en dos pasos
+--   (código de una app, nivel «aal2» del token). Con solo la contraseña, aunque sea correcta, no ve nada.
 --
 -- Seguridad: todas las tablas tienen RLS (Row Level Security). Los permisos se deciden aquí, en el
 -- servidor, según el rol de la tabla profiles. El panel solo muestra lo que el servidor deja ver.
@@ -28,9 +32,13 @@ create table if not exists public.profiles (
 );
 
 -- Rol del usuario que hace la petición (security definer: no depende de las políticas de profiles).
+-- Sin verificación en dos pasos (aal2) o con la cuenta bloqueada, el equipo no tiene rol: no ve ni toca nada.
 create or replace function public.staff_role() returns text
   language sql stable security definer set search_path = public
-  as $$ select role from public.profiles where id = auth.uid() $$;
+  as $$
+    select role from public.profiles
+    where id = auth.uid() and not bloqueado and coalesce(auth.jwt() ->> 'aal', '') = 'aal2'
+  $$;
 create or replace function public.is_admin() returns boolean
   language sql stable as $$ select coalesce(public.staff_role() = 'admin', false) $$;
 create or replace function public.is_staff() returns boolean
@@ -228,6 +236,8 @@ insert into public.products (id, nombre, tipo, precio, activo, descripcion, stoc
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------- primer administrador
--- 1) Authentication → Users → «Add user» con tu correo y una contraseña larga.
--- 2) Ejecuta (con tu correo):
+-- 1) Authentication → Sign In / Providers: desactiva «Allow new users to sign up» (nadie puede registrarse solo).
+-- 2) Authentication → Users → «Add user» con tu correo y una contraseña larga (16+ caracteres).
+-- 3) Ejecuta (con tu correo):
 --    update public.profiles set role = 'admin' where email = 'tu-correo@ejemplo.com';
+-- 4) Entra en el panel: la primera vez te enseña un código QR para tu app de verificación.

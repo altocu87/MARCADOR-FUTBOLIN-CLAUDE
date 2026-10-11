@@ -8,12 +8,23 @@
 import { seedData } from './seed';
 import type { AdminData, AdminSession, Collection, ItemOf, Settings } from './types';
 
+/** Segundo paso al entrar en modo real: código de la app de verificación (con QR la primera vez). */
+export interface MfaStep {
+  kind: 'mfa';
+  factorId: string;
+  /** Primera vez: código QR (imagen) y clave para escribirla a mano en la app. */
+  enroll?: { qr: string; secret: string };
+}
+
 export interface AdminBackend {
   readonly mode: 'demo' | 'real';
   /** Modo demo: true si todavía no se ha creado la cuenta de administrador local. */
   needsSetup(): boolean;
   createAdmin(email: string, password: string): Promise<AdminSession>;
-  signIn(email: string, password: string): Promise<AdminSession>;
+  /** Demo: entra directamente. Real: devuelve el paso del código de verificación. */
+  signIn(email: string, password: string): Promise<AdminSession | MfaStep>;
+  /** Solo real: comprueba el código de 6 cifras y abre la sesión. */
+  verifyMfa?(step: MfaStep, code: string): Promise<AdminSession>;
   signOut(): void;
   session(): AdminSession | null;
   load(): Promise<AdminData>;
@@ -152,6 +163,16 @@ export interface RealConnection {
   anonKey: string;
 }
 const CONN_KEY = 'mfv3-admin-conexion';
+
+/**
+ * Conexión fijada al publicar la web (variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).
+ * Si existe, el panel trabaja siempre con la base de datos real: no hay modo demostración ni se puede cambiar.
+ */
+export function builtInConnection(): RealConnection | null {
+  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+  return url && anonKey ? { url, anonKey } : null;
+}
 
 export function loadConnection(store: KeyValueStore = safeStore(() => localStorage)): RealConnection | null {
   const raw = store.getItem(CONN_KEY);

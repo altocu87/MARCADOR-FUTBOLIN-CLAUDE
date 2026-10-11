@@ -165,13 +165,22 @@ describe('Panel · modo demostración (LocalBackend)', () => {
 });
 
 describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () => {
-  function fakeServer(role: string) {
+  function fakeServer(role: string, opts: { factor?: boolean; bloqueado?: boolean } = {}) {
     const calls: { url: string; init?: RequestInit }[] = [];
     const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+    const user = { id: 'uid-1', email: 'jefe@bar.com', factors: opts.factor ? [{ id: 'f-ok', factor_type: 'totp', status: 'verified' }] : [] };
     const http = (async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
-      if (url.includes('/auth/v1/token')) return json({ access_token: 'TOKEN', user: { id: 'uid-1', email: 'jefe@bar.com' } });
-      if (url.includes('/rest/v1/profiles?id=eq.')) return json([{ role }]);
+      if (url.includes('/auth/v1/token?grant_type=password')) return json({ access_token: 'AAL1', refresh_token: 'R1', expires_in: 3600, user });
+      if (url.includes('/auth/v1/token?grant_type=refresh_token')) return json({ access_token: 'TOKEN2', refresh_token: 'R2', expires_in: 3600, user });
+      if (url.endsWith('/auth/v1/factors')) return json({ id: 'f-new', totp: { qr_code: 'data:image/svg+xml;utf-8,<svg/>', secret: 'ABC123' } });
+      if (url.endsWith('/challenge')) return json({ id: 'ch-1' });
+      if (url.endsWith('/verify')) {
+        const body = JSON.parse(String(init?.body));
+        return body.code === '123456' ? json({ access_token: 'TOKEN', refresh_token: 'R1', expires_in: 3600, user }) : json({ msg: 'Invalid TOTP code entered' }, 422);
+      }
+      if (url.includes('/auth/v1/logout')) return new Response(null, { status: 204 });
+      if (url.includes('/rest/v1/profiles?id=eq.')) return json([{ role, bloqueado: !!opts.bloqueado }]);
       if (init?.method === 'PATCH') return json(url.includes('id=eq.existe') ? [{ id: 'existe' }] : []);
       if (init?.method === 'POST' || init?.method === 'DELETE') return new Response(null, { status: 201 });
       if (url.includes('/rest/v1/settings')) return json([{ id: 'ajustes', nombre_tienda: 'Tienda', precio_pro: 499 }]);
@@ -181,18 +190,62 @@ describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () =>
     return { http, calls };
   }
 
-  it('solo entra con rol admin o soporte (lo decide el servidor)', async () => {
-    const ok = fakeServer('admin');
-    const b = new SupabaseBackend('https://x.supabase.co/', 'ANON', mem(), ok.http);
-    expect((await b.signIn('jefe@bar.com', 'pw')).token).toBe('TOKEN');
+  /** Entra con contraseña y código. */
+  async function enter(b: SupabaseBackend) {
+    const step = await b.signIn('jefe@bar.com', 'pw');
+    if (!('kind' in step)) throw new Error('debería pedir el código');
+    return b.verifyMfa(step, '123456');
+  }
+
+  it('solo entra con rol admin o soporte y cuenta sin bloquear (lo decide el servidor)', async () => {
     const no = fakeServer('jugador');
     await expect(new SupabaseBackend('https://x.supabase.co', 'ANON', mem(), no.http).signIn('j@x.com', 'pw')).rejects.toThrow(/permiso/);
+    // Y se revoca la sesión a medias.
+    expect(no.calls.some((c) => c.url.includes('/auth/v1/logout'))).toBe(true);
+    const blocked = fakeServer('admin', { bloqueado: true });
+    await expect(new SupabaseBackend('https://x.supabase.co', 'ANON', mem(), blocked.http).signIn('j@x.com', 'pw')).rejects.toThrow(/permiso/);
+  });
+
+  it('la contraseña sola no abre la sesión: la primera vez da de alta la app de verificación con un QR', async () => {
+    const srv = fakeServer('admin');
+    const store = mem();
+    const b = new SupabaseBackend('https://x.supabase.co/', 'ANON', store, srv.http);
+    const step = await b.signIn('jefe@bar.com', 'pw');
+    expect(step).toMatchObject({ kind: 'mfa', factorId: 'f-new', enroll: { secret: 'ABC123' } });
+    expect(b.session()).toBeNull();
+    await expect(b.verifyMfa(step as never, '000000')).rejects.toThrow(/Invalid/);
+    expect(b.session()).toBeNull();
+  });
+
+  it('con la app ya dada de alta pide el código y la sesión usa el token verificado', async () => {
+    const srv = fakeServer('admin', { factor: true });
+    const b = new SupabaseBackend('https://x.supabase.co', 'ANON', mem(), srv.http);
+    const step = await b.signIn('jefe@bar.com', 'pw');
+    expect(step).toEqual({ kind: 'mfa', factorId: 'f-ok' });
+    expect(srv.calls.some((c) => c.url.endsWith('/auth/v1/factors'))).toBe(false);
+    const s = await b.verifyMfa(step as never, '123456');
+    expect(s).toMatchObject({ email: 'jefe@bar.com', role: 'admin', token: 'TOKEN', refreshToken: 'R1' });
+    b.signOut();
+    expect(b.session()).toBeNull();
+    expect(srv.calls.at(-1)!.url).toContain('/auth/v1/logout');
+  });
+
+  it('renueva el token cuando va a caducar', async () => {
+    const srv = fakeServer('admin', { factor: true });
+    const store = mem();
+    const b = new SupabaseBackend('https://x.supabase.co', 'ANON', store, srv.http);
+    await enter(b);
+    store.setItem('mfv3-admin-sesion-real', JSON.stringify({ ...b.session(), expiresAt: Date.now() + 10_000 }));
+    await b.load();
+    expect(b.session()!.token).toBe('TOKEN2');
+    const read = srv.calls.find((c) => c.url.includes('/rest/v1/orders'))!;
+    expect((read.init?.headers as Record<string, string>).Authorization).toBe('Bearer TOKEN2');
   });
 
   it('lee con el token del usuario y convierte nombres de columnas', async () => {
-    const srv = fakeServer('admin');
+    const srv = fakeServer('admin', { factor: true });
     const b = new SupabaseBackend('https://x.supabase.co', 'ANON', mem(), srv.http);
-    await b.signIn('jefe@bar.com', 'pw');
+    await enter(b);
     const d = await b.load();
     expect(d.users[0]).toEqual({ id: 'u1', email: 'a@b.c', createdAt: 1, lastSeenAt: 2 });
     expect(d.settings).toMatchObject({ nombreTienda: 'Tienda', precioPro: 499 });
@@ -210,6 +263,13 @@ describe('Panel · modo real (SupabaseBackend, con un servidor simulado)', () =>
     await b.upsert('orders', { id: 'existe', userId: 'u', productId: 'p', importe: 1, estado: 'pagado', fecha: 1 });
     expect(srv.calls.length - before).toBe(1);
     expect(srv.calls.at(-1)!.init?.method).toBe('PATCH');
+  });
+
+  it('en el servidor, el equipo solo tiene rol con verificación en dos pasos y cuenta sin bloquear', async () => {
+    const { default: sql } = await import('../supabase/schema.sql?raw');
+    const fn = /function public\.staff_role\(\)[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(sql)![1];
+    expect(fn).toContain("'aal2'");
+    expect(fn).toContain('not bloqueado');
   });
 
   it('cada colección tiene su tabla y la conversión es reversible', () => {

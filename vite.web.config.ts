@@ -1,5 +1,35 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+/**
+ * Política de seguridad del panel (solo al publicar; en desarrollo Vite necesita scripts en línea):
+ * solo carga código propio, solo habla con su propia web y con Supabase, sin formularios ni marcos ajenos.
+ */
+const ADMIN_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self' https://*.supabase.co",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+].join('; ');
+
+function adminSecurity(): Plugin {
+  return {
+    name: 'admin-security',
+    apply: 'build',
+    transformIndexHtml(html, ctx) {
+      if (!ctx.path.includes('admin')) return html;
+      return html.replace(
+        '<meta charset="UTF-8" />',
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${ADMIN_CSP}" />\n    <meta name="referrer" content="no-referrer" />`,
+      );
+    },
+  };
+}
 
 /**
  * Web pública (portada, «Monta tu marcador», instalador y ayuda).
@@ -8,7 +38,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: 'web',
   base: './',
-  plugins: [react()],
+  plugins: [react(), adminSecurity()],
   build: {
     outDir: '../dist-web',
     emptyOutDir: true,
