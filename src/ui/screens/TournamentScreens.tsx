@@ -6,11 +6,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import { restoreSnapshot } from '../../app/recovery';
-import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentTemplate } from '../../services/persistence';
+import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentFormat, TournamentTemplate } from '../../services/persistence';
 import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
+  BUILT_IN_TEMPLATES,
   FORMAT_LABEL,
   allTemplates,
   competitions,
@@ -538,19 +539,37 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * La lista de tipos se ordena según el número de jugadores: arriba los que se pueden jugar (con el
  * recomendado destacado) y abajo, apagados, los que no encajan y por qué.
  */
+/**
+ * Los tres tipos de torneo, tal y como se le enseñan al jugador en «¿Qué torneo jugamos?».
+ * `noun`/`the` van en la pantalla siguiente («Elige la liga», «+ Crear copa»).
+ */
+const KINDS: { format: TournamentFormat; title: string; noun: string; the: string; desc: string }[] = [
+  { format: 'league', title: 'Liga', noun: 'liga', the: 'la liga', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
+  { format: 'bracket', title: 'Copa', noun: 'copa', the: 'la copa', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
+  { format: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
+];
+
 export function TournamentNewScreen({
   templateId,
   initialSelected,
   initialStep,
+  initialFormat,
 }: {
   templateId?: string;
   initialSelected?: string[];
-  initialStep?: 'players' | 'format';
+  initialStep?: 'players' | 'kind' | 'format';
+  initialFormat?: TournamentFormat;
 }) {
   const { navigate, players, progression, prefs, saveTournament, discardTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
   // Torneo en juego que se quiere descartar (pide confirmación).
   const [discarding, setDiscarding] = useState<Tournament | null>(null);
-  const [step, setStep] = useState<'players' | 'format'>(initialStep ?? (initialSelected?.length ? 'format' : 'players'));
+  // Tipo de torneo (liga, copa o pool): el pedido, o el del predefinido con el que se vuelve del creador.
+  const [kind, setKind] = useState<TournamentFormat | undefined>(
+    () => initialFormat ?? allTemplates(prefs.tournamentTemplates).find((t) => t.id === templateId)?.format,
+  );
+  const [step, setStep] = useState<'players' | 'kind' | 'format'>(
+    initialStep ?? (initialSelected?.length ? (kind ? 'format' : 'kind') : 'players'),
+  );
   const [picked, setSelected] = useState<string[]>(initialSelected ?? []);
   // Solo cuentan los jugadores que siguen existiendo y están en activo: al volver de un torneo
   // anterior la lista puede traer jugadores borrados, fusionados o dados de baja que no se ven
@@ -567,7 +586,8 @@ export function TournamentNewScreen({
   // Jugador o invitado que ya tiene el nombre escrito.
   const [guestClash, setGuestClash] = useState<Player | null>(null);
   const guestRef = useRef<HTMLInputElement>(null);
-  const [showAll, setShowAll] = useState(false);
+  // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
+  const [showBlocked, setShowBlocked] = useState(false);
   // Cómo se juegan los partidos (goles, tiempo o ambas): sale del tipo elegido y se puede cambiar aquí.
   const [rules, setRules] = useState<(MatchRules & { tplId: string }) | null>(null);
   // Y la final: a partido único o al mejor de 3, y sus propias reglas.
@@ -582,17 +602,17 @@ export function TournamentNewScreen({
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
 
-  // Solo se enseñan los tipos recomendados para este número de jugadores (y los propios que encajen);
-  // el resto queda detrás de «Ver todos los tipos».
+  // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de sus predefinidos.
+  // Los recomendados para este número de jugadores van delante; los que no encajan, plegados al final.
   const recIds = recommendedTemplateIds(n);
   const recommended = recIds[0] ?? null;
-  const fits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
+  const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
   const rank = (id: string) => (recIds.includes(id) ? recIds.indexOf(id) : recIds.length);
-  const shown = fits.filter((x) => x.fit.ok && (recIds.includes(x.t.id) || !x.t.builtIn)).sort((a, b) => rank(a.t.id) - rank(b.t.id));
-  const otherOk = fits.filter((x) => x.fit.ok && !shown.includes(x));
+  const kindInfo = KINDS.find((k) => k.format === kind);
+  const fits = allFits.filter((x) => x.t.format === kind);
+  const shown = fits.filter((x) => x.fit.ok).sort((a, b) => rank(a.t.id) - rank(b.t.id));
   const blocked = fits.filter((x) => !x.fit.ok);
-  const pickable = showAll ? [...shown, ...otherOk] : shown.length ? shown : otherOk;
-  const baseTpl = pickable.find((x) => x.t.id === chosenTpl)?.t ?? pickable[0]?.t;
+  const baseTpl = shown.find((x) => x.t.id === chosenTpl)?.t ?? shown[0]?.t;
   const ruledTpl = baseTpl && rules?.tplId === baseTpl.id ? withRules(baseTpl, rules) : baseTpl;
   const tpl =
     ruledTpl && finalPick?.tplId === ruledTpl.id ? { ...withFinalRules(ruledTpl, finalPick), finalBestOf: finalPick.bestOf } : ruledTpl;
@@ -655,13 +675,11 @@ export function TournamentNewScreen({
             <span className="tn-count" aria-live="polite">
               <b>{n}</b> {n === 1 ? 'jugador' : 'jugadores'}
             </span>
-            <span className="notice select-status">
-              {n < 3 ? `Marca al menos ${3 - n} más` : `${shown.length} torneo${shown.length === 1 ? '' : 's'} recomendado${shown.length === 1 ? '' : 's'}`}
-            </span>
+            <span className="notice select-status">{n < 3 ? `Marca al menos ${3 - n} más` : `${n} jugadores listos`}</span>
             <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
               {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
             </button>
-            <button className="btn btn-primary btn-lg" disabled={n < 3} onClick={() => setStep('format')}>
+            <button className="btn btn-primary btn-lg" disabled={n < 3} onClick={() => setStep('kind')}>
               Siguiente
             </button>
           </>
@@ -797,6 +815,51 @@ export function TournamentNewScreen({
     );
   }
 
+  if (step === 'kind' || !kindInfo) {
+    // Tipo recomendado: el del predefinido más aconsejable para este número de jugadores.
+    const recFormat = allFits.find((x) => x.t.id === recommended)?.t.format;
+    return (
+      <ScreenFrame
+        title="¿Qué torneo jugamos?"
+        subtitle={`${n} jugadores`}
+        className="select-screen tn-screen"
+        background={TN_BG}
+        onBack={() => setStep('players')}
+      >
+        <div className="tn-kinds">
+          {KINDS.map((k) => {
+            const ok = allFits.filter((x) => x.t.format === k.format && x.fit.ok).length;
+            const why = allFits.find((x) => x.t.format === k.format && !x.fit.ok)?.fit;
+            return (
+              <button
+                key={k.format}
+                className={`tpl-card tn-kind ${ok ? '' : 'is-off'}`}
+                onClick={() => {
+                  setKind(k.format);
+                  setShowBlocked(false);
+                  setStep('format');
+                }}
+              >
+                <strong>
+                  {k.title}
+                  {k.format === recFormat && <span className="tpl-rec">Recomendado</span>}
+                </strong>
+                <span className="tn-kind-desc">{k.desc}</span>
+                {ok ? (
+                  <span className="tpl-fit">
+                    {ok} disponible{ok === 1 ? '' : 's'} para {n} jugadores
+                  </span>
+                ) : (
+                  <span className="tpl-why">✕ {why && !why.ok ? why.reason : `Ninguna encaja con ${n} jugadores`}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </ScreenFrame>
+    );
+  }
+
   // Nombre de la competición: el del tipo de torneo o uno propio. Cada nombre lleva sus ediciones.
   const myBrand = brand && tpl && brand.tplId === tpl.id ? brand : null;
   const compName = (myBrand?.name ?? tpl?.name ?? '').replace(/\s+/g, ' ');
@@ -831,7 +894,7 @@ export function TournamentNewScreen({
       }
     : null;
   const leftover = built?.leftover ?? [];
-  const errors = !tpl || !draft ? ['Ningún tipo de torneo encaja con estos jugadores.'] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
+  const errors = !tpl || !draft ? [`Ningún predefinido de ${kindInfo.noun} encaja con ${n} jugadores: crea uno o elige otro tipo.`] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
   const isPool = tpl?.format === 'pool';
   const usesDraw = !!tpl && (isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random'));
 
@@ -913,11 +976,11 @@ export function TournamentNewScreen({
 
   return (
     <ScreenFrame
-      title="Elige el torneo"
+      title={`Elige ${kindInfo.the}`}
       subtitle={`${n} jugadores`}
       className="select-screen tn-screen"
       background={TN_BG}
-      onBack={() => setStep('players')}
+      onBack={() => setStep('kind')}
       footer={
         <>
           <span className={`notice select-status ${errors.length ? 'warn' : ''}`}>
@@ -931,27 +994,26 @@ export function TournamentNewScreen({
     >
       <div className="tn-layout">
         <div className="tn-col">
-          <div className="label">Recomendados para {n} jugadores</div>
+          <div className="label">{kindInfo.title}: disponibles para {n} jugadores</div>
           <div className="tpl-list scroll">
-            {(shown.length ? shown : otherOk).map(tplCard)}
-            {showAll ? (
+            {shown.map(tplCard)}
+            {shown.length === 0 && <div className="tpl-sep">Ninguna encaja con {n} jugadores</div>}
+            {showBlocked ? (
               <>
-                {shown.length > 0 && otherOk.length > 0 && <div className="tpl-sep">Otros tipos</div>}
-                {shown.length > 0 && otherOk.map(tplCard)}
-                {blocked.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
+                {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
                 {blocked.map(tplCard)}
               </>
             ) : (
-              (otherOk.length > 0 || blocked.length > 0) && (
-                <button className="tpl-more" onClick={() => setShowAll(true)}>
-                  Ver todos los tipos ({otherOk.length + blocked.length} más)
+              blocked.length > 0 && (
+                <button className="tpl-more" onClick={() => setShowBlocked(true)}>
+                  Ver las que no encajan ({blocked.length})
                 </button>
               )
             )}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected })}>
-              + Crear tipo
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
+              + Crear {kindInfo.noun}
             </button>
             {tpl && (
               <button
@@ -1050,14 +1112,27 @@ export function TournamentNewScreen({
 }
 
 /** Creador de tipos de torneo: se guardan como predefinidos para reutilizarlos. */
-export function TournamentTemplateScreen({ templateId, baseId, selected }: { templateId?: string; baseId?: string; selected?: string[] }) {
+export function TournamentTemplateScreen({
+  templateId,
+  baseId,
+  selected,
+  format,
+}: {
+  templateId?: string;
+  baseId?: string;
+  selected?: string[];
+  format?: TournamentFormat;
+}) {
   const { navigate, prefs, savePrefs, toast } = useApp();
   const saved = prefs.tournamentTemplates;
   const existing = saved.find((x) => x.id === templateId);
   const [tpl, setTpl] = useState<TournamentTemplate>(() => {
     if (existing) return { ...existing };
     const base = allTemplates(saved).find((x) => x.id === baseId);
-    return newTemplate(base);
+    if (base || !format) return newTemplate(base);
+    // Uno nuevo desde «+ Crear liga/copa/pool»: parte del primer predefinido de ese tipo.
+    const proto = BUILT_IN_TEMPLATES.find((x) => x.format === format);
+    return { ...newTemplate(proto), name: `Mi ${KINDS.find((k) => k.format === format)?.noun ?? 'torneo'}` };
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = <K extends keyof TournamentTemplate>(key: K, value: TournamentTemplate[K]) => setTpl((t) => ({ ...t, [key]: value }));
@@ -1084,7 +1159,7 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
   const remove = async () => {
     await savePrefs({ ...prefs, tournamentTemplates: saved.filter((x) => x.id !== tpl.id) });
     toast('Predefinido borrado');
-    navigate({ name: 'tournamentNew', selected });
+    navigate({ name: 'tournamentNew', selected, format: tpl.format });
   };
 
   return (
@@ -1092,7 +1167,7 @@ export function TournamentTemplateScreen({ templateId, baseId, selected }: { tem
       title={existing ? 'Editar tipo de torneo' : 'Crear tipo de torneo'}
       className="select-screen tn-screen"
       background={TN_BG}
-      onBack={() => navigate({ name: 'tournamentNew', templateId: existing?.id ?? baseId, selected })}
+      onBack={() => navigate({ name: 'tournamentNew', templateId: existing?.id ?? baseId, selected, format: existing?.format ?? format })}
       footer={
         <>
           <span className="notice" style={{ marginRight: 'auto', maxWidth: 470 }}>{describeTemplate(tpl)}</span>

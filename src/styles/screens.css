@@ -2609,6 +2609,43 @@
   padding: 2px 4px 2px 2px;
 }
 /* Tarjeta de tipo de torneo: cristal oscuro con marco de neón celeste; la elegida se enciende. */
+/* «¿Qué torneo jugamos?»: los tres tipos (liga, copa, pool) en tarjetas grandes. */
+.tn-kinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-content: center;
+  flex: 1;
+  min-height: 0;
+  padding: 8px 4px;
+}
+.tpl-card.tn-kind {
+  justify-content: center;
+  gap: 10px;
+  min-height: 190px;
+  padding: 20px 22px;
+}
+.tpl-card.tn-kind strong {
+  font-size: 30px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tpl-card.tn-kind .tn-kind-desc {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.tpl-card.tn-kind .tpl-fit,
+.tpl-card.tn-kind .tpl-why {
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .tn-kinds {
+    grid-template-columns: 1fr;
+  }
+  .tpl-card.tn-kind {
+    min-height: 0;
+  }
+}
 .tpl-card {
   --neon: #62d6ff;
   display: flex;

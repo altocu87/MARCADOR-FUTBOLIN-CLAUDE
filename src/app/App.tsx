@@ -106,13 +106,29 @@ function Router() {
       screen = <TournamentListScreen tab={route.tab} />;
       break;
     case 'tournamentNew':
-      screen = <TournamentNewScreen key={`${route.templateId ?? ''}|${route.step ?? ''}`} templateId={route.templateId} initialSelected={route.selected} initialStep={route.step} />;
+      screen = (
+        <TournamentNewScreen
+          key={`${route.templateId ?? ''}|${route.step ?? ''}|${route.format ?? ''}`}
+          templateId={route.templateId}
+          initialSelected={route.selected}
+          initialStep={route.step}
+          initialFormat={route.format}
+        />
+      );
       break;
     case 'tournamentHonours':
       screen = <TournamentHonoursScreen key={route.key} competitionKey={route.key} />;
       break;
     case 'tournamentTemplate':
-      screen = <TournamentTemplateScreen key={`${route.templateId ?? ''}|${route.baseId ?? ''}`} templateId={route.templateId} baseId={route.baseId} selected={route.selected} />;
+      screen = (
+        <TournamentTemplateScreen
+          key={`${route.templateId ?? ''}|${route.baseId ?? ''}|${route.format ?? ''}`}
+          templateId={route.templateId}
+          baseId={route.baseId}
+          selected={route.selected}
+          format={route.format}
+        />
+      );
       break;
     case 'tournamentDetail':
       screen = <TournamentDetailScreen key={route.id} id={route.id} view={route.view} from={route.from} ceremony={route.ceremony} />;
