@@ -2656,12 +2656,13 @@
   text-align: center;
   transition: transform 0.08s ease;
 }
+/* Ocupa todo el hueco y la imagen se encaja dentro (contain), sin depender de aspect-ratio: Safari
+   lo resuelve mal en un hijo flex y la tarjeta se desbordaba. */
 .tn-kind-art {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  max-width: 100%;
-  aspect-ratio: 3 / 4;
+  width: 100%;
 }
 .tn-kind-img {
   position: absolute;
@@ -2708,25 +2709,6 @@
 }
 .tpl-card.tn-kind.has-art.is-off .tn-kind-img {
   filter: grayscale(0.85);
-}
-@media (max-width: 720px) {
-  .tn-kinds {
-    grid-template-columns: 1fr;
-  }
-  .tpl-card.tn-kind {
-    min-height: 0;
-  }
-  /* Apiladas: solo la franja de arriba del cartel. */
-  .tn-kind-art {
-    aspect-ratio: auto;
-    width: 100%;
-    height: 160px;
-    flex: none;
-  }
-  .tn-kind-img {
-    object-fit: cover;
-    object-position: 50% 0;
-  }
 }
 .tpl-card {
   --neon: #62d6ff;
