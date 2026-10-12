@@ -192,3 +192,29 @@ describe('Temporadas, logros y títulos', () => {
     expect(displayTitle(pa, 'none')).toBeNull();
   });
 });
+
+describe('Los empates nunca cuentan como derrota', () => {
+  const draw = () => {
+    const m = makeMatch({ white: ['a', 'c'], blue: ['b', 'd'], goals: 'WB' });
+    return { ...m, result: { ...m.result, winner: null } } as typeof m;
+  };
+  const win = makeMatch({ white: ['a', 'c'], blue: ['b', 'd'], goals: 'WWB' });
+  const matches = [win, draw()];
+  it('resultado de cada jugador: G, P o E', async () => {
+    const { resultFor } = await import('../src/services/statistics');
+    expect(matches.map((m) => resultFor(m, 'a'))).toEqual(['G', 'E']);
+    expect(matches.map((m) => resultFor(m, 'b'))).toEqual(['P', 'E']);
+  });
+  it('cara a cara, enfrentamientos directos y parejas cuentan los empates aparte', async () => {
+    const { duel, pairStats, headToHead } = await import('../src/services/statistics');
+    expect(duel('a', 'b', matches)).toMatchObject({ played: 2, aWins: 1, bWins: 0, draws: 1 });
+    expect(headToHead(matches, ['a', 'c'], ['b', 'd'], false)).toMatchObject({ played: 2, whiteWins: 1, blueWins: 0, draws: 1 });
+    const bd = pairStats(matches).find((p) => p.key === 'b|d')!;
+    expect(bd.rec).toMatchObject({ played: 2, wins: 0, draws: 1, losses: 1 });
+  });
+  it('rivales y compañeros del perfil', async () => {
+    const { computePlayerStats } = await import('../src/services/statistics');
+    const s = computePlayerStats('a', matches);
+    expect(s.rivals.find((r) => r.playerId === 'b')).toMatchObject({ played: 2, wins: 1, draws: 1, losses: 0 });
+  });
+});

@@ -25,6 +25,7 @@ export interface SnapshotRival {
   id: string;
   played: number;
   wins: number;
+  draws: number;
   losses: number;
   winPct: number;
 }
@@ -113,10 +114,11 @@ export interface SnapshotInputs {
   now: number;
 }
 
-const rivalOut = (r: { playerId: string; played: number; wins: number; losses: number; winPct: number }): SnapshotRival => ({
+const rivalOut = (r: { playerId: string; played: number; wins: number; draws: number; losses: number; winPct: number }): SnapshotRival => ({
   id: r.playerId,
   played: r.played,
   wins: r.wins,
+  draws: r.draws,
   losses: r.losses,
   winPct: Math.round(r.winPct),
 });

@@ -639,3 +639,16 @@ describe('Banner de la competición', () => {
     expect(competitions([t], [], ps)[0].banner).toBe('banner-liga-03');
   });
 });
+
+describe('Ficha del torneo con empates', () => {
+  it('cuenta el empate aparte (ni victoria ni derrota) y suma 1 al MVP', async () => {
+    const { tournamentReport } = await import('../src/services/tournaments');
+    const t = { id: 'tE', teams: [{ id: 'x', name: 'A', playerIds: ['a'] }, { id: 'y', name: 'B', playerIds: ['b'] }], fixtures: [], status: 'active' } as unknown as Tournament;
+    const base = makeMatch({ white: ['a'], blue: ['b'], goals: 'WB' });
+    const draw = { ...base, tournament: { id: 'tE', fixtureId: 'f1' }, result: { ...base.result, winner: null } } as StoredMatch;
+    const r = tournamentReport(t, [draw], []);
+    const a = r.players.find((p) => p.playerId === 'a')!;
+    expect(a).toMatchObject({ played: 1, wins: 0, draws: 1, losses: 0 });
+    expect(a.mvp).toBe(1);
+  });
+});

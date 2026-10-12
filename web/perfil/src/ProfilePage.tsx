@@ -365,7 +365,7 @@ function People({ list, person, empty }: { list: SnapshotRival[]; person: (id: s
             <small>{r.played} partidos</small>
           </span>
           <span className="prow-rec">
-            {r.wins}G · {r.losses}P
+            {r.wins}G{r.draws ? ` · ${r.draws}E` : ''} · {r.losses}P
           </span>
           <b className="prow-pct">{r.winPct} %</b>
         </div>

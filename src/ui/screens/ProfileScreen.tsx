@@ -18,6 +18,7 @@ import {
   formatDuration,
   habits,
   personalGoals,
+  resultFor,
   sideStats,
   sortMatches,
   type RivalStat,
@@ -96,7 +97,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
     <div key={r.playerId} className="row">
       <span style={{ flex: 1 }}>{r.name}</span>
       <span className="muted">{r.played} PJ</span>
-      <span>{r.wins}G · {r.losses}P</span>
+      <span>{r.wins}G{r.draws ? ` · ${r.draws}E` : ''} · {r.losses}P</span>
       <strong style={{ width: 60, textAlign: 'right' }}>{r.winPct.toFixed(0)} %</strong>
     </div>
   );
@@ -314,11 +315,10 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
           ) : (
             <div className="list">
               {myMatches.slice(0, 50).map((m) => {
-                const team = m.participants.find((p) => p.playerId === playerId)!.team;
-                const won = m.result.winner === team;
+                const res = resultFor(m, playerId) ?? 'P';
                 return (
                   <button key={m.id} className="row" onClick={() => navigate({ name: 'matchDetail', matchId: m.id })}>
-                    <span className={`form-chip ${won ? 'G' : 'P'}`}>{won ? 'G' : 'P'}</span>
+                    <span className={`form-chip ${res}`}>{res}</span>
                     <span className="dim" style={{ width: 120, fontSize: 12 }}>{formatDate(m.finishedAt)}</span>
                     <span className="muted" style={{ width: 110, fontSize: 12 }}>{MODE_LABEL[m.config.mode]}</span>
                     <span style={{ flex: 1 }}>{resultLine(m)}</span>

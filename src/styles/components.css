@@ -615,6 +615,9 @@ button.row:active {
 .md-lost {
   color: var(--danger);
 }
+.md-draw {
+  color: var(--text-2);
+}
 .md-score {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

@@ -121,6 +121,7 @@ export function PrematchScreen({
             {rivalry && (
               <div className="rivalry" style={{ fontSize: 12, alignSelf: 'center' }}>
                 ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
+                {rivalry.draws ? ` · ${rivalry.draws} E` : ''}
               </div>
             )}
           </div>

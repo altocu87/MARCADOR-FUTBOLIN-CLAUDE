@@ -2278,6 +2278,8 @@ function TournamentReportView({ t }: { t: Tournament }) {
   const photo = (id: string) => players.find((p) => p.id === id)?.photo;
   const openMatch = (matchId: string) => navigate({ name: 'matchDetail', matchId, fromTournament: true });
   const anyScored = r.players.some((p) => p.scored > 0);
+  // Columna de empates solo si los hubo (y entonces nunca se cuentan como derrota).
+  const anyDraws = r.players.some((p) => p.draws > 0);
   const total = t.fixtures.filter((f) => !f.bye).length;
   const minutes = (ms: number) => `${Math.max(1, Math.round(ms / 60000))} min`;
   const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
@@ -2328,7 +2330,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
               <div className="label">★ MVP{t.status === 'finished' ? '' : ' provisional'}</div>
               <div className="rp-mvp-name">{r.mvp.name}</div>
               <small>
-                {r.mvp.wins} G · {r.mvp.losses} P{r.mvp.scored ? ` · ${r.mvp.scored} goles` : ''} · {sign(r.mvp.goalsFor - r.mvp.goalsAgainst)} · {r.mvp.mvp} pts
+                {r.mvp.wins} G{r.mvp.draws ? ` · ${r.mvp.draws} E` : ''} · {r.mvp.losses} P{r.mvp.scored ? ` · ${r.mvp.scored} goles` : ''} · {sign(r.mvp.goalsFor - r.mvp.goalsAgainst)} · {r.mvp.mvp} pts
               </small>
             </div>
           </div>
@@ -2370,6 +2372,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
                 <th>Jugador</th>
                 <th>PJ</th>
                 <th>G</th>
+                {anyDraws && <th>E</th>}
                 <th>P</th>
                 {anyScored && <th title="Goles marcados">Goles</th>}
                 <th title="Diferencia de goles de su equipo">Dif</th>
@@ -2389,6 +2392,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
                   </td>
                   <td>{p.played}</td>
                   <td>{p.wins}</td>
+                  {anyDraws && <td>{p.draws}</td>}
                   <td>{p.losses}</td>
                   {anyScored && <td>{p.scored}</td>}
                   <td>{sign(p.goalsFor - p.goalsAgainst)}</td>
@@ -2399,7 +2403,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
             </tbody>
           </table>
           <div className="dim" style={{ fontSize: 10, marginTop: 6 }}>
-            MVP = 3 por victoria + 1 por gol marcado + la mitad de la diferencia de goles + 2 al campeón.
+            MVP = 3 por victoria + 1 por empate + 1 por gol marcado + la mitad de la diferencia de goles + 2 al campeón.
           </div>
         </div>
       </div>

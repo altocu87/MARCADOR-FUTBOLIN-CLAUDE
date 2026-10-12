@@ -209,6 +209,7 @@ function PlaceCard({
           <div className="cer-stats">
             <span><b>{s.played}</b> PJ</span>
             <span><b>{s.wins}</b> G</span>
+            {s.draws > 0 && <span><b>{s.draws}</b> E</span>}
             <span><b>{s.losses}</b> P</span>
             <span>
               <b>{s.goalsFor}–{s.goalsAgainst}</b> goles

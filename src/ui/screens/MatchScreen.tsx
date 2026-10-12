@@ -465,7 +465,7 @@ function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players
   );
 }
 
-function CountdownOverlay({ ctl, rivalry }: { ctl: MatchController; rivalry: { played: number; whiteWins: number; blueWins: number } | null }) {
+function CountdownOverlay({ ctl, rivalry }: { ctl: MatchController; rivalry: { played: number; whiteWins: number; blueWins: number; draws: number } | null }) {
   const { state, now, send } = ctl;
   const remaining = countdownRemaining(state, now);
   const n = Math.max(1, Math.ceil(remaining / 1000));
@@ -490,7 +490,8 @@ function CountdownOverlay({ ctl, rivalry }: { ctl: MatchController; rivalry: { p
       </span>
       {rivalry && (
         <span className="rivalry">
-          ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins} en {rivalry.played} enfrentamientos
+          ⚔ CLÁSICO · {rivalry.whiteWins}–{rivalry.blueWins}
+          {rivalry.draws ? ` · ${rivalry.draws} empate${rivalry.draws === 1 ? '' : 's'}` : ''} en {rivalry.played} enfrentamientos
         </span>
       )}
       <span className="overlay-hint">Toca para saltar</span>

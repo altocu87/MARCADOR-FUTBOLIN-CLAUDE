@@ -10,7 +10,7 @@ import type { ParticipantRef, Team } from '../../match-engine';
 import type { Player, StoredMatch } from '../../services/persistence';
 import { initials } from '../../services/players';
 import { nextCategory, type PlayerProgress } from '../../services/progression';
-import { computePlayerStats, type PlayerStats } from '../../services/statistics';
+import { computePlayerStats, resultFor, resultForTeam, type PlayerStats, type ResultLetter } from '../../services/statistics';
 import { MODE_LABEL, Modal } from './common';
 import { CategoryBadge } from './graphics';
 
@@ -27,7 +27,7 @@ export function sameTeams(m: StoredMatch, whiteIds: string[], blueIds: string[])
 interface RecentGame {
   id: string;
   match: StoredMatch;
-  won: boolean;
+  res: ResultLetter;
   /** Jugado entre estos mismos dos equipos. */
   same: boolean;
 }
@@ -45,7 +45,7 @@ function RecentForm({ games, team, onOpen }: { games: RecentGame[]; team: Team; 
   return (
     <span
       className={`pre-recent pre-recent-${team}`}
-      aria-label={`Últimos clasificatorios, del más antiguo al más reciente: ${games.map((g) => (g.won ? 'G' : 'P')).join(' ')}`}
+      aria-label={`Últimos clasificatorios, del más antiguo al más reciente: ${games.map((g) => g.res).join(' ')}`}
     >
       {ordered.map((g) => {
         // 0 = el más reciente.
@@ -54,12 +54,12 @@ function RecentForm({ games, team, onOpen }: { games: RecentGame[]; team: Team; 
           // Al tocarla se abre una ventana con los datos de ese partido.
           <button
             key={g.id}
-            className={`form-chip ${g.won ? 'G' : 'P'} ${g.same ? 'same' : ''} ${age === 0 ? 'newest' : ''}`}
+            className={`form-chip ${g.res} ${g.same ? 'same' : ''} ${age === 0 ? 'newest' : ''}`}
             style={{ opacity: Math.max(0.45, 1 - age * 0.065) }}
             title={`${age === 0 ? 'El más reciente' : `Hace ${age + 1} partidos`}${g.same ? ' · contra este mismo equipo' : ''}`}
             onClick={() => onOpen(g.match)}
           >
-            {g.won ? 'G' : 'P'}
+            {g.res}
           </button>
         );
       })}
@@ -153,7 +153,7 @@ export function PlayerCard({
           {/* Balance en clasificatorios. */}
           {r && r.played > 0 && (
             <div className="pre-record">
-              {r.wins} G · {r.losses} P{r.winPct !== null ? ` · ${Math.round(r.winPct)} %` : ''}
+              {r.wins} G{r.draws ? ` · ${r.draws} E` : ''} · {r.losses} P{r.winPct !== null ? ` · ${Math.round(r.winPct)} %` : ''}
             </div>
           )}
         </div>
@@ -182,7 +182,7 @@ export function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; 
       .sort((a, b) => a.slot - b.slot)
       .map((p) => p.nameSnapshot);
   const mine = match.participants.find((p) => p.playerId === playerId);
-  const won = mine?.team === r.winner;
+  const res = mine ? resultForTeam(match, mine.team) : null;
   const side = (t: Team) => (
     <div className={`md-team md-${t} ${r.winner === t ? 'won' : ''}`}>
       <div className="md-team-label">
@@ -209,7 +209,11 @@ export function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; 
       <div className="md">
         <div className="md-meta">
           {new Date(match.finishedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-          {mine && <b className={won ? 'md-won' : 'md-lost'}>{won ? ' · Victoria' : ' · Derrota'} de {mine.nameSnapshot}</b>}
+          {mine && res && (
+            <b className={res === 'G' ? 'md-won' : res === 'P' ? 'md-lost' : 'md-draw'}>
+              {res === 'G' ? ' · Victoria' : res === 'P' ? ' · Derrota' : ' · Empate'} de {mine.nameSnapshot}
+            </b>
+          )}
         </div>
         <div className="md-score">
           {side('white')}
@@ -274,7 +278,7 @@ export function TeamFrame({
             .map((m) => ({
               id: m.id,
               match: m,
-              won: m.result.winner === m.participants.find((x) => x.playerId === p.playerId)!.team,
+              res: resultFor(m, p.playerId) ?? 'P',
               same: same(m),
             })),
         ]),

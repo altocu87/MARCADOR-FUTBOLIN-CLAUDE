@@ -48,6 +48,7 @@ export interface PlayerLine {
   name: string;
   played: number;
   wins: number;
+  draws: number;
   losses: number;
   /** Goles de su equipo a favor y en contra. */
   goalsFor: number;
@@ -87,11 +88,11 @@ export interface TournamentReport {
 }
 
 /**
- * MVP: 3 por victoria + 1 por gol marcado + la mitad de su diferencia de goles + 2 si es campeón.
+ * MVP: 3 por victoria + 1 por empate + 1 por gol marcado + la mitad de su diferencia de goles + 2 si es campeón.
  * Premia ganar, marcar y dominar; el campeón tiene ventaja pero no lo gana por defecto.
  */
-export function mvpScore(l: Pick<PlayerLine, 'wins' | 'scored' | 'goalsFor' | 'goalsAgainst' | 'champion'>): number {
-  return l.wins * 3 + l.scored + (l.goalsFor - l.goalsAgainst) / 2 + (l.champion ? 2 : 0);
+export function mvpScore(l: Pick<PlayerLine, 'wins' | 'draws' | 'scored' | 'goalsFor' | 'goalsAgainst' | 'champion'>): number {
+  return l.wins * 3 + l.draws + l.scored + (l.goalsFor - l.goalsAgainst) / 2 + (l.champion ? 2 : 0);
 }
 
 const scoreText = (m: StoredMatch) => `${m.result.score.white}–${m.result.score.blue}`;
@@ -121,6 +122,7 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
         name: nameOf(p.playerId, p.nameSnapshot),
         played: 0,
         wins: 0,
+        draws: 0,
         losses: 0,
         goalsFor: 0,
         goalsAgainst: 0,
@@ -128,7 +130,8 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
         champion: championIds.includes(p.playerId),
       };
       l.played += 1;
-      if (m.result.winner === p.team) l.wins += 1;
+      if (!m.result.winner) l.draws += 1;
+      else if (m.result.winner === p.team) l.wins += 1;
       else l.losses += 1;
       l.goalsFor += m.result.score[p.team];
       l.goalsAgainst += m.result.score[opp];
@@ -139,7 +142,7 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
   // Inscritos que aún no han jugado también salen en la ficha.
   for (const id of t.entrants ?? t.teams.flatMap((x) => x.playerIds)) {
     if (!lines.has(id)) {
-      lines.set(id, { playerId: id, name: nameOf(id, '?'), played: 0, wins: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, scored: 0, champion: championIds.includes(id) });
+      lines.set(id, { playerId: id, name: nameOf(id, '?'), played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, scored: 0, champion: championIds.includes(id) });
     }
   }
   const rows: PlayerLine[] = [...lines.values()].map((l) => ({

@@ -6,8 +6,8 @@
  *   por partido, no sumando perfiles, para no contar dos veces.
  * - Goles ordinarios y de penaltis se cuentan por separado.
  * - Racha: secuencia de victorias (o derrotas) consecutivas en todas las modalidades.
- * - Empate: con las reglas actuales todo partido tiene ganador (penaltis incluidos);
- *   el campo existe por si una regla futura lo permite.
+ * - Empate: solo en partidos que lo permiten (ligas a tiempo con empate). Un empate nunca cuenta
+ *   como derrota: se cuenta aparte («E») en todas las estadísticas.
  * - Remontada: máxima desventaja en el marcador ordinario superada por el ganador.
  */
 import { goalValue, validGoalsFromEvents, type MatchMode, type Team } from '../../match-engine';
@@ -17,6 +17,17 @@ export const STATS_DEFINITIONS_VERSION = 'estadisticas-1';
 export const RIVAL_MIN_MATCHES = 5;
 
 export type ResultLetter = 'G' | 'P' | 'E';
+
+/** Resultado de un equipo en un partido: «G» ganó, «P» perdió, «E» empate. */
+export function resultForTeam(m: StoredMatch, team: Team): ResultLetter {
+  return !m.result.winner ? 'E' : m.result.winner === team ? 'G' : 'P';
+}
+
+/** Resultado de un jugador en un partido (null si no jugó). */
+export function resultFor(m: StoredMatch, playerId: string): ResultLetter | null {
+  const p = m.participants.find((x) => x.playerId === playerId);
+  return p ? resultForTeam(m, p.team) : null;
+}
 
 export interface StatBlock {
   played: number;
@@ -42,6 +53,7 @@ export interface RivalStat {
   name: string;
   played: number;
   wins: number;
+  draws: number;
   losses: number;
   winPct: number;
 }
@@ -131,11 +143,12 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
     for (const p of m.participants) {
       if (p.playerId === playerId) continue;
       const map = p.team === team ? mates : rivals;
-      const r = map.get(p.playerId) ?? { playerId: p.playerId, name: p.nameSnapshot, played: 0, wins: 0, losses: 0, winPct: 0 };
+      const r = map.get(p.playerId) ?? { playerId: p.playerId, name: p.nameSnapshot, played: 0, wins: 0, draws: 0, losses: 0, winPct: 0 };
       r.name = p.nameSnapshot;
       r.played += 1;
       if (won) r.wins += 1;
       else if (m.result.winner) r.losses += 1;
+      else r.draws += 1;
       r.winPct = (r.wins / r.played) * 100;
       map.set(p.playerId, r);
     }
@@ -205,13 +218,14 @@ export function headToHead(
   whiteIds: string[],
   blueIds: string[],
   onlyRanked = true,
-): { played: number; whiteWins: number; blueWins: number } {
+): { played: number; whiteWins: number; blueWins: number; draws: number } {
   const key = (ids: string[]) => [...ids].sort().join('|');
   const kw = key(whiteIds);
   const kb = key(blueIds);
   let played = 0;
   let whiteWins = 0;
   let blueWins = 0;
+  let draws = 0;
   for (const m of matches) {
     if (onlyRanked && m.config.mode !== 'ranked') continue;
     const mw = key(m.participants.filter((p) => p.team === 'white').map((p) => p.playerId));
@@ -221,10 +235,11 @@ export function headToHead(
     else if (mw === kb && mb === kw) ourWhiteTeam = 'blue';
     if (!ourWhiteTeam) continue;
     played += 1;
-    if (m.result.winner === ourWhiteTeam) whiteWins += 1;
+    if (!m.result.winner) draws += 1;
+    else if (m.result.winner === ourWhiteTeam) whiteWins += 1;
     else blueWins += 1;
   }
-  return { played, whiteWins, blueWins };
+  return { played, whiteWins, blueWins, draws };
 }
 
 /**

@@ -361,7 +361,7 @@ function Pairs() {
             <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: p.playerIds[1] })}>{p.names.split(' + ')[1]}</button>
           </span>
           <span className="muted">{p.rec.played} PJ</span>
-          <span>{p.rec.wins}G · {p.rec.played - p.rec.wins}P</span>
+          <span>{p.rec.wins}G{p.rec.draws ? ` · ${p.rec.draws}E` : ''} · {p.rec.losses}P</span>
           <strong style={{ width: 60, textAlign: 'right', color: 'var(--ranked)' }}>{pct(p.rec.winPct)}</strong>
         </div>
       ))}
@@ -449,7 +449,7 @@ function Duel() {
         </select>
         <div className="duel-vs">
           {d ? <><strong>{d.aWins}</strong> – <strong>{d.bWins}</strong></> : 'VS'}
-          <div className="dim" style={{ fontSize: 11 }}>{d ? `${d.played} enfrentamientos` : 'Elige dos jugadores distintos'}</div>
+          <div className="dim" style={{ fontSize: 11 }}>{d ? `${d.played} enfrentamientos${d.draws ? ` · ${d.draws} empate${d.draws === 1 ? '' : 's'}` : ''}` : 'Elige dos jugadores distintos'}</div>
         </div>
         <select className="input" value={b} onChange={(e) => setB(e.target.value)} aria-label="Jugador B">
           {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

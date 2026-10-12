@@ -5,18 +5,22 @@
 import { validGoalsFromEvents, type Team } from '../../match-engine';
 import type { Player, StoredMatch } from '../persistence';
 import { WEEKDAYS, dayPart, type DayPart } from './calendar';
-import { sortMatches, teamOf } from './statistics';
+import { resultForTeam, sortMatches, teamOf, type ResultLetter } from './statistics';
 
 export interface WinRecord {
   played: number;
   wins: number;
+  draws: number;
+  losses: number;
   winPct: number | null;
 }
 
-const rec = (): WinRecord => ({ played: 0, wins: 0, winPct: null });
-const add = (r: WinRecord, won: boolean) => {
+const rec = (): WinRecord => ({ played: 0, wins: 0, draws: 0, losses: 0, winPct: null });
+const add = (r: WinRecord, res: ResultLetter) => {
   r.played += 1;
-  if (won) r.wins += 1;
+  if (res === 'G') r.wins += 1;
+  else if (res === 'E') r.draws += 1;
+  else r.losses += 1;
   r.winPct = (r.wins / r.played) * 100;
 };
 
@@ -25,7 +29,7 @@ export function sideStats(playerId: string, matches: StoredMatch[]): Record<Team
   const out = { white: rec(), blue: rec() };
   for (const m of matches) {
     const t = teamOf(m, playerId);
-    if (t) add(out[t], m.result.winner === t);
+    if (t) add(out[t], resultForTeam(m, t));
   }
   return out;
 }
@@ -43,9 +47,9 @@ export function habits(playerId: string, matches: StoredMatch[]): Habits {
   for (const m of matches) {
     const t = teamOf(m, playerId);
     if (!t) continue;
-    const won = m.result.winner === t;
-    add(days[new Date(m.finishedAt).getDay()].rec, won);
-    add(parts.find((p) => p.label === dayPart(m.finishedAt))!.rec, won);
+    const res = resultForTeam(m, t);
+    add(days[new Date(m.finishedAt).getDay()].rec, res);
+    add(parts.find((p) => p.label === dayPart(m.finishedAt))!.rec, res);
   }
   // Lunes primero.
   const byWeekday = [...days.slice(1), days[0]];
@@ -82,7 +86,7 @@ export function pairStats(matches: StoredMatch[]): PairStat[] {
         rec: rec(),
       };
       entry.names = sorted.map((p) => p.nameSnapshot).join(' + ');
-      add(entry.rec, m.result.winner === team);
+      add(entry.rec, resultForTeam(m, team));
       map.set(key, entry);
     }
   }
@@ -166,13 +170,17 @@ export function periodDigest(matches: StoredMatch[], players: Player[], from: nu
 }
 
 /** Enfrentamientos entre dos jugadores en equipos contrarios (cualquier alineación). */
-export function duel(aId: string, bId: string, matches: StoredMatch[]): { played: number; aWins: number; bWins: number; last: StoredMatch[] } {
+export function duel(aId: string, bId: string, matches: StoredMatch[]): { played: number; aWins: number; bWins: number; draws: number; last: StoredMatch[] } {
   const list = sortMatches(matches).filter((m) => {
     const ta = teamOf(m, aId);
     const tb = teamOf(m, bId);
     return ta && tb && ta !== tb;
   });
   let aWins = 0;
-  for (const m of list) if (m.result.winner === teamOf(m, aId)) aWins += 1;
-  return { played: list.length, aWins, bWins: list.length - aWins, last: list.slice(-5).reverse() };
+  let draws = 0;
+  for (const m of list) {
+    if (!m.result.winner) draws += 1;
+    else if (m.result.winner === teamOf(m, aId)) aWins += 1;
+  }
+  return { played: list.length, aWins, bWins: list.length - aWins - draws, draws, last: list.slice(-5).reverse() };
 }
