@@ -1157,3 +1157,23 @@ button.row:active {
   color: #06210f;
   border-color: transparent;
 }
+
+/*
+ * Fichas de jugador que se dejan pulsadas (opciones y QR): la foto no puede quedarse el toque. En el móvil,
+ * dejar el dedo sobre una imagen abre el menú del sistema («guardar imagen»…) y cancela la pulsación larga.
+ */
+.pick-card,
+.team-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.pick-card img,
+.pick-card .pick-photo,
+.pick-card .pick-photo *,
+.team-card img {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
