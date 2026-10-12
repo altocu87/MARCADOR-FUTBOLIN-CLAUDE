@@ -4850,11 +4850,18 @@ div > .name-clash:first-child {
   font-size: 22px;
   font-weight: 900;
 }
-.tn-np-name:hover,
-.tn-np-name:focus {
-  border-color: rgba(242, 201, 76, 0.6);
-  background: rgba(0, 0, 0, 0.3);
-  outline: none;
+.tn-np-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El cartel solo informa: nombre, escudo, copa y banner se cambian con «Editar». */
+.tn-np-icon {
+  cursor: default;
+}
+.tn-np-icon:hover {
+  background: transparent;
 }
 .tn-np-body small {
   padding-left: 6px;
