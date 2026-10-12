@@ -16,6 +16,8 @@ import {
 import { BannerArt, Crest, Cup } from './Crest';
 import { Avatar, Modal } from './common';
 
+const TORNEO_PARA = { league: 'ligas', bracket: 'copas', pool: 'pools' } as const;
+
 const HIDDEN_KEY = 'mfv3:evento-oculto';
 const SEEN_KEY = 'mfv3:premios-vistos';
 
@@ -94,6 +96,7 @@ export function EventNotice({ lower }: { lower: boolean }) {
                     <b>{item.nombre || col.nombre}</b>
                     <span>
                       Se consigue {requisitoTexto(obtencion)} · {cuandoTexto(col.disponibilidad)}
+                      {col.torneo && col.torneo !== 'todos' ? ` · para ${TORNEO_PARA[col.torneo]}` : ''}
                     </span>
                     {(mine || owners.length > 0) && (
                       <span className="event-owners">

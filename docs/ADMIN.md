@@ -106,6 +106,6 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
   («Halloween 2026 · Copa» → «Halloween 2026»): así se juntan sus colecciones. En el muestrario la pestaña
   lleva el nombre sin el año («Halloween») y dentro van las piezas de todos los años, la más reciente primero.
 - Halloween 2026 viene ya dentro de la app (escudo al entrar, banner jugando y copa ganando un partido el
-  31 oct 2026, solo para ligas), así que funciona aunque el panel no esté conectado.
+  31 oct 2026; un juego para ligas y otro para copas), así que funciona aunque el panel no esté conectado.
 - Código: modelo y reglas en `src/services/events/` (compartido con el panel), pruebas en `tests/events.test.ts`.
 

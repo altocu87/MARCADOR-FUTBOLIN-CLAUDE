@@ -52,7 +52,7 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage, assetUrl } from '../components/assets';
-import { BannerArt, Crest, Cup, IconPicker, bannerCatalog, defaultBanner, defaultCup, defaultLogo } from '../components/Crest';
+import { BannerArt, Crest, Cup, IconPicker, defaultBanner, iconCategories, defaultCup, defaultLogo } from '../components/Crest';
 import { ClubEditor } from '../components/ClubEditor';
 import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
@@ -1101,7 +1101,7 @@ export function TournamentNewScreen({
             <>
             <div className={`tn-nameplate${banner ? ' has-banner' : ''}`} aria-label={`Nombre del torneo: ${name}`}>
               <BannerArt id={banner} className="tn-np-banner" />
-              {bannerCatalog(tpl.format).length > 0 && (
+              {iconCategories('banner', tpl.format).length > 0 && (
                 <button className="tn-np-banner-btn" onClick={() => setPicker('banner')} aria-label="Cambiar el banner">
                   🖼 Banner
                 </button>
@@ -1590,7 +1590,8 @@ export function TournamentTemplateScreen({
     const crest = tpl.logo ?? defaultLogo(tpl.name || 'torneo', tpl.format);
     const cupId = tpl.cup ?? defaultCup();
     const bannerId = tpl.banner ?? defaultBanner(tpl.name || 'torneo', tpl.format);
-    const hasBanners = bannerCatalog(tpl.format).length > 0;
+    // Con los de un evento también (una copa no tiene banners propios, pero puede tener el de Halloween).
+    const hasBanners = iconCategories('banner', tpl.format).length > 0;
     body = (
       <div className="cr-cols">
         <div className="cr-col">

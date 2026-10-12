@@ -10,7 +10,7 @@ import type { CatalogCollection, CatalogItem } from './model';
 
 const dia = (y: number, m: number, d: number, fin = false) => new Date(y, m - 1, d, fin ? 23 : 0, fin ? 59 : 0, fin ? 59 : 0).getTime();
 
-/** Colección de un evento que viene dentro de la app: una pieza, solo para ligas y solo ese día. */
+/** Colección de un evento que viene dentro de la app: una pieza, para un tipo de torneo y solo esas fechas. */
 function piezaDeEvento(
   id: string,
   tipo: CatalogCollection['tipo'],
@@ -21,6 +21,7 @@ function piezaDeEvento(
   desde: number,
   hasta: number,
   orden: number,
+  torneo: CatalogCollection['torneo'],
 ): { col: CatalogCollection; item: CatalogItem } {
   return {
     col: {
@@ -33,7 +34,7 @@ function piezaDeEvento(
       ambito: 'coleccion',
       obtencion,
       disponibilidad: { modo: 'fechas', desde, hasta },
-      torneo: 'league',
+      torneo,
       orden,
       creada: desde,
     },
@@ -41,10 +42,19 @@ function piezaDeEvento(
   };
 }
 
+const H26 = [dia(2026, 10, 31), dia(2026, 10, 31, true)] as const;
+const entrar = { tipo: 'entrar' } as const;
+const jugar = { tipo: 'jugarPartido', modo: 'cualquiera' } as const;
+const ganar = { tipo: 'ganarPartido', modo: 'cualquiera' } as const;
+
+/** Halloween 2026: escudo al entrar, banner jugando y copa ganando un partido el 31 oct; un juego para ligas y otro para copas. */
 const HALLOWEEN_2026 = [
-  piezaDeEvento('app-halloween-2026-escudo', 'escudo', 'Halloween 2026 · Escudo', 'Escudo fantasma 2026', 'evento-halloween-2026-escudo', { tipo: 'entrar' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 0),
-  piezaDeEvento('app-halloween-2026-banner', 'fondo', 'Halloween 2026 · Banner', 'Banner noche de brujas 2026', 'evento-halloween-2026-banner', { tipo: 'jugarPartido', modo: 'cualquiera' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 1),
-  piezaDeEvento('app-halloween-2026-copa', 'copa', 'Halloween 2026 · Copa', 'Copa calabaza 2026', 'evento-halloween-2026-copa', { tipo: 'ganarPartido', modo: 'cualquiera' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 2),
+  piezaDeEvento('app-halloween-2026-escudo', 'escudo', 'Halloween 2026 · Escudo de liga', 'Escudo fantasma 2026', 'evento-halloween-2026-liga-escudo', entrar, ...H26, 0, 'league'),
+  piezaDeEvento('app-halloween-2026-banner', 'fondo', 'Halloween 2026 · Banner de liga', 'Banner noche de brujas 2026', 'evento-halloween-2026-liga-banner', jugar, ...H26, 1, 'league'),
+  piezaDeEvento('app-halloween-2026-copa', 'copa', 'Halloween 2026 · Copa de liga', 'Copa calabaza 2026', 'evento-halloween-2026-liga-copa', ganar, ...H26, 2, 'league'),
+  piezaDeEvento('app-halloween-2026-copa-escudo', 'escudo', 'Halloween 2026 · Escudo de copa', 'Escudo calabaza 2026', 'evento-halloween-2026-copa-escudo', entrar, ...H26, 3, 'bracket'),
+  piezaDeEvento('app-halloween-2026-copa-banner', 'fondo', 'Halloween 2026 · Banner de copa', 'Banner calabazas 2026', 'evento-halloween-2026-copa-banner', jugar, ...H26, 4, 'bracket'),
+  piezaDeEvento('app-halloween-2026-copa-copa', 'copa', 'Halloween 2026 · Copa de copa', 'Copa fantasma 2026', 'evento-halloween-2026-copa-copa', ganar, ...H26, 5, 'bracket'),
 ];
 
 /** Eventos que vienen dentro de la app (sus imágenes están en src/assets/images, `evento-…`). */
