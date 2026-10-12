@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { OnScreenKeyboard } from '../components/OnScreenKeyboard';
 import { PortraitHint } from '../components/PortraitHint';
 
 /** Lienzo de referencia (pantalla ESP32-S3 de 7"): 800 × 480 en horizontal. */
@@ -119,10 +120,13 @@ export function Stage({ children }: { children: (size: StageSize) => ReactNode }
   }, []);
 
   const turn = size.portrait && rotated;
+  const stageRef = useRef<HTMLDivElement>(null);
+  const getStage = useCallback(() => stageRef.current, []);
 
   return (
     <div className="viewport">
       <div
+        ref={stageRef}
         className="stage"
         style={{
           // Centrado en el hueco útil (fuera de la barra de notificaciones y la muesca).
@@ -134,6 +138,8 @@ export function Stage({ children }: { children: (size: StageSize) => ReactNode }
         }}
       >
         {children(size)}
+        {/* Girado, el teclado del sistema saldría de lado: se usa el de la app, girado con el juego. */}
+        {turn && <OnScreenKeyboard stage={getStage} />}
       </div>
       {size.portrait && !rotated && <PortraitHint onRotate={() => chooseRotated(true)} />}
     </div>
