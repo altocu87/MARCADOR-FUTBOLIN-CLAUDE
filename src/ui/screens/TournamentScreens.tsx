@@ -1286,21 +1286,42 @@ const creatorSteps = (format: TournamentFormat) => ALL_CREATOR_STEPS.filter((x) 
 interface OptionItem<T> {
   v: T;
   title: string;
-  desc: string;
+  /** Solo si el título no se entiende solo: sale una «?» que lo explica. */
+  help?: string;
 }
 
-/** Opciones en lista: cada una es una fila grande con su título y lo que significa. */
+/**
+ * Opciones en lista, pensadas para el dedo: cada una es un botón grande con su título y nada más (la elegida
+ * se ilumina). Si alguna necesita explicación, lleva una «?» al lado.
+ */
 function OptionList<T>({ value, options, onChange }: { value: T; options: OptionItem<T>[]; onChange: (v: T) => void }) {
+  const [help, setHelp] = useState<string | null>(null);
   return (
     <div className="cr-opts" role="radiogroup">
       {options.map((o) => (
-        <button key={String(o.v)} className="cr-opt" role="radio" aria-checked={value === o.v} onClick={() => onChange(o.v)}>
-          <span className="cr-opt-dot" aria-hidden="true" />
-          <span className="cr-opt-text">
-            <b>{o.title}</b>
-            <small>{o.desc}</small>
-          </span>
-        </button>
+        <div key={String(o.v)} className="cr-opt-wrap">
+          <button className="cr-opt" role="radio" aria-checked={value === o.v} onClick={() => onChange(o.v)}>
+            {o.title}
+          </button>
+          {o.help && (
+            <button
+              className={`cr-help ${help === o.title ? 'is-open' : ''}`}
+              aria-label={`¿Qué es «${o.title}»?`}
+              onClick={() => setHelp(help === o.title ? null : o.title)}
+            >
+              ?
+            </button>
+          )}
+          {o.help && help === o.title && (
+            // Encima de todo y centrada (que no la corte el borde de la lista); un toque en cualquier sitio la cierra.
+            <div className="cr-help-layer" onClick={() => setHelp(null)}>
+              <div className="cr-help-bubble" role="note">
+                <b>{o.title}</b>
+                <span>{o.help}</span>
+              </div>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -1428,9 +1449,9 @@ export function TournamentTemplateScreen({
     );
   } else if (step === 'players') {
     const pairingOpts: OptionItem<TournamentTemplate['pairing']>[] = [
-      { v: 'random', title: 'Al azar', desc: 'Las parejas salen por sorteo al crear cada edición.' },
-      { v: 'manual', title: 'Las elegimos nosotros', desc: 'Al crear cada edición, los jugadores forman las parejas a mano.' },
-      { v: 'elo', title: 'Equilibradas', desc: 'Fuerte con flojo según el ELO, para que estén igualadas.' },
+      { v: 'random', title: 'Al azar' },
+      { v: 'manual', title: 'Las elegimos nosotros' },
+      { v: 'elo', title: 'Equilibradas', help: 'Se junta a un jugador fuerte con uno flojo según su ELO, para que todas las parejas estén igualadas.' },
     ];
     body = isPool ? (
       <div className="cr-cols">
@@ -1445,8 +1466,8 @@ export function TournamentTemplateScreen({
             <OptionList<'elo' | 'random'>
               value={tpl.pairing === 'elo' ? 'elo' : 'random'}
               options={[
-                { v: 'random', title: 'Al azar', desc: 'Las parejas salen por sorteo en cada partido.' },
-                { v: 'elo', title: 'Equilibradas', desc: 'Fuertes con flojos para que los partidos estén igualados.' },
+                { v: 'random', title: 'Al azar' },
+                { v: 'elo', title: 'Equilibradas', help: 'En cada partido se junta a fuertes con flojos según el ELO, para que estén igualados.' },
               ]}
               onChange={(v) => set('pairing', v)}
             />
@@ -1460,8 +1481,8 @@ export function TournamentTemplateScreen({
             <OptionList<1 | 2>
               value={tpl.teamSize}
               options={[
-                { v: 1, title: '1 contra 1', desc: 'Cada jugador va por su cuenta.' },
-                { v: 2, title: 'Parejas fijas', desc: 'Las mismas parejas todo el torneo (número par de jugadores).' },
+                { v: 1, title: '1 contra 1' },
+                { v: 2, title: 'Parejas fijas', help: 'Las mismas parejas durante todo el torneo. Hace falta un número par de jugadores.' },
               ]}
               onChange={(v) => set('teamSize', v)}
             />
@@ -1471,8 +1492,8 @@ export function TournamentTemplateScreen({
               <OptionList<'elo' | 'random'>
                 value={tpl.seeding}
                 options={[
-                  { v: 'elo', title: 'Por ELO', desc: 'Los mejores no se cruzan hasta el final; los huecos pasan directos.' },
-                  { v: 'random', title: 'Sorteo', desc: 'Los cruces salen por sorteo.' },
+                  { v: 'elo', title: 'Por ELO', help: 'Los mejores no se cruzan hasta el final. Si faltan rivales, los mejores pasan directos a la siguiente ronda.' },
+                  { v: 'random', title: 'Sorteo' },
                 ]}
                 onChange={(v) => set('seeding', v)}
               />
@@ -1506,8 +1527,8 @@ export function TournamentTemplateScreen({
               <OptionList<boolean>
                 value={tpl.allowDraw !== false}
                 options={[
-                  { v: true, title: 'Empate', desc: 'Sin prórroga ni penaltis: cada uno se lleva los puntos del empate.' },
-                  { v: false, title: 'Siempre hay ganador', desc: 'Prórroga con gol de oro y, si sigue igualado, penaltis.' },
+                  { v: true, title: 'Empate', help: 'Sin prórroga ni penaltis: cada uno se lleva los puntos del empate.' },
+                  { v: false, title: 'Siempre hay ganador', help: 'Prórroga con gol de oro y, si sigue igualado, penaltis.' },
                 ]}
                 onChange={(v) => set('allowDraw', v)}
               />
@@ -1527,8 +1548,8 @@ export function TournamentTemplateScreen({
             <OptionList<1 | 2>
               value={tpl.legs ?? 1}
               options={[
-                { v: 1, title: 'Solo ida', desc: 'Cada uno juega una vez contra cada rival.' },
-                { v: 2, title: 'Ida y vuelta', desc: 'Dos veces contra cada rival, cambiando de lado en la vuelta.' },
+                { v: 1, title: 'Solo ida' },
+                { v: 2, title: 'Ida y vuelta' },
               ]}
               onChange={(v) => set('legs', v)}
             />

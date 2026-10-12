@@ -2887,52 +2887,88 @@
   color: #ff8a8a;
   font-weight: 800;
 }
-/* Opciones en lista: filas grandes con un punto de radio, título y explicación. */
+/* Opciones en lista: botones grandes con solo el título (la elegida se ilumina); «?» si hace falta explicarla. */
 .cr-opts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+.cr-opt-wrap {
+  position: relative;
 }
 .cr-opt {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
+  width: 100%;
+  min-height: 78px;
+  display: grid;
+  place-items: center;
+  padding: 10px 56px;
+  border-radius: 16px;
+  border: 2px solid var(--line);
   background: rgba(7, 16, 28, 0.72);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.cr-opt-dot {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid var(--text-2);
-}
-.cr-opt-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.cr-opt-text b {
-  font-size: 18px;
-}
-.cr-opt-text small {
   color: var(--text-2);
-  font-size: 13px;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 900;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.cr-opt:active {
+  transform: scale(0.99);
 }
 .cr-opt[aria-checked='true'] {
   border-color: #62d6ff;
-  background: color-mix(in srgb, #62d6ff 14%, rgba(7, 16, 28, 0.8));
-  box-shadow: 0 0 12px color-mix(in srgb, #62d6ff 55%, transparent);
+  color: var(--text);
+  background: color-mix(in srgb, #62d6ff 16%, rgba(7, 16, 28, 0.8));
+  box-shadow: 0 0 14px color-mix(in srgb, #62d6ff 55%, transparent);
 }
-.cr-opt[aria-checked='true'] .cr-opt-dot {
+.cr-help {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.cr-help.is-open {
   border-color: #62d6ff;
-  background: radial-gradient(circle, #62d6ff 0 45%, transparent 50%);
+  background: #62d6ff;
+  color: #06080c;
+}
+.cr-help-layer {
+  /* «fixed» dentro del lienzo girado/escalado: ocupa el lienzo entero. */
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.cr-help-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 460px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: #142034;
+  border: 2px solid #62d6ff;
+  box-shadow: 0 0 22px rgba(98, 214, 255, 0.4);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.4;
+  text-align: center;
+}
+.cr-help-bubble b {
+  font-size: 22px;
 }
 /* «Cómo se gana un partido»: botones grandes que llenan la pantalla. */
 .cr-big .segmented .seg {
