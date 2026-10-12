@@ -49,3 +49,7 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
   Una categoría sin imágenes no sale.
 - Integrados: `escudo-generico-01…16` y `copa-generico-01…09` (recortados de sus hojas, fondo magenta quitado).
   También `escudo-retro80-01…16` y `copa-retro90-01…09` (fondo exterior quitado; conservan sus rosas).
+- `evento-<evento>-<año>-{escudo,copa,banner}`: piezas de los EVENTOS que vienen dentro de la app (catálogo
+  `BUNDLED_CATALOG` en `src/services/events/catalogSource.ts`). No empiezan por `escudo-`/`copa-`/`banner-` a
+  propósito: así no se cuelan en las categorías fijas y solo salen, con candado, en la pestaña de su evento.
+  Escudo y copa 256×256 .webp transparentes; banner 1200×160. Hoy: Halloween 2026 (solo ligas, 31 oct 2026).

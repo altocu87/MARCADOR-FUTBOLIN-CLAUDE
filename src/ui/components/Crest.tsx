@@ -51,11 +51,12 @@ export function categoryItems(kind: IconKind, category: string): string[] {
  */
 export function iconCategories(kind: IconKind, format?: TournamentFormat): IconCategory[] {
   const shown = allIconCategories().filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
-  // Los del catálogo para todos los torneos salen en cualquiera; los de un tipo, solo en ese.
-  const forAll = shown.filter((c) => c.catalog && !c.format);
-  const own = format ? shown.filter((c) => c.format === format) : [];
-  const base = own.length ? own : shown.filter((c) => !c.format && !c.catalog);
-  return [...[...forAll, ...base].filter((c) => c.catalog), ...base.filter((c) => !c.catalog)];
+  // Los del catálogo (eventos) para todos los torneos salen en cualquiera; los de un tipo, solo en ese. Van
+  // delante y no cuentan como «propios» del tipo: si no, una copa de evento escondería las de siempre.
+  const events = shown.filter((c) => c.catalog && (!c.format || c.format === format));
+  const fixed = shown.filter((c) => !c.catalog);
+  const own = format ? fixed.filter((c) => c.format === format) : [];
+  return [...events, ...(own.length ? own : fixed.filter((c) => !c.format))];
 }
 
 /** Logos de por defecto: los del tipo de torneo, si tiene propios, o los genéricos. */

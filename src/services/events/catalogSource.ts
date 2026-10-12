@@ -8,8 +8,50 @@
 import type { Catalog } from './rewards';
 import type { CatalogCollection, CatalogItem } from './model';
 
-/** Eventos que vienen dentro de la app (sus imágenes están en src/assets/images). */
-export const BUNDLED_CATALOG: Catalog = { collections: [], items: [] };
+const dia = (y: number, m: number, d: number, fin = false) => new Date(y, m - 1, d, fin ? 23 : 0, fin ? 59 : 0, fin ? 59 : 0).getTime();
+
+/** Colección de un evento que viene dentro de la app: una pieza, solo para ligas y solo ese día. */
+function piezaDeEvento(
+  id: string,
+  tipo: CatalogCollection['tipo'],
+  nombre: string,
+  pieza: string,
+  archivo: string,
+  obtencion: CatalogCollection['obtencion'],
+  desde: number,
+  hasta: number,
+  orden: number,
+): { col: CatalogCollection; item: CatalogItem } {
+  return {
+    col: {
+      id,
+      tipo,
+      nombre,
+      descripcion: '',
+      rareza: 'epica',
+      estado: 'publicada',
+      ambito: 'coleccion',
+      obtencion,
+      disponibilidad: { modo: 'fechas', desde, hasta },
+      torneo: 'league',
+      orden,
+      creada: desde,
+    },
+    item: { id: `${id}-1`, coleccionId: id, nombre: pieza, archivo, orden: 0, activo: true },
+  };
+}
+
+const HALLOWEEN_2026 = [
+  piezaDeEvento('app-halloween-2026-escudo', 'escudo', 'Halloween 2026 · Escudo', 'Escudo fantasma 2026', 'evento-halloween-2026-escudo', { tipo: 'entrar' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 0),
+  piezaDeEvento('app-halloween-2026-banner', 'fondo', 'Halloween 2026 · Banner', 'Banner noche de brujas 2026', 'evento-halloween-2026-banner', { tipo: 'jugarPartido', modo: 'cualquiera' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 1),
+  piezaDeEvento('app-halloween-2026-copa', 'copa', 'Halloween 2026 · Copa', 'Copa calabaza 2026', 'evento-halloween-2026-copa', { tipo: 'ganarPartido', modo: 'cualquiera' }, dia(2026, 10, 31), dia(2026, 10, 31, true), 2),
+];
+
+/** Eventos que vienen dentro de la app (sus imágenes están en src/assets/images, `evento-…`). */
+export const BUNDLED_CATALOG: Catalog = {
+  collections: HALLOWEEN_2026.map((x) => x.col),
+  items: HALLOWEEN_2026.map((x) => x.item),
+};
 
 const CACHE_KEY = 'mfv3:catalogo';
 

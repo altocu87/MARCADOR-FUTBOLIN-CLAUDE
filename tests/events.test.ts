@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StoredMatch, Tournament } from '../src/services/persistence';
 import {
   activeEvents,
+  BUNDLED_CATALOG,
   computeRewards,
   cuandoTexto,
   ownedBy,
@@ -12,6 +13,7 @@ import {
   type Obtencion,
 } from '../src/services/events';
 import { makeMatch } from './helpers';
+import { eventTabName } from '../src/app/catalogIcons';
 
 const at = (iso: string) => new Date(`${iso}T12:00:00`).getTime();
 const halloween = { modo: 'anual' as const, desdeDia: '10-31', hastaDia: '10-31' };
@@ -85,4 +87,16 @@ describe('Eventos · premios', () => {
     expect(cuandoTexto({ modo: 'anual', desdeDia: '12-20', hastaDia: '01-06' })).toBe('cada año del 20 dic al 6 ene');
     expect(cuandoTexto({ modo: 'siempre' })).toBe('siempre');
   });
+  it('Halloween 2026 viene en la app: escudo al entrar ese día, solo para ligas', () => {
+    const r = computeRewards(BUNDLED_CATALOG, { matches: [], tournaments: [], visitDays: ['2026-10-31'] });
+    expect(r.device.has('app-halloween-2026-escudo-1')).toBe(true);
+    expect(BUNDLED_CATALOG.collections.every((c) => c.torneo === 'league')).toBe(true);
+    expect(computeRewards(BUNDLED_CATALOG, { matches: [], tournaments: [], visitDays: ['2026-11-01'] }).device.size).toBe(0);
+  });
+  it('la pestaña del muestrario es el evento sin el año', () => {
+    expect(eventTabName('Halloween 2026 · Copa')).toBe('Halloween');
+    expect(eventTabName('Navidad 2027')).toBe('Navidad');
+    expect(eventTabName('Retro')).toBe('Retro');
+  });
 });
+
