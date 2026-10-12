@@ -1058,7 +1058,10 @@ export function TournamentNewScreen({
             </button>
           )}
           <button className="btn btn-primary btn-lg tn-continue" disabled={mainErrors.length > 0} onClick={() => (withPairs ? setPairsOpen(true) : create())}>
-            Continuar
+            <span>Continuar</span>
+            <span className="tn-continue-arrow" aria-hidden="true">
+              ▶
+            </span>
           </button>
         </>
       }

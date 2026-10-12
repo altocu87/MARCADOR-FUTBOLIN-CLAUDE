@@ -5710,3 +5710,94 @@ div > .name-clash:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* «Continuar» de elegir torneo: verde neón que late, con un brillo que lo cruza y una flecha que
+   empuja hacia delante. Desactivado se queda quieto y apagado. */
+.btn.btn-primary.tn-continue {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 230px;
+  justify-content: center;
+  border: 2px solid #9dffc4;
+  background: linear-gradient(180deg, #4dfb95 0%, #1fd16a 55%, #12a752 100%);
+  color: #032312;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 0 2px rgba(31, 209, 106, 0.35),
+    0 0 18px rgba(46, 232, 122, 0.75),
+    0 0 42px rgba(46, 232, 122, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+  animation: tn-continue-pulse 1.8s ease-in-out infinite;
+}
+/* Brillo diagonal que cruza el botón cada pocos segundos. */
+.btn.btn-primary.tn-continue::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 40%;
+  left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  transform: skewX(-20deg);
+  animation: tn-continue-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.tn-continue-arrow {
+  font-size: 16px;
+  animation: tn-continue-nudge 1.1s ease-in-out infinite;
+}
+.btn.btn-primary.tn-continue:active {
+  transform: scale(0.96) translateY(2px);
+  filter: brightness(1.15);
+}
+.btn.btn-primary.tn-continue:disabled {
+  border-color: var(--line);
+  background: linear-gradient(180deg, #2c4a3a, #1e3329);
+  color: rgba(220, 240, 228, 0.55);
+  text-shadow: none;
+  box-shadow: none;
+  animation: none;
+}
+.btn.btn-primary.tn-continue:disabled::before,
+.btn.btn-primary.tn-continue:disabled .tn-continue-arrow {
+  animation: none;
+  display: none;
+}
+@keyframes tn-continue-pulse {
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(31, 209, 106, 0.25),
+      0 0 28px rgba(46, 232, 122, 0.95),
+      0 0 70px rgba(46, 232, 122, 0.6),
+      inset 0 2px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+    transform: scale(1.03);
+  }
+}
+@keyframes tn-continue-shine {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+@keyframes tn-continue-nudge {
+  50% {
+    transform: translateX(5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn.btn-primary.tn-continue,
+  .btn.btn-primary.tn-continue::before,
+  .tn-continue-arrow {
+    animation: none;
+  }
+}
