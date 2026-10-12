@@ -35,7 +35,7 @@ import {
   type Rareza,
   type TorneoAmbito,
 } from '../catalog';
-import { preparar } from '../catalogMedia';
+import { preparar, urlArchivo } from '../catalogMedia';
 import { newId } from '../logic';
 import { useAdmin } from '../store';
 import { Badge, ConfirmButton, EuroInput, Field, Header, Modal } from '../ui';
@@ -200,15 +200,15 @@ function Vista({ tipo, item, size = 72 }: { tipo: CatalogKind; item: CatalogItem
   }
   if (tipo === 'sonido') return <span className="c-v-sound" style={st}>🎵</span>;
   if (!item.archivo) return <span className="c-v-empty" style={st}>{KINDS[tipo].icono}</span>;
-  if (tipo === 'fondo') return <img className="c-v-img" src={item.archivo} alt="" style={{ width: size * 2, height: size / 2 }} />;
+  if (tipo === 'fondo') return <img className="c-v-img" src={urlArchivo(item.archivo)} alt="" style={{ width: size * 2, height: size / 2 }} />;
   if (tipo === 'marco')
     return (
       <span className="c-v-frame" style={st}>
         <span className="c-v-frame-photo" />
-        <img src={item.archivo} alt="" />
+        <img src={urlArchivo(item.archivo)} alt="" />
       </span>
     );
-  return <img className={`c-v-img ${tipo === 'avatar' ? 'round' : ''}`} src={item.archivo} alt="" style={st} />;
+  return <img className={`c-v-img ${tipo === 'avatar' ? 'round' : ''}`} src={urlArchivo(item.archivo)} alt="" style={st} />;
 }
 
 function RarezaPicker({ value, onChange, heredar }: { value: Rareza | undefined; onChange: (r: Rareza | undefined) => void; heredar?: Rareza }) {

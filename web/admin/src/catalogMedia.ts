@@ -69,3 +69,15 @@ export async function preparar(tipo: CatalogKind, file: File): Promise<Preparado
   if (blob.size > spec.maxKB * 1024) throw new Error(`${file.name}: aun comprimida pesa más de ${spec.maxKB} KB; simplifica la imagen.`);
   return { blob, extension: 'webp', avisos: avisosImagen(tipo, file, img.naturalWidth, img.naturalHeight) };
 }
+
+/**
+ * Imágenes de los eventos que vienen dentro de la app (Halloween…): en la base de datos su «archivo» es el
+ * nombre de la imagen (`evento-halloween-2026-liga-copa`), no una dirección. Aquí se traduce para verla.
+ */
+const deLaApp = import.meta.glob('../../../src/assets/images/evento-*.{webp,png}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const porNombre = new Map(Object.entries(deLaApp).map(([ruta, url]) => [ruta.split('/').pop()!.replace(/\.(webp|png)$/, ''), url]));
+
+export function urlArchivo(archivo: string | undefined): string | undefined {
+  if (!archivo) return undefined;
+  return porNombre.get(archivo) ?? archivo;
+}

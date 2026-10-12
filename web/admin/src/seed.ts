@@ -3,6 +3,7 @@
  * Siempre los mismos para la misma fecha (generador pseudoaleatorio con semilla).
  */
 import { DAY, VENUE_PRICE, generateLicense } from './logic';
+import { BUNDLED_CATALOG } from '../../../src/services/events/catalogSource';
 import type { AdminData, Announcement, Coupon, License, Order, Product, Settings, ShipStatus, User, Venue } from './types';
 
 function rng(seed: number) {
@@ -209,5 +210,6 @@ function seedCatalog(now: number): Pick<AdminData, 'catalogCollections' | 'catal
     { id: 'ci_c2', coleccionId: 'cc_colores', nombre: 'Rosa', valor: '#FF5CD6 #B46CFF', orden: 1, activo: true },
     { id: 'ci_c3', coleccionId: 'cc_colores', nombre: 'Lima', valor: '#3DFF9A', orden: 2, activo: true },
   ];
-  return { catalogCollections, catalogItems };
+  // Los eventos que vienen dentro de la app (Halloween 2026), igual que los carga la migración.
+  return { catalogCollections: [...catalogCollections, ...BUNDLED_CATALOG.collections], catalogItems: [...catalogItems, ...BUNDLED_CATALOG.items] };
 }

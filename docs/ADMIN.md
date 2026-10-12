@@ -107,5 +107,8 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
   lleva el nombre sin el año («Halloween») y dentro van las piezas de todos los años, la más reciente primero.
 - Halloween 2026 viene ya dentro de la app (escudo al entrar, banner jugando y copa ganando un partido el
   31 oct 2026; un juego para ligas, otro para copas y otro para pools), así que funciona aunque el panel no esté conectado.
+  La migración `…_catalogo_halloween_2026.sql` carga esas mismas piezas (mismos ids) en el panel: lo que se
+  edite allí (cómo se consigue, fechas, desactivarla) manda sobre lo de la app. Su «archivo» es el nombre de la
+  imagen de la app, que el panel sabe enseñar (`urlArchivo` en `web/admin/src/catalogMedia.ts`).
 - Código: modelo y reglas en `src/services/events/` (compartido con el panel), pruebas en `tests/events.test.ts`.
 
