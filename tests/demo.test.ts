@@ -17,7 +17,8 @@ describe('datos de prueba', () => {
   it('los partidos son coherentes y anteriores a hoy', () => {
     for (const m of data.matches) {
       expect(m.finishedAt).toBeLessThan(now);
-      if (m.result.reason !== 'penalties') expect(m.result.score[m.result.winner]).toBeGreaterThan(m.result.score[m.result.winner === 'white' ? 'blue' : 'white']);
+      const w = m.result.winner!;
+      if (m.result.reason !== 'penalties') expect(m.result.score[w]).toBeGreaterThan(m.result.score[w === 'white' ? 'blue' : 'white']);
       const ids = new Set(data.players.map((p) => p.id));
       for (const p of m.participants) expect(ids.has(p.playerId)).toBe(true);
     }

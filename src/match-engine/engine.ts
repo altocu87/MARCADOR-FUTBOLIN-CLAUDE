@@ -715,6 +715,10 @@ function endPeriod(
   if (state.period === 'second' && score.white !== score.blue) {
     return finishMatch(next, events, at, score.white > score.blue ? 'white' : 'blue', 'regulation');
   }
+  // Liga: igualados al final del tiempo, empate (sin prórroga ni penaltis).
+  if (state.period === 'second' && state.config.allowDraw) {
+    return finishMatch(next, events, at, null, 'regulation');
+  }
   if (state.period === 'overtime' && reason === 'golden_goal') {
     return finishMatch(next, events, at, score.white > score.blue ? 'white' : 'blue', 'golden_goal');
   }
@@ -725,7 +729,7 @@ function finishMatch(
   state: MatchState,
   events: MatchEvent[],
   at: number,
-  winner: Team,
+  winner: Team | null,
   reason: ResolutionReason,
 ): MatchState {
   const result: MatchResult = {
@@ -736,5 +740,5 @@ function finishMatch(
     totalTimeMs: state.closedPeriodsMs,
   };
   const next: MatchState = { ...state, phase: 'finished', finishedAt: at, result, undoStack: [] };
-  return pushEvent(next, events, at, { type: 'MATCH_END', team: winner, reason });
+  return pushEvent(next, events, at, { type: 'MATCH_END', team: winner ?? undefined, reason });
 }

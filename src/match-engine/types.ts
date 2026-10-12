@@ -49,6 +49,11 @@ export interface MatchConfig {
   /** Partido de prueba: no guarda historial ni progresión. Se fija al empezar. */
   testMode: boolean;
   /**
+   * Se permite empatar (liga): si al acabar el tiempo van igualados, el partido termina en empate,
+   * sin prórroga ni penaltis. Solo puede pasar a tiempo (o «ambas»): a goles siempre hay ganador.
+   */
+  allowDraw?: boolean;
+  /**
    * Reglas antiguas de Partido Caos (ya no se aplican: el modo 'chaos' es ahora Partido Loco,
    * con hándicaps). Se conservan para leer partidos guardados.
    */
@@ -268,7 +273,8 @@ export interface PeriodRecord {
 export type ResolutionReason = 'regulation' | 'golden_goal' | 'penalties';
 
 export interface MatchResult {
-  winner: Team;
+  /** Equipo ganador; `null` si acabó en empate (solo con `config.allowDraw`). */
+  winner: Team | null;
   reason: ResolutionReason;
   /** Resultado ordinario (sin penaltis). */
   score: Score;

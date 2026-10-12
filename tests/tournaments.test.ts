@@ -12,6 +12,8 @@ import {
   createTournament,
   describeTemplate,
   allTemplates,
+  leagueStandings,
+  roundRobin,
   draftFromTemplate,
   newTemplate,
   effectivePoolGames,
@@ -568,5 +570,52 @@ describe('Creador de tipos de torneo', () => {
   it('uno nuevo parte de los valores por defecto del formato', () => {
     expect(newTemplate(undefined, 'pool')).toMatchObject({ format: 'pool', teamSize: 2, final: 'none', goalsPerPeriod: 5, name: '' });
     expect(newTemplate(undefined, 'league')).toMatchObject({ format: 'league', teamSize: 1 });
+  });
+});
+
+describe('Liga: empates, puntos y vueltas', () => {
+  const ps = players(['a', 'b', 'c']);
+  const leagueDraft = (extra: Partial<TournamentDraft> = {}): TournamentDraft => ({
+    name: 'Liga',
+    format: 'league',
+    teamSize: 1,
+    ranked: false,
+    config: { ...DEFAULT_CONFIG, endCondition: 'time', allowDraw: true },
+    teams: ps.map((p) => ({ playerIds: [p.id] })),
+    seeding: 'random',
+    ...extra,
+  });
+  it('ida y vuelta duplica el calendario con los lados cambiados', () => {
+    const ida = roundRobin(['x', 'y', 'z']);
+    const both = roundRobin(['x', 'y', 'z'], 2);
+    expect(both).toHaveLength(ida.length * 2);
+    const vuelta = both.slice(ida.length);
+    vuelta.forEach((f, i) => {
+      expect(f.whiteTeamId).toBe(ida[i].blueTeamId);
+      expect(f.round).toBeGreaterThan(Math.max(...ida.map((x) => x.round)));
+    });
+  });
+  it('un empate cuenta como jugado y suma los puntos configurados', () => {
+    let t = createTournament(leagueDraft({ points: { win: 3, draw: 2, loss: 1 } }), ps, () => 1200, 0, seededRandom('d'));
+    const matches: StoredMatch[] = [];
+    let at = 1000;
+    for (const f of [...t.fixtures]) {
+      const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
+      const blue = t.teams.find((x) => x.id === f.blueTeamId)!.playerIds;
+      const base = makeMatch({ white, blue, goals: 'WB', at: (at += 1000), mode: 'quick' });
+      const m = { ...base, result: { ...base.result, winner: null }, tournament: { id: t.id, fixtureId: f.id } };
+      matches.push(m);
+      t = recordFixtureResult(t, f.id, m, matches);
+    }
+    expect(t.fixtures.every((f) => f.draw)).toBe(true);
+    expect(t.status).toBe('finished');
+    const table = leagueStandings(t, matches);
+    expect(table.every((r) => r.draws === 2 && r.points === 4 && r.wins === 0 && r.losses === 0)).toBe(true);
+  });
+  it('la final nunca admite empate', () => {
+    const t = createTournament(leagueDraft({ final: 'top2' }), ps, () => 1200, 0, seededRandom('f'));
+    const fin = t.fixtures.find((f) => f.stage === 'final')!;
+    expect(fixtureConfig(t, fin).allowDraw).toBeUndefined();
+    expect(fixtureConfig(t, t.fixtures[0]).allowDraw).toBe(true);
   });
 });

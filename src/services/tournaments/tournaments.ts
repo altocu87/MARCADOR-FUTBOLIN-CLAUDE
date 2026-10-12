@@ -1,8 +1,9 @@
 /**
  * Torneos (propuesta «torneos-2», pendiente de aprobación):
- * - Liguilla: todos contra todos a una vuelta, 3 a 8 equipos. Victoria 3 puntos.
- *   Desempate: puntos → diferencia de goles → goles a favor → enfrentamiento directo → nombre.
- *   Opcional: final entre los dos primeros.
+ * - Liga: todos contra todos a una vuelta (o ida y vuelta), 3 a 8 equipos. Puntos por victoria,
+ *   empate y derrota configurables (3/1/0 por defecto); a tiempo se puede empatar, sin prórroga ni
+ *   penaltis. Desempate: puntos → diferencia de goles → goles a favor → enfrentamiento directo → nombre.
+ *   Opcional: final entre los dos primeros (la final nunca acaba en empate).
  * - Cuadro: eliminación directa para 3 a 8 equipos; los huecos dan pase directo.
  *   Siembra por ELO (1 contra el último) o aleatoria.
  * - Pool: 4 a 16 jugadores, parejas que cambian en cada partido y puntos individuales
@@ -19,6 +20,7 @@ import {
   type Tournament,
   type TournamentFinal,
   type TournamentFormat,
+  type TournamentPoints,
   type TournamentTeam,
 } from '../persistence';
 import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, poolGameOptions, schedulePool } from './pool';
@@ -26,6 +28,13 @@ import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, poolGameOptions, schedulePool } fro
 export const TOURNAMENT_RULES_VERSION = 'torneos-2';
 export const MIN_TEAMS = 3;
 export const MAX_TEAMS = 8;
+/** Puntos por defecto: victoria 3, empate 1, derrota 0. */
+export const DEFAULT_POINTS: TournamentPoints = { win: 3, draw: 1, loss: 0 };
+
+/** ¿Ya se ha jugado este cruce? (con ganador o, en liga, en empate). */
+export function fixtureDone(f: Fixture): boolean {
+  return !!(f.winnerTeamId || f.draw);
+}
 
 export const FORMAT_LABEL: Record<TournamentFormat, string> = {
   league: 'Liga',
@@ -66,6 +75,10 @@ export interface TournamentDraft {
   gamesPerPlayer?: number;
   /** Pool: parejas equilibradas por ELO o al azar. */
   pairing?: 'elo' | 'random';
+  /** Liga: a una vuelta o ida y vuelta. */
+  legs?: 1 | 2;
+  /** Liga: puntos por victoria, empate y derrota. */
+  points?: TournamentPoints;
   final?: TournamentFinal;
   finalBestOf?: number;
   /** Reglas de la final si difieren. */
@@ -139,8 +152,19 @@ function shuffle<T>(list: T[], rnd: () => number): T[] {
   return out;
 }
 
-/** Emparejamientos a una vuelta por el método del círculo. */
-export function roundRobin(teamIds: string[]): Fixture[] {
+/**
+ * Emparejamientos todos contra todos por el método del círculo. Con `legs` 2, la vuelta repite las
+ * mismas jornadas con los lados cambiados (quien fue Blanco en la ida es Azul en la vuelta).
+ */
+export function roundRobin(teamIds: string[], legs: 1 | 2 = 1): Fixture[] {
+  const ida = singleRoundRobin(teamIds);
+  if (legs === 1) return ida;
+  const rounds = Math.max(0, ...ida.map((f) => f.round));
+  const vuelta = ida.map((f) => ({ id: newId('fx'), round: f.round + rounds, whiteTeamId: f.blueTeamId, blueTeamId: f.whiteTeamId }));
+  return [...ida, ...vuelta];
+}
+
+function singleRoundRobin(teamIds: string[]): Fixture[] {
   const ids: (string | null)[] = [...teamIds];
   if (ids.length % 2 === 1) ids.push(null);
   const n = ids.length;
@@ -264,7 +288,7 @@ export function createTournament(
       teams = [...teams].sort((a, b) => avg(b) - avg(a));
     } else teams = shuffle(teams, rnd);
     const ids = teams.map((t) => t.id);
-    fixtures = draft.format === 'league' ? roundRobin(ids) : buildBracket(ids);
+    fixtures = draft.format === 'league' ? roundRobin(ids, draft.legs ?? 1) : buildBracket(ids);
     if (draft.format === 'bracket' && bestOf) {
       const last = Math.max(...fixtures.map((f) => f.round));
       fixtures.filter((f) => f.round === last).forEach((f) => (f.bestOf = bestOf));
@@ -297,6 +321,7 @@ export function createTournament(
     status: 'active',
     createdAt: now,
     ...(draft.format === 'pool' ? { entrants: [...draft.entrants!] } : {}),
+    ...(draft.format === 'league' && draft.points ? { points: { ...draft.points } } : {}),
     ...(final !== 'none' ? { final } : {}),
     ...(draft.finalConfig ? { finalConfig: { ...draft.finalConfig, mode, testMode: false } } : {}),
     ...(draft.templateName ? { templateName: draft.templateName } : {}),
@@ -310,7 +335,7 @@ export function createTournament(
 
 export function playableFixtures(t: Tournament): Fixture[] {
   if (t.status !== 'active') return [];
-  return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !f.winnerTeamId);
+  return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !fixtureDone(f));
 }
 
 /** Siguiente partido: el primero pendiente por orden de jornada y de calendario. */
@@ -322,12 +347,14 @@ export function nextFixture(t: Tournament): Fixture | undefined {
 /** Partidos decididos y totales (sin contar pases directos). */
 export function fixtureProgress(t: Tournament): { done: number; total: number } {
   const real = t.fixtures.filter((f) => !f.bye);
-  return { done: real.filter((f) => f.winnerTeamId).length, total: real.length };
+  return { done: real.filter(fixtureDone).length, total: real.length };
 }
 
-/** Reglas del partido de un cruce (la final puede tener las suyas). */
+/** Reglas del partido de un cruce (la final puede tener las suyas, y nunca acaba en empate). */
 export function fixtureConfig(t: Tournament, f: Fixture): MatchConfig {
-  return t.finalConfig && isFinalFixture(t, f) ? t.finalConfig : t.config;
+  if (!isFinalFixture(t, f)) return t.config;
+  const { allowDraw: _d, ...cfg } = t.finalConfig ?? t.config;
+  return cfg;
 }
 
 export function fixtureParticipants(t: Tournament, f: Fixture, players: Player[]): ParticipantRef[] {
@@ -345,6 +372,7 @@ export interface StandingRow {
   team: TournamentTeam;
   played: number;
   wins: number;
+  draws: number;
   losses: number;
   points: number;
   goalsFor: number;
@@ -382,22 +410,24 @@ export function standingsMovement(t: Tournament, matches: StoredMatch[]): Map<st
 
 export function leagueStandings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
   const byId = new Map(matches.map((m) => [m.id, m]));
+  const pts = t.points ?? DEFAULT_POINTS;
   const rows = new Map<string, StandingRow>(t.teams.map((team) => [team.id, emptyRow(team)]));
-  const h2h = new Map<string, string>(); // "a|b" → ganador
+  // Enfrentamiento directo: puntos que ha sacado cada equipo contra el otro (con ida y vuelta, sumados).
+  const h2h = new Map<string, number>(); // "equipo>rival" → puntos
   for (const f of t.fixtures) {
     const m = f.matchId ? byId.get(f.matchId) : undefined;
-    if (f.stage === 'final' || !m || !f.whiteTeamId || !f.blueTeamId || !f.winnerTeamId) continue;
-    for (const [side, tid] of [['white', f.whiteTeamId], ['blue', f.blueTeamId]] as [Team, string][]) {
-      addResult(rows.get(tid)!, m, side, f.winnerTeamId === tid);
+    if (f.stage === 'final' || !m || !f.whiteTeamId || !f.blueTeamId || !fixtureDone(f)) continue;
+    for (const [side, tid, other] of [['white', f.whiteTeamId, f.blueTeamId], ['blue', f.blueTeamId, f.whiteTeamId]] as [Team, string, string][]) {
+      const outcome = f.draw ? 'draw' : f.winnerTeamId === tid ? 'win' : 'loss';
+      addResult(rows.get(tid)!, m, side, outcome, pts);
+      h2h.set(`${tid}>${other}`, (h2h.get(`${tid}>${other}`) ?? 0) + pts[outcome]);
     }
-    h2h.set([f.whiteTeamId, f.blueTeamId].sort().join('|'), f.winnerTeamId);
   }
   return [...rows.values()].sort((a, b) => {
     const c = compareRows(a, b);
     if (c) return c;
-    const w = h2h.get([a.team.id, b.team.id].sort().join('|'));
-    if (w === a.team.id) return -1;
-    if (w === b.team.id) return 1;
+    const d = (h2h.get(`${b.team.id}>${a.team.id}`) ?? 0) - (h2h.get(`${a.team.id}>${b.team.id}`) ?? 0);
+    if (d) return d;
     return a.team.name.localeCompare(b.team.name, 'es');
   });
 }
@@ -409,11 +439,11 @@ export function poolStandings(t: Tournament, matches: StoredMatch[]): StandingRo
   const rows = new Map<string, StandingRow>((t.entrants ?? []).map((pid) => [pid, emptyRow(solo(pid))]));
   for (const f of t.fixtures) {
     const m = f.matchId ? byId.get(f.matchId) : undefined;
-    if (f.stage === 'final' || !m || !f.winnerTeamId) continue;
+    if (f.stage === 'final' || !m || !fixtureDone(f)) continue;
     for (const [side, tid] of [['white', f.whiteTeamId], ['blue', f.blueTeamId]] as [Team, string | null][]) {
       for (const pid of t.teams.find((x) => x.id === tid)?.playerIds ?? []) {
         const r = rows.get(pid);
-        if (r) addResult(r, m, side, f.winnerTeamId === tid);
+        if (r) addResult(r, m, side, f.draw ? 'draw' : f.winnerTeamId === tid ? 'win' : 'loss', DEFAULT_POINTS);
       }
     }
   }
@@ -421,19 +451,19 @@ export function poolStandings(t: Tournament, matches: StoredMatch[]): StandingRo
 }
 
 function emptyRow(team: TournamentTeam): StandingRow {
-  return { team, played: 0, wins: 0, losses: 0, points: 0, goalsFor: 0, goalsAgainst: 0, diff: 0 };
+  return { team, played: 0, wins: 0, draws: 0, losses: 0, points: 0, goalsFor: 0, goalsAgainst: 0, diff: 0 };
 }
 
-function addResult(r: StandingRow, m: StoredMatch, side: Team, won: boolean): void {
+function addResult(r: StandingRow, m: StoredMatch, side: Team, outcome: 'win' | 'draw' | 'loss', pts: TournamentPoints): void {
   const opp: Team = side === 'white' ? 'blue' : 'white';
   r.played += 1;
   r.goalsFor += m.result.score[side];
   r.goalsAgainst += m.result.score[opp];
   r.diff = r.goalsFor - r.goalsAgainst;
-  if (won) {
-    r.wins += 1;
-    r.points += 3;
-  } else r.losses += 1;
+  r.points += pts[outcome];
+  if (outcome === 'win') r.wins += 1;
+  else if (outcome === 'draw') r.draws += 1;
+  else r.losses += 1;
 }
 
 function compareRows(a: StandingRow, b: StandingRow): number {
@@ -444,12 +474,15 @@ function compareRows(a: StandingRow, b: StandingRow): number {
 export function recordFixtureResult(t: Tournament, fixtureId: string, match: StoredMatch, matches: StoredMatch[]): Tournament {
   const next: Tournament = { ...t, teams: [...t.teams], fixtures: t.fixtures.map((x) => ({ ...x })) };
   const f = next.fixtures.find((x) => x.id === fixtureId);
-  if (!f || f.winnerTeamId || !f.whiteTeamId || !f.blueTeamId) return t;
+  if (!f || fixtureDone(f) || !f.whiteTeamId || !f.blueTeamId) return t;
   if (f.matchId === match.id || f.matchIds?.includes(match.id)) return t;
   const side = match.result.winner;
+  // Un empate solo vale en la fase regular de una liga; en una eliminatoria o una final no cuenta.
+  if (!side && (next.format !== 'league' || isFinalFixture(next, f) || (f.bestOf ?? 1) > 1)) return t;
   f.matchId = match.id;
   delete f.abandonedAt;
-  if ((f.bestOf ?? 1) > 1) {
+  if (!side) f.draw = true;
+  else if ((f.bestOf ?? 1) > 1) {
     f.matchIds = [...(f.matchIds ?? []), match.id];
     const s = { white: f.series?.white ?? 0, blue: f.series?.blue ?? 0 };
     s[side] += 1;
@@ -457,14 +490,14 @@ export function recordFixtureResult(t: Tournament, fixtureId: string, match: Sto
     // La serie sigue hasta que uno llegue a las victorias necesarias.
     if (s[side] < Math.ceil(f.bestOf! / 2)) return next;
   }
-  advanceWinner(next.fixtures, f, side === 'white' ? f.whiteTeamId : f.blueTeamId);
+  if (side) advanceWinner(next.fixtures, f, side === 'white' ? f.whiteTeamId : f.blueTeamId);
   const all = [...matches.filter((m) => m.id !== match.id), match];
 
   if (isFinalFixture(next, f)) {
     finish(next, f.winnerTeamId!, match);
     return next;
   }
-  const regularDone = next.fixtures.every((x) => x.stage === 'final' || x.winnerTeamId || (!x.whiteTeamId && !x.blueTeamId));
+  const regularDone = next.fixtures.every((x) => x.stage === 'final' || fixtureDone(x) || (!x.whiteTeamId && !x.blueTeamId));
   if (next.format === 'bracket' || !regularDone) return next;
 
   const table = standings(next, all);
@@ -579,7 +612,7 @@ export function recordedMatches(t: Tournament, matches: StoredMatch[]): StoredMa
 export function undoMatch(t: Tournament, matchId: string, matches: StoredMatch[]): Tournament {
   const fixtures: Fixture[] = t.fixtures.map((f) => {
     if (f.bye) return { ...f };
-    const { winnerTeamId: _w, matchId: _m, matchIds: _ids, series: _s, ...rest } = f;
+    const { winnerTeamId: _w, draw: _d, matchId: _m, matchIds: _ids, series: _s, ...rest } = f;
     // Rondas siguientes del cuadro y final: sus equipos salen de los resultados.
     if (f.stage === 'final' || (t.format === 'bracket' && f.round > 1)) return { ...rest, whiteTeamId: null, blueTeamId: null };
     return rest;
@@ -619,7 +652,7 @@ export function finalSeriesEditable(t: Tournament): boolean {
 
 /** Marca un partido del torneo como abandonado a medias (sigue pendiente). */
 export function markAbandoned(t: Tournament, fixtureId: string, now: number): Tournament {
-  return { ...t, fixtures: t.fixtures.map((f) => (f.id === fixtureId && !f.winnerTeamId ? { ...f, abandonedAt: now } : f)) };
+  return { ...t, fixtures: t.fixtures.map((f) => (f.id === fixtureId && !fixtureDone(f) ? { ...f, abandonedAt: now } : f)) };
 }
 
 export interface FinalPlace {

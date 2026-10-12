@@ -539,3 +539,21 @@ describe('Cartel de fase antes de la cuenta atrás', () => {
     expect(out.state.phase).toBe('countdown');
   });
 });
+
+describe('Empates (liga)', () => {
+  it('con allowDraw, igualados al final del tiempo termina en empate sin prórroga', () => {
+    const s = new Sim(cfg({ ...TIME, allowDraw: true })).start();
+    s.scoreAfterLock('white');
+    toPeriodEnd(s);
+    s.cmd({ type: 'CONTINUE' });
+    s.start();
+    s.scoreAfterLock('blue');
+    toPeriodEnd(s);
+    expect(s.state.phase).toBe('finished');
+    expect(s.state.result).toMatchObject({ winner: null, reason: 'regulation', score: { white: 1, blue: 1 } });
+  });
+  it('sin allowDraw, el mismo empate sigue yendo a la prórroga', () => {
+    const s = toOvertime();
+    expect(s.state.period).toBe('overtime');
+  });
+});

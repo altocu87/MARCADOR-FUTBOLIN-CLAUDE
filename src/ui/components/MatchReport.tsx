@@ -16,6 +16,7 @@ const REASON = { regulation: 'Tiempo reglamentario', golden_goal: 'Gol de oro en
 export function resultLine(m: StoredMatch): string {
   const r = m.result;
   const base = `${r.score.white}–${r.score.blue}`;
+  if (!r.winner) return `${base} · Empate`;
   if (r.penaltyScore) return `${base} · Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · Gana ${TEAM[r.winner]}`;
   if (r.reason === 'golden_goal') return `${base} · Gol de oro · Gana ${TEAM[r.winner]}`;
   return `${base} · Gana ${TEAM[r.winner]}`;

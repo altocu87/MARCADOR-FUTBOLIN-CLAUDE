@@ -22,9 +22,12 @@ import {
   tournamentReport,
   createTournament,
   describeTemplate,
+  templateAllowsDraw,
+  templatePoints,
   draftFromTemplate,
   finalOptions,
   finalRulesOf,
+  fixtureDone,
   finalSeriesEditable,
   isFinalFixture,
   recordedMatches,
@@ -615,6 +618,10 @@ export function TournamentNewScreen({
   // Nombre y logo de las parejas fijas (por pareja de jugadores); se guardan como equipos al crear.
   const [teamEdits, setTeamEdits] = useState<Record<string, { name: string; logo: string }>>({});
   const [editingTeam, setEditingTeam] = useState<string[] | null>(null);
+  // Parejas de esta edición: se revisan (o se forman a mano) en una ventana al pulsar «Continuar».
+  const [pairsOpen, setPairsOpen] = useState(false);
+  const [manualPairs, setManualPairs] = useState<string[][]>([]);
+  const [pickA, setPickA] = useState<string | null>(null);
   const elo = (id: string) => progression?.players.get(id)?.elo ?? prefs.progression.eloInitial;
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const n = selected.length;
@@ -938,7 +945,10 @@ export function TournamentNewScreen({
   const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
     tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
   const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
-  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed), prefs.clubs.map((c) => c.playerIds)) : null;
+  // Parejas elegidas por los jugadores: solo valen las que se formen aquí (no los equipos guardados).
+  const isManual = !!tpl && tpl.format !== 'pool' && tpl.teamSize === 2 && tpl.pairing === 'manual';
+  const fixedPairs = isManual ? manualPairs.filter((p) => p.every((id) => selected.includes(id))) : prefs.clubs.map((c) => c.playerIds);
+  const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed), fixedPairs) : null;
   // Parejas fijas: su equipo guardado o lo que se haya escrito aquí.
   const teamKey = (ids: string[]) => [...ids].sort().join('|');
   const teamInfo = (ids: string[]) => {
@@ -960,9 +970,16 @@ export function TournamentNewScreen({
       }
     : null;
   const leftover = built?.leftover ?? [];
-  const errors = !tpl || !draft ? [`Ningún predefinido de ${kindInfo.noun} encaja con ${n} jugadores: crea uno o elige otro tipo.`] : leftover.length ? [`Sobra ${nameOf(leftover[0])}.`] : validateDraft(draft);
+  const errors = !tpl || !draft
+    ? [`Ningún predefinido de ${kindInfo.noun} encaja con ${n} jugadores: crea uno o elige otro tipo.`]
+    : leftover.length
+      ? [isManual ? `Faltan ${leftover.length} jugadores por emparejar.` : `Sobra ${nameOf(leftover[0])}.`]
+      : validateDraft(draft);
   const isPool = tpl?.format === 'pool';
-  const usesDraw = !!tpl && (isPool ? tpl.pairing === 'random' : (tpl.teamSize === 2 && tpl.pairing === 'random') || (tpl.format === 'bracket' && tpl.seeding === 'random'));
+  // Torneo de parejas fijas: antes de crear se pasa por la ventana de parejas de esta edición.
+  const withPairs = !!tpl && !isPool && tpl.teamSize === 2;
+  // En la pantalla principal, con parejas a mano aún sin formar no es un error: se forman en la ventana.
+  const mainErrors = isManual && !!draft && n % 2 === 0 ? [] : errors;
 
   const create = async () => {
     if (!draft) return;
@@ -1011,39 +1028,6 @@ export function TournamentNewScreen({
     );
   };
 
-  let preview: ReactNode = null;
-  if (tpl && draft) {
-    preview = isPool ? (
-      <div className="tn-plan">
-        <strong>{templateFit(tpl, n).summary}</strong>
-        <span>Las parejas cambian en cada partido y puntúa cada jugador.{draft.gamesPerPlayer !== tpl.gamesPerPlayer ? ` Ajustado a ${draft.gamesPerPlayer} partidos por jugador para que todos jueguen los mismos.` : ''}</span>
-        <div className="tn-teams" style={{ marginTop: 4 }}>
-          {selected.map((id) => <span key={id} className="tn-team">{nameOf(id)}</span>)}
-        </div>
-      </div>
-    ) : (
-      <div className="tn-plan">
-        <strong>{templateFit(tpl, n).summary}</strong>
-        <div className="tn-teams">
-          {draft.teams.map((t, i) =>
-            t.playerIds.length === 2 ? (
-              <button key={i} className={`tn-team tn-team-edit ${t.name ? 'has-name' : ''}`} onClick={() => setEditingTeam(t.playerIds)}>
-                <Crest id={t.logo} size={28} />
-                <span className="tn-team-text">
-                  <b>{t.name ?? 'Sin nombre'}</b>
-                  <small>{t.playerIds.map(nameOf).join(' + ')}</small>
-                </span>
-                <span className="tn-team-pen" aria-hidden="true">✎</span>
-              </button>
-            ) : (
-              <span key={i} className="tn-team">{t.playerIds.map(nameOf).join(' + ')}</span>
-            ),
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <ScreenFrame
       title={`Elige ${kindInfo.the}`}
@@ -1065,15 +1049,15 @@ export function TournamentNewScreen({
       }
       footer={
         <>
-          <span className={`notice select-status tn-status ${errors.length ? 'warn' : ''}`}>
-            {errors[0] ?? (isPool ? `${n} jugadores listos` : `${draft?.teams.length ?? 0} equipos listos`)}
+          <span className={`notice select-status tn-status ${mainErrors.length ? 'warn' : ''}`}>
+            {mainErrors[0] ?? `${n} jugadores${withPairs ? ' · ahora, las parejas' : ' listos'}`}
           </span>
           {blocked.length > 0 && (
             <button className="tpl-more tn-foot-more" onClick={() => setShowBlocked((v) => !v)}>
               {showBlocked ? 'Ocultar las que no encajan' : `Ver las que no encajan (${blocked.length})`}
             </button>
           )}
-          <button className="btn btn-primary btn-lg tn-continue" disabled={errors.length > 0} onClick={create}>
+          <button className="btn btn-primary btn-lg tn-continue" disabled={mainErrors.length > 0} onClick={() => (withPairs ? setPairsOpen(true) : create())}>
             Continuar
           </button>
         </>
@@ -1133,14 +1117,6 @@ export function TournamentNewScreen({
                 onClose={() => setPicker(null)}
               />
             )}
-            {editingTeam && (
-              <ClubEditor
-                fixedPlayers={editingTeam}
-                initial={teamInfo(editingTeam)}
-                onSave={(v) => setTeamEdits((e) => ({ ...e, [teamKey(editingTeam)]: { name: v.name, logo: v.logo } }))}
-                onClose={() => setEditingTeam(null)}
-              />
-            )}
             </>
           )}
           {tpl && (
@@ -1150,6 +1126,25 @@ export function TournamentNewScreen({
                 <span className="label">Partidos</span>
                 <span>{rulesText(tpl)}</span>
               </div>
+              {tpl.format === 'league' && (
+                <>
+                  <div>
+                    <span className="label">Empate</span>
+                    <span>{templateAllowsDraw(tpl) ? 'Se puede empatar: sin prórroga ni penaltis.' : 'Siempre hay ganador.'}</span>
+                  </div>
+                  <div>
+                    <span className="label">Puntos</span>
+                    <span>
+                      Victoria {templatePoints(tpl).win}
+                      {templateAllowsDraw(tpl) ? ` · empate ${templatePoints(tpl).draw}` : ''} · derrota {templatePoints(tpl).loss}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="label">Vueltas</span>
+                    <span>{(tpl.legs ?? 1) === 2 ? 'Ida y vuelta: dos veces contra cada rival.' : 'Solo ida: una vez contra cada rival.'}</span>
+                  </div>
+                </>
+              )}
               <div className={hasTemplateFinal(tpl) ? 'tn-summary-final' : ''}>
                 <span className="label">🏆 Final</span>
                 <span>
@@ -1160,32 +1155,157 @@ export function TournamentNewScreen({
               </div>
             </div>
           )}
-          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ flex: 1 }}>
-              {isPool ? 'Cómo se jugará' : `Equipos${tpl?.teamSize === 2 ? (tpl.pairing === 'elo' ? ' · parejas equilibradas' : ' · parejas al azar') : ''}`}
-            </span>
-            {usesDraw && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setSeed(String(Date.now()))}>
-                ↻ Sortear otra vez
-              </button>
-            )}
-          </div>
-          <div>{preview}</div>
         </div>
       </div>
+      {pairsOpen && draft && (
+        <Modal
+          title={`Parejas · ${edition}ª edición`}
+          onClose={() => {
+            setPairsOpen(false);
+            setPickA(null);
+          }}
+          actions={
+            <>
+              <span className={`notice ${errors.length ? 'warn' : ''}`} style={{ marginRight: 'auto' }}>
+                {errors[0] ?? `${draft.teams.length} parejas listas`}
+              </span>
+              {tpl?.pairing === 'random' && (
+                <button className="btn btn-ghost" onClick={() => setSeed(String(Date.now()))}>
+                  ↻ Sortear otra vez
+                </button>
+              )}
+              <button className="btn btn-primary" disabled={errors.length > 0} onClick={create}>
+                Crear torneo
+              </button>
+            </>
+          }
+        >
+          {isManual && leftover.length > 0 && (
+            <>
+              <p className="muted" style={{ margin: '0 0 8px' }}>
+                Toca dos jugadores para juntarlos en una pareja.
+              </p>
+              <div className="tn-pair-pick">
+                {leftover.map((id) => {
+                  const p = players.find((x) => x.id === id);
+                  return (
+                    <button
+                      key={id}
+                      className={`tn-pair-player ${pickA === id ? 'is-on' : ''}`}
+                      aria-pressed={pickA === id}
+                      onClick={() => {
+                        if (!pickA) return setPickA(id);
+                        if (pickA === id) return setPickA(null);
+                        setManualPairs((ps) => [...ps, [pickA, id]]);
+                        setPickA(null);
+                      }}
+                    >
+                      <Avatar name={p?.name ?? '?'} photo={p?.photo} size={44} />
+                      <span>{p?.name ?? '?'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          <div className="tn-pair-list">
+            {draft.teams.map((tm) => (
+              <div key={tm.playerIds.join('|')} className="tn-pair">
+                <Crest id={tm.logo} size={30} />
+                <span className="tn-pair-names">
+                  <b>{tm.name ?? 'Sin nombre'}</b>
+                  <span>
+                    {tm.playerIds.map((id) => {
+                      const p = players.find((x) => x.id === id);
+                      return (
+                        <span key={id} className="tn-pair-who">
+                          <Avatar name={p?.name ?? '?'} photo={p?.photo} size={24} />
+                          {p?.name ?? '?'}
+                        </span>
+                      );
+                    })}
+                  </span>
+                </span>
+                <button className="btn btn-sm btn-ghost" onClick={() => setEditingTeam(tm.playerIds)} aria-label="Poner nombre a la pareja">
+                  ✎
+                </button>
+                {isManual && (
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    aria-label="Deshacer la pareja"
+                    onClick={() => setManualPairs((ps) => ps.filter((p) => teamKey(p) !== teamKey(tm.playerIds)))}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {editingTeam && (
+        <ClubEditor
+          fixedPlayers={editingTeam}
+          initial={teamInfo(editingTeam)}
+          onSave={(v) => setTeamEdits((e) => ({ ...e, [teamKey(editingTeam)]: { name: v.name, logo: v.logo } }))}
+          onClose={() => setEditingTeam(null)}
+        />
+      )}
     </ScreenFrame>
   );
 }
 
 /** Pasos del creador de torneos, en orden. */
-const CREATOR_STEPS = [
+const ALL_CREATOR_STEPS = [
   { id: 'kind', label: 'Tipo' },
   { id: 'players', label: 'Jugadores' },
   { id: 'rules', label: 'Partidos' },
+  { id: 'points', label: 'Puntos' },
   { id: 'final', label: 'Final' },
   { id: 'name', label: 'Nombre' },
 ] as const;
-type CreatorStep = (typeof CREATOR_STEPS)[number]['id'];
+type CreatorStep = (typeof ALL_CREATOR_STEPS)[number]['id'];
+/** Pasos del creador para un formato: «Puntos» (vueltas y puntuación) solo en la liga. */
+const creatorSteps = (format: TournamentFormat) => ALL_CREATOR_STEPS.filter((x) => x.id !== 'points' || format === 'league');
+
+interface OptionItem<T> {
+  v: T;
+  title: string;
+  desc: string;
+}
+
+/** Opciones en lista: cada una es una fila grande con su título y lo que significa. */
+function OptionList<T>({ value, options, onChange }: { value: T; options: OptionItem<T>[]; onChange: (v: T) => void }) {
+  return (
+    <div className="cr-opts" role="radiogroup">
+      {options.map((o) => (
+        <button key={String(o.v)} className="cr-opt" role="radio" aria-checked={value === o.v} onClick={() => onChange(o.v)}>
+          <span className="cr-opt-dot" aria-hidden="true" />
+          <span className="cr-opt-text">
+            <b>{o.title}</b>
+            <small>{o.desc}</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Puntos de un resultado, con − y + grandes. */
+function PointsStepper({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="cr-stepper">
+      <span>{label}</span>
+      <button className="btn" onClick={() => onChange(value - 1)} aria-label={`Menos puntos por ${label.toLowerCase()}`} disabled={value <= 0}>
+        −
+      </button>
+      <b aria-live="polite">{value}</b>
+      <button className="btn" onClick={() => onChange(value + 1)} aria-label={`Más puntos por ${label.toLowerCase()}`} disabled={value >= 9}>
+        +
+      </button>
+    </div>
+  );
+}
 
 /** Una opción del creador: título, botones y una línea que explica lo elegido. */
 function CreatorField({ label, children, note }: { label: string; children: ReactNode; note?: ReactNode }) {
@@ -1231,7 +1351,8 @@ export function TournamentTemplateScreen({
   const hasFinal = hasTemplateFinal(tpl);
   // La final «con sus propias reglas» solo si alguna difiere de las del resto de partidos.
   const ownFinalRules = tpl.finalEndCondition !== undefined || tpl.finalGoals !== null || tpl.finalMinutes !== undefined;
-  const idx = CREATOR_STEPS.findIndex((x) => x.id === step);
+  const CREATOR_STEPS = creatorSteps(tpl.format);
+  const idx = Math.max(0, CREATOR_STEPS.findIndex((x) => x.id === step));
   const last = idx === CREATOR_STEPS.length - 1;
   const n = selected?.length ?? 0;
   const fit = n ? templateFit(tpl, n) : null;
@@ -1290,50 +1411,123 @@ export function TournamentTemplateScreen({
       </div>
     );
   } else if (step === 'players') {
+    const pairingOpts: OptionItem<TournamentTemplate['pairing']>[] = [
+      { v: 'random', title: 'Al azar', desc: 'Las parejas salen por sorteo al crear cada edición.' },
+      { v: 'manual', title: 'Las elegimos nosotros', desc: 'Al crear cada edición, los jugadores forman las parejas a mano.' },
+      { v: 'elo', title: 'Equilibradas', desc: 'Fuerte con flojo según el ELO, para que estén igualadas.' },
+    ];
     body = isPool ? (
-      <>
-        <CreatorField label="Partidos por jugador" note="Se ajusta al crear el torneo para que todos jueguen los mismos.">
-          <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
-        </CreatorField>
-        <CreatorField
-          label="Parejas de cada partido"
-          note={tpl.pairing === 'elo' ? 'Se juntan fuertes con flojos para que los partidos estén igualados.' : 'Las parejas salen por sorteo en cada partido.'}
-        >
-          <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
-        </CreatorField>
-        <small className="cr-note">Vale con número par o impar de jugadores: si sobra alguien, descansa por turnos.</small>
-      </>
+      <div className="cr-cols">
+        <div className="cr-col">
+          <CreatorField label="Partidos por jugador" note="Se ajusta al crear el torneo para que todos jueguen los mismos.">
+            <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
+          </CreatorField>
+          <small className="cr-note">Vale con número par o impar de jugadores: si sobra alguien, descansa por turnos.</small>
+        </div>
+        <div className="cr-col">
+          <CreatorField label="Parejas de cada partido">
+            <OptionList<'elo' | 'random'>
+              value={tpl.pairing === 'elo' ? 'elo' : 'random'}
+              options={[
+                { v: 'random', title: 'Al azar', desc: 'Las parejas salen por sorteo en cada partido.' },
+                { v: 'elo', title: 'Equilibradas', desc: 'Fuertes con flojos para que los partidos estén igualados.' },
+              ]}
+              onChange={(v) => set('pairing', v)}
+            />
+          </CreatorField>
+        </div>
+      </div>
     ) : (
-      <>
-        <CreatorField
-          label="Quién juega"
-          note={tpl.teamSize === 1 ? 'Cada jugador va por su cuenta.' : 'Parejas fijas durante todo el torneo (necesita número par de jugadores).'}
-        >
-          <Seg<1 | 2> value={tpl.teamSize} options={[[1, '1 CONTRA 1'], [2, 'PAREJAS FIJAS']]} onChange={(v) => set('teamSize', v)} />
-        </CreatorField>
+      <div className="cr-cols">
+        <div className="cr-col">
+          <CreatorField label="Quién juega">
+            <OptionList<1 | 2>
+              value={tpl.teamSize}
+              options={[
+                { v: 1, title: '1 contra 1', desc: 'Cada jugador va por su cuenta.' },
+                { v: 2, title: 'Parejas fijas', desc: 'Las mismas parejas todo el torneo (número par de jugadores).' },
+              ]}
+              onChange={(v) => set('teamSize', v)}
+            />
+          </CreatorField>
+          {tpl.format === 'bracket' && (
+            <CreatorField label="Cruces">
+              <OptionList<'elo' | 'random'>
+                value={tpl.seeding}
+                options={[
+                  { v: 'elo', title: 'Por ELO', desc: 'Los mejores no se cruzan hasta el final; los huecos pasan directos.' },
+                  { v: 'random', title: 'Sorteo', desc: 'Los cruces salen por sorteo.' },
+                ]}
+                onChange={(v) => set('seeding', v)}
+              />
+            </CreatorField>
+          )}
+        </div>
         {tpl.teamSize === 2 && (
-          <CreatorField
-            label="Cómo se forman las parejas"
-            note={tpl.pairing === 'elo' ? 'Fuerte con flojo, para que las parejas estén igualadas.' : 'Por sorteo. Los equipos ya guardados siempre juegan juntos.'}
-          >
-            <Seg<'elo' | 'random'> value={tpl.pairing} options={[['elo', 'EQUILIBRADAS'], ['random', 'AL AZAR']]} onChange={(v) => set('pairing', v)} />
-          </CreatorField>
+          <div className="cr-col">
+            <CreatorField label="Cómo se forman las parejas" note="Los equipos ya guardados siempre juegan juntos.">
+              <OptionList value={tpl.pairing} options={pairingOpts} onChange={(v) => set('pairing', v)} />
+            </CreatorField>
+          </div>
         )}
-        {tpl.format === 'bracket' && (
-          <CreatorField
-            label="Cruces"
-            note={tpl.seeding === 'elo' ? 'Los mejores no se cruzan hasta el final; los huecos pasan directos.' : 'Los cruces salen por sorteo.'}
-          >
-            <Seg<'elo' | 'random'> value={tpl.seeding} options={[['elo', 'POR ELO'], ['random', 'SORTEO']]} onChange={(v) => set('seeding', v)} />
-          </CreatorField>
-        )}
-      </>
+      </div>
     );
   } else if (step === 'rules') {
+    const canDraw = tpl.format === 'league';
     body = (
-      <CreatorField label="Cómo se gana un partido" note={rulesText(tpl)}>
-        <RulesPicker rules={tpl} onChange={(patch) => setTpl((t) => ({ ...t, ...patch }))} />
-      </CreatorField>
+      <div className={canDraw && tpl.endCondition !== 'goals' ? 'cr-cols cr-cols-rules' : 'cr-big'}>
+        <div className="cr-col cr-big">
+          <CreatorField label="Cómo se gana un partido" note={rulesText(tpl)}>
+            <RulesPicker rules={tpl} onChange={(patch) => setTpl((t) => ({ ...t, ...patch }))} />
+          </CreatorField>
+        </div>
+        {canDraw &&
+          (tpl.endCondition === 'goals' ? (
+            <small className="cr-note">A goles siempre hay ganador: no hay empates. Para poder empatar, juega a tiempo o «ambas».</small>
+          ) : (
+            <div className="cr-col">
+            <CreatorField label="Si acaban igualados">
+              <OptionList<boolean>
+                value={tpl.allowDraw !== false}
+                options={[
+                  { v: true, title: 'Empate', desc: 'Sin prórroga ni penaltis: cada uno se lleva los puntos del empate.' },
+                  { v: false, title: 'Siempre hay ganador', desc: 'Prórroga con gol de oro y, si sigue igualado, penaltis.' },
+                ]}
+                onChange={(v) => set('allowDraw', v)}
+              />
+            </CreatorField>
+            </div>
+          ))}
+      </div>
+    );
+  } else if (step === 'points') {
+    const pts = templatePoints(tpl);
+    const draws = templateAllowsDraw(tpl);
+    const setPts = (k: keyof typeof pts, v: number) => set('points', { ...pts, [k]: Math.max(0, Math.min(9, v)) });
+    body = (
+      <div className="cr-cols">
+        <div className="cr-col">
+          <CreatorField label="Vueltas">
+            <OptionList<1 | 2>
+              value={tpl.legs ?? 1}
+              options={[
+                { v: 1, title: 'Solo ida', desc: 'Cada uno juega una vez contra cada rival.' },
+                { v: 2, title: 'Ida y vuelta', desc: 'Dos veces contra cada rival, cambiando de lado en la vuelta.' },
+              ]}
+              onChange={(v) => set('legs', v)}
+            />
+          </CreatorField>
+        </div>
+        <div className="cr-col">
+          <CreatorField label="Puntos por partido" note={draws ? undefined : 'Sin empates en esta liga (a goles, o con prórroga y penaltis).'}>
+            <div className="cr-points">
+              <PointsStepper label="Victoria" value={pts.win} onChange={(v) => setPts('win', v)} />
+              {draws && <PointsStepper label="Empate" value={pts.draw} onChange={(v) => setPts('draw', v)} />}
+              <PointsStepper label="Derrota" value={pts.loss} onChange={(v) => setPts('loss', v)} />
+            </div>
+          </CreatorField>
+        </div>
+      </div>
     );
   } else if (step === 'final') {
     body = (
@@ -1499,6 +1693,8 @@ export function TournamentDetailScreen({
   const finalFx = t.fixtures.find((f) => f.stage === 'final');
   // Subidas y bajadas de puesto con el último partido.
   const movement = standingsMovement(t, matches);
+  // Columna de empates solo en una liga donde se puede empatar.
+  const hasDraws = t.format === 'league' && !!t.config.allowDraw;
   const allPlayerIds = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
   const back = () => (from === 'list' ? navigate({ name: 'tournament', tab: t.status === 'active' ? 'list' : 'honours' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
 
@@ -1533,7 +1729,7 @@ export function TournamentDetailScreen({
     const series = (f.bestOf ?? 1) > 1;
     const isNext = f.id === next?.id;
     return (
-      <div key={f.id} className={`fixture ${f.winnerTeamId ? 'done' : ''} ${isNext ? 'is-next' : ''}`}>
+      <div key={f.id} className={`fixture ${fixtureDone(f) ? 'done' : ''} ${f.draw ? 'is-draw' : ''} ${isNext ? 'is-next' : ''}`}>
         <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
           <i className="pre-dot white" aria-label="Blanco" /> {teamLabel(f.whiteTeamId)}
         </span>
@@ -1713,6 +1909,7 @@ export function TournamentDetailScreen({
                   <th>{t.format === 'pool' ? 'Jugador' : 'Equipo'}</th>
                   <th>PJ</th>
                   <th>G</th>
+                  {hasDraws && <th>E</th>}
                   <th>P</th>
                   <th>Dif</th>
                   <th>Pts</th>
@@ -1728,6 +1925,7 @@ export function TournamentDetailScreen({
                     <td>{teamLabel(r.team.id)}</td>
                     <td>{r.played}</td>
                     <td>{r.wins}</td>
+                    {hasDraws && <td>{r.draws}</td>}
                     <td>{r.losses}</td>
                     <td>{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
                     <td><strong>{r.points}</strong></td>
@@ -1771,7 +1969,7 @@ export function TournamentDetailScreen({
                 (t.format === 'league' && !fx.some((f) => f.stage)
                   ? t.teams.filter((tt) => !fx.some((f) => f.whiteTeamId === tt.id || f.blueTeamId === tt.id)).flatMap((tt) => tt.playerIds)
                   : []);
-              const state = fx.length && fx.every((f) => f.winnerTeamId) ? 'done' : fx.some((f) => f.id === next?.id) ? 'current' : 'pending';
+              const state = fx.length && fx.every(fixtureDone) ? 'done' : fx.some((f) => f.id === next?.id) ? 'current' : 'pending';
               return (
                 <div key={r} className={`round-block round-${state}`}>
                   <div className="round-head">

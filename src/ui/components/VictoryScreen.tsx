@@ -36,6 +36,8 @@ function matchFacts(state: MatchState): string[] {
   const r = state.result!;
   const w = r.winner;
   const facts = [`Duración ${formatDuration(r.totalTimeMs)}`];
+  // Empate: no hay remontada ni portería a cero de nadie que contar.
+  if (!w) return facts;
   const run = { white: 0, blue: 0 };
   let streakTeam: Team | null = null;
   let streak = 0;
@@ -85,7 +87,7 @@ export function VictoryScreen({
   const TEAM_LABEL = { white: sideText(clubs, 'white'), blue: sideText(clubs, 'blue') };
   const r = state.result!;
   const byTeam = (t: Team) => state.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
-  const winners = byTeam(r.winner);
+  const winners = r.winner ? byTeam(r.winner) : [];
   // Con 3 o 4 jugadores por equipo las filas se compactan para que quepa todo.
   const many = Math.max(byTeam('white').length, byTeam('blue').length) >= 3;
   const byId = new Map(players.map((p) => [p.id, p]));
@@ -176,7 +178,11 @@ export function VictoryScreen({
           </button>
         </div>
         <div className="vic-title-wrap">
-          <div className={`victory-title ${TEAM_LABEL[r.winner].length > 10 ? 'is-long' : ''}`}>¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
+          {r.winner ? (
+            <div className={`victory-title ${TEAM_LABEL[r.winner].length > 10 ? 'is-long' : ''}`}>¡VICTORIA {TEAM_LABEL[r.winner]}!</div>
+          ) : (
+            <div className="victory-title">¡EMPATE!</div>
+          )}
         </div>
         <div className="vic-side vic-side-right">
           {inTournament ? (

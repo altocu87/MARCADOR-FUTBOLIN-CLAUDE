@@ -178,7 +178,8 @@ export function computeProgression(
         const p = ensure(part.playerId);
         const opp: Team = part.team === 'white' ? 'blue' : 'white';
         const expected = eloExpected(avg[part.team], avg[opp]);
-        const s = part.team === winner ? 1 : 0;
+        // Empate: medio punto para cada lado.
+        const s = winner === null ? 0.5 : part.team === winner ? 1 : 0;
         const k = p.rankedPlayed < settings.provisionalMatches ? settings.kProvisional : settings.kEstablished;
         const delta = Math.round(k * mult * (s - expected));
         eloChanges.set(part.playerId, { before: p.elo, after: p.elo + delta, delta, k });
@@ -235,6 +236,10 @@ export function computeProgression(
         c.lossStreak = 0;
         if (match.config.mode === 'ranked') c.rankedWins += 1;
         if (match.config.mode === 'chaos') c.chaosWins += 1;
+      } else if (winner === null) {
+        // Un empate corta las dos rachas.
+        c.winStreak = 0;
+        c.lossStreak = 0;
       } else {
         c.winStreak = 0;
         c.lossStreak += 1;
@@ -263,7 +268,7 @@ export function computeProgression(
       }
 
       const lines: XpLine[] = [{ label: 'Partido completado', xp: XP_TABLE.complete }];
-      lines.push(won ? { label: 'Victoria', xp: XP_TABLE.win } : { label: 'Derrota', xp: XP_TABLE.loss });
+      lines.push(won ? { label: 'Victoria', xp: XP_TABLE.win } : winner === null ? { label: 'Empate', xp: XP_TABLE.draw } : { label: 'Derrota', xp: XP_TABLE.loss });
       if (won && isRanked) lines.push({ label: 'Victoria clasificatoria', xp: XP_TABLE.rankedWinBonus });
       if (won && match.result.reason === 'golden_goal') lines.push({ label: 'Victoria en prórroga', xp: XP_TABLE.overtimeWin });
       if (won && match.result.reason === 'penalties') lines.push({ label: 'Victoria en penaltis', xp: XP_TABLE.penaltiesWin });

@@ -87,6 +87,8 @@ export interface Fixture {
   blueTeamId: string | null;
   matchId?: string;
   winnerTeamId?: string;
+  /** Acabó en empate (liga con empates): está jugado aunque no tenga ganador. */
+  draw?: boolean;
   /** Pase directo (cuadro con huecos). */
   bye?: boolean;
   nextFixtureId?: string;
@@ -124,6 +126,8 @@ export interface Tournament {
   finalMatchId?: string;
   /** Pool: jugadores inscritos (las parejas cambian en cada partido). */
   entrants?: string[];
+  /** Liga: puntos por victoria, empate y derrota (sin poner: 3, 1 y 0). */
+  points?: TournamentPoints;
   /** Final tras la fase regular (liguilla y Pool). */
   final?: TournamentFinal;
   /** Reglas de la final si difieren de las del resto (p. ej. a más goles). */
@@ -141,6 +145,13 @@ export interface Tournament {
   cup?: string;
 }
 
+/** Puntos que da cada resultado en la clasificación. */
+export interface TournamentPoints {
+  win: number;
+  draw: number;
+  loss: number;
+}
+
 /** Tipo de torneo guardado como predefinido en el creador. */
 export interface TournamentTemplate {
   id: string;
@@ -150,8 +161,8 @@ export interface TournamentTemplate {
   format: TournamentFormat;
   /** Liguilla y cuadro: 1 jugador o parejas fijas. El Pool siempre es por parejas rotativas. */
   teamSize: 1 | 2;
-  /** Cómo se forman las parejas: equilibradas por ELO o al azar. */
-  pairing: 'elo' | 'random';
+  /** Cómo se forman las parejas: equilibradas por ELO, al azar o las eligen los jugadores al crear. */
+  pairing: 'elo' | 'random' | 'manual';
   /** Cuadro: orden de siembra. */
   seeding: 'elo' | 'random';
   /** Pool: partidos que juega cada jugador (se ajusta para que todos jueguen los mismos). */
@@ -169,6 +180,12 @@ export interface TournamentTemplate {
   finalEndCondition?: MatchConfig['endCondition'];
   /** Minutos por parte de la final (sin poner = los mismos que el resto). */
   finalMinutes?: number;
+  /** Liga: se puede empatar (sin prórroga ni penaltis). Sin poner: sí. La final nunca empata. */
+  allowDraw?: boolean;
+  /** Liga: puntos por victoria, empate y derrota. Sin poner: 3, 1 y 0. */
+  points?: TournamentPoints;
+  /** Liga: a una vuelta (solo ida) o a dos (ida y vuelta). Sin poner: 1. */
+  legs?: 1 | 2;
 }
 
 export type EffectsLevel = 'full' | 'reduced' | 'off';

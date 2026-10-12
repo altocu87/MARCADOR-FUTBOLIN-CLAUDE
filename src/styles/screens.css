@@ -2847,6 +2847,9 @@
   gap: 14px;
   min-width: 0;
 }
+.cr-cols.cr-cols-rules {
+  grid-template-columns: 3fr 2fr;
+}
 .cr-field {
   display: flex;
   flex-direction: column;
@@ -2883,6 +2886,152 @@
 .cr-summary .tpl-why {
   color: #ff8a8a;
   font-weight: 800;
+}
+/* Opciones en lista: filas grandes con un punto de radio, título y explicación. */
+.cr-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cr-opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.72);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cr-opt-dot {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--text-2);
+}
+.cr-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cr-opt-text b {
+  font-size: 18px;
+}
+.cr-opt-text small {
+  color: var(--text-2);
+  font-size: 13px;
+}
+.cr-opt[aria-checked='true'] {
+  border-color: #62d6ff;
+  background: color-mix(in srgb, #62d6ff 14%, rgba(7, 16, 28, 0.8));
+  box-shadow: 0 0 12px color-mix(in srgb, #62d6ff 55%, transparent);
+}
+.cr-opt[aria-checked='true'] .cr-opt-dot {
+  border-color: #62d6ff;
+  background: radial-gradient(circle, #62d6ff 0 45%, transparent 50%);
+}
+/* «Cómo se gana un partido»: botones grandes que llenan la pantalla. */
+.cr-big .segmented .seg {
+  min-height: 64px !important;
+  font-size: 20px;
+}
+.cr-big .tn-rules-row {
+  margin-top: 6px;
+}
+.cr-big .tn-rules-row .segmented .seg {
+  min-height: 58px !important;
+  font-size: 18px;
+}
+/* Puntos por resultado: − número + */
+.cr-points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cr-stepper {
+  display: grid;
+  grid-template-columns: 1fr 56px 56px 56px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.72);
+  font-size: 17px;
+  font-weight: 800;
+}
+.cr-stepper .btn {
+  height: 46px;
+  font-size: 24px;
+  padding: 0;
+}
+.cr-stepper b {
+  text-align: center;
+  font-size: 28px;
+  color: #62d6ff;
+}
+/* Ventana de parejas de la edición. */
+.tn-pair-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tn-pair-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 92px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tn-pair-player.is-on {
+  border-color: #62d6ff;
+  box-shadow: 0 0 10px color-mix(in srgb, #62d6ff 60%, transparent);
+}
+.tn-pair-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tn-pair {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.6);
+}
+.tn-pair-names {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tn-pair-names > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.tn-pair-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 /* En el creador el tipo se elige con un solo toque: la tarjeta elegida se queda encendida. */
 .cr-kinds {

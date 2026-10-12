@@ -89,7 +89,8 @@ function addToBlock(block: StatBlock, match: StoredMatch, team: Team): void {
   const opp: Team = team === 'white' ? 'blue' : 'white';
   block.played += 1;
   if (match.result.winner === team) block.wins += 1;
-  else block.losses += 1;
+  else if (match.result.winner) block.losses += 1;
+  else block.draws += 1;
   block.goalsFor += match.result.score[team];
   block.goalsAgainst += match.result.score[opp];
   block.goalDiff = block.goalsFor - block.goalsAgainst;
@@ -120,9 +121,9 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
     addToBlock(byMode[m.config.mode], m, team);
     if (m.config.mode === 'ranked') {
       addToBlock(ranked, m, team);
-      rankedLetters.push(won ? 'G' : 'P');
+      rankedLetters.push(won ? 'G' : m.result.winner ? 'P' : 'E');
     }
-    letters.push(won ? 'G' : 'P');
+    letters.push(won ? 'G' : m.result.winner ? 'P' : 'E');
     run = won ? run + 1 : 0;
     bestWinStreak = Math.max(bestWinStreak, run);
     totalPlayTimeMs += m.result.totalTimeMs;
@@ -134,7 +135,7 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
       r.name = p.nameSnapshot;
       r.played += 1;
       if (won) r.wins += 1;
-      else r.losses += 1;
+      else if (m.result.winner) r.losses += 1;
       r.winPct = (r.wins / r.played) * 100;
       map.set(p.playerId, r);
     }
@@ -142,7 +143,9 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
 
   const currentStreak: Streak = { type: null, count: 0 };
   for (let i = letters.length - 1; i >= 0; i -= 1) {
-    const l = letters[i] as 'G' | 'P';
+    const l = letters[i];
+    // Un empate corta la racha (de victorias o de derrotas).
+    if (l === 'E') break;
     if (currentStreak.type === null) currentStreak.type = l;
     if (l !== currentStreak.type) break;
     currentStreak.count += 1;
@@ -176,6 +179,8 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
 /** Máxima desventaja que superó el ganador (0 si nunca fue por detrás). */
 export function comebackSize(match: StoredMatch): number {
   const winner = match.result.winner;
+  // En un empate nadie remonta hasta ganar.
+  if (!winner) return 0;
   const loser: Team = winner === 'white' ? 'blue' : 'white';
   const score = { white: 0, blue: 0 };
   let maxDeficit = 0;
@@ -232,11 +237,11 @@ export function lastMeetings(
   whiteIds: string[],
   blueIds: string[],
   limit = 3,
-): { match: StoredMatch; white: number; blue: number; winner: Team }[] {
+): { match: StoredMatch; white: number; blue: number; winner: Team | null }[] {
   const key = (ids: string[]) => [...ids].sort().join('|');
   const kw = key(whiteIds);
   const kb = key(blueIds);
-  const out: { match: StoredMatch; white: number; blue: number; winner: Team }[] = [];
+  const out: { match: StoredMatch; white: number; blue: number; winner: Team | null }[] = [];
   for (const m of [...matches].sort((a, b) => b.finishedAt - a.finishedAt)) {
     const mw = key(m.participants.filter((p) => p.team === 'white').map((p) => p.playerId));
     const mb = key(m.participants.filter((p) => p.team === 'blue').map((p) => p.playerId));
@@ -245,7 +250,7 @@ export function lastMeetings(
     const { white, blue } = m.result.score;
     out.push(
       swapped
-        ? { match: m, white: blue, blue: white, winner: m.result.winner === 'white' ? 'blue' : 'white' }
+        ? { match: m, white: blue, blue: white, winner: m.result.winner && (m.result.winner === 'white' ? 'blue' : 'white') }
         : { match: m, white, blue, winner: m.result.winner },
     );
     if (out.length >= limit) break;
