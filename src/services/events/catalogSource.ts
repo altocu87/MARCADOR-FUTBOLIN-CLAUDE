@@ -47,7 +47,7 @@ const entrar = { tipo: 'entrar' } as const;
 const jugar = { tipo: 'jugarPartido', modo: 'cualquiera' } as const;
 const ganar = { tipo: 'ganarPartido', modo: 'cualquiera' } as const;
 
-/** Halloween 2026: escudo al entrar, banner jugando y copa ganando un partido el 31 oct; un juego para ligas y otro para copas. */
+/** Halloween 2026: escudo al entrar, banner jugando y copa ganando un partido el 31 oct; un juego para cada tipo de torneo (liga, copa y pool). */
 const HALLOWEEN_2026 = [
   piezaDeEvento('app-halloween-2026-escudo', 'escudo', 'Halloween 2026 · Escudo de liga', 'Escudo fantasma 2026', 'evento-halloween-2026-liga-escudo', entrar, ...H26, 0, 'league'),
   piezaDeEvento('app-halloween-2026-banner', 'fondo', 'Halloween 2026 · Banner de liga', 'Banner noche de brujas 2026', 'evento-halloween-2026-liga-banner', jugar, ...H26, 1, 'league'),
@@ -55,6 +55,9 @@ const HALLOWEEN_2026 = [
   piezaDeEvento('app-halloween-2026-copa-escudo', 'escudo', 'Halloween 2026 · Escudo de copa', 'Escudo calabaza 2026', 'evento-halloween-2026-copa-escudo', entrar, ...H26, 3, 'bracket'),
   piezaDeEvento('app-halloween-2026-copa-banner', 'fondo', 'Halloween 2026 · Banner de copa', 'Banner calabazas 2026', 'evento-halloween-2026-copa-banner', jugar, ...H26, 4, 'bracket'),
   piezaDeEvento('app-halloween-2026-copa-copa', 'copa', 'Halloween 2026 · Copa de copa', 'Copa fantasma 2026', 'evento-halloween-2026-copa-copa', ganar, ...H26, 5, 'bracket'),
+  piezaDeEvento('app-halloween-2026-pool-escudo', 'escudo', 'Halloween 2026 · Escudo de pool', 'Escudo futbolín embrujado 2026', 'evento-halloween-2026-pool-escudo', entrar, ...H26, 6, 'pool'),
+  piezaDeEvento('app-halloween-2026-pool-banner', 'fondo', 'Halloween 2026 · Banner de pool', 'Banner barras fantasma 2026', 'evento-halloween-2026-pool-banner', jugar, ...H26, 7, 'pool'),
+  piezaDeEvento('app-halloween-2026-pool-copa', 'copa', 'Halloween 2026 · Copa de pool', 'Copa calabaza negra 2026', 'evento-halloween-2026-pool-copa', ganar, ...H26, 8, 'pool'),
 ];
 
 /** Eventos que vienen dentro de la app (sus imágenes están en src/assets/images, `evento-…`). */

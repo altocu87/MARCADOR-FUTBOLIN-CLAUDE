@@ -87,10 +87,10 @@ describe('Eventos · premios', () => {
     expect(cuandoTexto({ modo: 'anual', desdeDia: '12-20', hastaDia: '01-06' })).toBe('cada año del 20 dic al 6 ene');
     expect(cuandoTexto({ modo: 'siempre' })).toBe('siempre');
   });
-  it('Halloween 2026 viene en la app: escudo al entrar ese día, un juego para ligas y otro para copas', () => {
+  it('Halloween 2026 viene en la app: escudo al entrar ese día, un juego por tipo de torneo', () => {
     const r = computeRewards(BUNDLED_CATALOG, { matches: [], tournaments: [], visitDays: ['2026-10-31'] });
     expect(r.device.has('app-halloween-2026-escudo-1')).toBe(true);
-    expect(new Set(BUNDLED_CATALOG.collections.map((c) => c.torneo))).toEqual(new Set(['league', 'bracket']));
+    expect(new Set(BUNDLED_CATALOG.collections.map((c) => c.torneo))).toEqual(new Set(['league', 'bracket', 'pool']));
     expect(r.device.has('app-halloween-2026-copa-escudo-1')).toBe(true);
     expect(computeRewards(BUNDLED_CATALOG, { matches: [], tournaments: [], visitDays: ['2026-11-01'] }).device.size).toBe(0);
   });
