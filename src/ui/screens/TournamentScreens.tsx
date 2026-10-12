@@ -52,7 +52,7 @@ import {
   type TemplateFit,
 } from '../../services/tournaments';
 import { AssetImage, assetUrl } from '../components/assets';
-import { Crest, Cup, IconPicker, defaultCup, defaultLogo } from '../components/Crest';
+import { BannerArt, Crest, Cup, IconPicker, bannerCatalog, defaultBanner, defaultCup, defaultLogo } from '../components/Crest';
 import { ClubEditor } from '../components/ClubEditor';
 import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
@@ -614,8 +614,8 @@ export function TournamentNewScreen({
   // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
   const [showBlocked, setShowBlocked] = useState(false);
   // Nombre, logo y copa del torneo (por defecto, los del tipo elegido y su última edición).
-  const [brand, setBrand] = useState<{ tplId: string; name?: string; logo?: string; cup?: string } | null>(null);
-  const [picker, setPicker] = useState<'logo' | 'cup' | null>(null);
+  const [brand, setBrand] = useState<{ tplId: string; name?: string; logo?: string; banner?: string; cup?: string } | null>(null);
+  const [picker, setPicker] = useState<'logo' | 'cup' | 'banner' | null>(null);
   // Nombre y logo de las parejas fijas (por pareja de jugadores); se guardan como equipos al crear.
   const [teamEdits, setTeamEdits] = useState<Record<string, { name: string; logo: string }>>({});
   const [editingTeam, setEditingTeam] = useState<string[] | null>(null);
@@ -947,8 +947,9 @@ export function TournamentNewScreen({
   // Banner y copa: lo cambiado aquí, si no los del torneo, si no los de la edición anterior.
   const logo = myBrand?.logo ?? (isCustom ? undefined : tpl?.logo) ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo', tpl?.format);
   const cup = myBrand?.cup ?? (isCustom ? undefined : tpl?.cup) ?? prevEdition?.cup ?? defaultCup();
-  const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
-    tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
+  const banner = myBrand?.banner ?? (isCustom ? undefined : tpl?.banner) ?? prevEdition?.banner ?? defaultBanner(compName || 'torneo', tpl?.format);
+  const setBrandField = (patch: { name?: string; logo?: string; banner?: string; cup?: string }) =>
+    tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, banner: myBrand?.banner, cup: myBrand?.cup, ...patch });
   const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
   // Parejas elegidas por los jugadores: solo valen las que se formen aquí (no los equipos guardados).
   const isManual = !!tpl && tpl.format !== 'pool' && tpl.teamSize === 2 && tpl.pairing === 'manual';
@@ -967,6 +968,7 @@ export function TournamentNewScreen({
         edition,
         logo,
         cup,
+        ...(banner ? { banner } : {}),
         ...(isCustom && compName.trim() ? { competition: compName.trim() } : {}),
         teams: built.draft.teams.map((tm) => {
           const info = tm.playerIds.length === 2 ? teamInfo(tm.playerIds) : null;
@@ -1095,7 +1097,13 @@ export function TournamentNewScreen({
         <div className="tn-col tn-col-rules scroll">
           {tpl && (
             <>
-            <div className="tn-nameplate" aria-label={`Nombre del torneo: ${name}`}>
+            <div className={`tn-nameplate${banner ? ' has-banner' : ''}`} aria-label={`Nombre del torneo: ${name}`}>
+              <BannerArt id={banner} className="tn-np-banner" />
+              {bannerCatalog(tpl.format).length > 0 && (
+                <button className="tn-np-banner-btn" onClick={() => setPicker('banner')} aria-label="Cambiar el banner">
+                  🖼 Banner
+                </button>
+              )}
               <button className="tn-np-icon" onClick={() => setPicker('logo')} aria-label="Cambiar el logo del torneo">
                 <Crest id={logo} size={52} />
               </button>
@@ -1119,8 +1127,8 @@ export function TournamentNewScreen({
             {picker && (
               <IconPicker
                 kind={picker}
-                value={picker === 'logo' ? logo : cup}
-                onPick={(v) => setBrandField(picker === 'logo' ? { logo: v } : { cup: v })}
+                value={picker === 'logo' ? logo : picker === 'banner' ? banner : cup}
+                onPick={(v) => setBrandField({ [picker]: v })}
                 playerIds={selected}
                 format={tpl.format}
                 onClose={() => setPicker(null)}
@@ -1363,7 +1371,7 @@ export function TournamentTemplateScreen({
   // Si ya se sabe el tipo (se viene de «+ Crear liga») o se edita uno, se empieza por los jugadores.
   const [step, setStep] = useState<CreatorStep>(existing || baseId || format ? 'players' : 'kind');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [picker, setPicker] = useState<'logo' | 'cup' | null>(null);
+  const [picker, setPicker] = useState<'logo' | 'cup' | 'banner' | null>(null);
   const set = <K extends keyof TournamentTemplate>(key: K, value: TournamentTemplate[K]) => setTpl((t) => ({ ...t, [key]: value }));
   const kind = KINDS.find((k) => k.format === tpl.format)!;
   const isPool = tpl.format === 'pool';
@@ -1577,8 +1585,10 @@ export function TournamentTemplateScreen({
       </div>
     );
   } else {
-    const banner = tpl.logo ?? defaultLogo(tpl.name || 'torneo', tpl.format);
+    const crest = tpl.logo ?? defaultLogo(tpl.name || 'torneo', tpl.format);
     const cupId = tpl.cup ?? defaultCup();
+    const bannerId = tpl.banner ?? defaultBanner(tpl.name || 'torneo', tpl.format);
+    const hasBanners = bannerCatalog(tpl.format).length > 0;
     body = (
       <div className="cr-cols">
         <div className="cr-col">
@@ -1602,12 +1612,18 @@ export function TournamentTemplateScreen({
         </div>
         <div className="cr-col">
           <div className="cr-prizes">
-            <button className="cr-prize" onClick={() => setPicker('logo')} aria-label="Elegir el banner">
-              <Crest id={banner} size={64} />
-              <span>Banner</span>
+            {hasBanners && (
+              <button className="cr-banner" onClick={() => setPicker('banner')} aria-label="Elegir el banner">
+                <BannerArt id={bannerId} />
+                <span>Banner</span>
+              </button>
+            )}
+            <button className="cr-prize" onClick={() => setPicker('logo')} aria-label="Elegir el escudo">
+              <Crest id={crest} size={44} />
+              <span>Escudo</span>
             </button>
             <button className="cr-prize" onClick={() => setPicker('cup')} aria-label="Elegir la copa">
-              <Cup id={cupId} size={64} />
+              <Cup id={cupId} size={44} />
               <span>Copa</span>
             </button>
           </div>
@@ -1632,8 +1648,8 @@ export function TournamentTemplateScreen({
         {picker && (
           <IconPicker
             kind={picker}
-            value={picker === 'logo' ? banner : cupId}
-            title={picker === 'logo' ? 'Elige el banner' : 'Elige la copa'}
+            value={picker === 'logo' ? crest : picker === 'banner' ? bannerId : cupId}
+            title={picker === 'logo' ? 'Elige el escudo' : picker === 'banner' ? 'Elige el banner' : 'Elige la copa'}
             onPick={(v) => set(picker, v)}
             playerIds={selected ?? []}
             format={tpl.format}
@@ -1934,6 +1950,7 @@ export function TournamentDetailScreen({
       }
       className="select-screen tn-screen"
       background={TN_BG}
+      headerArt={t.banner ? <BannerArt id={t.banner} className="screen-header-art" /> : undefined}
       subtitle={t.templateName && t.edition ? `${t.edition}ª edición${t.ranked ? ' · ELO' : ''}` : `${FORMAT_LABEL[t.format]}${t.ranked ? ' · ELO' : ''}`}
       onBack={back}
       right={

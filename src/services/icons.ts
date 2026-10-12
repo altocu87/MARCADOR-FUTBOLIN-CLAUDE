@@ -7,7 +7,8 @@ import type { TournamentFormat } from './persistence';
 import type { PlayerProgress } from './progression';
 import { ACHIEVEMENTS, CATEGORIES, categoryFor } from './progression';
 
-export type IconKind = 'logo' | 'cup';
+/** Escudo, copa o banner (franja ancha de fondo del cartel del torneo). */
+export type IconKind = 'logo' | 'cup' | 'banner';
 
 export type Unlock =
   | { level: number }
@@ -34,11 +35,12 @@ export const ICON_CATEGORIES: IconCategory[] = [
   { id: 'generico', kind: 'logo', label: 'Genéricos' },
   { id: 'retro80', kind: 'logo', label: 'Retro 80' },
   { id: 'liga', kind: 'logo', label: 'Liga', format: 'league' },
+  { id: 'liga', kind: 'banner', label: 'Liga', format: 'league' },
   { id: 'generico', kind: 'cup', label: 'Genéricas' },
   { id: 'retro90', kind: 'cup', label: 'Retro 90' },
 ];
 
-export const ICON_PREFIX: Record<IconKind, string> = { logo: 'escudo-', cup: 'copa-' };
+export const ICON_PREFIX: Record<IconKind, string> = { logo: 'escudo-', cup: 'copa-', banner: 'banner-' };
 
 /** Categoría de una imagen por su nombre: `escudo-retro80-03` → retro80; `escudo-07` → generico. */
 export function iconCategory(name: string, kind: IconKind): string {

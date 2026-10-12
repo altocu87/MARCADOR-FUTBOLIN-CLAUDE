@@ -144,6 +144,8 @@ export interface Tournament {
   competition?: string;
   /** Logo del torneo y copa que se lleva el campeón (ids del muestrario). */
   logo?: string;
+  /** Banner: franja de fondo del cartel del torneo. */
+  banner?: string;
   cup?: string;
 }
 
@@ -188,8 +190,9 @@ export interface TournamentTemplate {
   points?: TournamentPoints;
   /** Liga: a una vuelta (solo ida) o a dos (ida y vuelta). Sin poner: 1. */
   legs?: 1 | 2;
-  /** Banner (escudo) y copa de la competición; cada edición los puede cambiar. */
+  /** Escudo, banner (franja de fondo del cartel) y copa de la competición; cada edición los puede cambiar. */
   logo?: string;
+  banner?: string;
   cup?: string;
   /** Título que se lleva el último (p. ej. «Farolillo rojo»). Sin poner: «Patético». */
   lastTitle?: string;

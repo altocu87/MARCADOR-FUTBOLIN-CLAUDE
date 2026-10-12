@@ -5968,3 +5968,118 @@ div > .name-clash:first-child {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- Banner del torneo (franja de imagen) ---------- */
+.banner-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Cartel de la liga con su banner de fondo: la imagen detrás y un velo para leer el nombre. */
+.tn-nameplate.has-banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 92px;
+}
+.tn-np-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.tn-nameplate.has-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(90deg, rgba(3, 8, 16, 0.55), rgba(3, 8, 16, 0.25) 50%, rgba(3, 8, 16, 0.55));
+}
+.tn-nameplate.has-banner > :not(.tn-np-banner):not(.tn-np-banner-btn) {
+  position: relative;
+  z-index: 1;
+}
+.tn-nameplate.has-banner .tn-np-name,
+.tn-nameplate.has-banner small {
+  text-shadow: 0 2px 4px #000, 0 0 10px rgba(0, 0, 0, 0.8);
+}
+.tn-nameplate .tn-np-banner-btn {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(3, 8, 16, 0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+/* Cabecera del torneo con su banner detrás. */
+.screen-header.has-art {
+  position: relative;
+  overflow: hidden;
+}
+.screen-header-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.85;
+}
+.screen-header.has-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(3, 8, 16, 0.75), rgba(3, 8, 16, 0.3) 45%, rgba(3, 8, 16, 0.75));
+}
+.screen-header.has-art {
+  isolation: isolate;
+}
+.screen-header.has-art .screen-title {
+  text-shadow: 0 2px 4px #000;
+}
+/* Selector de banners: dos por fila, anchos. */
+.icon-grid.icon-grid-banner {
+  grid-template-columns: repeat(2, 1fr);
+}
+.icon-grid-banner .icon-cell {
+  height: auto;
+  aspect-ratio: 7.5 / 1;
+  padding: 0;
+  overflow: hidden;
+}
+/* Creador: banner a todo el ancho de la columna. */
+.cr-banner {
+  position: relative;
+  flex: 2.4;
+  min-height: 72px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ranked) 55%, transparent);
+  background: rgba(7, 16, 28, 0.72);
+  cursor: pointer;
+}
+.cr-banner span {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(3, 8, 16, 0.75);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cr-prizes .cr-prize {
+  padding: 6px;
+  gap: 4px;
+}
+.cr-banner .banner-art {
+  position: absolute;
+  inset: 0;
+}

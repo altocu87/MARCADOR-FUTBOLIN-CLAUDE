@@ -27,7 +27,8 @@ const CUP_TINTS: Record<string, { label: string; filter: string }> = {
 /** Imágenes de una categoría; los genéricos, si aún no hay imágenes, son los provisionales. */
 export function categoryItems(kind: IconKind, category: string): string[] {
   const imgs = assetNames(ICON_PREFIX[kind]).filter((n) => iconCategory(n, kind) === category);
-  if (imgs.length || category !== 'generico') return imgs;
+  // Los banners no tienen provisionales: sin imágenes no hay banner.
+  if (imgs.length || category !== 'generico' || kind === 'banner') return imgs;
   return kind === 'logo' ? EMOJI_LOGOS.map((e) => `emoji:${e}`) : Object.keys(CUP_TINTS).map((k) => `trofeo:${k}`);
 }
 
@@ -62,6 +63,26 @@ export function defaultLogo(seed: string, format?: TournamentFormat): string {
 
 export function defaultCup(): string {
   return cupCatalog()[0];
+}
+
+/** Banners que se pueden elegir en este tipo de torneo (puede que ninguno). */
+export function bannerCatalog(format?: TournamentFormat): string[] {
+  return iconCategories('banner', format).flatMap((c) => categoryItems('banner', c.id));
+}
+
+/** Un banner para empezar (siempre el mismo para la misma semilla), o ninguno si no hay. */
+export function defaultBanner(seed: string, format?: TournamentFormat): string | undefined {
+  const list = bannerCatalog(format);
+  if (!list.length) return undefined;
+  let h = 7;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return list[h % list.length];
+}
+
+/** Banner de un torneo: la franja de imagen, a todo el ancho de quien la contiene. */
+export function BannerArt({ id, className = '' }: { id?: string; className?: string }) {
+  const url = id ? assetUrl(id) : undefined;
+  return url ? <img className={`banner-art ${className}`} src={url} alt="" draggable={false} /> : null;
 }
 
 /** Escudo de un torneo o equipo. */
@@ -145,7 +166,7 @@ export function IconGrid({
       <div className={`icon-grid icon-grid-${kind} ${open ? '' : 'is-locked'}`}>
         {categoryItems(kind, cat.id).map((id) => (
           <button key={id} className={`icon-cell ${id === value ? 'is-on' : ''}`} aria-pressed={id === value} disabled={!open} onClick={() => onPick(id)}>
-            {kind === 'logo' ? <Crest id={id} size={size} /> : <Cup id={id} size={size + 8} />}
+            {kind === 'logo' ? <Crest id={id} size={size} /> : kind === 'banner' ? <BannerArt id={id} /> : <Cup id={id} size={size + 8} />}
           </button>
         ))}
       </div>
@@ -174,7 +195,7 @@ export function IconPicker({
 }) {
   return (
     <Modal
-      title={title ?? (kind === 'logo' ? 'Elige un logo' : 'Elige la copa')}
+      title={title ?? (kind === 'logo' ? 'Elige un logo' : kind === 'banner' ? 'Elige el banner' : 'Elige la copa')}
       onClose={onClose}
       actions={
         <button className="btn btn-ghost" onClick={onClose}>

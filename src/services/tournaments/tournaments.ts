@@ -88,9 +88,10 @@ export interface TournamentDraft {
   templateName?: string;
   templateId?: string;
   edition?: number;
-  /** Nombre propio de la competición, logo y copa. */
+  /** Nombre propio de la competición, logo, banner y copa. */
   competition?: string;
   logo?: string;
+  banner?: string;
   cup?: string;
 }
 
@@ -332,6 +333,7 @@ export function createTournament(
     ...(draft.edition ? { edition: draft.edition } : {}),
     ...(draft.competition?.trim() ? { competition: draft.competition.trim() } : {}),
     ...(draft.logo ? { logo: draft.logo } : {}),
+    ...(draft.banner ? { banner: draft.banner } : {}),
     ...(draft.cup ? { cup: draft.cup } : {}),
   };
 }

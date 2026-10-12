@@ -16,6 +16,7 @@ export function ScreenFrame({
   footer,
   className,
   background,
+  headerArt,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -28,11 +29,14 @@ export function ScreenFrame({
   className?: string;
   /** Imagen de fondo a pantalla completa, detrás de la cabecera y el contenido. */
   background?: ReactNode;
+  /** Franja de imagen detrás de la cabecera (el banner de un torneo). */
+  headerArt?: ReactNode;
 }) {
   return (
     <section className={`screen ${className ?? ''}`}>
       {background}
-      <header className="screen-header">
+      <header className={`screen-header${headerArt ? ' has-art' : ''}`}>
+        {headerArt}
         {onBack && (
           <button className="btn btn-ghost btn-icon" onClick={onBack} aria-label="Volver">
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">

@@ -22,6 +22,9 @@ no hay que tocar código. Si falta una imagen se usa el diseño de respaldo actu
 - `escudo-liga-01…24`: escudos EXCLUSIVOS de las ligas (256×256 .webp transparente, recortados de una hoja con
   fondo magenta). Solo se ofrecen al elegir el banner de una liga y son los de por defecto ahí; la copa, el pool y
   los equipos no los ven (`format: 'league'` en `ICON_CATEGORIES`, `src/services/icons.ts`).
+- `banner-liga-01…12`: banners (franja de fondo del cartel del torneo) EXCLUSIVOS de las ligas, 1200×160 .webp.
+  Se ven detrás del nombre en «Elige la liga» y en la cabecera del torneo. Los banners no tienen versión
+  provisional: un tipo sin banners propios (copa, pool) no enseña la opción.
 - `fondo-configuracion`: fondo de la pantalla de configuración del partido (1280×768 .webp).
 - `fondo-prevision`: fondo de la Previsión del Clasificatorio (1280×720 .webp, ya desenfocado).
 - `ardilla-*`: la ardilla ladrona del Partido Loco, recortada de sus hojas de personaje: `ardilla-carrera-0…5`
