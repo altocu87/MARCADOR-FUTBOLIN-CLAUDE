@@ -557,3 +557,29 @@ describe('Empates (liga)', () => {
     expect(s.state.period).toBe('overtime');
   });
 });
+
+describe('Gol tocando la ficha del jugador', () => {
+  it('apunta al goleador del gol (y solo si es de ese equipo)', () => {
+    const s = new Sim(cfg({ goalsPerPeriod: 3 }), P4).start();
+    s.wait(3000);
+    expect(s.cmd({ type: 'GOAL', team: 'white', scorer: 'c' }).accepted).toBe(true);
+    s.wait(3000);
+    // «b» es del azul: el gol del blanco cuenta, pero no se le apunta.
+    expect(s.cmd({ type: 'GOAL', team: 'white', scorer: 'b' }).accepted).toBe(true);
+    expect(getScore(s.state).white).toBe(2);
+    expect(Object.values(s.state.scorers ?? {})).toEqual(['c']);
+  });
+  it('se guarda con el partido y cuenta para los goles del jugador', async () => {
+    const { toStoredMatch } = await import('../src/app/matchFinalizer');
+    const { personalGoals } = await import('../src/services/statistics');
+    const s = new Sim(cfg({ goalsPerPeriod: 2 }), P4).start();
+    s.wait(3000);
+    s.cmd({ type: 'GOAL', team: 'blue', scorer: 'd' });
+    s.wait(3000);
+    s.cmd({ type: 'GOAL', team: 'blue', scorer: 'd' });
+    expect(s.state.phase).toBe('finished');
+    const m = toStoredMatch(s.state);
+    expect(Object.values(m.scorers ?? {})).toEqual(['d', 'd']);
+    expect(personalGoals([m]).get('d')).toBe(2);
+  });
+});

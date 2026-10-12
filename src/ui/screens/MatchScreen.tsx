@@ -19,6 +19,7 @@ import {
   isSinglePeriod,
   isSuddenDeath,
   nextPenaltyTeam,
+  validGoalsFromEvents,
   type MatchConfig,
   type MatchState,
   type ParticipantRef,
@@ -162,8 +163,10 @@ export function MatchScreen({
           level={prefs.effects}
           seed={ctl.lastGoal.id}
           label={ctl.goalLabel}
+          // Con goleador apuntado (se tocó su ficha), sale solo él; si no, todo el equipo.
           people={state.participants
             .filter((p) => p.team === ctl.lastGoal!.team)
+            .filter((p) => !state.scorers?.[ctl.lastGoal!.id] || state.scorers[ctl.lastGoal!.id] === p.playerId)
             .sort((a, b) => a.slot - b.slot)
             .map((p) => ({ id: p.playerId, name: p.nameSnapshot, photo: photos.get(p.playerId) }))}
         />
@@ -293,13 +296,33 @@ function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players
     </button>
   );
 
+  // Goles de cada jugador en este partido (los marcados tocando su ficha; los anulados no cuentan).
+  const myGoals = new Map<string, number>();
+  for (const g of validGoalsFromEvents(state.events)) {
+    const pid = state.scorers?.[g.id];
+    if (pid) myGoals.set(pid, (myGoals.get(pid) ?? 0) + 1);
+  }
+
   // Ficha de jugador: la misma que en la selección de jugadores (foto, nombre, nivel/ELO y título).
+  // Tocarla es marcar gol de su equipo apuntándoselo a él.
   const card = (p: ParticipantRef, t: Team) => {
     const player = players.get(p.playerId);
     const prog = progression?.players.get(p.playerId);
     const title = displayTitle(prog, player?.titleId);
+    const n = myGoals.get(p.playerId) ?? 0;
     return (
-      <div key={p.playerId} className={`team-card team-card-${t} match-card`}>
+      <button
+        key={p.playerId}
+        className={`team-card team-card-${t} match-card ${lock > 0 ? 'locked' : ''}`}
+        onClick={() => send({ type: 'GOAL', team: t, source: 'touch', scorer: p.playerId })}
+        disabled={!playing}
+        aria-label={`Gol de ${p.nameSnapshot} (${TEAM_LABEL[t]})`}
+      >
+        {n > 0 && (
+          <span className="match-card-goals" aria-label={`${n} goles suyos`}>
+            ⚽{n > 1 ? ` ${n}` : ''}
+          </span>
+        )}
         <span className="team-card-photo">
           {player?.photo ? (
             <img src={player.photo} alt="" draggable={false} />
@@ -317,7 +340,7 @@ function ScoreboardView({ ctl, players, phase }: { ctl: MatchController; players
           )}
           {title && <span className="pick-title">{title}</span>}
         </span>
-      </div>
+      </button>
     );
   };
 

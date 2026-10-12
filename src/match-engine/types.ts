@@ -90,7 +90,8 @@ export type EngineCommand =
   | { type: 'SKIP_COUNTDOWN' }
   /** Saltar el cartel previo a la cuenta atrás (fase de torneo). */
   | { type: 'SKIP_INTRO' }
-  | { type: 'GOAL'; team: Team; source?: InputSource }
+  /** `scorer`: quién lo ha marcado (al tocar su ficha en vez del marcador). */
+  | { type: 'GOAL'; team: Team; source?: InputSource; scorer?: string }
   | { type: 'MINUS_ONE'; team: Team }
   | { type: 'UNDO' }
   | { type: 'PAUSE' }
@@ -323,6 +324,8 @@ export interface MatchState {
   timeAdjustMs?: number;
   /** Partido Loco: cambio de la meta de goles por un animal (por goles). */
   goalTargetAdjust?: number;
+  /** Goleador de cada gol (id de evento → id de jugador), si se marcó tocando la ficha del jugador. */
+  scorers?: Record<string, string>;
   result?: MatchResult;
   seq: number;
 }

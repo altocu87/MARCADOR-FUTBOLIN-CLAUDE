@@ -368,6 +368,10 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       rescoreLast(next);
       const goalId = next.events[next.events.length - 1].id;
       next = { ...next, lastGoalAt: now, undoStack: [...next.undoStack, goalId] };
+      // Gol marcado tocando la ficha de un jugador: queda apuntado como goleador (si es de ese equipo).
+      if (command.scorer && s.participants.some((p) => p.playerId === command.scorer && p.team === command.team)) {
+        next = { ...next, scorers: { ...(next.scorers ?? {}), [goalId]: command.scorer } };
+      }
       if (bonus.includes('joker') && next.jokers) next = { ...next, jokers: { ...next.jokers, [command.team]: 'used' } };
       // El gol triple y el robo se gastan con el gol.
       if (h && (h.kind === 'triple_next' || (h.kind === 'steal' && h.team === command.team))) {

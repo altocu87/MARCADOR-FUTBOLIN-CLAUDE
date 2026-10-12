@@ -173,14 +173,45 @@
   grid-column: span 2;
 }
 .match-card {
+  position: relative;
   flex: none;
   max-height: none;
   height: 84px;
   gap: 10px;
+  /* Tocar la ficha = gol de su equipo, apuntado a ese jugador. */
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.match-card:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: 0 0 22px currentColor;
+}
+.match-card:disabled {
+  opacity: 1;
   cursor: default;
 }
-.match-card:active {
-  transform: none;
+.match-card.locked {
+  opacity: 0.7;
+}
+.match-card-goals {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #06080c;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  animation: goal-badge-in 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes goal-badge-in {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
 }
 .match-card .team-card-photo {
   width: 70px;

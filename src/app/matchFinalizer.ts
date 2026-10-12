@@ -28,6 +28,8 @@ export function toStoredMatch(state: MatchState, extras: MatchExtras = {}): Stor
     events: state.events,
     penalties: state.penalties,
     ...(extras.tournament ? { tournament: extras.tournament } : {}),
+    // Goles marcados tocando la ficha del jugador.
+    ...(state.scorers && Object.keys(state.scorers).length ? { scorers: state.scorers } : {}),
   };
   // En 1v1 el goleador es inequívoco: se asigna solo.
   const scorers = autoScorers(base);
