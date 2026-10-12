@@ -203,8 +203,9 @@ export interface HonourRow {
 export interface Competition {
   key: string;
   name: string;
-  /** Logo y copa de la última edición. */
+  /** Logo, banner y copa de la última edición que los tenga. */
   logo?: string;
+  banner?: string;
   cup?: string;
   format: string;
   editions: EditionRow[];
@@ -253,6 +254,7 @@ export function competitions(tournaments: Tournament[], matches: StoredMatch[], 
       key,
       name: competitionName(sorted[sorted.length - 1]),
       logo: [...sorted].reverse().find((x) => x.logo)?.logo,
+      banner: [...sorted].reverse().find((x) => x.banner)?.banner,
       cup: [...sorted].reverse().find((x) => x.cup)?.cup,
       format: FORMAT_LABEL[sorted[sorted.length - 1].format],
       editions: [...editions].reverse(),

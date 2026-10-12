@@ -628,3 +628,14 @@ describe('Título del último', () => {
     expect(createTournament(draft, ps, () => 1200, 0, seededRandom('z')).lastTitle).toBe('Farolillo rojo');
   });
 });
+
+describe('Banner de la competición', () => {
+  it('el palmarés toma el banner de la última edición que lo tenga', () => {
+    const ps = players(['a', 'b', 'c']);
+    const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-league')!;
+    const { draft } = draftFromTemplate(tpl, 'Liga', ps.map((p) => p.id), () => 1200);
+    const t = createTournament({ ...draft, banner: 'banner-liga-03' }, ps, () => 1200, 0, seededRandom('b'));
+    expect(t.banner).toBe('banner-liga-03');
+    expect(competitions([t], [], ps)[0].banner).toBe('banner-liga-03');
+  });
+});

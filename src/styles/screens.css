@@ -6083,3 +6083,30 @@ div > .name-clash:first-child {
   position: absolute;
   inset: 0;
 }
+
+/* Palmarés: la cabecera de cada competición lleva su banner de fondo. */
+.hon-card.has-banner .hon-card-head {
+  position: relative;
+  isolation: isolate;
+  margin: -10px -12px 0;
+  padding: 10px 12px;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  min-height: 62px;
+}
+.hon-card-banner {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+.hon-card.has-banner .hon-card-head::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(3, 8, 16, 0.75), rgba(3, 8, 16, 0.25));
+}
+.hon-card.has-banner .hon-card-head strong,
+.hon-card.has-banner .hon-card-head small {
+  text-shadow: 0 2px 4px #000;
+}

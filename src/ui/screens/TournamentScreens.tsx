@@ -377,8 +377,9 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
                   const top = c.honours[0];
                   const last = c.lastChampion!;
                   return (
-                    <button key={c.key} className="hon-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
+                    <button key={c.key} className={`hon-card${c.banner ? ' has-banner' : ''}`} onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
                       <span className="hon-card-head">
+                        <BannerArt id={c.banner} className="hon-card-banner" />
                         {c.logo ? <Crest id={c.logo} size={40} /> : null}
                         {c.cup ? <Cup id={c.cup} size={40} /> : <Trophy size={40} />}
                         <span>
@@ -473,6 +474,7 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
       subtitle={`Palmarés · ${c.format} · ${c.editions.length} edici${c.editions.length === 1 ? 'ón' : 'ones'}`}
       className="select-screen tn-screen"
       background={TN_BG}
+      headerArt={c.banner ? <BannerArt id={c.banner} className="screen-header-art" /> : undefined}
       onBack={() => navigate({ name: 'tournament', tab: 'honours' })}
     >
       <div className="td-layout">
