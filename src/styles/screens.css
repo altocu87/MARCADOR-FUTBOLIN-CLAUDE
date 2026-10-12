@@ -2825,7 +2825,8 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 760px;
+  /* Que use la pantalla: botones y letras grandes para el dedo. */
+  max-width: 1040px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -2838,7 +2839,7 @@
 .cr-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 22px;
   align-items: start;
 }
 .cr-col {
@@ -2857,10 +2858,68 @@
 }
 .cr-field .label {
   margin: 0;
+  font-size: 15px;
 }
 .cr-note {
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 15px;
+}
+/* Botones de elegir del creador, grandes. */
+.cr-screen .segmented .seg {
+  min-height: 60px !important;
+  font-size: 18px;
+}
+/* Opciones que dependen de otra: panel enganchado a su opción madre. */
+.cr-sub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 12px 12px 16px;
+  border-radius: 18px;
+  border: 2px solid color-mix(in srgb, #62d6ff 55%, transparent);
+  border-left-width: 6px;
+  background: color-mix(in srgb, #62d6ff 9%, rgba(7, 16, 28, 0.75));
+  box-shadow: 0 0 16px color-mix(in srgb, #62d6ff 22%, transparent);
+  animation: cr-sub-in 0.25s ease-out;
+}
+.cr-sub .cr-sub {
+  border-style: dashed;
+  border-left-style: solid;
+}
+.cr-sub-head {
+  align-self: flex-start;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: #62d6ff;
+  color: #06080c;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+@keyframes cr-sub-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+/* La opción madre elegida se une al panel de al lado con una pestaña. */
+.cr-opt-wrap.is-parent::after,
+.rule-way.is-parent::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 24px;
+  height: 6px;
+  margin-top: -3px;
+  background: #62d6ff;
+  box-shadow: 0 0 10px #62d6ff;
+  border-radius: 0 3px 3px 0;
+}
+.rule-way {
+  position: relative;
 }
 .cr-name {
   font-size: 20px;
@@ -2990,19 +3049,19 @@
 }
 .cr-stepper {
   display: grid;
-  grid-template-columns: 1fr 56px 56px 56px;
+  grid-template-columns: 1fr 64px 64px 64px;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
   border-radius: 14px;
   border: 1px solid var(--line);
   background: rgba(7, 16, 28, 0.72);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 800;
 }
 .cr-stepper .btn {
-  height: 46px;
-  font-size: 24px;
+  height: 54px;
+  font-size: 28px;
   padding: 0;
 }
 .cr-stepper b {
@@ -6231,4 +6290,31 @@ div > .name-clash:first-child {
 .cr-big .rule-way-amount .segmented .seg {
   min-height: 58px !important;
   font-size: 18px;
+}
+
+/* «Elige la liga»: tarjetas y resumen con letra grande (hay sitio de sobra). */
+.tpl-card:not(.tn-kind) {
+  padding: 12px 16px;
+  gap: 4px;
+}
+.tpl-card:not(.tn-kind) strong {
+  font-size: 21px;
+}
+.tpl-card:not(.tn-kind) span {
+  font-size: 14px;
+}
+.tpl-card:not(.tn-kind) .tpl-fit,
+.tpl-card:not(.tn-kind) .tpl-why {
+  font-size: 16px;
+}
+.tn-summary {
+  gap: 9px;
+  padding: 12px 16px;
+}
+.tn-summary > div {
+  font-size: 17px;
+}
+.tn-summary .label {
+  width: 96px;
+  font-size: 13px;
 }

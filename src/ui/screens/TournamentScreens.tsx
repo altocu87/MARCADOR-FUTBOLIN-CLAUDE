@@ -114,7 +114,16 @@ function rulesText(r: MatchRules): string {
  * por separado (las dos marcadas: lo que llegue antes) y cada una tiene su cantidad en su propia sección.
  * Siempre queda al menos una marcada.
  */
-function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
+function RulesPicker({
+  rules,
+  onChange,
+  timeIsParent,
+}: {
+  rules: MatchRules;
+  onChange: (patch: Partial<MatchRules>) => void;
+  /** «Tiempo» abre más opciones al lado (en liga, qué pasa si acaban igualados). */
+  timeIsParent?: boolean;
+}) {
   const { toast } = useApp();
   const goals = rules.endCondition !== 'time';
   const time = rules.endCondition !== 'goals';
@@ -125,7 +134,7 @@ function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch:
     onChange({ endCondition: g && t ? 'both' : g ? 'goals' : 'time' });
   };
   const way = (key: 'goals' | 'time', on: boolean, title: string, hint: string, amount: ReactNode) => (
-    <div className={`rule-way ${on ? 'is-on' : ''}`}>
+    <div className={`rule-way ${on ? 'is-on' : ''}${on && key === 'time' && timeIsParent ? ' is-parent' : ''}`}>
       <button className="rule-way-toggle" aria-pressed={on} onClick={() => toggle(key)}>
         <span className="rule-way-check" aria-hidden="true">{on ? '✓' : ''}</span>
         <span className="rule-way-title">{title}</span>
@@ -1294,12 +1303,23 @@ interface OptionItem<T> {
  * Opciones en lista, pensadas para el dedo: cada una es un botón grande con su título y nada más (la elegida
  * se ilumina). Si alguna necesita explicación, lleva una «?» al lado.
  */
-function OptionList<T>({ value, options, onChange }: { value: T; options: OptionItem<T>[]; onChange: (v: T) => void }) {
+function OptionList<T>({
+  value,
+  options,
+  onChange,
+  parentOf,
+}: {
+  value: T;
+  options: OptionItem<T>[];
+  onChange: (v: T) => void;
+  /** Opciones que abren más opciones (al lado): elegidas, se unen con ellas por una pestaña. */
+  parentOf?: T[];
+}) {
   const [help, setHelp] = useState<string | null>(null);
   return (
     <div className="cr-opts" role="radiogroup">
       {options.map((o) => (
-        <div key={String(o.v)} className="cr-opt-wrap">
+        <div key={String(o.v)} className={`cr-opt-wrap${parentOf?.includes(o.v) && value === o.v ? ' is-parent' : ''}`}>
           <button className="cr-opt" role="radio" aria-checked={value === o.v} onClick={() => onChange(o.v)}>
             {o.title}
           </button>
@@ -1339,6 +1359,21 @@ function PointsStepper({ label, value, onChange }: { label: string; value: numbe
       <button className="btn" onClick={() => onChange(value + 1)} aria-label={`Más puntos por ${label.toLowerCase()}`} disabled={value >= 9}>
         +
       </button>
+    </div>
+  );
+}
+
+/**
+ * Opciones que dependen de otra («Cómo se forman las parejas» solo existe con «Parejas fijas»): van en un
+ * panel enganchado a su opción madre, con su nombre arriba, para que se vea de quién cuelgan.
+ */
+function SubPanel({ parent, children }: { parent: string; children: ReactNode }) {
+  return (
+    <div className="cr-sub">
+      <div className="cr-sub-head">
+        <span aria-hidden="true">↳</span> {parent}
+      </div>
+      {children}
     </div>
   );
 }
@@ -1485,6 +1520,7 @@ export function TournamentTemplateScreen({
                 { v: 2, title: 'Parejas fijas', help: 'Las mismas parejas durante todo el torneo. Hace falta un número par de jugadores.' },
               ]}
               onChange={(v) => set('teamSize', v)}
+              parentOf={[2]}
             />
           </CreatorField>
           {tpl.format === 'bracket' && (
@@ -1502,9 +1538,11 @@ export function TournamentTemplateScreen({
         </div>
         {tpl.teamSize === 2 && (
           <div className="cr-col">
-            <CreatorField label="Cómo se forman las parejas" note="Los equipos ya guardados siempre juegan juntos.">
-              <OptionList value={tpl.pairing} options={pairingOpts} onChange={(v) => set('pairing', v)} />
-            </CreatorField>
+            <SubPanel parent="Parejas fijas">
+              <CreatorField label="Cómo se forman las parejas" note="Los equipos ya guardados siempre juegan juntos.">
+                <OptionList value={tpl.pairing} options={pairingOpts} onChange={(v) => set('pairing', v)} />
+              </CreatorField>
+            </SubPanel>
           </div>
         )}
       </div>
@@ -1515,7 +1553,7 @@ export function TournamentTemplateScreen({
       <div className={canDraw && tpl.endCondition !== 'goals' ? 'cr-cols cr-cols-rules' : 'cr-big'}>
         <div className="cr-col cr-big">
           <CreatorField label="Cómo se gana un partido" note={rulesText(tpl)}>
-            <RulesPicker rules={tpl} onChange={(patch) => setTpl((t) => ({ ...t, ...patch }))} />
+            <RulesPicker rules={tpl} onChange={(patch) => setTpl((t) => ({ ...t, ...patch }))} timeIsParent={canDraw} />
           </CreatorField>
         </div>
         {canDraw &&
@@ -1523,16 +1561,18 @@ export function TournamentTemplateScreen({
             <small className="cr-note">A goles siempre hay ganador: no hay empates. Para poder empatar, activa también el tiempo.</small>
           ) : (
             <div className="cr-col">
-            <CreatorField label="Si acaban igualados">
-              <OptionList<boolean>
-                value={tpl.allowDraw !== false}
-                options={[
-                  { v: true, title: 'Empate', help: 'Sin prórroga ni penaltis: cada uno se lleva los puntos del empate.' },
-                  { v: false, title: 'Siempre hay ganador', help: 'Prórroga con gol de oro y, si sigue igualado, penaltis.' },
-                ]}
-                onChange={(v) => set('allowDraw', v)}
-              />
-            </CreatorField>
+              <SubPanel parent="⏱ Tiempo">
+                <CreatorField label="Si acaban igualados">
+                  <OptionList<boolean>
+                    value={tpl.allowDraw !== false}
+                    options={[
+                      { v: true, title: 'Empate', help: 'Sin prórroga ni penaltis: cada uno se lleva los puntos del empate.' },
+                      { v: false, title: 'Siempre hay ganador', help: 'Prórroga con gol de oro y, si sigue igualado, penaltis.' },
+                    ]}
+                    onChange={(v) => set('allowDraw', v)}
+                  />
+                </CreatorField>
+              </SubPanel>
             </div>
           ))}
       </div>
@@ -1572,23 +1612,32 @@ export function TournamentTemplateScreen({
         <div className="cr-col">
         {finals.length > 0 ? (
           <CreatorField label="¿Acaba con final?" note={tpl.final === 'none' ? 'Gana el primero de la clasificación.' : 'Al acabar la fase regular, la final decide el campeón.'}>
-            <Seg value={tpl.final} options={finals.map((f) => [f, f === 'none' ? 'SIN FINAL' : FINAL_LABEL[f].toUpperCase()] as [TournamentFinal, string])} onChange={(v) => set('final', v)} />
+            <OptionList<TournamentFinal>
+              value={tpl.final}
+              options={finals.map((f) => ({ v: f, title: f === 'none' ? 'Sin final' : FINAL_LABEL[f] }))}
+              onChange={(v) => set('final', v)}
+              parentOf={finals.filter((f) => f !== 'none')}
+            />
           </CreatorField>
         ) : (
           <small className="cr-note">La copa siempre acaba en final: la juegan los dos que llegan.</small>
         )}
-        {hasFinal && (
-          <CreatorField label="La final se juega">
-            <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
-          </CreatorField>
-        )}
         </div>
         {hasFinal && (
           <div className="cr-col">
-            <CreatorField label="Reglas de la final" note={ownFinalRules ? rulesText(finalRulesOf(tpl)) : `Como el resto: ${rulesText(tpl).toLowerCase()}`}>
-              <Seg<boolean> value={ownFinalRules} options={[[false, 'IGUAL QUE LOS PARTIDOS'], [true, 'DISTINTAS']]} onChange={setOwnFinal} />
-              {ownFinalRules && <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />}
-            </CreatorField>
+            <SubPanel parent={tpl.final === 'none' ? 'Final' : `Final · ${FINAL_LABEL[tpl.final]}`}>
+              <CreatorField label="La final se juega">
+                <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
+              </CreatorField>
+              <CreatorField label="Reglas de la final" note={ownFinalRules ? rulesText(finalRulesOf(tpl)) : `Como el resto: ${rulesText(tpl).toLowerCase()}`}>
+                <Seg<boolean> value={ownFinalRules} options={[[false, 'IGUALES'], [true, 'DISTINTAS']]} onChange={setOwnFinal} />
+              </CreatorField>
+              {ownFinalRules && (
+                <SubPanel parent="Reglas distintas">
+                  <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />
+                </SubPanel>
+              )}
+            </SubPanel>
           </div>
         )}
       </div>
