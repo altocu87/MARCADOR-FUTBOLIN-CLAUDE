@@ -214,6 +214,70 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
   );
 }
 
+/** Las reglas de una competición en iconos, para verlas de un vistazo en su tarjeta. */
+function ruleChips(t: TournamentTemplate): { icon: string; text: string }[] {
+  const out: { icon: string; text: string }[] = [];
+  out.push(t.format === 'pool' ? { icon: '🔄', text: 'Parejas que rotan' } : t.teamSize === 2 ? { icon: '👥', text: 'Parejas' } : { icon: '👤', text: '1 vs 1' });
+  if (t.endCondition !== 'time') out.push({ icon: '⚽', text: `A ${t.goalsPerPeriod}` });
+  if (t.endCondition !== 'goals') out.push({ icon: '⏱', text: `${t.minutesPerPeriod}'` });
+  if (t.format === 'league') {
+    out.push({ icon: '🔁', text: (t.legs ?? 1) === 2 ? 'Ida y vuelta' : 'Solo ida' });
+    const p = templatePoints(t);
+    out.push({ icon: '🏅', text: templateAllowsDraw(t) ? `${p.win}-${p.draw}-${p.loss}` : `${p.win}-${p.loss}` });
+    if (templateAllowsDraw(t)) out.push({ icon: '🤝', text: 'Empate' });
+  }
+  out.push({ icon: '🏆', text: hasTemplateFinal(t) ? (t.finalBestOf > 1 ? 'Final al mejor de 3' : 'Final') : 'Sin final' });
+  if (t.ranked) out.push({ icon: '📈', text: 'ELO' });
+  return out;
+}
+
+/** Reglas completas de una competición (ventana de la «?»). */
+function RulesSummary({ tpl }: { tpl: TournamentTemplate }) {
+  return (
+    <div className="tn-summary">
+      <div>
+        <span className="label">Partidos</span>
+        <span>{rulesText(tpl)}</span>
+      </div>
+      {tpl.format === 'league' && (
+        <>
+          <div>
+            <span className="label">Empate</span>
+            <span>{templateAllowsDraw(tpl) ? 'Se puede empatar: sin prórroga ni penaltis.' : 'Siempre hay ganador.'}</span>
+          </div>
+          <div>
+            <span className="label">Puntos</span>
+            <span>
+              Victoria {templatePoints(tpl).win}
+              {templateAllowsDraw(tpl) ? ` · empate ${templatePoints(tpl).draw}` : ''} · derrota {templatePoints(tpl).loss}
+            </span>
+          </div>
+          <div>
+            <span className="label">Vueltas</span>
+            <span>{(tpl.legs ?? 1) === 2 ? 'Ida y vuelta: dos veces contra cada rival.' : 'Solo ida: una vez contra cada rival.'}</span>
+          </div>
+        </>
+      )}
+      <div>
+        <span className="label">Último</span>
+        <span>Se lleva el título «{tpl.lastTitle?.trim() || 'Patético'}».</span>
+      </div>
+      <div className={hasTemplateFinal(tpl) ? 'tn-summary-final' : ''}>
+        <span className="label">🏆 Final</span>
+        <span>
+          {hasTemplateFinal(tpl)
+            ? `${tpl.format === 'bracket' ? '' : `${FINAL_LABEL[tpl.final]}, `}${tpl.finalBestOf > 1 ? 'al mejor de 3' : 'a un partido'}. ${rulesText(finalRulesOf(tpl))}`
+            : 'Sin final: gana el primero de la clasificación.'}
+        </span>
+      </div>
+      <div>
+        <span className="label">ELO</span>
+        <span>{tpl.ranked ? 'Cuenta para el ELO (se juega como Clasificatorio).' : 'No cuenta para el ELO.'}</span>
+      </div>
+    </div>
+  );
+}
+
 /** Fondo de las pantallas de torneo, como en el resto de pantallas de neón. */
 const TN_BG = <AssetImage name="fondo-configuracion" className="select-bg is-on tn-bg" fallback={null} />;
 
@@ -640,6 +704,8 @@ export function TournamentNewScreen({
   }, [kindSelected]);
   // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
   const [showBlocked, setShowBlocked] = useState(false);
+  // Reglas completas de una competición («?» de su tarjeta).
+  const [rulesOf, setRulesOf] = useState<TournamentTemplate | null>(null);
   // Nombre, logo y copa del torneo (por defecto, los del tipo elegido y su última edición).
   // Nombre y logo de las parejas fijas (por pareja de jugadores); se guardan como equipos al crear.
   const [teamEdits, setTeamEdits] = useState<Record<string, { name: string; logo: string }>>({});
@@ -1037,22 +1103,53 @@ export function TournamentNewScreen({
   // «Editar» abre el creador con este tipo cargado.
   const editTemplate = (t: TournamentTemplate) =>
     navigate({ name: 'tournamentTemplate', templateId: t.id, selected });
+  // Una competición por tarjeta, a todo lo ancho: su cartel (banner, escudo, nombre, edición y copa) y
+  // debajo sus reglas en iconos. Las reglas completas, con la «?»; cambiarlas, solo con «Editar».
   const tplCard = ({ t, fit }: { t: TournamentTemplate; fit: TemplateFit }) => {
     const on = fit.ok && t.id === tpl?.id;
+    const prev = lastEdition(t.id, tournaments);
+    const tName = t.name.replace(/\s+/g, ' ');
+    const tLogo = t.logo ?? prev?.logo ?? defaultLogo(tName || 'torneo', t.format);
+    const tCup = t.cup ?? prev?.cup ?? defaultCup();
+    const tBanner = t.banner ?? prev?.banner ?? defaultBanner(tName || 'torneo', t.format);
     return (
-      <div key={t.id} className="tpl-row">
-        <button className={`tpl-card ${fit.ok ? '' : 'is-off'}`} aria-pressed={on} disabled={!fit.ok} onClick={() => setChosenTpl(t.id)}>
-          <strong>
-            {t.name}
-          </strong>
-          {fit.ok ? <span className="tpl-fit">{fit.summary}</span> : <span className="tpl-why">✕ {fit.reason}</span>}
-          <span>{describeTemplate(t)}</span>
+      <div key={t.id} className={`comp-card${on ? ' is-on' : ''}${fit.ok ? '' : ' is-off'}${tBanner ? ' has-banner' : ''}`}>
+        <button className="comp-main" aria-pressed={on} disabled={!fit.ok} onClick={() => setChosenTpl(t.id)}>
+          <BannerArt id={tBanner} className="comp-banner" />
+          <span className="comp-art">
+            <Crest id={tLogo} size={58} />
+          </span>
+          <span className="comp-body">
+            <span className="comp-name">{tName}</span>
+            <span className="comp-sub">
+              <b>{nextEdition(t.id, tournaments)}ª edición</b>
+              {fit.ok ? ` · ${fit.summary?.split(' · ')[0]}` : ''}
+            </span>
+            {fit.ok ? (
+              <span className="comp-chips">
+                {ruleChips(t).map((c) => (
+                  <span key={c.text} className="comp-chip">
+                    <i aria-hidden="true">{c.icon}</i>
+                    {c.text}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="comp-why">✕ {fit.reason}</span>
+            )}
+          </span>
+          <span className="comp-art">
+            <Cup id={tCup} size={58} />
+          </span>
         </button>
-        {on && (
-          <button className="btn btn-sm tpl-edit" onClick={() => editTemplate(t)}>
+        <div className="comp-actions">
+          <button className="comp-help" aria-label={`Reglas de ${tName}`} onClick={() => setRulesOf(t)}>
+            ?
+          </button>
+          <button className="btn btn-sm comp-edit" onClick={() => editTemplate(t)}>
             Editar
           </button>
-        )}
+        </div>
       </div>
     );
   };
@@ -1095,89 +1192,36 @@ export function TournamentNewScreen({
         </>
       }
     >
-      <div className="tn-layout">
-        <div className="tn-col">
-          <div className="label">{kindInfo.title}: disponibles para {n} jugadores</div>
-          <div className="tpl-list scroll">
-            {shown.map(tplCard)}
-            {shown.length === 0 && (
-              <div className="tpl-empty">
-                <span>{fits.length ? `Con ${n} jugadores no encaja ${kindInfo.none} ${kindInfo.noun} de las creadas.` : `Aún no has creado ${kindInfo.none} ${kindInfo.noun}.`}</span>
-                <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
-                  + Crear {kindInfo.noun}
-                </button>
-              </div>
-            )}
-            {showBlocked && (
-              <>
-                {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
-                {blocked.map(tplCard)}
-              </>
-            )}
+      <div className="comp-list scroll">
+        {shown.map(tplCard)}
+        {shown.length === 0 && (
+          <div className="tpl-empty">
+            <span>{fits.length ? `Con ${n} jugadores no encaja ${kindInfo.none} ${kindInfo.noun} de las creadas.` : `Aún no has creado ${kindInfo.none} ${kindInfo.noun}.`}</span>
+            <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
+              + Crear {kindInfo.noun}
+            </button>
           </div>
-        </div>
-        <div className="tn-col tn-col-rules scroll">
-          {tpl && (
-            <>
-            <div className={`tn-nameplate${banner ? ' has-banner' : ''}`} aria-label={`Nombre del torneo: ${name}`}>
-              <BannerArt id={banner} className="tn-np-banner" />
-              <span className="tn-np-icon">
-                <Crest id={logo} size={52} />
-              </span>
-              <span className="tn-np-body">
-                <span className="tn-np-name">{compName}</span>
-                <small>
-                  <b className="tn-np-ed">{edition}ª edición</b> · {shortDate(Date.now())}
-                </small>
-              </span>
-              <span className="tn-np-icon tn-np-cup">
-                <Cup id={cup} size={52} />
-              </span>
-            </div>
-            </>
-          )}
-          {tpl && (
-            // Resumen de reglas: se cambian con «Editar» en la tarjeta del tipo.
-            <div className="tn-summary">
-              <div>
-                <span className="label">Partidos</span>
-                <span>{rulesText(tpl)}</span>
-              </div>
-              {tpl.format === 'league' && (
-                <>
-                  <div>
-                    <span className="label">Empate</span>
-                    <span>{templateAllowsDraw(tpl) ? 'Se puede empatar: sin prórroga ni penaltis.' : 'Siempre hay ganador.'}</span>
-                  </div>
-                  <div>
-                    <span className="label">Puntos</span>
-                    <span>
-                      Victoria {templatePoints(tpl).win}
-                      {templateAllowsDraw(tpl) ? ` · empate ${templatePoints(tpl).draw}` : ''} · derrota {templatePoints(tpl).loss}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="label">Vueltas</span>
-                    <span>{(tpl.legs ?? 1) === 2 ? 'Ida y vuelta: dos veces contra cada rival.' : 'Solo ida: una vez contra cada rival.'}</span>
-                  </div>
-                </>
-              )}
-              <div>
-                <span className="label">Último</span>
-                <span>Se lleva el título «{tpl.lastTitle?.trim() || 'Patético'}».</span>
-              </div>
-              <div className={hasTemplateFinal(tpl) ? 'tn-summary-final' : ''}>
-                <span className="label">🏆 Final</span>
-                <span>
-                  {hasTemplateFinal(tpl)
-                    ? `${tpl.format === 'bracket' ? '' : `${FINAL_LABEL[tpl.final]}, `}${tpl.finalBestOf > 1 ? 'al mejor de 3' : 'a un partido'}. ${rulesText(finalRulesOf(tpl))}`
-                    : 'Sin final: gana el primero de la clasificación.'}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
+        {showBlocked && (
+          <>
+            {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
+            {blocked.map(tplCard)}
+          </>
+        )}
       </div>
+      {rulesOf && (
+        <Modal
+          title={rulesOf.name}
+          onClose={() => setRulesOf(null)}
+          actions={
+            <button className="btn btn-primary" onClick={() => setRulesOf(null)}>
+              Vale
+            </button>
+          }
+        >
+          <RulesSummary tpl={rulesOf} />
+        </Modal>
+      )}
       {pairsOpen && draft && (
         <Modal
           title={`Parejas · ${edition}ª edición`}

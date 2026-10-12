@@ -6395,3 +6395,148 @@ div > .name-clash:first-child {
   font-size: 17px;
   padding: 0 2px;
 }
+
+/* «Elige la liga»: una competición por tarjeta, a todo lo ancho, con sus reglas en iconos. */
+.comp-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 4px 10px;
+}
+.comp-card {
+  --neon: #62d6ff;
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  border-radius: 18px;
+  border: 2px solid color-mix(in srgb, var(--neon) 30%, transparent);
+  background: rgba(7, 16, 28, 0.78);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.comp-card.is-on {
+  border-color: #f2c94c;
+  box-shadow: 0 0 20px color-mix(in srgb, #f2c94c 50%, transparent);
+}
+.comp-card.is-off {
+  opacity: 0.55;
+}
+.comp-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.comp-main:disabled {
+  cursor: default;
+}
+.comp-banner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+}
+/* Velo para leer el texto sobre el banner. */
+.comp-card.has-banner .comp-main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(4, 8, 16, 0.25), rgba(4, 8, 16, 0.75) 30%, rgba(4, 8, 16, 0.75) 70%, rgba(4, 8, 16, 0.25));
+}
+.comp-art,
+.comp-body {
+  position: relative;
+}
+.comp-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.comp-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.comp-name {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.comp-sub {
+  font-size: 15px;
+  color: var(--text-2);
+}
+.comp-sub b {
+  color: #f2c94c;
+}
+.comp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.comp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(7, 16, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.comp-chip i {
+  font-style: normal;
+}
+.comp-why {
+  color: #ff8a8a;
+  font-size: 16px;
+  font-weight: 800;
+}
+.comp-actions {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px 10px 4px;
+}
+.comp-help {
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(7, 16, 28, 0.85);
+  color: var(--text);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.comp-edit {
+  min-height: 40px;
+}
