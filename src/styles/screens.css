@@ -5711,7 +5711,8 @@ div > .name-clash:first-child {
   text-overflow: ellipsis;
 }
 
-/* «Continuar» de elegir torneo: verde neón que late, con un brillo que lo cruza y una flecha que
+/* Botón principal de avanzar en el flujo de torneos («Siguiente», «Continuar», «Guardar», «Crear
+   torneo»): verde neón que late, con un brillo que lo cruza y una flecha que
    empuja hacia delante. Desactivado se queda quieto y apagado. */
 .btn.btn-primary.tn-continue {
   position: relative;
@@ -5800,4 +5801,11 @@ div > .name-clash:first-child {
   .tn-continue-arrow {
     animation: none;
   }
+}
+/* Versión de ventana (más pequeña): mismo verde y mismos efectos. */
+.btn.btn-primary.tn-continue.tn-continue-sm {
+  min-width: 0;
+  min-height: 52px;
+  font-size: 17px;
+  padding: 0 20px;
 }

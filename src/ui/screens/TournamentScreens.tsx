@@ -695,8 +695,11 @@ export function TournamentNewScreen({
             <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
               {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
             </button>
-            <button className="btn btn-primary btn-lg" disabled={n < 3} onClick={() => setStep('kind')}>
-              Siguiente
+            <button className="btn btn-primary btn-lg tn-continue" disabled={n < 3} onClick={() => setStep('kind')}>
+              <span>Siguiente</span>
+              <span className="tn-continue-arrow" aria-hidden="true">
+                ▶
+              </span>
             </button>
           </>
         }
@@ -1177,8 +1180,11 @@ export function TournamentNewScreen({
                   ↻ Sortear otra vez
                 </button>
               )}
-              <button className="btn btn-primary" disabled={errors.length > 0} onClick={create}>
-                Crear torneo
+              <button className="btn btn-primary tn-continue tn-continue-sm" disabled={errors.length > 0} onClick={create}>
+                <span>Crear torneo</span>
+                <span className="tn-continue-arrow" aria-hidden="true">
+                ▶
+              </span>
               </button>
             </>
           }
@@ -1613,12 +1619,18 @@ export function TournamentTemplateScreen({
             </button>
           )}
           {last ? (
-            <button className="btn btn-primary btn-lg" disabled={!tpl.name.trim()} onClick={save}>
-              Guardar {kind.noun}
+            <button className="btn btn-primary btn-lg tn-continue" disabled={!tpl.name.trim()} onClick={save}>
+              <span>Guardar {kind.noun}</span>
+              <span className="tn-continue-arrow" aria-hidden="true">
+                ✓
+              </span>
             </button>
           ) : (
-            <button className="btn btn-primary btn-lg" onClick={() => setStep(CREATOR_STEPS[idx + 1].id)}>
-              Siguiente
+            <button className="btn btn-primary btn-lg tn-continue" onClick={() => setStep(CREATOR_STEPS[idx + 1].id)}>
+              <span>Siguiente</span>
+              <span className="tn-continue-arrow" aria-hidden="true">
+                ▶
+              </span>
             </button>
           )}
         </>
