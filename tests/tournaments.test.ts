@@ -652,3 +652,22 @@ describe('Ficha del torneo con empates', () => {
     expect(a.mvp).toBe(1);
   });
 });
+
+describe('Numeración de ediciones', () => {
+  const ed = (id: string, edition: number | undefined, createdAt: number, status: Tournament['status'] = 'finished') =>
+    ({ id, templateId: 'liga', edition, createdAt, status, teams: [], fixtures: [] }) as unknown as Tournament;
+  it('la siguiente es la más alta + 1: un hueco no se rellena y nunca se repite número', async () => {
+    const { nextEdition } = await import('../src/services/tournaments');
+    // Se descartó la 2ª: queda el hueco y la siguiente es la 4ª.
+    expect(nextEdition('liga', [ed('a', 1, 1), ed('c', 3, 3)])).toBe(4);
+    // Se descartó la última: su número se vuelve a usar.
+    expect(nextEdition('liga', [ed('a', 1, 1)])).toBe(2);
+    // Torneos antiguos sin número: cuentan por orden.
+    expect(nextEdition('liga', [ed('a', undefined, 1), ed('b', undefined, 2)])).toBe(3);
+  });
+  it('sabe si una competición tiene una edición en juego', async () => {
+    const { activeEdition } = await import('../src/services/tournaments');
+    expect(activeEdition('liga', [ed('a', 1, 1), ed('b', 2, 2, 'active')])?.id).toBe('b');
+    expect(activeEdition('liga', [ed('a', 1, 1)])).toBeUndefined();
+  });
+});

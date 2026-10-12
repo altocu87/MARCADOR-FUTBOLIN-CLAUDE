@@ -28,9 +28,20 @@ export function competitionName(t: Tournament): string {
   return t.competition ?? t.templateName ?? t.name;
 }
 
-/** Número de la siguiente edición de una competición (por su clave). */
+/**
+ * Número de la siguiente edición de una competición (por su clave): la más alta que exista + 1. Si se
+ * descarta una edición intermedia queda el hueco (nunca se repite un número); si se descarta la
+ * última, su número se vuelve a usar.
+ */
 export function nextEdition(key: string, tournaments: Tournament[]): number {
-  return tournaments.filter((t) => competitionKey(t) === key && t.status !== 'cancelled').length + 1;
+  const list = tournaments.filter((t) => competitionKey(t) === key && t.status !== 'cancelled').sort((a, b) => a.createdAt - b.createdAt);
+  // Los torneos antiguos sin número guardado cuentan por su orden.
+  return list.reduce((max, t, i) => Math.max(max, t.edition ?? i + 1), 0) + 1;
+}
+
+/** Edición de una competición que está en juego (solo puede haber una a la vez). */
+export function activeEdition(key: string, tournaments: Tournament[]): Tournament | undefined {
+  return tournaments.find((t) => competitionKey(t) === key && t.status === 'active');
 }
 
 /** Última edición de una competición: de ella salen el logo y la copa por defecto. */

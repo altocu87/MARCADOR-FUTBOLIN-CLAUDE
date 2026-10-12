@@ -18,6 +18,7 @@ import {
   competitionName,
   lastEdition,
   nextEdition,
+  activeEdition,
   tournamentReport,
   createTournament,
   describeTemplate,
@@ -726,7 +727,10 @@ export function TournamentNewScreen({
   const shown = fits.filter((x) => x.fit.ok);
   const blocked = fits.filter((x) => !x.fit.ok);
   // Las reglas (goles, tiempo, final) son las del tipo elegido: aquí solo se resumen y se cambian con «Editar».
-  const tpl = shown.find((x) => x.t.id === chosenTpl)?.t ?? shown[0]?.t;
+  // Una competición con una edición en juego no se puede volver a empezar hasta que esa acabe o se descarte.
+  const playing = (id: string) => activeEdition(id, tournaments);
+  const free = shown.filter((x) => !playing(x.t.id));
+  const tpl = free.find((x) => x.t.id === chosenTpl)?.t ?? free[0]?.t;
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -1066,7 +1070,11 @@ export function TournamentNewScreen({
     : null;
   const leftover = built?.leftover ?? [];
   const errors = !tpl || !draft
-    ? [`Ningún predefinido de ${kindInfo.noun} encaja con ${n} jugadores: crea uno o elige otro tipo.`]
+    ? [
+        shown.length > 0
+          ? `${shown.length === 1 ? `${kindInfo.the[0].toUpperCase()}${kindInfo.the.slice(1)} ya tiene` : kindInfo.format === 'pool' ? 'Todos tienen' : 'Todas tienen'} una edición en juego: termínala o descártala antes de empezar otra.`
+          : `Ninguna ${kindInfo.noun} encaja con ${n} jugadores: crea una o elige otro tipo.`,
+      ]
     : leftover.length
       ? [isManual ? `Faltan ${leftover.length} jugadores por emparejar.` : `Sobra ${nameOf(leftover[0])}.`]
       : validateDraft(draft);
@@ -1112,9 +1120,10 @@ export function TournamentNewScreen({
     const tLogo = t.logo ?? prev?.logo ?? defaultLogo(tName || 'torneo', t.format);
     const tCup = t.cup ?? prev?.cup ?? defaultCup();
     const tBanner = t.banner ?? prev?.banner ?? defaultBanner(tName || 'torneo', t.format);
+    const live = playing(t.id);
     return (
-      <div key={t.id} className={`comp-card${on ? ' is-on' : ''}${fit.ok ? '' : ' is-off'}${tBanner ? ' has-banner' : ''}`}>
-        <button className="comp-main" aria-pressed={on} disabled={!fit.ok} onClick={() => setChosenTpl(t.id)}>
+      <div key={t.id} className={`comp-card${on ? ' is-on' : ''}${fit.ok && !live ? '' : ' is-off'}${live ? ' is-live' : ''}${tBanner ? ' has-banner' : ''}`}>
+        <button className="comp-main" aria-pressed={on} disabled={!fit.ok || !!live} onClick={() => setChosenTpl(t.id)}>
           <BannerArt id={tBanner} className="comp-banner" />
           <span className="comp-art">
             <Crest id={tLogo} size={58} />
@@ -1122,10 +1131,16 @@ export function TournamentNewScreen({
           <span className="comp-body">
             <span className="comp-name">{tName}</span>
             <span className="comp-sub">
-              <b>{nextEdition(t.id, tournaments)}ª edición</b>
-              {fit.ok ? ` · ${fit.summary?.split(' · ')[0]}` : ''}
+              {live ? (
+                <b className="comp-live">▶ {live.edition ?? ''}{live.edition ? 'ª edición ' : ''}en juego · termínala o descártala para empezar otra</b>
+              ) : (
+                <>
+                  <b>{nextEdition(t.id, tournaments)}ª edición</b>
+                  {fit.ok ? ` · ${fit.summary?.split(' · ')[0]}` : ''}
+                </>
+              )}
             </span>
-            {fit.ok ? (
+            {live ? null : fit.ok ? (
               <span className="comp-chips">
                 {ruleChips(t).map((c) => (
                   <span key={c.text} className="comp-chip">
@@ -1146,9 +1161,15 @@ export function TournamentNewScreen({
           <button className="comp-help" aria-label={`Reglas de ${tName}`} onClick={() => setRulesOf(t)}>
             ?
           </button>
-          <button className="btn btn-sm comp-edit" onClick={() => editTemplate(t)}>
-            Editar
-          </button>
+          {live ? (
+            <button className="btn btn-sm btn-primary comp-edit" onClick={() => navigate({ name: 'tournamentDetail', id: live.id })}>
+              Continuar
+            </button>
+          ) : (
+            <button className="btn btn-sm comp-edit" onClick={() => editTemplate(t)}>
+              Editar
+            </button>
+          )}
         </div>
       </div>
     );

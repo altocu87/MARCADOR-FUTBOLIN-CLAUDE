@@ -6540,3 +6540,14 @@ div > .name-clash:first-child {
 .comp-edit {
   min-height: 40px;
 }
+/* Competición con una edición en juego: no se puede empezar otra; se continúa desde la tarjeta. */
+.comp-card.is-live {
+  opacity: 1;
+  border-color: color-mix(in srgb, #3ddc84 60%, transparent);
+}
+.comp-card.is-live .comp-main {
+  opacity: 0.75;
+}
+.comp-live {
+  color: #6be38f !important;
+}
