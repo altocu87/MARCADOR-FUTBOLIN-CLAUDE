@@ -7,6 +7,7 @@
 import { useState, type CSSProperties } from 'react';
 import { useApp } from '../../app/AppContext';
 import { ICON_CATEGORIES, ICON_PREFIX, iconCategory, isUnlocked, unlockText, type IconCategory, type IconKind } from '../../services/icons';
+import type { TournamentFormat } from '../../services/persistence';
 import { Modal } from './common';
 import { AssetImage, assetNames, assetUrl } from './assets';
 
@@ -30,14 +31,20 @@ export function categoryItems(kind: IconKind, category: string): string[] {
   return kind === 'logo' ? EMOJI_LOGOS.map((e) => `emoji:${e}`) : Object.keys(CUP_TINTS).map((k) => `trofeo:${k}`);
 }
 
-/** Categorías que ya tienen algo que enseñar. */
-export function iconCategories(kind: IconKind): IconCategory[] {
-  return ICON_CATEGORIES.filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
+/**
+ * Categorías que ya tienen algo que enseñar. Con un tipo de torneo que tenga las suyas propias, solo
+ * esas (los iconos de la liga no se mezclan con los de la copa o el pool); si no, las comunes.
+ */
+export function iconCategories(kind: IconKind, format?: TournamentFormat): IconCategory[] {
+  const shown = ICON_CATEGORIES.filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
+  const own = format ? shown.filter((c) => c.format === format) : [];
+  return own.length ? own : shown.filter((c) => !c.format);
 }
 
-/** Logos genéricos (los de por defecto). */
-export function logoCatalog(): string[] {
-  return categoryItems('logo', 'generico');
+/** Logos de por defecto: los del tipo de torneo, si tiene propios, o los genéricos. */
+export function logoCatalog(format?: TournamentFormat): string[] {
+  const cat = iconCategories('logo', format)[0];
+  return cat ? categoryItems('logo', cat.id) : categoryItems('logo', 'generico');
 }
 
 /** Copas genéricas. */
@@ -46,8 +53,8 @@ export function cupCatalog(): string[] {
 }
 
 /** Un logo para empezar, siempre el mismo para la misma semilla (nombre del equipo o torneo). */
-export function defaultLogo(seed: string): string {
-  const list = logoCatalog();
+export function defaultLogo(seed: string, format?: TournamentFormat): string {
+  const list = logoCatalog(format);
   let h = 0;
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return list[h % list.length];
@@ -97,15 +104,18 @@ export function IconGrid({
   onPick,
   playerIds,
   size = 56,
+  format,
 }: {
   kind: IconKind;
   value?: string;
   onPick: (id: string) => void;
   playerIds: string[];
   size?: number;
+  /** Tipo de torneo: con iconos propios, solo esos. Sin él (equipos), los comunes. */
+  format?: TournamentFormat;
 }) {
   const { progression } = useApp();
-  const cats = iconCategories(kind);
+  const cats = iconCategories(kind, format);
   const progs = playerIds.map((id) => progression?.players.get(id));
   const startCat = (value && cats.find((c) => categoryItems(kind, c.id).includes(value))?.id) || cats[0]?.id;
   const [tab, setTab] = useState(startCat);
@@ -151,6 +161,7 @@ export function IconPicker({
   onClose,
   playerIds,
   title,
+  format,
 }: {
   kind: IconKind;
   value?: string;
@@ -158,6 +169,8 @@ export function IconPicker({
   onClose: () => void;
   playerIds: string[];
   title?: string;
+  /** Tipo de torneo (sus iconos propios, si los tiene). */
+  format?: TournamentFormat;
 }) {
   return (
     <Modal
@@ -173,6 +186,7 @@ export function IconPicker({
         kind={kind}
         value={value}
         playerIds={playerIds}
+        format={format}
         onPick={(id) => {
           onPick(id);
           onClose();

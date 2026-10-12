@@ -945,7 +945,7 @@ export function TournamentNewScreen({
   const edition = tpl ? nextEdition(compKey, tournaments) : 1;
   const prevEdition = tpl ? lastEdition(compKey, tournaments) : undefined;
   // Banner y copa: lo cambiado aquí, si no los del torneo, si no los de la edición anterior.
-  const logo = myBrand?.logo ?? (isCustom ? undefined : tpl?.logo) ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo');
+  const logo = myBrand?.logo ?? (isCustom ? undefined : tpl?.logo) ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo', tpl?.format);
   const cup = myBrand?.cup ?? (isCustom ? undefined : tpl?.cup) ?? prevEdition?.cup ?? defaultCup();
   const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
     tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
@@ -1122,6 +1122,7 @@ export function TournamentNewScreen({
                 value={picker === 'logo' ? logo : cup}
                 onPick={(v) => setBrandField(picker === 'logo' ? { logo: v } : { cup: v })}
                 playerIds={selected}
+                format={tpl.format}
                 onClose={() => setPicker(null)}
               />
             )}
@@ -1576,7 +1577,7 @@ export function TournamentTemplateScreen({
       </div>
     );
   } else {
-    const banner = tpl.logo ?? defaultLogo(tpl.name || 'torneo');
+    const banner = tpl.logo ?? defaultLogo(tpl.name || 'torneo', tpl.format);
     const cupId = tpl.cup ?? defaultCup();
     body = (
       <div className="cr-cols">
@@ -1635,6 +1636,7 @@ export function TournamentTemplateScreen({
             title={picker === 'logo' ? 'Elige el banner' : 'Elige la copa'}
             onPick={(v) => set(picker, v)}
             playerIds={selected ?? []}
+            format={tpl.format}
             onClose={() => setPicker(null)}
           />
         )}

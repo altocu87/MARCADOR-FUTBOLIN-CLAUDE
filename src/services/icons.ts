@@ -3,6 +3,7 @@
  * bloqueada hasta que alguno de los jugadores llegue a un nivel, un rango, un logro o un número de títulos.
  * Las imágenes se llaman `escudo-<categoría>-NN` y `copa-<categoría>-NN` (sin categoría = genéricos).
  */
+import type { TournamentFormat } from './persistence';
 import type { PlayerProgress } from './progression';
 import { ACHIEVEMENTS, CATEGORIES, categoryFor } from './progression';
 
@@ -21,12 +22,18 @@ export interface IconCategory {
   kind: IconKind;
   label: string;
   unlock?: Unlock;
+  /**
+   * Exclusiva de un tipo de torneo: solo se ofrece (y es la de por defecto) en ese tipo, y nunca en
+   * los otros ni en los equipos. Un tipo sin categorías propias usa las comunes.
+   */
+  format?: TournamentFormat;
 }
 
 /** Para añadir una categoría: una línea aquí y sus imágenes con el prefijo `escudo-<id>-` o `copa-<id>-`. */
 export const ICON_CATEGORIES: IconCategory[] = [
   { id: 'generico', kind: 'logo', label: 'Genéricos' },
   { id: 'retro80', kind: 'logo', label: 'Retro 80' },
+  { id: 'liga', kind: 'logo', label: 'Liga', format: 'league' },
   { id: 'generico', kind: 'cup', label: 'Genéricas' },
   { id: 'retro90', kind: 'cup', label: 'Retro 90' },
 ];
