@@ -19,6 +19,7 @@ import {
   getClock,
   getScore,
   goalLockRemaining,
+  validGoalsFromEvents,
   goalMoment,
   handicapEndText,
   handicapsEnabled,
@@ -118,6 +119,23 @@ function bonusLabel(e: MatchEvent): string | null {
   if (b.includes('penalty')) return '¡PENALTI!';
   if (b.includes('double')) return '¡GOL DOBLE!';
   return null;
+}
+
+/**
+ * ¿Esta pulsación elige goleador? Sí si acaba de marcar ese equipo (seguimos en el bloqueo de 3 s del
+ * gol, con el partido en juego) y tiene más de un jugador. Devuelve el gol y el siguiente goleador de la
+ * vuelta: ninguno → 1.º → 2.º → … → ninguno.
+ */
+export function scorerPickTarget(s: MatchState, team: Team, now: number): { goalId: string; next: string | undefined } | null {
+  if (s.phase !== 'playing' || goalLockRemaining(s, now) <= 0) return null;
+  const goal = validGoalsFromEvents(s.events).at(-1);
+  if (!goal || goal.team !== team) return null;
+  const ids = s.participants.filter((p) => p.team === team).sort((a, b) => a.slot - b.slot).map((p) => p.playerId);
+  if (ids.length < 2) return null;
+  const cycle: (string | undefined)[] = [...ids, undefined];
+  const current = s.scorers?.[goal.id];
+  const i = current === undefined ? cycle.length - 1 : cycle.indexOf(current);
+  return { goalId: goal.id, next: cycle[(i + 1) % cycle.length] };
 }
 
 export function useMatchController(
@@ -414,6 +432,14 @@ export function useMatchController(
           return;
         }
         if (team) {
+          // Tras un gol de su equipo, mientras sale la celebración (bloqueo de 3 s), cada pulsación más
+          // elige al goleador: el 1.º jugador, el 2.º… y vuelta a ninguno. Se ve en la pantalla.
+          const pick = scorerPickTarget(s, team, Date.now());
+          if (pick && source !== 'sensor') {
+            send({ type: 'ASSIGN_SCORER', eventId: pick.goalId, scorer: pick.next });
+            sound.play('ui');
+            return;
+          }
           send({ type: 'GOAL', team, source });
           return;
         }

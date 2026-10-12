@@ -583,3 +583,33 @@ describe('Gol tocando la ficha del jugador', () => {
     expect(personalGoals([m]).get('d')).toBe(2);
   });
 });
+
+describe('Elegir goleador con el pulsador', () => {
+  it('cada pulsación tras el gol pasa al siguiente jugador y vuelve a ninguno', async () => {
+    const { scorerPickTarget } = await import('../src/ui/screens/useMatchController');
+    const s = new Sim(cfg({ goalsPerPeriod: 5 }), P4).start();
+    s.wait(3000);
+    s.cmd({ type: 'GOAL', team: 'white', source: 'button' });
+    const goalId = s.state.events.filter((e) => e.type === 'GOAL').at(-1)!.id;
+    const press = () => {
+      const t = scorerPickTarget(s.state, 'white', s.t);
+      expect(t).not.toBeNull();
+      s.cmd({ type: 'ASSIGN_SCORER', eventId: t!.goalId, scorer: t!.next });
+      return s.state.scorers?.[goalId];
+    };
+    expect(press()).toBe('a');
+    expect(press()).toBe('c');
+    expect(press()).toBeUndefined();
+    // El rival no elige; y pasado el bloqueo, la pulsación vuelve a ser gol.
+    expect(scorerPickTarget(s.state, 'blue', s.t)).toBeNull();
+    s.wait(3000);
+    expect(scorerPickTarget(s.state, 'white', s.t)).toBeNull();
+  });
+  it('en 1 contra 1 no hay nada que elegir', async () => {
+    const { scorerPickTarget } = await import('../src/ui/screens/useMatchController');
+    const s = new Sim(cfg(), P2).start();
+    s.wait(3000);
+    s.cmd({ type: 'GOAL', team: 'white' });
+    expect(scorerPickTarget(s.state, 'white', s.t)).toBeNull();
+  });
+});

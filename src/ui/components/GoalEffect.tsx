@@ -96,12 +96,18 @@ export function GoalShow({
   seed,
   label,
   people,
+  chosen,
+  pickHint,
 }: {
   team: Team;
   level: EffectsLevel;
   seed: string;
   label?: string | null;
   people: { id: string; name: string; photo?: string }[];
+  /** Goleador elegido (se ilumina; los demás se apagan). */
+  chosen?: string;
+  /** Se puede elegir goleador con el pulsador: se dice cómo. */
+  pickHint?: boolean;
 }) {
   const { prefs } = useApp();
   const club = findClub(prefs.clubs, people.map((p) => p.id));
@@ -149,14 +155,16 @@ export function GoalShow({
       </div>
       <div className="gs-team">{club ? club.name.toLocaleUpperCase('es') : `EQUIPO ${team === 'white' ? 'BLANCO' : 'AZUL'}`}</div>
       {label && <div className="gs-label">{label}</div>}
-      <div className="gs-people">
+      <div className={`gs-people${chosen ? ' has-chosen' : ''}`}>
         {people.map((p) => (
-          <div key={p.id} className="gs-person">
+          <div key={p.id} className={`gs-person${chosen === p.id ? ' is-chosen' : ''}`}>
             <span className="gs-photo">{p.photo ? <img src={p.photo} alt="" draggable={false} /> : initials(p.name)}</span>
             <span className="gs-name">{p.name}</span>
+            {chosen === p.id && <span className="gs-scorer">⚽ GOLEADOR</span>}
           </div>
         ))}
       </div>
+      {pickHint && <div className="gs-pick-hint">¿Quién ha marcado? Pulsa otra vez el pulsador</div>}
     </div>
   );
 }

@@ -332,6 +332,17 @@ export function dispatch(state: MatchState, command: EngineCommand, now: number)
       return accept({ ...s, countdownEndsAt: Math.min(s.countdownEndsAt, now + COUNTDOWN_MS) });
     }
 
+    case 'ASSIGN_SCORER': {
+      // Elegir el goleador después del gol (p. ej. con más pulsaciones del pulsador de su equipo).
+      const goal = s.events.find((e) => e.id === command.eventId && e.type === 'GOAL');
+      if (!goal) return reject('invalid_state');
+      const scorers = { ...(s.scorers ?? {}) };
+      if (command.scorer === undefined) delete scorers[goal.id];
+      else if (s.participants.some((p) => p.playerId === command.scorer && p.team === goal.team)) scorers[goal.id] = command.scorer;
+      else return reject('invalid_state');
+      return accept({ ...s, scorers });
+    }
+
     case 'GOAL': {
       if (s.phase !== 'playing') return reject('invalid_state');
       if (goalLockRemaining(s, now) > 0) return reject('goal_lock');

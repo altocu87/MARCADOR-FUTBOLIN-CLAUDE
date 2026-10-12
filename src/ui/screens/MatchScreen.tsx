@@ -163,12 +163,18 @@ export function MatchScreen({
           level={prefs.effects}
           seed={ctl.lastGoal.id}
           label={ctl.goalLabel}
-          // Con goleador apuntado (se tocó su ficha), sale solo él; si no, todo el equipo.
+          // Gol tocando la ficha de un jugador: sale solo él. Con el pulsador: todo el equipo, con el goleador
+          // elegido iluminado y el aviso de que otra pulsación lo elige (si el equipo es de más de uno).
           people={state.participants
             .filter((p) => p.team === ctl.lastGoal!.team)
-            .filter((p) => !state.scorers?.[ctl.lastGoal!.id] || state.scorers[ctl.lastGoal!.id] === p.playerId)
+            .filter((p) => ctl.lastGoal!.source !== 'touch' || !state.scorers?.[ctl.lastGoal!.id] || state.scorers[ctl.lastGoal!.id] === p.playerId)
             .sort((a, b) => a.slot - b.slot)
             .map((p) => ({ id: p.playerId, name: p.nameSnapshot, photo: photos.get(p.playerId) }))}
+          chosen={ctl.lastGoal.source !== 'touch' ? state.scorers?.[ctl.lastGoal.id] : undefined}
+          pickHint={
+            ctl.lastGoal.source !== 'touch' &&
+            state.participants.filter((p) => p.team === ctl.lastGoal!.team).length > 1
+          }
         />
       )}
       {/* Al restar (−1) o deshacer un gol: «GOL ANULADO» en rojo. */}

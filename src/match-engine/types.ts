@@ -92,6 +92,8 @@ export type EngineCommand =
   | { type: 'SKIP_INTRO' }
   /** `scorer`: quién lo ha marcado (al tocar su ficha en vez del marcador). */
   | { type: 'GOAL'; team: Team; source?: InputSource; scorer?: string }
+  /** Apuntar (o quitar, sin `scorer`) el goleador de un gol ya marcado. */
+  | { type: 'ASSIGN_SCORER'; eventId: string; scorer?: string }
   | { type: 'MINUS_ONE'; team: Team }
   | { type: 'UNDO' }
   | { type: 'PAUSE' }

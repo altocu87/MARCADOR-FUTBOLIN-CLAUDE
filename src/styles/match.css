@@ -2366,3 +2366,47 @@
 .overlay-victory .vic-title-wrap .victory-title.is-long {
   font-size: 34px;
 }
+
+/* Elegir goleador con el pulsador: el elegido se ilumina y los demás se apagan. */
+.gs-people .gs-person {
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+.gs-people.has-chosen .gs-person:not(.is-chosen) {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+  transform: scale(0.86);
+}
+.gs-person.is-chosen {
+  transform: scale(1.18);
+}
+.gs-person.is-chosen .gs-photo {
+  box-shadow:
+    0 0 0 4px #ffd400,
+    0 0 26px #ffd400;
+}
+.gs-scorer {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #ffd400;
+  color: #1a1203;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+.gs-pick-hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(7, 16, 28, 0.78);
+  border: 2px solid currentColor;
+  font-size: 16px;
+  font-weight: 800;
+  animation: gs-hint-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes gs-hint-pulse {
+  to {
+    box-shadow: 0 0 18px var(--gs-glow);
+  }
+}
