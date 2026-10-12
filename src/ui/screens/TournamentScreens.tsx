@@ -536,10 +536,23 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
  * Los tres tipos de torneo, tal y como se le enseñan al jugador en «¿Qué torneo jugamos?».
  * `noun`/`the` van en la pantalla siguiente («Elige la liga», «+ Crear copa»).
  */
-const KINDS: { format: TournamentFormat; file: string; title: string; noun: string; the: string; none: string; desc: string }[] = [
-  { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', none: 'ninguna', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
-  { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', none: 'ninguna', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
-  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', none: 'ningún', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
+const KINDS: {
+  format: TournamentFormat;
+  file: string;
+  title: string;
+  noun: string;
+  the: string;
+  none: string;
+  /** «primera liga» / «primer pool», «creada» / «creado». */
+  first: string;
+  created: string;
+  /** Color de neón del tipo (el mismo de su cartel). */
+  color: string;
+  desc: string;
+}[] = [
+  { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', none: 'ninguna', first: 'primera', created: 'creada', color: '#62d6ff', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
+  { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', none: 'ninguna', first: 'primera', created: 'creada', color: '#f2c94c', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
+  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', none: 'ningún', first: 'primer', created: 'creado', color: '#d65cff', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
 ];
 
 /** Igual que las tarjetas de modo del inicio: la elegida se apaga sola si nadie confirma, y la pulsada
@@ -843,11 +856,6 @@ export function TournamentNewScreen({
                   }
                   setKindPressed(k.format);
                   kindTimer.current = window.setTimeout(() => {
-                    // Sin ninguna creada de este tipo, directo al creador (con el tipo ya elegido).
-                    if (!total) {
-                      navigate({ name: 'tournamentTemplate', selected, format: k.format });
-                      return;
-                    }
                     setKind(k.format);
                     setShowBlocked(false);
                     setKindSelected(null);
@@ -877,6 +885,42 @@ export function TournamentNewScreen({
               </button>
             );
           })}
+        </div>
+      </ScreenFrame>
+    );
+  }
+
+  // Ninguno creado de este tipo: cartel de neón que invita a crear el primero (en vez de una lista vacía).
+  if (fits.length === 0) {
+    const createFirst = () => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format });
+    return (
+      <ScreenFrame
+        title={kindInfo.title}
+        subtitle={`${n} jugadores`}
+        className="select-screen tn-screen tn-empty-screen"
+        background={
+          <div className="select-bg is-on tn-empty-bg" style={{ ['--kc' as string]: kindInfo.color }}>
+            {TN_BG}
+            <AssetImage name={`tarjeta-${kindInfo.file}-on`} className="tn-empty-bg-art" fallback={null} />
+            <span className="tn-empty-bg-glow" />
+            <span className="tn-empty-bg-grid" />
+          </div>
+        }
+        onBack={() => setStep('kind')}
+      >
+        <div className="tn-empty" style={{ ['--kc' as string]: kindInfo.color }}>
+          <div className="tn-neon-sign" role="status">
+            <span className="tn-neon-small">
+              No hay {kindInfo.none} {kindInfo.noun} {kindInfo.created}
+            </span>
+            <span className="tn-neon-big">
+              ¡Crea tu {kindInfo.first} {kindInfo.noun}!
+            </span>
+          </div>
+          <button className="tn-neon-btn" onClick={createFirst}>
+            + Crear {kindInfo.noun}
+          </button>
+          <small className="tn-empty-note">{kindInfo.desc}</small>
         </div>
       </ScreenFrame>
     );
