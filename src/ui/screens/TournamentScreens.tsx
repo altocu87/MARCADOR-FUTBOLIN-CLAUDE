@@ -58,6 +58,7 @@ import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
+import { RankPhoto } from '../components/PlayerCards';
 import { newId } from '../../services/ids';
 import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
@@ -1792,20 +1793,34 @@ export function TournamentDetailScreen({
     setConfirmUndo(false);
   };
 
+  // Fotos pequeñas de un equipo en las filas de jornadas.
+  const miniPhotos = (tid: string | null) => (
+    <span className="fx-photos" aria-hidden="true">
+      {(t.teams.find((x) => x.id === tid)?.playerIds ?? []).map((pid) => (
+        <Avatar key={pid} name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={24} />
+      ))}
+    </span>
+  );
+  const rankOf = (id: string) => progression?.players.get(id)?.category.id ?? 'none';
+
   const fixtureRow = (f: Fixture) => {
     const series = (f.bestOf ?? 1) > 1;
     const isNext = f.id === next?.id;
     return (
       <div key={f.id} className={`fixture ${fixtureDone(f) ? 'done' : ''} ${f.draw ? 'is-draw' : ''} ${isNext ? 'is-next' : ''}`}>
         <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
-          <i className="pre-dot white" aria-label="Blanco" /> {teamLabel(f.whiteTeamId)}
+          <i className="pre-dot white" aria-label="Blanco" />
+          {miniPhotos(f.whiteTeamId)}
+          <span className="fx-name">{teamLabel(f.whiteTeamId)}</span>
         </span>
         <span className="fx-score">
           {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
           {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
         </span>
         <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>
-          {teamLabel(f.blueTeamId)} <i className="pre-dot blue" aria-label="Azul" />
+          <span className="fx-name">{teamLabel(f.blueTeamId)}</span>
+          {miniPhotos(f.blueTeamId)}
+          <i className="pre-dot blue" aria-label="Azul" />
         </span>
       </div>
     );
@@ -1818,37 +1833,53 @@ export function TournamentDetailScreen({
     const white = side(next.whiteTeamId);
     const blue = side(next.blueTeamId);
     const pr = progression ? predict(white, blue, matches, progression) : null;
-    const pct = (team: 'white' | 'blue') => (pr?.available ? `${team === 'white' ? pr.whitePct : pr.bluePct} %` : null);
     const resting = next.resting ?? allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool');
     const game = (next.matchIds?.length ?? 0) + 1;
+    // Con uno por lado, fotos grandes; en pareja, algo menores para que quepan las dos.
+    const photoSize = Math.max(white.length, blue.length) > 1 ? 68 : 92;
     const teamBlock = (ids: string[], team: 'white' | 'blue') => {
       const tt = t.teams.find((x) => x.id === (team === 'white' ? next.whiteTeamId : next.blueTeamId));
       return (
-      <div className={`next-side next-${team}`}>
-        <span className="next-team-label">{team === 'white' ? 'BLANCO' : 'AZUL'}</span>
-        {tt?.logo && (
-          <span className="next-club">
-            <Crest id={tt.logo} size={26} /> {tt.name}
-          </span>
-        )}
-        <div className="next-avatars">
-          {ids.map((pid) => (
-            <Avatar key={pid} name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={46} />
-          ))}
+        <div className={`next-side next-${team}`}>
+          <span className="next-team-label">{team === 'white' ? 'BLANCO' : 'AZUL'}</span>
+          <div className="next-avatars">
+            {ids.map((pid) => {
+              const photo = players.find((p) => p.id === pid)?.photo;
+              const rank = rankOf(pid);
+              // Con rango, su marco; sin él (invitados), la foto redonda.
+              return rank !== 'none' ? (
+                <RankPhoto key={pid} name={nameOf(pid)} photo={photo} rank={rank} size={photoSize} />
+              ) : (
+                <Avatar key={pid} name={nameOf(pid)} photo={photo} size={photoSize} />
+              );
+            })}
+          </div>
+          <b className="next-names">{ids.map(nameOf).join(' + ')}</b>
+          {tt?.logo && (
+            <span className="next-club">
+              <Crest id={tt.logo} size={22} /> {tt.name}
+            </span>
+          )}
         </div>
-        <b>{ids.map(nameOf).join(' + ')}</b>
-        {pct(team) && <span className="next-pct">{pct(team)}</span>}
-      </div>
       );
     };
+    const wp = pr?.available ? pr.whitePct : null;
+    const bp = pr?.available ? pr.bluePct : null;
     nextCard = (
       <div className="next-card">
         <div className="next-head">
           <span className="label">Siguiente partido</span>
-          <span>
-            {roundLabel(t, next.round)} · partido {progress.done + 1} de {progress.total}
-            {(next.bestOf ?? 1) > 1 && ` · serie ${next.series?.white ?? 0}–${next.series?.blue ?? 0}, partido ${game}`}
-            {` · ${rulesShort(fixtureConfig(t, next))}`}
+          <span className="next-chips">
+            <span className="next-chip">{roundLabel(t, next.round)}</span>
+            <span className="next-chip">
+              Partido {progress.done + 1} de {progress.total}
+            </span>
+            {(next.bestOf ?? 1) > 1 && (
+              <span className="next-chip">
+                Serie {next.series?.white ?? 0}–{next.series?.blue ?? 0} · partido {game}
+              </span>
+            )}
+            <span className="next-chip">⏱ {rulesShort(fixtureConfig(t, next))}</span>
           </span>
         </div>
         {next.abandonedAt && !pending && <div className="next-abandoned">⏸ Se dejó a medias · se empieza de cero</div>}
@@ -1857,6 +1888,16 @@ export function TournamentDetailScreen({
           <span className="next-vs">VS</span>
           {teamBlock(blue, 'blue')}
         </div>
+        {wp !== null && bp !== null && (
+          <div className="next-odds" aria-label={`Pronóstico: Blanco ${wp} %, Azul ${bp} %`}>
+            <b className="next-odds-w">{wp} %</b>
+            <span className="next-odds-bar">
+              <span className="next-odds-fill" style={{ width: `${wp}%` }} />
+              <small>Pronóstico</small>
+            </span>
+            <b className="next-odds-b">{bp} %</b>
+          </div>
+        )}
         {resting.length > 0 && <div className="next-rest">Descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</div>}
         <button className="neon-go next-btn" onClick={() => play(next)}>
           ▶ SIGUIENTE PARTIDO

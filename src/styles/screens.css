@@ -5855,3 +5855,116 @@ div > .name-clash:first-child {
   color: #fff;
   box-shadow: 0 0 8px rgba(255, 110, 110, 0.5);
 }
+
+/* ---------- Siguiente partido, ordenado: cabecera con etiquetas, fotos grandes y pronóstico en barra ---------- */
+.next-card {
+  gap: 10px;
+  padding: 12px 14px;
+}
+.next-head {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.next-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.next-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(4, 10, 20, 0.75);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.next-side {
+  gap: 6px;
+}
+.next-avatars {
+  gap: 8px;
+  margin-top: 2px;
+}
+.next-side b.next-names {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.next-vs {
+  font-size: 28px;
+}
+/* Pronóstico: una barra blanca (Blanco) frente a celeste (Azul) con el % a cada lado. */
+.next-odds {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.next-odds b {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.next-odds-w {
+  color: #fff;
+}
+.next-odds-b {
+  color: #62d6ff;
+}
+.next-odds-bar {
+  position: relative;
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(90deg, #2c9fd0, #62d6ff);
+  box-shadow: 0 0 10px rgba(98, 214, 255, 0.35);
+}
+.next-odds-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #ffffff, #dfe9f3);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.5);
+}
+.next-odds-bar small {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #04121f;
+  mix-blend-mode: normal;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+.next-rest {
+  font-size: 12px;
+}
+/* Filas de jornadas: fotos pequeñas junto al nombre. */
+.fx-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.fx-team.right {
+  justify-content: flex-end;
+}
+.fx-photos {
+  display: inline-flex;
+  flex: none;
+}
+.fx-photos .avatar + .avatar {
+  margin-left: -6px;
+}
+.fx-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
