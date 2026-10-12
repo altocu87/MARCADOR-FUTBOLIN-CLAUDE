@@ -662,6 +662,10 @@ describe('Numeración de ediciones', () => {
     expect(nextEdition('liga', [ed('a', 1, 1), ed('c', 3, 3)])).toBe(4);
     // Se descartó la última: su número se vuelve a usar.
     expect(nextEdition('liga', [ed('a', 1, 1)])).toBe(2);
+    // Se jugó la 1ª y se anuló la 2ª: la nueva es la 2ª y sustituye a la anulada.
+    expect(nextEdition('liga', [ed('a', 1, 1), ed('b', 2, 2, 'cancelled')])).toBe(2);
+    // Se anuló la 1ª pero se jugó la 2ª: queda el hueco y la siguiente es la 3ª.
+    expect(nextEdition('liga', [ed('a', 1, 1, 'cancelled'), ed('b', 2, 2)])).toBe(3);
     // Torneos antiguos sin número: cuentan por orden.
     expect(nextEdition('liga', [ed('a', undefined, 1), ed('b', undefined, 2)])).toBe(3);
   });
