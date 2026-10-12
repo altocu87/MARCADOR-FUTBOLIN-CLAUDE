@@ -109,34 +109,50 @@ function rulesText(r: MatchRules): string {
   return `A ${g} o ${m}, lo que llegue antes.`;
 }
 
-/** Elegir cómo se acaba un partido: a goles, a tiempo o ambas, y cuántos goles o minutos. */
-function ConditionSeg({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
-  return (
-    <Seg<MatchRules['endCondition']>
-      value={rules.endCondition}
-      options={[['goals', '⚽ GOLES'], ['time', '⏱ TIEMPO'], ['both', 'AMBAS']]}
-      onChange={(v) => onChange({ endCondition: v })}
-    />
-  );
-}
-
-function AmountRow({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
-  return (
-    <div className="tn-rules-row">
-      {rules.endCondition !== 'time' && <Seg value={rules.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => onChange({ goalsPerPeriod: v })} />}
-      {rules.endCondition !== 'goals' && <Seg value={rules.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => onChange({ minutesPerPeriod: v })} />}
+/**
+ * Cómo se acaba un partido, igual que en los partidos sueltos: «Goles» y «Tiempo» se marcan o desmarcan
+ * por separado (las dos marcadas: lo que llegue antes) y cada una tiene su cantidad en su propia sección.
+ * Siempre queda al menos una marcada.
+ */
+function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
+  const { toast } = useApp();
+  const goals = rules.endCondition !== 'time';
+  const time = rules.endCondition !== 'goals';
+  const toggle = (which: 'goals' | 'time') => {
+    const g = which === 'goals' ? !goals : goals;
+    const t = which === 'time' ? !time : time;
+    if (!g && !t) return toast('Deja activa al menos una: goles o tiempo');
+    onChange({ endCondition: g && t ? 'both' : g ? 'goals' : 'time' });
+  };
+  const way = (key: 'goals' | 'time', on: boolean, title: string, hint: string, amount: ReactNode) => (
+    <div className={`rule-way ${on ? 'is-on' : ''}`}>
+      <button className="rule-way-toggle" aria-pressed={on} onClick={() => toggle(key)}>
+        <span className="rule-way-check" aria-hidden="true">{on ? '✓' : ''}</span>
+        <span className="rule-way-title">{title}</span>
+        <small>{on ? hint : 'Toca para usarlo'}</small>
+      </button>
+      <div className="rule-way-amount" aria-disabled={!on}>
+        {amount}
+      </div>
     </div>
   );
-}
-
-function RulesPicker({ rules, onChange }: { rules: MatchRules; onChange: (patch: Partial<MatchRules>) => void }) {
   return (
-    <>
-      <div className="tn-rules-row">
-        <ConditionSeg rules={rules} onChange={onChange} />
-      </div>
-      <AmountRow rules={rules} onChange={onChange} />
-    </>
+    <div className="rule-ways">
+      {way(
+        'goals',
+        goals,
+        '⚽ Goles',
+        'A cuántos goles se gana',
+        <Seg value={rules.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => goals && onChange({ goalsPerPeriod: v })} />,
+      )}
+      {way(
+        'time',
+        time,
+        '⏱ Tiempo',
+        'Minutos de cada parte',
+        <Seg value={rules.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => time && onChange({ minutesPerPeriod: v })} />,
+      )}
+    </div>
   );
 }
 
@@ -166,24 +182,18 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
     >
       <div className="tn-rules-modal">
         <div className="tn-rules">
-          <div className="tn-rules-head">
-            <div className="label">Partidos</div>
-            <ConditionSeg rules={rules} onChange={(p) => setRules((r) => ({ ...r, ...p }))} />
-          </div>
-          <AmountRow rules={rules} onChange={(p) => setRules((r) => ({ ...r, ...p }))} />
+          <div className="label">Partidos</div>
+          <RulesPicker rules={rules} onChange={(p) => setRules((r) => ({ ...r, ...p }))} />
         </div>
         {hasFinal && (
           <div className="tn-rules tn-rules-final">
-            <div className="tn-rules-head">
-              <div className="label">🏆 Final</div>
-              <ConditionSeg rules={finalRules} onChange={(p) => setFinalRules((r) => ({ ...r, ...p }))} />
-            </div>
+            <div className="label">🏆 Final</div>
             {seriesEditable && (
               <div className="tn-rules-row">
                 <Seg<1 | 3> value={bestOf} options={[[1, '1 PARTIDO'], [3, 'AL MEJOR DE 3']]} onChange={setBestOf} />
               </div>
             )}
-            <AmountRow rules={finalRules} onChange={(p) => setFinalRules((r) => ({ ...r, ...p }))} />
+            <RulesPicker rules={finalRules} onChange={(p) => setFinalRules((r) => ({ ...r, ...p }))} />
           </div>
         )}
         <small className="tn-rules-note">Solo cambia lo que queda por jugar; los partidos jugados se quedan como están.</small>
@@ -1489,7 +1499,7 @@ export function TournamentTemplateScreen({
         </div>
         {canDraw &&
           (tpl.endCondition === 'goals' ? (
-            <small className="cr-note">A goles siempre hay ganador: no hay empates. Para poder empatar, juega a tiempo o «ambas».</small>
+            <small className="cr-note">A goles siempre hay ganador: no hay empates. Para poder empatar, activa también el tiempo.</small>
           ) : (
             <div className="cr-col">
             <CreatorField label="Si acaban igualados">
