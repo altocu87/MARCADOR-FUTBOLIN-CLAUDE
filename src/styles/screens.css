@@ -5809,3 +5809,49 @@ div > .name-clash:first-child {
   font-size: 17px;
   padding: 0 20px;
 }
+
+/* Creador, último paso: banner y copa del torneo, y título del último. */
+.cr-prizes {
+  display: flex;
+  gap: 12px;
+}
+.cr-prize {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--ranked) 55%, transparent);
+  background: rgba(7, 16, 28, 0.72);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cr-prize:active {
+  transform: scale(0.97);
+}
+.cr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cr-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 28, 0.72);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cr-chip[aria-pressed='true'] {
+  border-color: #ff8a8a;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(255, 110, 110, 0.5);
+}

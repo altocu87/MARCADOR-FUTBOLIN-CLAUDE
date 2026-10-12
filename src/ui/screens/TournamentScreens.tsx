@@ -943,8 +943,9 @@ export function TournamentNewScreen({
   const compKey = tpl ? (isCustom ? competitionNameKey(compName) : tpl.id) : '';
   const edition = tpl ? nextEdition(compKey, tournaments) : 1;
   const prevEdition = tpl ? lastEdition(compKey, tournaments) : undefined;
-  const logo = myBrand?.logo ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo');
-  const cup = myBrand?.cup ?? prevEdition?.cup ?? defaultCup();
+  // Banner y copa: lo cambiado aquí, si no los del torneo, si no los de la edición anterior.
+  const logo = myBrand?.logo ?? (isCustom ? undefined : tpl?.logo) ?? prevEdition?.logo ?? defaultLogo(compName || 'torneo');
+  const cup = myBrand?.cup ?? (isCustom ? undefined : tpl?.cup) ?? prevEdition?.cup ?? defaultCup();
   const setBrandField = (patch: { name?: string; logo?: string; cup?: string }) =>
     tpl && setBrand({ tplId: tpl.id, name: compName, logo: myBrand?.logo, cup: myBrand?.cup, ...patch });
   const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
@@ -1151,6 +1152,10 @@ export function TournamentNewScreen({
                   </div>
                 </>
               )}
+              <div>
+                <span className="label">Último</span>
+                <span>Se lleva el título «{tpl.lastTitle?.trim() || 'Patético'}».</span>
+              </div>
               <div className={hasTemplateFinal(tpl) ? 'tn-summary-final' : ''}>
                 <span className="label">🏆 Final</span>
                 <span>
@@ -1264,6 +1269,9 @@ export function TournamentNewScreen({
   );
 }
 
+/** Ideas para el título del último (se puede escribir cualquier otro). */
+const LAST_TITLES = ['Farolillo rojo', 'Cuchara de madera', 'Colista', 'El paquete', 'Patético'];
+
 /** Pasos del creador de torneos, en orden. */
 const ALL_CREATOR_STEPS = [
   { id: 'kind', label: 'Tipo' },
@@ -1353,6 +1361,7 @@ export function TournamentTemplateScreen({
   // Si ya se sabe el tipo (se viene de «+ Crear liga») o se edita uno, se empieza por los jugadores.
   const [step, setStep] = useState<CreatorStep>(existing || baseId || format ? 'players' : 'kind');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [picker, setPicker] = useState<'logo' | 'cup' | null>(null);
   const set = <K extends keyof TournamentTemplate>(key: K, value: TournamentTemplate[K]) => setTpl((t) => ({ ...t, [key]: value }));
   const kind = KINDS.find((k) => k.format === tpl.format)!;
   const isPool = tpl.format === 'pool';
@@ -1566,8 +1575,11 @@ export function TournamentTemplateScreen({
       </div>
     );
   } else {
+    const banner = tpl.logo ?? defaultLogo(tpl.name || 'torneo');
+    const cupId = tpl.cup ?? defaultCup();
     body = (
-      <>
+      <div className="cr-cols">
+        <div className="cr-col">
         <CreatorField label={`Nombre ${kind.format === 'pool' ? 'del pool' : `de ${kind.the}`}`} note="Así se llamará cada edición: «1ª edición», «2ª edición»…">
           <input
             className="input cr-name"
@@ -1585,7 +1597,47 @@ export function TournamentTemplateScreen({
           <span>{describeTemplate(tpl)}</span>
           {fit && <span className={fit.ok ? 'tpl-fit' : 'tpl-why'}>{fit.ok ? `Con ${n} jugadores: ${fit.summary}` : `✕ Con ${n} jugadores: ${fit.reason}`}</span>}
         </div>
-      </>
+        </div>
+        <div className="cr-col">
+          <div className="cr-prizes">
+            <button className="cr-prize" onClick={() => setPicker('logo')} aria-label="Elegir el banner">
+              <Crest id={banner} size={64} />
+              <span>Banner</span>
+            </button>
+            <button className="cr-prize" onClick={() => setPicker('cup')} aria-label="Elegir la copa">
+              <Cup id={cupId} size={64} />
+              <span>Copa</span>
+            </button>
+          </div>
+          <CreatorField label="Título del último" note="Lo que se lleva el último en la ceremonia final.">
+            <input
+              className="input"
+              value={tpl.lastTitle ?? ''}
+              onChange={(e) => set('lastTitle', e.target.value || undefined)}
+              aria-label="Título del último"
+              maxLength={22}
+              placeholder="Patético"
+            />
+            <div className="cr-chips">
+              {LAST_TITLES.map((x) => (
+                <button key={x} className="cr-chip" aria-pressed={tpl.lastTitle === x} onClick={() => set('lastTitle', x)}>
+                  {x}
+                </button>
+              ))}
+            </div>
+          </CreatorField>
+        </div>
+        {picker && (
+          <IconPicker
+            kind={picker}
+            value={picker === 'logo' ? banner : cupId}
+            title={picker === 'logo' ? 'Elige el banner' : 'Elige la copa'}
+            onPick={(v) => set(picker, v)}
+            playerIds={selected ?? []}
+            onClose={() => setPicker(null)}
+          />
+        )}
+      </div>
     );
   }
 

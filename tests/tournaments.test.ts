@@ -619,3 +619,12 @@ describe('Liga: empates, puntos y vueltas', () => {
     expect(fixtureConfig(t, t.fixtures[0]).allowDraw).toBe(true);
   });
 });
+
+describe('Título del último', () => {
+  it('pasa del tipo de torneo al torneo creado', () => {
+    const tpl = { ...SAMPLE_TEMPLATES.find((x) => x.id === 'sample-league')!, lastTitle: 'Farolillo rojo' };
+    const ps = players(['a', 'b', 'c']);
+    const { draft } = draftFromTemplate(tpl, 'Liga', ps.map((p) => p.id), () => 1200);
+    expect(createTournament(draft, ps, () => 1200, 0, seededRandom('z')).lastTitle).toBe('Farolillo rojo');
+  });
+});

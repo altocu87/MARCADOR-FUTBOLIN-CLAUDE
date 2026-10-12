@@ -132,6 +132,7 @@ export function draftFromTemplate(
     finalConfig,
     templateName: t.name,
     templateId: t.id,
+    ...(t.lastTitle?.trim() ? { lastTitle: t.lastTitle.trim() } : {}),
     ...(t.format === 'league' ? { legs: t.legs ?? 1, points: { ...templatePoints(t) } } : {}),
   };
   if (t.format === 'pool') {

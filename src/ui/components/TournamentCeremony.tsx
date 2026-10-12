@@ -126,6 +126,7 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
         photoOf={photoOf}
         rankOf={rankOf}
         progressionOn={!!progression}
+        lastTitle={t.lastTitle}
       />
     );
   }
@@ -174,9 +175,12 @@ function PlaceCard({
   photoOf,
   rankOf,
   progressionOn,
+  lastTitle,
 }: {
   place: FinalPlace;
   last: boolean;
+  /** Título que se lleva el último (el del torneo); sin él, «Patético». */
+  lastTitle?: string;
   lines: PlayerLine[];
   rewards: (Reward | null)[];
   nameOf: (id: string) => string;
@@ -186,7 +190,7 @@ function PlaceCard({
 }) {
   // En pareja juegan los mismos partidos: los números del equipo son los del primero.
   const s = lines[0];
-  const tag = place.champion ? 'CAMPEÓN' : last ? 'PATÉTICO' : place.place === 2 ? 'SUBCAMPEÓN' : null;
+  const tag = place.champion ? 'CAMPEÓN' : last ? (lastTitle?.toUpperCase() ?? 'PATÉTICO') : place.place === 2 ? 'SUBCAMPEÓN' : null;
   // El nombre del equipo solo hace falta si es una pareja o un equipo con logo.
   const showTeam = place.team.playerIds.length > 1 || !!place.team.logo;
   return (

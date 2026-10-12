@@ -128,6 +128,8 @@ export interface Tournament {
   entrants?: string[];
   /** Liga: puntos por victoria, empate y derrota (sin poner: 3, 1 y 0). */
   points?: TournamentPoints;
+  /** Título que se lleva el último en la ceremonia final. */
+  lastTitle?: string;
   /** Final tras la fase regular (liguilla y Pool). */
   final?: TournamentFinal;
   /** Reglas de la final si difieren de las del resto (p. ej. a más goles). */
@@ -186,6 +188,11 @@ export interface TournamentTemplate {
   points?: TournamentPoints;
   /** Liga: a una vuelta (solo ida) o a dos (ida y vuelta). Sin poner: 1. */
   legs?: 1 | 2;
+  /** Banner (escudo) y copa de la competición; cada edición los puede cambiar. */
+  logo?: string;
+  cup?: string;
+  /** Título que se lleva el último (p. ej. «Farolillo rojo»). Sin poner: «Patético». */
+  lastTitle?: string;
 }
 
 export type EffectsLevel = 'full' | 'reduced' | 'off';

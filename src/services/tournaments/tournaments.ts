@@ -79,6 +79,8 @@ export interface TournamentDraft {
   legs?: 1 | 2;
   /** Liga: puntos por victoria, empate y derrota. */
   points?: TournamentPoints;
+  /** Título que se lleva el último. */
+  lastTitle?: string;
   final?: TournamentFinal;
   finalBestOf?: number;
   /** Reglas de la final si difieren. */
@@ -322,6 +324,7 @@ export function createTournament(
     createdAt: now,
     ...(draft.format === 'pool' ? { entrants: [...draft.entrants!] } : {}),
     ...(draft.format === 'league' && draft.points ? { points: { ...draft.points } } : {}),
+    ...(draft.lastTitle?.trim() ? { lastTitle: draft.lastTitle.trim() } : {}),
     ...(final !== 'none' ? { final } : {}),
     ...(draft.finalConfig ? { finalConfig: { ...draft.finalConfig, mode, testMode: false } } : {}),
     ...(draft.templateName ? { templateName: draft.templateName } : {}),
