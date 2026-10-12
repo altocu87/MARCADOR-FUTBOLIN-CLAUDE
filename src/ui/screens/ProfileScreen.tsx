@@ -28,6 +28,7 @@ import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics
 import { resultLine } from '../components/MatchReport';
 import { FORMAT_LABEL } from '../../services/tournaments';
 import { GuestActions } from '../components/GuestActions';
+import { PlayerOptions } from '../components/PlayerQr';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
 
@@ -61,6 +62,7 @@ function Bar({ label, played, winPct }: { label: string; played: number; winPct:
 export function ProfileScreen({ playerId }: { playerId: string }) {
   const { players, matches, progression, navigate, prefs, tournaments, savePlayer, toast } = useApp();
   const [tab, setTab] = useState<ProfileTab>('general');
+  const [showQr, setShowQr] = useState(false);
   const player = players.find((p) => p.id === playerId);
   const stats = useMemo(() => computePlayerStats(playerId, matches), [playerId, matches]);
   const sides = useMemo(() => sideStats(playerId, matches), [playerId, matches]);
@@ -106,14 +108,19 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
       title="Perfil"
       onBack={() => navigate({ name: 'ranking', tab: 'players' })}
       right={
-        player.guest && (
+        player.guest ? (
           <>
             <span className="badge badge-guest">Invitado</span>
             <GuestActions player={player} onMerged={(id) => navigate({ name: 'profile', playerId: id })} />
           </>
+        ) : (
+          <button className="btn btn-sm" onClick={() => setShowQr(true)} title="Para ver este perfil en el móvil">
+            ▦ QR del perfil
+          </button>
         )
       }
     >
+      {showQr && <PlayerOptions player={player} startWithQr onClose={() => setShowQr(false)} />}
       <div className={`player-card cat-${category.id}`} style={{ ['--cat' as string]: category.color }}>
         <div className="pc-photo">
           <Avatar name={player.name} photo={player.photo} size={72} />

@@ -33,6 +33,8 @@ import {
   type RewardState,
 } from '../services/events';
 import { applyCatalogIcons } from './catalogIcons';
+import { useProfileSync } from './profileSync';
+import { credentialsFor, profileUrl } from '../services/profiles';
 import type { Route } from './routes';
 
 /** Días en que se ha abierto la app en este aparato (para los premios por entrar en un evento). */
@@ -73,6 +75,11 @@ interface AppContextValue {
   rewards: RewardState;
   /** Días (YYYY-MM-DD) en que se ha abierto la app aquí. */
   visitDays: string[];
+  /**
+   * Enlace del perfil público de un jugador (para su QR) y si se publica de verdad: no en modo prueba ni sin
+   * conexión con el servidor configurada. Al pedirlo se sube en el momento si hace falta.
+   */
+  profileLink(playerId: string): { url: string; online: boolean; publish(): Promise<boolean> };
 }
 
 const Ctx = createContext<AppContextValue | null>(null);
@@ -288,6 +295,15 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [catalog, matches, tournaments, progression, visitDays],
   );
 
+  const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards });
+  const profileLink = useCallback(
+    (playerId: string) => {
+      const c = credentialsFor(store, playerId);
+      return { url: profileUrl(c.token), online: !!sync.conn && !demoMode, publish: () => sync.publishNow(playerId) };
+    },
+    [store, sync, demoMode],
+  );
+
   const toast = useCallback((message: string) => {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage((m) => (m === message ? null : m)), 2600);
@@ -342,6 +358,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     catalog,
     rewards,
     visitDays,
+    profileLink,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -7,6 +7,7 @@ import { displayTitle } from '../../services/progression';
 import { AssetImage } from '../components/assets';
 import { MODE_LABEL, ScreenFrame, TestModeBadge } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
+import { PlayerOptions, useLongPress } from '../components/PlayerQr';
 import { Crest } from '../components/Crest';
 import { findClub, type Club } from '../../services/clubs';
 import { sound } from '../../services/sound/sound';
@@ -35,6 +36,9 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
   // Si se vuelve con los dos equipos hechos, se abre en el turno del azul (listo para continuar).
   const [step, setStep] = useState<Team>(() => (fromParticipants(initial).blue.length > 0 ? 'blue' : 'white'));
   const [creating, setCreating] = useState(false);
+  // Dejar pulsado un jugador: sus opciones (QR del perfil…).
+  const [options, setOptions] = useState<Player | null>(null);
+  const longPress = useLongPress();
 
   const available = useMemo(() => sortPlayers(players.filter((p) => p.active)), [players]);
   // Equipo guardado de cada lado: si los dos de un equipo están juntos, el lado pasa a ser ese equipo.
@@ -228,7 +232,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
   const playerCard = (p: Player) => {
     const { meta, title } = metaOf(p);
     return (
-      <button key={p.id} data-flip={p.id} className="pick-card" onClick={() => pick(p.id)} aria-label={`Elegir a ${p.name}`}>
+      <button key={p.id} data-flip={p.id} className="pick-card" {...longPress(() => setOptions(p), () => pick(p.id))} aria-label={`Elegir a ${p.name}`}>
         <span className="pick-photo">{photoOf(p)}</span>
         <span className="pick-info">
           <span className="pick-name">{p.name}</span>
@@ -314,6 +318,7 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
         {teamColumn('blue')}
       </div>
       {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => pick(p.id)} />}
+      {options && <PlayerOptions player={options} onClose={() => setOptions(null)} />}
     </ScreenFrame>
   );
 }

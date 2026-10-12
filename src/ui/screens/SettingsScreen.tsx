@@ -30,6 +30,7 @@ import { ClubEditor } from '../components/ClubEditor';
 import { Crest } from '../components/Crest';
 import { saveClub, type Club } from '../../services/clubs';
 import { ConnectionsTab } from './ConnectionsTab';
+import { WEB_URL } from '../../services/profiles';
 import { DiyTab } from './DiyTab';
 
 export const APP_VERSION = '0.3.0';
@@ -511,8 +512,6 @@ function Progression() {
   );
 }
 
-/** Web publicada (la app vive en su carpeta «app/» y el panel en «admin/»). */
-const WEB_URL = 'https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/';
 
 /** Panel de administración: junto a la app si se abre desde la web; si no (placa, instalada…), el de la web publicada. */
 function adminUrl(): string {

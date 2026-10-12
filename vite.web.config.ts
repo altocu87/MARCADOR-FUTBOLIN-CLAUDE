@@ -45,8 +45,9 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 900,
     rollupOptions: {
-      // Dos páginas: la web pública y el panel de administración (en /admin/, fuera del menú y sin indexar).
-      input: { web: 'web/index.html', admin: 'web/admin/index.html' },
+      // Tres páginas: la web pública, el panel de administración (en /admin/, fuera del menú y sin indexar) y el
+      // perfil de jugador que se abre leyendo su QR (en /perfil/, tampoco se indexa).
+      input: { web: 'web/index.html', admin: 'web/admin/index.html', perfil: 'web/perfil/index.html' },
     },
   },
   preview: { port: 4180 },

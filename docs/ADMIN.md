@@ -107,8 +107,23 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
   lleva el nombre sin el año («Halloween») y dentro van las piezas de todos los años, la más reciente primero.
 - Halloween 2026 viene ya dentro de la app (escudo al entrar, banner jugando y copa ganando un partido el
   31 oct 2026; un juego para ligas, otro para copas y otro para pools), así que funciona aunque el panel no esté conectado.
-  La migración `…_catalogo_halloween_2026.sql` carga esas mismas piezas (mismos ids) en el panel: lo que se
+  La migración `20261012120500_catalogo_halloween_2026.sql` carga esas mismas piezas (mismos ids) en el panel: lo que se
   edite allí (cómo se consigue, fechas, desactivarla) manda sobre lo de la app. Su «archivo» es el nombre de la
   imagen de la app, que el panel sabe enseñar (`urlArchivo` en `web/admin/src/catalogMedia.ts`).
 - Código: modelo y reglas en `src/services/events/` (compartido con el panel), pruebas en `tests/events.test.ts`.
+
+## Perfil de jugador por QR
+
+- Cada jugador (no los invitados) tiene un perfil de solo lectura en la web: **`/perfil/#CÓDIGO`**. Se abre leyendo
+  su QR, que sale al **dejar pulsado** un jugador en las listas para elegir jugadores (partido o torneo) →
+  «Ver QR del perfil», o con el botón «QR del perfil» de su ficha en la app.
+- Enseña cabecera (foto, nivel, categoría, ELO), cifras, palmarés, premios de eventos, cómo juega (modalidad, lado,
+  franja horaria), los últimos 60 partidos, rivales, compañeros y logros.
+- El futbolín calcula esa «foto» del jugador y la sube unos segundos después de cada cambio, solo si ha cambiado
+  (`src/app/profileSync.ts`, cálculo en `src/services/profiles/`). En modo prueba no se publica nada.
+- Seguridad, sencilla a propósito por ahora: con el código del QR se ve ese perfil y nada más (no se puede listar);
+  para cambiarlo hace falta una clave que solo guarda el aparato que lo creó. Tabla `perfiles_jugador` y funciones
+  `perfil_jugador`, `publicar_perfil_jugador` y `borrar_perfil_jugador` (migración `20261012120855_perfiles_jugador.sql`).
+- Usa las mismas variables `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` que el panel. Sin ellas, el QR sale pero
+  avisa de que el perfil no se publica.
 

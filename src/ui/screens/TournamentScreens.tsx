@@ -59,6 +59,7 @@ import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { RankPhoto } from '../components/PlayerCards';
+import { PlayerOptions, useLongPress } from '../components/PlayerQr';
 import { newId } from '../../services/ids';
 import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
@@ -578,6 +579,9 @@ export function TournamentNewScreen({
   initialFormat?: TournamentFormat;
 }) {
   const { navigate, players, progression, prefs, saveTournament, discardTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
+  // Dejar pulsado un jugador: sus opciones (QR del perfil…).
+  const [options, setOptions] = useState<Player | null>(null);
+  const longPress = useLongPress();
   // Torneo en juego que se quiere descartar (pide confirmación).
   const [discarding, setDiscarding] = useState<Tournament | null>(null);
   // Tipo de torneo (liga, copa o pool): el pedido, o el del predefinido con el que se vuelve del creador.
@@ -760,7 +764,7 @@ export function TournamentNewScreen({
                   key={p.id}
                   className={`pick-card tn-pick ${on ? 'is-picked' : ''}`}
                   aria-pressed={on}
-                  onClick={() => toggle(p.id)}
+                  {...longPress(() => setOptions(p), () => toggle(p.id))}
                   aria-label={`${on ? 'Quitar a' : 'Apuntar a'} ${p.name}`}
                 >
                   <span className="pick-photo">
@@ -778,6 +782,7 @@ export function TournamentNewScreen({
           )}
         </div>
         {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => setSelected((s) => [...s, p.id])} />}
+        {options && <PlayerOptions player={options} onClose={() => setOptions(null)} />}
         {guestName !== null && (
           <Modal
             title="Añadir invitado"

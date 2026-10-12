@@ -17,5 +17,5 @@
     "allowImportingTsExtensions": false,
     "types": ["vite/client"]
   },
-  "include": ["src", "tests", "web/src", "web/admin/src", "vite.config.ts", "vite.web.config.ts"]
+  "include": ["src", "tests", "web/src", "web/admin/src", "web/perfil/src", "vite.config.ts", "vite.web.config.ts"]
 }

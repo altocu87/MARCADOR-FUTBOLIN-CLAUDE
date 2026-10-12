@@ -985,3 +985,72 @@ button.row:active {
   max-height: 3.4em;
   overflow: hidden;
 }
+
+/* Opciones de un jugador (pulsación larga) y QR de su perfil. */
+.po {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.po-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+}
+.po-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.po-btn {
+  justify-content: center;
+  gap: 8px;
+  min-height: 64px;
+}
+.po-ico {
+  font-size: 22px;
+}
+.po-qr {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.qr-code {
+  flex: 0 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(98, 214, 255, 0.35);
+}
+.po-qr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+}
+.po-qr-info p {
+  margin: 0;
+  color: var(--text-2);
+}
+.po-qr-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+.po-qr-state {
+  font-weight: 700;
+}
+.po-qr-state.is-listo {
+  color: #6be38f !important;
+}
+.po-qr-state.is-sin-conexion,
+.po-qr-state.is-local {
+  color: #f5b301 !important;
+}
+.po-qr-url {
+  color: var(--text-2);
+  font-size: 10px;
+  word-break: break-all;
+  opacity: 0.7;
+}
