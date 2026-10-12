@@ -34,7 +34,7 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 | **Bares y clubes** | Plan, mesas, estado de la suscripción y cuota (se calcula con los precios de Ajustes) |
 | **Licencias Pro** | Generar códigos (se descargan en CSV), comprobar un código (detecta errores de tecleo), asignar a un cliente, revocar, reactivar, reiniciar activaciones |
 | **Tienda y cupones** | Productos (precio, a la venta u oculto, stock de kits) y cupones (porcentaje o importe, usos máximos, caducidad) |
-| **Catálogo** | Copas, escudos, avatares, marcos, fondos, podios, títulos, colores y sonidos, en colecciones con rareza, cómo se consiguen (gratis, nivel, rango, logro, torneos, partidos, evento, monedas, dinero, código o regalo; la colección entera o pieza a pieza) y cuándo (siempre, entre fechas o cada año: Navidad, Halloween…). Se suben varios archivos a la vez y se ajustan solos al formato. Solo administradores |
+| **Catálogo** | Copas, escudos, avatares, marcos, fondos, podios, títulos, colores y sonidos, en colecciones con rareza, cómo se consiguen (gratis, entrando en la app, jugando o ganando un partido —rápido, loco, clasificatorio, de liga, copa o pool—, ganando una liga, copa o pool, nivel, rango, logro, torneos, partidos, evento, monedas, dinero, código o regalo; la colección entera o pieza a pieza), cuándo (siempre, entre fechas o cada año: Navidad, Halloween…) y, en copas, escudos y banners, para qué torneos (todos o solo liga, copa o pool). Se suben varios archivos a la vez y se ajustan solos al formato. Solo administradores |
 | **Avisos** | Mensajes para los usuarios de la app (novedades, mantenimiento) con fechas y vista previa |
 | **Actividad** | Registro de todo lo que se cambia en el panel: quién, cuándo y qué. No se puede editar. Exportar CSV |
 | **Ajustes** | Nombre y correo de soporte, precios, IVA incluido, modo mantenimiento, plataforma de pagos, equipo, conexión con la base de datos, exportar todo |
@@ -90,3 +90,19 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 - Importes en céntimos, fechas en milisegundos, columnas en `snake_case`. Una prueba comprueba que cada columna
   que guarda el panel existe en la migración inicial.
 - Los gráficos son SVG propios, de una sola serie y con alternativa en tabla. El color se ha validado sobre el fondo oscuro.
+
+## Eventos en la app (Halloween, Navidad…)
+
+- La app descarga el catálogo publicado (`catalog_collections` y `catalog_items`, sin borradores ni piezas
+  inactivas) con las mismas variables `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` y guarda una copia en el
+  aparato (`mfv3:catalogo`): sin conexión sigue con lo último descargado.
+- Una pieza se enseña si su `archivo` es una URL (o el nombre de una imagen que ya trae la app). Copas, escudos y
+  banners salen como una pestaña más del muestrario, con candado hasta conseguirlas.
+- Los premios no se guardan aparte: se deducen de los partidos, torneos, logros y días en que se abrió la app
+  (como el ELO). Si se borra un partido, el premio que dio desaparece. Los de «entrando en la app» son del aparato;
+  el resto, de cada jugador.
+- Mientras dura un evento sale una pestaña pequeña arriba en la portada; al tocarla se ve qué se puede
+  conseguir y quién lo tiene. El evento es la parte del nombre de la colección antes de « · »
+  («Halloween 2026 · Copa» → «Halloween 2026»): así se juntan sus colecciones.
+- Código: modelo y reglas en `src/services/events/` (compartido con el panel), pruebas en `tests/events.test.ts`.
+

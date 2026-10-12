@@ -6,7 +6,18 @@
  */
 import { useState, type CSSProperties } from 'react';
 import { useApp } from '../../app/AppContext';
-import { ICON_CATEGORIES, ICON_PREFIX, iconCategory, isUnlocked, unlockText, type IconCategory, type IconKind } from '../../services/icons';
+import {
+  ICON_PREFIX,
+  allIconCategories,
+  catalogCategoryItems,
+  catalogIconInfo,
+  iconCategory,
+  isUnlocked,
+  unlockText,
+  type IconCategory,
+  type IconKind,
+} from '../../services/icons';
+import { ownedBy } from '../../services/events';
 import type { TournamentFormat } from '../../services/persistence';
 import { Modal } from './common';
 import { AssetImage, assetNames, assetUrl } from './assets';
@@ -26,6 +37,8 @@ const CUP_TINTS: Record<string, { label: string; filter: string }> = {
 
 /** Imágenes de una categoría; los genéricos, si aún no hay imágenes, son los provisionales. */
 export function categoryItems(kind: IconKind, category: string): string[] {
+  const fromCatalog = catalogCategoryItems(kind, category);
+  if (fromCatalog) return fromCatalog;
   const imgs = assetNames(ICON_PREFIX[kind]).filter((n) => iconCategory(n, kind) === category);
   // Los banners no tienen provisionales: sin imágenes no hay banner.
   if (imgs.length || category !== 'generico' || kind === 'banner') return imgs;
@@ -37,14 +50,18 @@ export function categoryItems(kind: IconKind, category: string): string[] {
  * esas (los iconos de la liga no se mezclan con los de la copa o el pool); si no, las comunes.
  */
 export function iconCategories(kind: IconKind, format?: TournamentFormat): IconCategory[] {
-  const shown = ICON_CATEGORIES.filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
+  const shown = allIconCategories().filter((c) => c.kind === kind && categoryItems(kind, c.id).length > 0);
+  // Los del catálogo para todos los torneos salen en cualquiera; los de un tipo, solo en ese.
+  const forAll = shown.filter((c) => c.catalog && !c.format);
   const own = format ? shown.filter((c) => c.format === format) : [];
-  return own.length ? own : shown.filter((c) => !c.format);
+  const base = own.length ? own : shown.filter((c) => !c.format && !c.catalog);
+  return [...[...forAll, ...base].filter((c) => c.catalog), ...base.filter((c) => !c.catalog)];
 }
 
 /** Logos de por defecto: los del tipo de torneo, si tiene propios, o los genéricos. */
 export function logoCatalog(format?: TournamentFormat): string[] {
-  const cat = iconCategories('logo', format)[0];
+  // Las de eventos van con candado: nunca son las de por defecto.
+  const cat = iconCategories('logo', format).find((c) => !c.catalog);
   return cat ? categoryItems('logo', cat.id) : categoryItems('logo', 'generico');
 }
 
@@ -67,7 +84,9 @@ export function defaultCup(): string {
 
 /** Banners que se pueden elegir en este tipo de torneo (puede que ninguno). */
 export function bannerCatalog(format?: TournamentFormat): string[] {
-  return iconCategories('banner', format).flatMap((c) => categoryItems('banner', c.id));
+  return iconCategories('banner', format)
+    .filter((c) => !c.catalog)
+    .flatMap((c) => categoryItems('banner', c.id));
 }
 
 /** Un banner para empezar (siempre el mismo para la misma semilla), o ninguno si no hay. */
@@ -135,9 +154,19 @@ export function IconGrid({
   /** Tipo de torneo: con iconos propios, solo esos. Sin él (equipos), los comunes. */
   format?: TournamentFormat;
 }) {
-  const { progression } = useApp();
+  const { progression, rewards } = useApp();
   const cats = iconCategories(kind, format);
   const progs = playerIds.map((id) => progression?.players.get(id));
+  // Pieza de un evento: la tiene alguno de estos jugadores (o este aparato) y se puede usar hoy.
+  const now = Date.now();
+  const lockOf = (id: string): { short: string; full: string } | null => {
+    const info = catalogIconInfo(id);
+    if (!info) return null;
+    if (!info.usable(now)) return { short: `Solo ${info.cuando}`, full: `Solo se puede usar ${info.cuando}` };
+    if (ownedBy(rewards, info.itemId, playerIds)) return null;
+    const short = info.requisito.charAt(0).toUpperCase() + info.requisito.slice(1);
+    return { short, full: `Se consigue ${info.requisito} · ${info.cuando}` };
+  };
   const startCat = (value && cats.find((c) => categoryItems(kind, c.id).includes(value))?.id) || cats[0]?.id;
   const [tab, setTab] = useState(startCat);
   const cat = cats.find((c) => c.id === tab) ?? cats[0];
@@ -164,11 +193,26 @@ export function IconGrid({
         </div>
       )}
       <div className={`icon-grid icon-grid-${kind} ${open ? '' : 'is-locked'}`}>
-        {categoryItems(kind, cat.id).map((id) => (
-          <button key={id} className={`icon-cell ${id === value ? 'is-on' : ''}`} aria-pressed={id === value} disabled={!open} onClick={() => onPick(id)}>
-            {kind === 'logo' ? <Crest id={id} size={size} /> : kind === 'banner' ? <BannerArt id={id} /> : <Cup id={id} size={size + 8} />}
-          </button>
-        ))}
+        {categoryItems(kind, cat.id).map((id) => {
+          const lock = lockOf(id);
+          return (
+            <button
+              key={id}
+              className={`icon-cell ${id === value ? 'is-on' : ''} ${lock ? 'is-item-locked' : ''}`}
+              aria-pressed={id === value}
+              disabled={!open || !!lock}
+              title={lock?.full}
+              onClick={() => onPick(id)}
+            >
+              {kind === 'logo' ? <Crest id={id} size={size} /> : kind === 'banner' ? <BannerArt id={id} /> : <Cup id={id} size={size + 8} />}
+              {lock && (
+                <span className="icon-cell-lock">
+                  🔒 <small>{lock.short}</small>
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

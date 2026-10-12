@@ -7,9 +7,13 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ACHIEVEMENTS } from '../../../../src/services/progression/achievements';
 import { CATEGORIES } from '../../../../src/services/progression/rules';
 import {
+  FORMATOS_TORNEO,
   KINDS,
+  KINDS_DE_TORNEO,
   KIND_ORDER,
+  MODOS_PARTIDO,
   OBTENCION,
+  TORNEOS_AMBITO,
   RAREZAS,
   TEMPORADAS,
   disponibilidadTexto,
@@ -29,6 +33,7 @@ import {
   type Disponibilidad,
   type Obtencion,
   type Rareza,
+  type TorneoAmbito,
 } from '../catalog';
 import { preparar } from '../catalogMedia';
 import { newId } from '../logic';
@@ -273,6 +278,24 @@ function ObtencionPicker({ value, onChange }: { value: Obtencion; onChange: (o: 
       {(value.tipo === 'torneos' || value.tipo === 'partidos') && (
         <Field label={value.tipo === 'torneos' ? 'Torneos ganados' : 'Partidos jugados'}>
           <input className="a-input narrow" type="number" min={1} value={value.cantidad} onChange={(e) => onChange({ ...value, cantidad: num(e.target.value) })} />
+        </Field>
+      )}
+      {(value.tipo === 'jugarPartido' || value.tipo === 'ganarPartido') && (
+        <Field label="Qué partido cuenta" hint="Los de rápido, loco y clasificatorio son partidos sueltos; los de liga, copa y pool, de torneo.">
+          <select className="a-input" value={value.modo} onChange={(e) => onChange({ ...value, modo: e.target.value as typeof value.modo })}>
+            {MODOS_PARTIDO.map((m) => (
+              <option key={m.id} value={m.id}>{m.label[0].toUpperCase() + m.label.slice(1)}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {value.tipo === 'ganarTorneo' && (
+        <Field label="Qué torneo hay que ganar">
+          <select className="a-input" value={value.formato} onChange={(e) => onChange({ ...value, formato: e.target.value as typeof value.formato })}>
+            {FORMATOS_TORNEO.map((f) => (
+              <option key={f.id} value={f.id}>{f.label[0].toUpperCase() + f.label.slice(1)}</option>
+            ))}
+          </select>
         </Field>
       )}
       {value.tipo === 'evento' && (
@@ -548,6 +571,15 @@ function ColeccionEditor({ col, onClose }: { col: CatalogCollection; onClose: ()
           <Field label="Rareza de sus piezas" hint="Cada pieza puede tener otra distinta.">
             <RarezaPicker value={f.rareza} onChange={(r) => r && set({ rareza: r })} />
           </Field>
+          {KINDS_DE_TORNEO.includes(f.tipo) && (
+            <Field label="Para qué torneos" hint="Exclusiva de un tipo: solo sale en ese tipo de torneo y nunca en los otros ni en los equipos.">
+              <select className="a-input" value={f.torneo ?? 'todos'} onChange={(e) => set({ torneo: e.target.value as TorneoAmbito })}>
+                {TORNEOS_AMBITO.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Orden en la app" hint="Las de número más bajo salen primero.">
             <input className="a-input narrow" type="number" value={f.orden} onChange={(e) => set({ orden: Number(e.target.value) || 0 })} />
           </Field>

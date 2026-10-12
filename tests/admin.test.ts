@@ -308,13 +308,17 @@ describe('Panel · la base de datos preparada coincide con el panel', () => {
       coupons: { ...d.coupons[2] },
       announcements: d.announcements[1],
       audit: d.audit[0],
-      catalogCollections: { ...d.catalogCollections[0], premioCompletar: 1 },
+      catalogCollections: { ...d.catalogCollections[0], premioCompletar: 1, torneo: 'league' },
       catalogItems: { ...d.catalogItems[1], archivo: 'x', ruta: 'x', rareza: 'epica' },
     };
     for (const [col, table] of Object.entries(TABLES)) {
       const m = new RegExp(`create table if not exists public\\.${table} \\(([\\s\\S]*?)\\n\\);`).exec(sql);
       expect(m, `tabla ${table}`).toBeTruthy();
-      for (const key of Object.keys(toDb(samples[col]))) expect(m![1], `${table}.${key}`).toMatch(new RegExp(`\\n\\s+${key}\\s`));
+      // La columna está en el «create table» o se añadió después con «add column if not exists».
+      const added = (key: string) => new RegExp(`alter table public\\.${table}\\s+add column if not exists ${key}\\s`).test(sql);
+      for (const key of Object.keys(toDb(samples[col]))) {
+        if (!added(key)) expect(m![1], `${table}.${key}`).toMatch(new RegExp(`\\n\\s+${key}\\s`));
+      }
       expect(sql, `RLS en ${table}`).toContain(`alter table public.${table}`);
     }
     const settingsCols = /create table if not exists public\.settings \(([\s\S]*?)\n\);/.exec(sql)![1];

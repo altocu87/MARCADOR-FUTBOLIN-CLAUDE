@@ -28,6 +28,44 @@ export interface IconCategory {
    * los otros ni en los equipos. Un tipo sin categorías propias usa las comunes.
    */
   format?: TournamentFormat;
+  /** Colección del catálogo descargado (eventos): sus piezas van con candado hasta conseguirlas. */
+  catalog?: boolean;
+}
+
+/** Datos de una pieza del catálogo, para el candado y la explicación de cómo se consigue. */
+export interface CatalogIconInfo {
+  /** Id de la pieza en el catálogo (con él se mira quién la tiene). */
+  itemId: string;
+  /** «ganando un partido de liga», «entrando en la app»… */
+  requisito: string;
+  /** «31 oct», «del 25 oct al 2 nov»… */
+  cuando: string;
+  /** Además, solo se puede usar en sus fechas: fuera de ellas no se ofrece. */
+  usable: (now: number) => boolean;
+}
+
+let catalogCats: { cat: IconCategory; items: string[] }[] = [];
+const catalogInfo = new Map<string, CatalogIconInfo>();
+
+/** Pone las colecciones del catálogo (eventos) como categorías del muestrario. */
+export function setCatalogIcons(list: { cat: IconCategory; items: { id: string; info: CatalogIconInfo }[] }[]): void {
+  catalogCats = list.map((x) => ({ cat: x.cat, items: x.items.map((i) => i.id) }));
+  catalogInfo.clear();
+  for (const x of list) for (const i of x.items) catalogInfo.set(i.id, i.info);
+}
+
+/** Categorías del catálogo (primero) y las fijas de la app. */
+export function allIconCategories(): IconCategory[] {
+  return [...catalogCats.map((x) => x.cat), ...ICON_CATEGORIES];
+}
+
+/** Piezas de una categoría del catálogo (undefined si no es del catálogo). */
+export function catalogCategoryItems(kind: IconKind, id: string): string[] | undefined {
+  return catalogCats.find((x) => x.cat.kind === kind && x.cat.id === id)?.items;
+}
+
+export function catalogIconInfo(id: string): CatalogIconInfo | undefined {
+  return catalogInfo.get(id);
 }
 
 /** Para añadir una categoría: una línea aquí y sus imágenes con el prefijo `escudo-<id>-` o `copa-<id>-`. */

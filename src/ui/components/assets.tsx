@@ -25,6 +25,14 @@ export function assetUrl(name: string): string | undefined {
   return byName.get(name);
 }
 
+/**
+ * Añade (o cambia) una imagen que no viene en la app: las del catálogo descargado del panel. Se le da un
+ * nombre propio (`cat:<id>`) y desde ese momento se usa como cualquier otra imagen.
+ */
+export function registerAsset(name: string, url: string): void {
+  byName.set(name, url);
+}
+
 export function AssetImage({
   name,
   alt = '',

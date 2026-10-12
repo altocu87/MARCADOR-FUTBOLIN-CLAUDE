@@ -189,7 +189,8 @@ export function Modal({
   // Se busca la pantalla antes de pintar nada (sin parpadeo, y los campos con foco automático lo conservan).
   const [host, setHost] = useState<Element | null | undefined>(undefined);
   useLayoutEffect(() => {
-    if (anchor.current) setHost(anchor.current.closest('.screen'));
+    // Abierta desde fuera de una pantalla (avisos generales), sobre la pantalla que se vea.
+    if (anchor.current) setHost(anchor.current.closest('.screen') ?? document.querySelector('.screen'));
   }, []);
   const content = (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose?.()}>

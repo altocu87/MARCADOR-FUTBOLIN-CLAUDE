@@ -805,3 +805,183 @@ button.row:active {
   border-color: var(--accent);
   box-shadow: 0 0 10px rgba(98, 214, 255, 0.5);
 }
+
+/* Evento en curso (Halloween…): franja discreta arriba; al tocarla, lo que se puede conseguir. */
+.event-notice {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 59;
+  display: flex;
+  align-items: center;
+  /* Pestaña colgando del borde de arriba: cabe en el hueco sobre los botones de las cabeceras. */
+  border-radius: 0 0 10px 10px;
+  line-height: 1.1;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.92), rgba(160, 60, 255, 0.92));
+  color: #fff;
+  font-size: 11px;
+  box-shadow: 0 0 10px rgba(255, 122, 26, 0.4);
+  white-space: nowrap;
+}
+.event-notice.is-lower {
+  /* Con «MODO PRUEBA» en el centro, al lado. */
+  transform: translateX(calc(-50% - 190px));
+}
+.event-notice button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.event-notice-main {
+  padding: 2px 4px 3px 12px;
+}
+.event-notice-close {
+  padding: 0 10px 0 6px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+}
+.event-row.is-wide {
+  flex-direction: column;
+  align-items: stretch;
+}
+.event-art {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 56px;
+}
+.event-row.is-wide .event-art {
+  display: block;
+}
+.reward-banner {
+  width: 100%;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.event-info b {
+  color: var(--text);
+  font-size: 15px;
+}
+.event-owners,
+.reward-pop-who {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #6be38f;
+}
+.event-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+
+/* «¡Premio conseguido!» */
+.reward-pop {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 380px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 16px;
+  background: var(--card-2);
+  border: 2px solid #ff7a1a;
+  box-shadow: 0 0 22px rgba(255, 122, 26, 0.55);
+  color: var(--text);
+  text-align: left;
+  pointer-events: none;
+  animation: reward-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.reward-pop-art {
+  flex: 0 0 auto;
+  width: 64px;
+  display: grid;
+  place-items: center;
+}
+.reward-pop-art .reward-banner {
+  height: 30px;
+}
+.reward-pop-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.reward-pop-text small {
+  color: #ffb066;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.reward-pop-text b {
+  font-size: 16px;
+}
+@keyframes reward-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.85);
+  }
+}
+
+/* Pieza de un evento que aún no se tiene: apagada con su candado y cómo se consigue. */
+.icon-cell {
+  position: relative;
+}
+.icon-cell.is-item-locked > :not(.icon-cell-lock) {
+  filter: grayscale(1) brightness(0.55);
+}
+.icon-cell-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 16px;
+  pointer-events: none;
+}
+.icon-cell-lock small {
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  padding: 0 3px;
+  max-height: 3.4em;
+  overflow: hidden;
+}

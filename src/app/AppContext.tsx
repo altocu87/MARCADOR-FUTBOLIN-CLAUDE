@@ -21,7 +21,23 @@ import { mergePlayers } from '../services/players';
 import { computeProgression, type ProgressionSnapshot } from '../services/progression';
 import { sound } from '../services/sound/sound';
 import { voice } from '../services/sound/voice';
+import {
+  BUNDLED_CATALOG,
+  computeRewards,
+  dayKey,
+  fetchRemoteCatalog,
+  mergeCatalogs,
+  readCachedCatalog,
+  writeCachedCatalog,
+  type Catalog,
+  type RewardState,
+} from '../services/events';
+import { applyCatalogIcons } from './catalogIcons';
 import type { Route } from './routes';
+
+/** Días en que se ha abierto la app en este aparato (para los premios por entrar en un evento). */
+const VISITS_KEY = 'mfv3:visitas';
+const MAX_VISITS = 400;
 
 interface AppContextValue {
   repos: Repositories;
@@ -51,6 +67,12 @@ interface AppContextValue {
   navigate(route: Route): void;
   toast(message: string): void;
   toastMessage: string | null;
+  /** Catálogo de eventos (lo que trae la app + lo descargado del panel). */
+  catalog: Catalog;
+  /** Quién tiene cada pieza del catálogo. */
+  rewards: RewardState;
+  /** Días (YYYY-MM-DD) en que se ha abierto la app aquí. */
+  visitDays: string[];
 }
 
 const Ctx = createContext<AppContextValue | null>(null);
@@ -85,6 +107,65 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [route, setRoute] = useState<Route>({ name: 'home' });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Catálogo de eventos: lo último descargado (guardado aquí) y, si hay conexión, se pide otra vez.
+  const [catalog, setCatalog] = useState<Catalog>(() => {
+    let cached: Catalog | null = null;
+    try {
+      cached = readCachedCatalog(store);
+    } catch {
+      /* sin almacenamiento */
+    }
+    const c = mergeCatalogs(BUNDLED_CATALOG, cached);
+    applyCatalogIcons(c);
+    return c;
+  });
+  useEffect(() => {
+    if (injected) return;
+    const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+    const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+    if (!url || !key) return;
+    let alive = true;
+    fetchRemoteCatalog(url, key)
+      .then((remote) => {
+        if (!alive) return;
+        try {
+          writeCachedCatalog(store, remote);
+        } catch {
+          /* sin almacenamiento */
+        }
+        const c = mergeCatalogs(BUNDLED_CATALOG, remote);
+        applyCatalogIcons(c);
+        setCatalog(c);
+      })
+      .catch(() => {
+        /* sin conexión: se queda lo guardado */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [injected, store]);
+
+  // Apunta el día de hoy (una vez por día) entre los días en que se ha abierto la app.
+  const [visitDays] = useState<string[]>(() => {
+    let list: string[] = [];
+    try {
+      const raw = store.getItem(VISITS_KEY);
+      list = raw ? (JSON.parse(raw) as string[]).filter((d) => typeof d === 'string') : [];
+    } catch {
+      list = [];
+    }
+    const today = dayKey(Date.now());
+    if (!list.includes(today)) {
+      list = [...list, today].slice(-MAX_VISITS);
+      try {
+        store.setItem(VISITS_KEY, JSON.stringify(list));
+      } catch {
+        /* sin almacenamiento */
+      }
+    }
+    return list;
+  });
 
   const refresh = useCallback(async () => {
     const [p, m, pr, t] = await Promise.all([
@@ -196,6 +277,17 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [players, matches, tournaments, prefs.progression, prefs.challenges],
   );
 
+  const rewards = useMemo(
+    () =>
+      computeRewards(catalog, {
+        matches,
+        tournaments,
+        achievements: progression ? new Map([...progression.players].map(([id, p]) => [id, p.achievements])) : undefined,
+        visitDays,
+      }),
+    [catalog, matches, tournaments, progression, visitDays],
+  );
+
   const toast = useCallback((message: string) => {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage((m) => (m === message ? null : m)), 2600);
@@ -247,6 +339,9 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     navigate,
     toast,
     toastMessage,
+    catalog,
+    rewards,
+    visitDays,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

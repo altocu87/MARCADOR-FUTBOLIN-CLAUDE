@@ -12,8 +12,23 @@
  * Aquí solo hay reglas y utilidades sin pantalla; la pantalla está en sections/Catalogo.tsx.
  */
 
-export type CatalogKind = 'copa' | 'escudo' | 'avatar' | 'marco' | 'fondo' | 'podio' | 'titulo' | 'color' | 'sonido';
-export type Rareza = 'comun' | 'rara' | 'epica' | 'legendaria' | 'mitica';
+import {
+  FORMATOS_TORNEO,
+  MODOS_PARTIDO,
+  disponibleAhora,
+  obtencionDe,
+  type CatalogCollection,
+  type CatalogItem,
+  type CatalogKind,
+  type Disponibilidad,
+  type Obtencion,
+  type Rareza,
+  type TorneoAmbito,
+} from '../../../src/services/events/model';
+
+// El modelo (tipos, obtención, disponibilidad) es el mismo que usa la app: vive en src/services/events.
+export { disponibleAhora, obtencionDe, FORMATOS_TORNEO, MODOS_PARTIDO };
+export type { CatalogCollection, CatalogItem, CatalogKind, Disponibilidad, Obtencion, Rareza, TorneoAmbito };
 
 export interface KindSpec {
   label: string;
@@ -38,6 +53,15 @@ export interface KindSpec {
 }
 
 const IMG = ['image/png', 'image/webp', 'image/jpeg'];
+
+/** Tipos que se usan en un torneo y pueden ser exclusivos de liga, copa o pool. */
+export const KINDS_DE_TORNEO: CatalogKind[] = ['copa', 'escudo', 'fondo'];
+export const TORNEOS_AMBITO: { id: TorneoAmbito; label: string }[] = [
+  { id: 'todos', label: 'Todos los torneos' },
+  { id: 'league', label: 'Solo ligas' },
+  { id: 'bracket', label: 'Solo copas' },
+  { id: 'pool', label: 'Solo pools' },
+];
 
 export const KINDS: Record<CatalogKind, KindSpec> = {
   copa: {
@@ -98,22 +122,6 @@ export const RAREZAS: { id: Rareza; label: string; color: string }[] = [
 ];
 export const rareza = (id: Rareza | undefined) => RAREZAS.find((r) => r.id === id) ?? RAREZAS[0];
 
-/** Cómo se consigue una pieza o una colección. */
-export type Obtencion =
-  | { tipo: 'gratis' }
-  | { tipo: 'nivel'; nivel: number }
-  | { tipo: 'rango'; rango: string }
-  | { tipo: 'logro'; logro: string }
-  | { tipo: 'torneos'; cantidad: number }
-  | { tipo: 'partidos'; cantidad: number }
-  | { tipo: 'monedas'; precio: number }
-  /** Céntimos. */
-  | { tipo: 'pago'; precio: number }
-  | { tipo: 'codigo'; codigo: string }
-  | { tipo: 'regalo' }
-  /** Jugar N partidos mientras dura el evento (la disponibilidad marca las fechas). */
-  | { tipo: 'evento'; partidos: number };
-
 export type ObtencionTipo = Obtencion['tipo'];
 
 export const OBTENCION: { tipo: ObtencionTipo; label: string; ayuda: string; proximamente?: boolean }[] = [
@@ -123,7 +131,11 @@ export const OBTENCION: { tipo: ObtencionTipo; label: string; ayuda: string; pro
   { tipo: 'logro', label: 'Conseguir un logro', ayuda: 'Premio por un logro concreto.' },
   { tipo: 'torneos', label: 'Ganar torneos', ayuda: 'Al ganar ese número de torneos.' },
   { tipo: 'partidos', label: 'Jugar partidos', ayuda: 'Al jugar ese número de partidos (ganados o no).' },
-  { tipo: 'evento', label: 'Jugar durante un evento', ayuda: 'Jugando partidos en las fechas del evento (pon las fechas abajo).' },
+  { tipo: 'entrar', label: 'Entrar en la app (evento)', ayuda: 'Sin requisitos: se consigue solo con abrir la app en las fechas del evento.' },
+  { tipo: 'jugarPartido', label: 'Jugar un partido (evento)', ayuda: 'Jugando un partido del tipo elegido en las fechas del evento.' },
+  { tipo: 'ganarPartido', label: 'Ganar un partido (evento)', ayuda: 'Ganando un partido del tipo elegido en las fechas del evento.' },
+  { tipo: 'ganarTorneo', label: 'Ganar un torneo (evento)', ayuda: 'Ganando una liga, una copa o un pool (o cualquiera) en las fechas.' },
+  { tipo: 'evento', label: 'Jugar N partidos (evento)', ayuda: 'Jugando ese número de partidos en las fechas del evento.' },
   { tipo: 'monedas', label: 'Comprar con monedas', ayuda: 'Con la moneda del juego, en la tienda.', proximamente: true },
   { tipo: 'pago', label: 'Comprar con dinero', ayuda: 'Compra con dinero real.', proximamente: true },
   { tipo: 'codigo', label: 'Código promocional', ayuda: 'Se canjea escribiendo un código (sorteos, redes, kits…).', proximamente: true },
@@ -141,6 +153,9 @@ export function obtencionPorDefecto(tipo: ObtencionTipo): Obtencion {
     case 'pago': return { tipo, precio: 199 };
     case 'codigo': return { tipo, codigo: '' };
     case 'evento': return { tipo, partidos: 3 };
+    case 'jugarPartido': return { tipo, modo: 'cualquiera' };
+    case 'ganarPartido': return { tipo, modo: 'cualquiera' };
+    case 'ganarTorneo': return { tipo, formato: 'cualquiera' };
     default: return { tipo } as Obtencion;
   }
 }
@@ -158,6 +173,10 @@ export function obtencionTexto(o: Obtencion, nombres: { rango?: (id: string) => 
     case 'codigo': return o.codigo ? `Código ${o.codigo}` : 'Código (sin poner)';
     case 'regalo': return 'Regalo';
     case 'evento': return `Evento: ${o.partidos} partido${o.partidos === 1 ? '' : 's'}`;
+    case 'entrar': return 'Evento: entrar en la app';
+    case 'jugarPartido': return `Evento: jugar ${MODOS_PARTIDO.find((m) => m.id === o.modo)?.label ?? 'un partido'}`;
+    case 'ganarPartido': return `Evento: ganar ${MODOS_PARTIDO.find((m) => m.id === o.modo)?.label ?? 'un partido'}`;
+    case 'ganarTorneo': return `Evento: ganar ${FORMATOS_TORNEO.find((f) => f.id === o.formato)?.label ?? 'un torneo'}`;
   }
 }
 
@@ -170,21 +189,9 @@ export function obtencionErrores(o: Obtencion, d: Disponibilidad): string[] {
   if ((o.tipo === 'monedas' || o.tipo === 'pago') && !(o.precio > 0)) e.push('El precio debe ser mayor que 0.');
   if (o.tipo === 'logro' && !o.logro) e.push('Elige el logro.');
   if (o.tipo === 'codigo' && !/^[A-Z0-9-]{4,20}$/.test(o.codigo)) e.push('El código: 4 a 20 letras, números o guiones.');
-  if (o.tipo === 'evento' && d.modo === 'siempre') e.push('Un evento necesita fechas: elige «Entre dos fechas» o «Cada año».');
+  if (['evento', 'entrar', 'jugarPartido', 'ganarPartido', 'ganarTorneo'].includes(o.tipo) && d.modo === 'siempre')
+    e.push('Un evento necesita fechas: elige «Entre dos fechas» o «Cada año».');
   return e;
-}
-
-/** Cuándo se puede conseguir. */
-export interface Disponibilidad {
-  modo: 'siempre' | 'fechas' | 'anual';
-  /** modo fechas: milisegundos. */
-  desde?: number;
-  hasta?: number;
-  /** modo anual: «MM-DD» (puede cruzar el año: 12-20 → 01-06). */
-  desdeDia?: string;
-  hastaDia?: string;
-  /** Además, solo se puede USAR en esas fechas (fuera de ellas sigue guardada pero no se puede elegir). */
-  soloUsoEnFechas?: boolean;
 }
 
 export const TEMPORADAS: { nombre: string; desdeDia: string; hastaDia: string }[] = [
@@ -195,20 +202,6 @@ export const TEMPORADAS: { nombre: string; desdeDia: string; hastaDia: string }[
   { nombre: '🎃 Halloween', desdeDia: '10-25', hastaDia: '11-02' },
 ];
 
-const mmdd = (t: number) => {
-  const d = new Date(t);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-/** ¿Se puede conseguir ahora? */
-export function disponibleAhora(d: Disponibilidad, now: number): boolean {
-  if (d.modo === 'siempre') return true;
-  if (d.modo === 'fechas') return (d.desde === undefined || now >= d.desde) && (d.hasta === undefined || now <= d.hasta);
-  if (!d.desdeDia || !d.hastaDia) return false;
-  const hoy = mmdd(now);
-  // Cruza el año (Navidad): vale desde el inicio hasta fin de año y desde enero hasta el final.
-  return d.desdeDia <= d.hastaDia ? hoy >= d.desdeDia && hoy <= d.hastaDia : hoy >= d.desdeDia || hoy <= d.hastaDia;
-}
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 const diaTexto = (md: string) => {
@@ -224,53 +217,12 @@ export function disponibilidadTexto(d: Disponibilidad): string {
   return `Del ${f(d.desde)} al ${f(d.hasta)}${fin}`;
 }
 
-export interface CatalogCollection {
-  id: string;
-  tipo: CatalogKind;
-  nombre: string;
-  descripcion: string;
-  /** Rareza por defecto de sus piezas. */
-  rareza: Rareza;
-  /** borrador: no se ve en la app; publicada: sí; retirada: ya no se consigue (quien la tenga la conserva). */
-  estado: 'borrador' | 'publicada' | 'retirada';
-  /** coleccion: se consigue entera de una vez; elemento: cada pieza por su cuenta (con su forma o la de la colección). */
-  ambito: 'coleccion' | 'elemento';
-  obtencion: Obtencion;
-  disponibilidad: Disponibilidad;
-  /** Monedas al completarla (solo si se consigue pieza a pieza). */
-  premioCompletar?: number;
-  orden: number;
-  creada: number;
-}
-
-export interface CatalogItem {
-  id: string;
-  coleccionId: string;
-  nombre: string;
-  /** Sin poner: la de la colección. */
-  rareza?: Rareza;
-  /** Dirección pública del archivo (imagen o sonido). */
-  archivo?: string;
-  /** Ruta en el almacén (para reemplazarlo o borrarlo). */
-  ruta?: string;
-  /** Títulos: el texto. Colores: «#RRGGBB» o «#RRGGBB #RRGGBB». */
-  valor?: string;
-  /** Solo si la colección se consigue pieza a pieza; sin poner, la de la colección. */
-  obtencion?: Obtencion;
-  orden: number;
-  activo: boolean;
-}
-
 export function nuevaColeccion(tipo: CatalogKind, id: string, now: number, orden: number): CatalogCollection {
   return {
     id, tipo, nombre: '', descripcion: '', rareza: 'comun', estado: 'borrador', ambito: 'coleccion',
-    obtencion: { tipo: 'gratis' }, disponibilidad: { modo: 'siempre' }, orden, creada: now,
+    obtencion: { tipo: 'gratis' }, disponibilidad: { modo: 'siempre' }, torneo: 'todos', orden, creada: now,
   };
 }
-
-/** Cómo se consigue una pieza (la suya si la colección va pieza a pieza y la tiene; si no, la de la colección). */
-export const obtencionDe = (item: CatalogItem, col: CatalogCollection): Obtencion =>
-  (col.ambito === 'elemento' && item.obtencion) || col.obtencion;
 
 /** «copa-dorada_02.png» → «Copa dorada 02». */
 export function nombreDesdeArchivo(file: string): string {
