@@ -190,7 +190,8 @@ function PlaceCard({
 }) {
   // En pareja juegan los mismos partidos: los números del equipo son los del primero.
   const s = lines[0];
-  const tag = place.champion ? 'CAMPEÓN' : last ? (lastTitle?.toUpperCase() ?? 'PATÉTICO') : place.place === 2 ? 'SUBCAMPEÓN' : null;
+  const shame = last ? (lastTitle?.trim() || 'Patético').toUpperCase() : undefined;
+  const tag = place.champion ? 'CAMPEÓN' : (shame ?? (place.place === 2 ? 'SUBCAMPEÓN' : null));
   // El nombre del equipo solo hace falta si es una pareja o un equipo con logo.
   const showTeam = place.team.playerIds.length > 1 || !!place.team.logo;
   return (
@@ -229,7 +230,7 @@ function PlaceCard({
               photo={photoOf(pid)}
               rank={rankOf(pid)}
               reward={rewards[i]}
-              shame={last}
+              shame={shame}
               progressionOn={progressionOn}
               photoSize={place.team.playerIds.length > 1 ? 84 : 112}
             />
@@ -253,7 +254,8 @@ function PlayerReward({
   photo?: string;
   rank: string;
   reward: Reward | null;
-  shame: boolean;
+  /** Título del último (sello sobre la foto); sin él, no es el último. */
+  shame?: string;
   progressionOn: boolean;
   photoSize: number;
 }) {
@@ -276,12 +278,13 @@ function PlayerReward({
     <div className="cer-player">
       <span className="cer-photo">
         <RankPhoto name={name} photo={photo} rank={rank} size={photoSize} />
-        {shame && <span className="cer-stamp">PATÉTICO</span>}
+        {shame && (
+          <span className={`cer-stamp ${shame.length > 10 ? 'is-long' : ''}`}>{shame}</span>
+        )}
       </span>
       <div className="cer-player-main">
         <strong className="cer-player-name">
           {name}
-          {shame && <em className="cer-nick"> «PATÉTICO»</em>}
         </strong>
         {!progressionOn ? (
           <span className="dim">Progresión desactivada</span>

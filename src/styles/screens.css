@@ -5616,9 +5616,14 @@ div > .name-clash:first-child {
 .cer-player-name {
   font-size: 24px;
 }
-.cer-nick {
-  color: var(--danger);
-  font-size: 18px;
+.cer-stamp.is-long {
+  /* Títulos largos («Farolillo rojo»…): en dos líneas y algo más pequeños para no salirse de la foto. */
+  max-width: 150px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.1;
+  font-size: 15px;
+  letter-spacing: 0.04em;
 }
 .cer-xp-row {
   display: flex;
