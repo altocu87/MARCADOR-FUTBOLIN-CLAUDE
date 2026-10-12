@@ -6308,8 +6308,8 @@ div > .name-clash:first-child {
   font-size: 16px;
 }
 .tn-summary {
-  gap: 9px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 10px 16px;
 }
 .tn-summary > div {
   font-size: 17px;
@@ -6317,4 +6317,81 @@ div > .name-clash:first-child {
 .tn-summary .label {
   width: 96px;
   font-size: 13px;
+}
+
+/*
+ * Creador de torneos SIN scroll: cada paso cabe en la pantalla. Las columnas ocupan todo el alto y las
+ * listas de opciones reparten ese alto entre sus botones (grandes si sobra sitio, más bajos si no).
+ */
+.cr-body {
+  overflow: hidden;
+}
+.cr-body > .cr-cols,
+.cr-body > .cr-big {
+  flex: 1;
+  min-height: 0;
+}
+.cr-body .cr-cols {
+  align-items: stretch;
+}
+.cr-body .cr-col {
+  min-height: 0;
+}
+.cr-body .cr-col > .cr-sub {
+  flex: 1;
+  min-height: 0;
+}
+.cr-body .cr-field:has(> .cr-opts),
+.cr-body .cr-sub:has(.cr-opts) > .cr-field {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.cr-body .cr-opts {
+  flex: 1;
+  min-height: 0;
+}
+.cr-body .cr-opt-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 92px;
+  display: flex;
+}
+.cr-body .cr-opt {
+  min-height: 0;
+  height: 100%;
+  font-size: 24px;
+  line-height: 1.05;
+  padding: 4px 52px;
+}
+/* Reglas en versión estrecha (reglas distintas de la final, dentro de su panel). */
+.rule-ways.is-compact {
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 3px dashed color-mix(in srgb, #62d6ff 60%, transparent);
+}
+.rule-ways.is-compact .rule-way {
+  padding: 4px;
+  gap: 6px;
+}
+.rule-ways.is-compact .rule-way-toggle {
+  flex-basis: 118px;
+  grid-template-columns: 26px 1fr;
+  column-gap: 6px;
+  padding: 2px 6px;
+}
+.rule-ways.is-compact .rule-way-check {
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+}
+.rule-ways.is-compact .rule-way-title {
+  font-size: 15px;
+}
+.rule-ways.is-compact .rule-way-toggle small {
+  display: none;
+}
+.rule-ways.is-compact .rule-way-amount .segmented .seg {
+  min-height: 44px !important;
+  font-size: 17px;
+  padding: 0 2px;
 }

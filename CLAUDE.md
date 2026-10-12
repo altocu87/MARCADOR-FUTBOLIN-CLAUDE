@@ -10,3 +10,6 @@
 - Opciones que dependen de otra (p. ej. «Cómo se forman las parejas» solo con «Parejas fijas»): van en un
   panel hijo (`SubPanel`) con el nombre de su opción madre arriba («↳ Parejas fijas»), y la opción madre
   elegida se une a él con una pestaña. Botones y letras grandes siempre que sobre sitio.
+- Sin scroll, salvo en Ajustes, la clasificación y las listas (partidos, torneos, jugadores…): cada pantalla
+  tiene que caber en el lienzo más pequeño (800 × 480). Los botones se reparten el alto que haya (grandes si
+  sobra sitio, más bajos si no) en vez de salirse.

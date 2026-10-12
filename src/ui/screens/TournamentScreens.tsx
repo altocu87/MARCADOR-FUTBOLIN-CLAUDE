@@ -118,11 +118,14 @@ function RulesPicker({
   rules,
   onChange,
   timeIsParent,
+  compact,
 }: {
   rules: MatchRules;
   onChange: (patch: Partial<MatchRules>) => void;
   /** «Tiempo» abre más opciones al lado (en liga, qué pasa si acaban igualados). */
   timeIsParent?: boolean;
+  /** Versión estrecha (dentro de un panel): cantidades sin «A» ni «MIN». */
+  compact?: boolean;
 }) {
   const { toast } = useApp();
   const goals = rules.endCondition !== 'time';
@@ -146,20 +149,20 @@ function RulesPicker({
     </div>
   );
   return (
-    <div className="rule-ways">
+    <div className={`rule-ways${compact ? ' is-compact' : ''}`}>
       {way(
         'goals',
         goals,
         '⚽ Goles',
         'A cuántos goles se gana',
-        <Seg value={rules.goalsPerPeriod} options={GOAL_OPTIONS} onChange={(v) => goals && onChange({ goalsPerPeriod: v })} />,
+        <Seg value={rules.goalsPerPeriod} options={compact ? GOAL_OPTIONS.map(([v]) => [v, String(v)] as [number, string]) : GOAL_OPTIONS} onChange={(v) => goals && onChange({ goalsPerPeriod: v })} />,
       )}
       {way(
         'time',
         time,
         '⏱ Tiempo',
         'Minutos de cada parte',
-        <Seg value={rules.minutesPerPeriod} options={MINUTE_OPTIONS} onChange={(v) => time && onChange({ minutesPerPeriod: v })} />,
+        <Seg value={rules.minutesPerPeriod} options={compact ? MINUTE_OPTIONS.map(([v]) => [v, `${v}'`] as [number, string]) : MINUTE_OPTIONS} onChange={(v) => time && onChange({ minutesPerPeriod: v })} />,
       )}
     </div>
   );
@@ -1626,16 +1629,13 @@ export function TournamentTemplateScreen({
         {hasFinal && (
           <div className="cr-col">
             <SubPanel parent={tpl.final === 'none' ? 'Final' : `Final · ${FINAL_LABEL[tpl.final]}`}>
-              <CreatorField label="La final se juega">
-                <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
-              </CreatorField>
-              <CreatorField label="Reglas de la final" note={ownFinalRules ? rulesText(finalRulesOf(tpl)) : `Como el resto: ${rulesText(tpl).toLowerCase()}`}>
-                <Seg<boolean> value={ownFinalRules} options={[[false, 'IGUALES'], [true, 'DISTINTAS']]} onChange={setOwnFinal} />
-              </CreatorField>
-              {ownFinalRules && (
-                <SubPanel parent="Reglas distintas">
-                  <RulesPicker rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />
-                </SubPanel>
+              <Seg<1 | 3> value={tpl.finalBestOf} options={[[1, 'PARTIDO ÚNICO'], [3, 'AL MEJOR DE 3']]} onChange={(v) => set('finalBestOf', v)} />
+              <Seg<boolean> value={ownFinalRules} options={[[false, 'REGLAS IGUALES'], [true, 'REGLAS DISTINTAS']]} onChange={setOwnFinal} />
+              {ownFinalRules ? (
+                // Justo debajo de «Reglas distintas», que es de quien dependen.
+                <RulesPicker compact rules={finalRulesOf(tpl)} onChange={(patch) => setTpl((t) => withFinalRules(t, { ...finalRulesOf(t), ...patch }))} />
+              ) : (
+                <small className="cr-note">Como el resto: {rulesText(tpl).toLowerCase()}</small>
               )}
             </SubPanel>
           </div>
@@ -1766,7 +1766,7 @@ export function TournamentTemplateScreen({
         </>
       }
     >
-      <div className={`cr-body scroll${step === 'kind' ? ' cr-body-kinds' : ''}`}>{body}</div>
+      <div className={`cr-body cr-step-${step}${step === 'kind' ? ' cr-body-kinds' : ''}`}>{body}</div>
       {confirmDelete && (
         <Modal
           title={`¿Borrar «${tpl.name}»?`}
