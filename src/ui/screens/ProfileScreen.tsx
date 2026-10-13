@@ -92,16 +92,29 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
     }
   };
 
-  const rivalRow = (r: RivalStat) => (
-    <div key={r.playerId} className="row">
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <PlayerTag id={r.playerId} name={r.name} size={30} />
-      </span>
-      <span className="muted">{r.played} PJ</span>
-      <span>{r.wins}G{r.draws ? ` · ${r.draws}E` : ''} · {r.losses}P</span>
-      <strong style={{ width: 60, textAlign: 'right' }}>{r.winPct.toFixed(0)} %</strong>
-    </div>
-  );
+  // Tocar un rival abre el cara a cara con él; los compañeros no se enfrentan, así que su fila no se toca.
+  const rivalRow = (r: RivalStat, rival = true) => {
+    const body = (
+      <>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <PlayerTag id={r.playerId} name={r.name} size={30} />
+        </span>
+        <span className="muted">{r.played} PJ</span>
+        <span>{r.wins}G{r.draws ? ` · ${r.draws}E` : ''} · {r.losses}P</span>
+        <strong style={{ width: 60, textAlign: 'right' }}>{r.winPct.toFixed(0)} %</strong>
+        {rival && <span className="muted" aria-hidden="true">›</span>}
+      </>
+    );
+    return rival ? (
+      <button key={r.playerId} className="row" onClick={() => navigate({ name: 'duel', a: playerId, b: r.playerId })} aria-label={`Cara a cara con ${r.name}`}>
+        {body}
+      </button>
+    ) : (
+      <div key={r.playerId} className="row">
+        {body}
+      </div>
+    );
+  };
 
   return (
     <ScreenFrame
@@ -235,7 +248,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
         {tab === 'rivals' && (
           <>
             <div className="grid-2">
-              <div className="card">
+              <button className="card card-btn" disabled={!stats.favoriteRival} onClick={() => stats.favoriteRival && navigate({ name: 'duel', a: playerId, b: stats.favoriteRival.playerId })}>
                 <div className="label">Rival favorito</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {stats.favoriteRival ? (
@@ -246,8 +259,8 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                     'Aún sin rival favorito'
                   )}
                 </div>
-              </div>
-              <div className="card">
+              </button>
+              <button className="card card-btn" disabled={!stats.nemesis} onClick={() => stats.nemesis && navigate({ name: 'duel', a: playerId, b: stats.nemesis.playerId })}>
                 <div className="label">Némesis</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
                   {stats.nemesis ? (
@@ -258,17 +271,17 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                     'Aún sin némesis'
                   )}
                 </div>
-              </div>
+              </button>
             </div>
             <div className="dim" style={{ fontSize: 11 }}>
               Requiere al menos {RIVAL_MIN_MATCHES} enfrentamientos.
             </div>
             <div className="label">Enfrentamientos directos</div>
-            {stats.rivals.length === 0 ? <div className="muted">Sin enfrentamientos.</div> : <div className="list">{stats.rivals.map(rivalRow)}</div>}
+            {stats.rivals.length === 0 ? <div className="muted">Sin enfrentamientos.</div> : <div className="list">{stats.rivals.map((r) => rivalRow(r))}</div>}
             {stats.teammates.length > 0 && (
               <>
                 <div className="label">Compañeros (2 vs 2)</div>
-                <div className="list">{stats.teammates.map(rivalRow)}</div>
+                <div className="list">{stats.teammates.map((r) => rivalRow(r, false))}</div>
               </>
             )}
           </>

@@ -6,7 +6,6 @@ import { computeHallOfFame, computeRecords, seasonChampions, seasonProgression }
 import { sortPlayers } from '../../services/players';
 import {
   computePlayerStats,
-  duel,
   pairStats,
   periodDigest,
   seasonKey,
@@ -30,23 +29,19 @@ export function RankingScreen({ tab: initialTab }: { tab?: RankingTab }) {
         onChange={setTab}
         tabs={[
           { id: 'standings', label: 'Clasificación' },
-          { id: 'history', label: 'Historial' },
           { id: 'players', label: 'Jugadores' },
+          { id: 'history', label: 'Historial' },
           { id: 'fame', label: 'Salón de la fama' },
-          { id: 'records', label: 'Récords' },
-          { id: 'pairs', label: 'Parejas' },
           { id: 'digest', label: 'Resumen' },
-          { id: 'duel', label: 'Cara a cara' },
+          { id: 'pairs', label: 'Parejas' },
         ]}
       />
       {tab === 'standings' && <Standings />}
       {tab === 'history' && <History />}
       {tab === 'players' && <PlayersGrid />}
       {tab === 'fame' && <HallOfFame />}
-      {tab === 'records' && <Records />}
       {tab === 'pairs' && <Pairs />}
       {tab === 'digest' && <Digest />}
-      {tab === 'duel' && <Duel />}
     </ScreenFrame>
   );
 }
@@ -222,15 +217,25 @@ function PlayersGrid() {
     );
   }
   return (
-    <div className="pgrid pgrid-wide scroll" style={{ flex: 1, minHeight: 0 }}>
+    <div className="pl-grid scroll" style={{ flex: 1, minHeight: 0 }}>
       {list.map((p) => {
         const prog = progression?.players.get(p.id);
         return (
-          <button key={p.id} className={`pcard ${p.active ? '' : 'inactive'}`} onClick={() => navigate({ name: 'profile', playerId: p.id })}>
-            <Avatar name={p.name} photo={p.photo} size={44} />
-            <span className="pcard-name">{p.name}</span>
-            <span className="pcard-meta">
-              {!p.active ? 'Inactivo' : prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ${prog.elo}` : ''}` : ' '}
+          <button
+            key={p.id}
+            className={`pl-card${p.active ? '' : ' is-off'}`}
+            style={prog ? { ['--cat' as string]: prog.category.color } : undefined}
+            onClick={() => navigate({ name: 'profile', playerId: p.id })}
+          >
+            <Avatar name={p.name} photo={p.photo} size={64} />
+            <span className="pl-info">
+              <b className="pl-name">{p.name}</b>
+              <span className="pl-meta">{!p.active ? 'Inactivo' : prog ? `Nivel ${prog.level}` : 'Sin partidos'}</span>
+              {p.active && prog && prog.rankedPlayed > 0 && (
+                <span className="pl-rank">
+                  <CategoryBadge category={prog.category} size={22} /> {prog.category.name} · {prog.elo}
+                </span>
+              )}
             </span>
           </button>
         );
@@ -259,7 +264,8 @@ function HallOfFame() {
   }
   const go = (id: string) => navigate({ name: 'profile', playerId: id });
   return (
-    <div className="fame-grid scroll" style={{ flex: 1, minHeight: 0 }}>
+    <div className="fame-page scroll" style={{ flex: 1, minHeight: 0 }}>
+    <div className="fame-grid">
       {nonEmpty.map((row) => (
         <div key={row.id} className="card fame-card">
           <div className="label">{row.title}</div>
@@ -281,12 +287,17 @@ function HallOfFame() {
         </div>
       )}
     </div>
+    <div className="label">Récords de partido</div>
+    <Records />
+    </div>
   );
 }
 
+/** Récords de partido (dentro del Salón de la fama). */
 function Records() {
   const { players, matches, progression, navigate } = useApp();
-  const records = useMemo(() => computeRecords(players, matches, progression), [players, matches, progression]);
+  // Solo los de partido: los de jugador (racha, victorias, ELO…) ya salen en los podios de arriba.
+  const records = useMemo(() => computeRecords(players, matches, progression).filter((r) => r.matchId), [players, matches, progression]);
   if (records.length === 0) {
     return (
       <div className="empty">
@@ -298,7 +309,7 @@ function Records() {
     );
   }
   return (
-    <div className="list scroll" style={{ flex: 1, minHeight: 0 }}>
+    <div className="list">
       {records.map((r) => (
         <button
           key={r.id}
@@ -404,60 +415,3 @@ function Digest() {
   );
 }
 
-function Duel() {
-  const { players, matches, progression, navigate } = useApp();
-  const list = sortPlayers(players);
-  const [a, setA] = useState(list[0]?.id ?? '');
-  const [b, setB] = useState(list[1]?.id ?? '');
-  const sa = useMemo(() => (a ? computePlayerStats(a, matches) : null), [a, matches]);
-  const sb = useMemo(() => (b ? computePlayerStats(b, matches) : null), [b, matches]);
-  const d = useMemo(() => (a && b && a !== b ? duel(a, b, matches) : null), [a, b, matches]);
-  if (list.length < 2) {
-    return <div className="empty"><div><strong>Faltan jugadores</strong>Se necesitan al menos dos.</div></div>;
-  }
-  const pa = progression?.players.get(a);
-  const pb = progression?.players.get(b);
-  const row = (label: string, va: ReactNode, vb: ReactNode, better?: 'a' | 'b' | null) => (
-    <div className="duel-row">
-      <span className={better === 'a' ? 'win' : ''}>{va}</span>
-      <span className="label">{label}</span>
-      <span className={better === 'b' ? 'win' : ''}>{vb}</span>
-    </div>
-  );
-  const cmp = (x: number | null | undefined, y: number | null | undefined) =>
-    x == null || y == null || x === y ? null : x > y ? 'a' : 'b';
-  const pa_ = players.find((p) => p.id === a);
-  const pb_ = players.find((p) => p.id === b);
-  return (
-    <div className="duel scroll">
-      <div className="duel-head">
-        <select className="input" value={a} onChange={(e) => setA(e.target.value)} aria-label="Jugador A">
-          {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <div className="duel-vs">
-          {d ? <><strong>{d.aWins}</strong> – <strong>{d.bWins}</strong></> : 'VS'}
-          <div className="dim" style={{ fontSize: 11 }}>{d ? `${d.played} enfrentamientos${d.draws ? ` · ${d.draws} empate${d.draws === 1 ? '' : 's'}` : ''}` : 'Elige dos jugadores distintos'}</div>
-        </div>
-        <select className="input" value={b} onChange={(e) => setB(e.target.value)} aria-label="Jugador B">
-          {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </div>
-      <div className="duel-faces">
-        <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: a })}><Avatar name={pa_?.name ?? '?'} photo={pa_?.photo} size={52} /></button>
-        <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: b })}><Avatar name={pb_?.name ?? '?'} photo={pb_?.photo} size={52} /></button>
-      </div>
-      {sa && sb && (
-        <div className="duel-table">
-          {progression && row('ELO', pa?.elo ?? '—', pb?.elo ?? '—', cmp(pa?.elo, pb?.elo))}
-          {progression && row('Nivel', pa?.level ?? '—', pb?.level ?? '—', cmp(pa?.level, pb?.level))}
-          {row('Partidos', sa.general.played, sb.general.played, cmp(sa.general.played, sb.general.played))}
-          {row('Victorias', sa.general.wins, sb.general.wins, cmp(sa.general.wins, sb.general.wins))}
-          {row('% victorias', pct(sa.general.winPct), pct(sb.general.winPct), cmp(sa.general.winPct, sb.general.winPct))}
-          {row('Mejor racha', sa.bestWinStreak, sb.bestWinStreak, cmp(sa.bestWinStreak, sb.bestWinStreak))}
-          {row('Dif. goles equipo', sa.general.goalDiff, sb.general.goalDiff, cmp(sa.general.goalDiff, sb.general.goalDiff))}
-          {progression && row('Logros', pa?.achievements.length ?? 0, pb?.achievements.length ?? 0, cmp(pa?.achievements.length, pb?.achievements.length))}
-        </div>
-      )}
-    </div>
-  );
-}

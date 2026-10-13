@@ -1251,3 +1251,14 @@ button.row:active {
 .match-line.is-faces .match-line-score {
   font-size: 1.25em;
 }
+/* Tarjeta que se toca entera. */
+.card.card-btn {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card.card-btn:disabled {
+  cursor: default;
+}

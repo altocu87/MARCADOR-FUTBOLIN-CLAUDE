@@ -25,6 +25,7 @@ import {
   TournamentTemplateScreen,
 } from '../ui/screens/TournamentScreens';
 import { SummaryScreen } from '../ui/screens/SummaryScreen';
+import { DuelScreen } from '../ui/screens/DuelScreen';
 import { AppProvider, useApp } from './AppContext';
 
 // Clave estable por navegación: cada nueva ruta de partido crea un partido nuevo
@@ -102,6 +103,9 @@ function Router() {
       break;
     case 'profile':
       screen = <ProfileScreen key={route.playerId} playerId={route.playerId} />;
+      break;
+    case 'duel':
+      screen = <DuelScreen a={route.a} b={route.b} />;
       break;
     case 'tournament':
       screen = <TournamentListScreen />;

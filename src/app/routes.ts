@@ -2,7 +2,7 @@ import type { MatchConfig, MatchMode, MatchState, ParticipantRef } from '../matc
 import type { StoredMatch, TournamentFormat } from '../services/persistence';
 import type { SaveStatus } from './matchFinalizer';
 
-export type RankingTab = 'standings' | 'history' | 'players' | 'fame' | 'records' | 'pairs' | 'digest' | 'duel';
+export type RankingTab = 'standings' | 'history' | 'players' | 'fame' | 'pairs' | 'digest';
 export type SettingsTab = 'general' | 'players' | 'audio' | 'progression' | 'connections' | 'diy' | 'system' | 'info';
 
 /** Datos extra que acompañan a un partido hasta guardarlo. */
@@ -20,6 +20,7 @@ export type Route =
   | { name: 'ranking'; tab?: RankingTab }
   | { name: 'matchDetail'; matchId: string; fromTournament?: boolean }
   | { name: 'profile'; playerId: string }
+  | { name: 'duel'; a: string; b: string }
   | { name: 'tournament' }
   /** Palmarés de una competición (todas sus ediciones). */
   | { name: 'tournamentHonours'; key: string }

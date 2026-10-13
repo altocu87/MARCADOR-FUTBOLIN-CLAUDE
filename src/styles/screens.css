@@ -6863,3 +6863,73 @@ div > .name-clash:first-child {
 .rec-holder .match-line > .side-tag {
   flex: 0 1 auto;
 }
+/* Salón de la fama: podios arriba y récords debajo, en una sola lista que se desliza. */
+.fame-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Ranking → Jugadores: una ficha por jugador con su foto, nivel y rango. */
+.pl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+.pl-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 84px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--cat, #22385a) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cat, #11223b) 16%, rgba(17, 34, 59, 0.85)), rgba(10, 20, 36, 0.9));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pl-card:active {
+  transform: scale(0.98);
+}
+.pl-card.is-off {
+  opacity: 0.5;
+}
+.pl-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pl-name {
+  font-size: 19px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-meta {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.pl-rank {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cat, var(--text-2));
+}
+/* Cara a cara: los dos con foto grande y nombre (se tocan para ir a su perfil). */
+.duel-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
