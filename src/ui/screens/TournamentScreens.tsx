@@ -607,8 +607,6 @@ export function TournamentNewScreen({
     const id = window.setTimeout(() => setKindSelected(null), KIND_SELECT_TIMEOUT_MS);
     return () => window.clearTimeout(id);
   }, [kindSelected]);
-  // Los predefinidos de este tipo que no encajan con estos jugadores, plegados.
-  const [showBlocked, setShowBlocked] = useState(false);
   // Reglas completas de una competición («?» de su tarjeta).
   const [rulesOf, setRulesOf] = useState<TournamentTemplate | null>(null);
   // Nombre, logo y copa del torneo (por defecto, los del tipo elegido y su última edición).
@@ -624,12 +622,11 @@ export function TournamentNewScreen({
   const n = selected.length;
 
   // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de los creados.
-  // Los que no encajan con este número de jugadores, plegados al final.
+  // Los que no encajan con este número de jugadores no se enseñan.
   const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
   const kindInfo = KINDS.find((k) => k.format === kind);
   const fits = allFits.filter((x) => x.t.format === kind);
   const shown = fits.filter((x) => x.fit.ok);
-  const blocked = fits.filter((x) => !x.fit.ok);
   // Las reglas (goles, tiempo, final) son las del tipo elegido: aquí solo se resumen y se cambian con «Editar».
   // Una competición con una edición en juego no se puede volver a empezar hasta que esa acabe o se descarte.
   const playing = (id: string) => activeEdition(id, tournaments);
@@ -789,7 +786,6 @@ export function TournamentNewScreen({
                   setKindPressed(k.format);
                   kindTimer.current = window.setTimeout(() => {
                     setKind(k.format);
-                    setShowBlocked(false);
                     setKindSelected(null);
                     setKindPressed(null);
                     setStep('format');
@@ -1015,11 +1011,6 @@ export function TournamentNewScreen({
           <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
             + Crear {kindInfo.noun}
           </button>
-          {tpl && (
-            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', baseId: tpl.id, selected })}>
-              Duplicar
-            </button>
-          )}
         </>
       }
       footer={
@@ -1027,11 +1018,6 @@ export function TournamentNewScreen({
           {/* El número de jugadores ya está en el subtítulo: aquí solo un aviso o el siguiente paso. */}
           {(mainErrors.length > 0 || withPairs) && (
             <span className={`notice select-status tn-status ${mainErrors.length ? 'warn' : ''}`}>{mainErrors[0] ?? 'Ahora, las parejas'}</span>
-          )}
-          {blocked.length > 0 && (
-            <button className="tpl-more tn-foot-more" onClick={() => setShowBlocked((v) => !v)}>
-              {showBlocked ? 'Ocultar las que no encajan' : `Ver las que no encajan (${blocked.length})`}
-            </button>
           )}
           <button className="btn btn-primary btn-lg tn-continue" disabled={mainErrors.length > 0} onClick={() => (withPairs ? setPairsOpen(true) : create())}>
             <span>Continuar</span>
@@ -1046,18 +1032,13 @@ export function TournamentNewScreen({
         {shown.map(tplCard)}
         {shown.length === 0 && (
           <div className="tpl-empty">
-            <span>{fits.length ? `Con ${n} jugadores no encaja ${kindInfo.none} ${kindInfo.noun} de las creadas.` : `Aún no has creado ${kindInfo.none} ${kindInfo.noun}.`}</span>
+            <span>{`Aún no hay ${kindInfo.none} ${kindInfo.noun} para ${n} jugadores.`}</span>
             <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentTemplate', selected, format: kindInfo.format })}>
               + Crear {kindInfo.noun}
             </button>
           </div>
         )}
-        {showBlocked && (
-          <>
-            {shown.length > 0 && <div className="tpl-sep">No encajan con {n} jugadores</div>}
-            {blocked.map(tplCard)}
-          </>
-        )}
+
       </div>
       {rulesOf && (
         <Modal
@@ -1694,9 +1675,14 @@ export function TournamentTemplateScreen({
         <>
           {last ? <span className="select-status" /> : <span className="notice select-status">{describeTemplate(tpl)}</span>}
           {existing && (
-            <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)}>
-              Borrar
-            </button>
+            <>
+              <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', baseId: existing.id, selected, format: existing.format })}>
+                Duplicar {kind.noun}
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)}>
+                Borrar
+              </button>
+            </>
           )}
           {idx > 0 && (
             <button className="btn btn-lg" onClick={() => setStep(CREATOR_STEPS[idx - 1].id)}>

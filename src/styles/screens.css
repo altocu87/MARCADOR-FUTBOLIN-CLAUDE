@@ -3171,11 +3171,6 @@
 .tn-summary-final .label {
   color: var(--ranked);
 }
-.tn-foot-more {
-  flex: none;
-  width: auto;
-  padding: 8px 14px;
-}
 /* «¿Qué torneo jugamos?»: los tres tipos (liga, copa, pool) en tarjetas grandes. */
 .tn-kinds {
   display: grid;
@@ -3349,26 +3344,6 @@
 .tpl-card .tpl-mine {
   color: var(--text);
   border: 1px solid var(--line);
-}
-.tpl-more {
-  flex: none;
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px dashed rgba(98, 214, 255, 0.45);
-  background: rgba(7, 16, 28, 0.55);
-  color: #62d6ff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-.tpl-sep {
-  margin: 6px 0 0;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-3);
 }
 /* Pantallas de torneo: título en neón dorado (el color del trofeo) sobre el fondo de la app. */
 .tn-screen {
