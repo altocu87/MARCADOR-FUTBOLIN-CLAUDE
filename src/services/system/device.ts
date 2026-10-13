@@ -7,10 +7,6 @@ export function fullscreenAvailable(): boolean {
   return typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
 }
 
-export function isFullscreen(): boolean {
-  return !!document.fullscreenElement;
-}
-
 export async function toggleFullscreen(): Promise<void> {
   try {
     if (document.fullscreenElement) {

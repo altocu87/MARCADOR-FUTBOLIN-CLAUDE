@@ -8,7 +8,6 @@ export const ENGINE_VERSION = '1.0.0';
 export const RULES_VERSION = 'reglas-partido-2';
 
 export type Team = 'white' | 'blue';
-export const TEAMS: readonly Team[] = ['white', 'blue'];
 
 export type MatchMode = 'quick' | 'chaos' | 'ranked';
 
@@ -66,8 +65,6 @@ export interface ChaosRules {
   /** Cada equipo tiene un comodín por partido: su siguiente gol vale doble. */
   jokers: boolean;
 }
-
-export const CHAOS_LAST_MINUTE_MS = 60_000;
 
 export type JokerState = 'available' | 'armed' | 'used';
 

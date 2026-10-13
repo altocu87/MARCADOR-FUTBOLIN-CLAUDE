@@ -1335,12 +1335,7 @@
   gap: 4px;
   text-align: center;
 }
-/* Tipo de partido, grande. */
-.rep-mode {
-  max-width: 100%;
-  font-size: 20px;
-  padding: 4px 14px;
-}
+
 /* Marcador grande en el centro. */
 .rep-big-score {
   display: flex;
@@ -1518,56 +1513,6 @@
   text-align: left;
   border-bottom: 1px solid rgba(34, 56, 90, 0.5);
   font-variant-numeric: tabular-nums;
-}
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.timeline li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(17, 34, 59, 0.6);
-  font-size: 14px;
-}
-.tl-seq {
-  width: 34px;
-  color: var(--text-3);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.tl-text {
-  flex: 1;
-}
-.timeline .tl-goal {
-  border-left: 3px solid var(--ok);
-}
-.timeline .tl-corr {
-  border-left: 3px solid var(--danger);
-  color: #ffc4cc;
-}
-.timeline .tl-miss {
-  border-left: 3px solid var(--text-3);
-}
-.timeline .tl-info {
-  border-left: 3px solid var(--accent);
-  color: var(--text-2);
-}
-.timeline .tl-minor {
-  color: var(--text-3);
-  font-size: 12px;
-}
-.timeline li.annulled .tl-text {
-  text-decoration: line-through;
-  color: var(--text-3);
 }
 .chart-wrap {
   flex: 1;
@@ -1982,31 +1927,10 @@
   cursor: pointer;
   font-size: 14px;
 }
-.fame-place {
-  width: 18px;
-  font-weight: 900;
-  color: var(--text-3);
-}
-.place-1 .fame-place {
-  color: var(--ranked);
-}
 .place-1 {
   font-size: 16px;
 }
 
-/* ---------- Perfil ---------- */
-.profile-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.profile-elo {
-  text-align: right;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: rgba(17, 34, 59, 0.7);
-}
 .ach-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -2234,19 +2158,6 @@
 }
 .sleep-info strong {
   color: #4f7ea3;
-}
-.pcard-title {
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ranked);
-  white-space: nowrap;
-}
-.chaos-rules {
-  border-color: var(--chaos);
-  background: linear-gradient(180deg, rgba(214, 92, 255, 0.14), var(--card));
-  padding: 8px 12px;
 }
 .pick-chip {
   min-height: 44px;
@@ -2567,46 +2478,12 @@
   min-height: 44px !important;
   font-size: 13px;
 }
-.tn-layout,
 .td-layout {
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-}
-.tn-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 0;
-}
-.tn-teams {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-content: start;
-  min-height: 0;
-}
-.tn-team {
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--accent);
-  background: var(--accent-soft);
-  font-size: 13px;
-  font-weight: 700;
-}
-.tn-team-out {
-  border-color: var(--warn, #f2994a);
-  background: rgba(242, 153, 74, 0.14);
-}
-.tpl-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  flex: 1;
-  min-height: 0;
-  padding: 2px 4px 2px 2px;
 }
 /* Tarjeta de tipo de torneo: cristal oscuro con marco de neón celeste; la elegida se enciende. */
 /* Lista vacía de un tipo (liga, copa o pool): se invita a crear el primero. */
@@ -3132,21 +3009,7 @@
 .cr-kinds {
   padding: 0;
 }
-/* «Elige la liga/copa/pool»: la tarjeta elegida lleva su «Editar» (abre el editor del tipo). */
-.tpl-row {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-.tpl-row .tpl-card[aria-pressed='true'] {
-  padding-right: 96px;
-}
-.tpl-edit {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-}
+
 /* Resumen de reglas bajo el nombre del torneo (solo lectura). */
 .tn-summary {
   display: flex;
@@ -3259,16 +3122,6 @@
   border: 2px solid var(--neon);
   box-shadow: 0 0 14px color-mix(in srgb, var(--neon) 70%, transparent);
 }
-.tpl-card .tn-kind-art .tpl-rec {
-  position: absolute;
-  top: 12px;
-  padding: 3px 10px;
-  font-size: 11px;
-  white-space: nowrap;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-}
 .tpl-card.tn-kind.has-art.is-off .tn-kind-img {
   filter: grayscale(0.85);
 }
@@ -3326,25 +3179,6 @@
   cursor: default;
   border-style: dashed;
 }
-.tpl-card .tpl-rec,
-.tpl-card .tpl-mine {
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-shadow: none;
-}
-.tpl-card .tpl-rec {
-  color: #1a1203;
-  background: var(--ranked);
-  box-shadow: 0 0 10px rgba(242, 201, 76, 0.7);
-}
-.tpl-card .tpl-mine {
-  color: var(--text);
-  border: 1px solid var(--line);
-}
 /* Pantallas de torneo: título en neón dorado (el color del trofeo) sobre el fondo de la app. */
 .tn-screen {
   --tc: var(--ranked);
@@ -3352,24 +3186,9 @@
 .tn-screen .tn-bg.is-on {
   opacity: 0.55;
 }
-.tn-screen .td-panel,
-.tn-screen .tn-plan {
+.tn-screen .td-panel {
   background: rgba(7, 16, 28, 0.72);
   backdrop-filter: blur(6px);
-}
-.tn-plan {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(98, 214, 255, 0.45);
-  box-shadow: inset 0 0 14px rgba(98, 214, 255, 0.12);
-  font-size: 13px;
-}
-.tn-plan strong {
-  color: #62d6ff;
-  text-shadow: 0 0 8px rgba(98, 214, 255, 0.6);
 }
 /* Paso 1: fichas de jugador; las apuntadas se encienden en dorado con una marca. */
 .tn-pick-grid {
@@ -3424,49 +3243,7 @@
   margin-right: 4px;
   font-variant-numeric: tabular-nums;
 }
-/* Placa con el nombre automático: número de edición en grande y la competición. */
-.tn-nameplate {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  border: 2px solid var(--ranked);
-  background: rgba(7, 16, 28, 0.78);
-  box-shadow:
-    0 0 10px rgba(242, 201, 76, 0.6),
-    0 0 26px rgba(242, 201, 76, 0.22),
-    inset 0 0 14px rgba(242, 201, 76, 0.18);
-}
-.tn-np-edition {
-  font-size: 40px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--ranked);
-  text-shadow: 0 0 12px rgba(242, 201, 76, 0.8);
-}
-.tn-np-edition small {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-left: 2px;
-}
-.tn-np-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.tn-np-body b {
-  font-size: 20px;
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tn-np-body small {
-  font-size: 11px;
-  color: var(--text-2);
-}
+
 .tn-screen .tabs {
   margin: 0;
 }
@@ -3660,16 +3437,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.pool-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--accent);
-  background: var(--accent-soft);
-  font-size: 13px;
 }
 .final-card {
   margin-top: 10px;
@@ -4718,30 +4485,9 @@ div > .name-clash:first-child {
 .tn-rules .label {
   margin: 0;
 }
-.tn-col-rules {
-  padding-right: 4px;
-}
-.tn-col-rules > * {
-  flex: none;
-}
 .tn-rules .seg-compact {
   min-height: 36px !important;
   white-space: nowrap;
-}
-.tn-rules-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.tn-rules-head .label {
-  flex: 1;
-  white-space: nowrap;
-}
-.tn-rules-head .segmented {
-  flex: 0 1 380px;
-}
-.tn-rules-head .seg-compact {
-  padding: 0 12px;
 }
 /* La final en dorado, como el trofeo. */
 .tn-rules-final {
@@ -4828,88 +4574,6 @@ div > .name-clash:first-child {
   gap: 10px;
 }
 
-/* Torneo nuevo: nombre editable, logo y copa a los lados. */
-.tn-np-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  padding: 2px;
-  border: none;
-  border-radius: 14px;
-  background: transparent;
-  cursor: pointer;
-}
-.tn-np-icon:hover,
-.tn-np-icon:focus-visible {
-  background: rgba(242, 201, 76, 0.12);
-}
-.tn-np-body {
-  flex: 1;
-}
-.tn-np-name {
-  width: 100%;
-  min-width: 0;
-  padding: 2px 6px;
-  border: 1px dashed transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 22px;
-  font-weight: 900;
-}
-.tn-np-name {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* El cartel solo informa: nombre, escudo, copa y banner se cambian con «Editar». */
-.tn-np-icon {
-  cursor: default;
-}
-.tn-np-icon:hover {
-  background: transparent;
-}
-.tn-np-body small {
-  padding-left: 6px;
-}
-.tn-np-ed {
-  color: var(--ranked);
-}
-
-/* Parejas fijas: nombre y logo de cada equipo (se toca para cambiarlo). */
-.tn-team-edit {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 4px;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-.tn-team-text {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  line-height: 1.15;
-}
-.tn-team-text b {
-  font-size: 13px;
-}
-.tn-team-edit:not(.has-name) .tn-team-text b {
-  color: var(--text-2);
-  font-style: italic;
-  font-weight: 600;
-}
-.tn-team-text small {
-  font-size: 11px;
-  color: var(--text-2);
-}
-.tn-team-pen {
-  color: var(--accent);
-  font-size: 13px;
-}
 .team-editor {
   display: flex;
   flex-direction: column;
@@ -4941,10 +4605,6 @@ div > .name-clash:first-child {
 }
 .team-editor .icon-cell {
   height: 64px;
-}
-.tn-np-body .tn-np-ed {
-  font-size: 12px;
-  display: inline;
 }
 .team-label {
   display: inline-flex;
@@ -5641,18 +5301,6 @@ div > .name-clash:first-child {
 .tn-faces .avatar {
   box-shadow: 0 0 0 2px var(--bg-deep);
 }
-.tn-champ-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--ranked);
-}
-.tn-champ-line b {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* Botón principal de avanzar en el flujo de torneos («Siguiente», «Continuar», «Guardar», «Crear
    torneo»): verde neón que late, con un brillo que lo cruza y una flecha que
@@ -5919,46 +5567,7 @@ div > .name-clash:first-child {
   height: 100%;
   object-fit: cover;
 }
-/* Cartel de la liga con su banner de fondo: la imagen detrás y un velo para leer el nombre. */
-.tn-nameplate.has-banner {
-  position: relative;
-  overflow: hidden;
-  min-height: 92px;
-}
-.tn-np-banner {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-.tn-nameplate.has-banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: linear-gradient(90deg, rgba(3, 8, 16, 0.55), rgba(3, 8, 16, 0.25) 50%, rgba(3, 8, 16, 0.55));
-}
-.tn-nameplate.has-banner > :not(.tn-np-banner):not(.tn-np-banner-btn) {
-  position: relative;
-  z-index: 1;
-}
-.tn-nameplate.has-banner .tn-np-name,
-.tn-nameplate.has-banner small {
-  text-shadow: 0 2px 4px #000, 0 0 10px rgba(0, 0, 0, 0.8);
-}
-.tn-nameplate .tn-np-banner-btn {
-  position: absolute;
-  left: 8px;
-  top: 6px;
-  z-index: 2;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(3, 8, 16, 0.7);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  cursor: pointer;
-}
+
 /* Cabecera del torneo con su banner detrás. */
 .screen-header.has-art {
   position: relative;
@@ -6026,7 +5635,6 @@ div > .name-clash:first-child {
   position: absolute;
   inset: 0;
 }
-
 
 /* Cómo se gana un partido (torneos): Goles y Tiempo por separado, cada uno con su cantidad. */
 .rule-ways {
@@ -6760,7 +6368,6 @@ div > .name-clash:first-child {
   opacity: 0.35;
   filter: grayscale(0.8);
 }
-
 
 /* ---------- Perfil: torneos jugados ---------- */
 .th {

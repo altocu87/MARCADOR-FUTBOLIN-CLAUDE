@@ -6,7 +6,6 @@ import {
   computeRewards,
   cuandoTexto,
   ownedBy,
-  unlockedByMatch,
   type Catalog,
   type CatalogCollection,
   type CatalogItem,
@@ -69,11 +68,6 @@ describe('Eventos · premios', () => {
   });
   it('cada año vuelve: Halloween 2027 también cuenta', () => {
     expect(ownedBy(computeRewards(catalog, { matches: [match('2027-10-31', 'BB')], tournaments: [] }), 'copa', ['beto'])).toBe(true);
-  });
-  it('avisa de lo que se desbloquea con un partido concreto', () => {
-    const m = match('2026-10-31', 'WW');
-    const got = unlockedByMatch(catalog, { matches: [m], tournaments: [] }, m.id);
-    expect(got).toEqual(expect.arrayContaining([{ playerId: 'ana', itemId: 'copa' }, { playerId: 'beto', itemId: 'banner' }]));
   });
   it('el aviso del evento solo sale en sus fechas y sin borradores', () => {
     expect(activeEvents(catalog, at('2026-10-30'))).toEqual([]);

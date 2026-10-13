@@ -150,15 +150,6 @@ export function ownedBy(state: RewardState, itemId: string, playerIds: string[])
   return playerIds.some((pid) => state.byPlayer.get(pid)?.has(itemId));
 }
 
-/** Piezas que cada jugador ha conseguido con ESTE partido (para avisarlo al acabar). */
-export function unlockedByMatch(catalog: Catalog, data: RewardInputs, matchId: string): { playerId: string; itemId: string }[] {
-  const before = computeRewards(catalog, { ...data, matches: data.matches.filter((m) => m.id !== matchId) });
-  const after = computeRewards(catalog, data);
-  const out: { playerId: string; itemId: string }[] = [];
-  for (const [pid, items] of after.byPlayer) for (const id of items.keys()) if (!before.byPlayer.get(pid)?.has(id)) out.push({ playerId: pid, itemId: id });
-  return out;
-}
-
 export interface ActiveEvent {
   /** Colecciones del mismo evento (mismo nombre de temporada) que se pueden conseguir ahora. */
   title: string;

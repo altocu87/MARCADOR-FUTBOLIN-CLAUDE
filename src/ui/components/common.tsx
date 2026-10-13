@@ -3,7 +3,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import type { MatchMode } from '../../match-engine';
 import { initials } from '../../services/players';
-import { assetUrl } from './assets';
 import type { ResultLetter } from '../../services/statistics';
 
 export function ScreenFrame({
@@ -109,19 +108,6 @@ export function Toggle({
   );
 }
 
-/** Signo − / + con las imágenes neón (reposo y pulsado); sin imágenes, el texto de respaldo. */
-export function NeonSign({ kind, fallback }: { kind: 'restar' | 'sumar'; fallback: string }) {
-  const off = assetUrl(`boton-${kind}-off`);
-  const on = assetUrl(`boton-${kind}-on`);
-  if (!off || !on) return <>{fallback}</>;
-  return (
-    <span className="neon-sign" aria-hidden="true">
-      <img className="off" src={off} alt="" draggable={false} />
-      <img className="on" src={on} alt="" draggable={false} />
-    </span>
-  );
-}
-
 export function Stepper({
   value,
   min,
@@ -212,11 +198,6 @@ export const MODE_LABEL: Record<MatchMode, string> = {
   chaos: 'Partido Loco',
   ranked: 'Clasificatorio',
 };
-
-export function ModeBadge({ mode }: { mode: MatchMode }) {
-  const cls = mode === 'chaos' ? 'badge-chaos' : mode === 'ranked' ? 'badge-ranked' : 'badge-accent';
-  return <span className={`badge ${cls}`}>{MODE_LABEL[mode]}</span>;
-}
 
 export function FormChips({ form, empty = '—' }: { form: ResultLetter[]; empty?: string }) {
   if (form.length === 0) return <span className="dim">{empty}</span>;

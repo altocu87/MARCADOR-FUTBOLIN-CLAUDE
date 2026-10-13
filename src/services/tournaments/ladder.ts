@@ -14,7 +14,7 @@
  * Todo sale del orden de salida y de los resultados (con sorteos de semilla fija), así que borrar el último
  * resultado y volver a apuntar el resto da exactamente las mismas rondas.
  */
-import type { Fixture, LadderSettings, StoredMatch, Tournament, TournamentTeam } from '../persistence';
+import type { Fixture, StoredMatch, Tournament, TournamentTeam } from '../persistence';
 import { newId } from '../ids';
 import { seededRandom } from '../statistics/calendar';
 
@@ -225,7 +225,3 @@ export function ladderPlaces(t: Tournament): LadderPlace[] {
   return out;
 }
 
-/** Ajustes de un Pool en escalera nuevo (las parejas de salida se ponen al crearlo). */
-export function ladderSettings(p: Partial<Omit<LadderSettings, 'start'>> = {}): Omit<LadderSettings, 'start'> {
-  return { ...LADDER_DEFAULTS, finalBestOf: 1, ...p };
-}

@@ -55,7 +55,7 @@ export interface StoredMatch {
 /** Liguilla, cuadro eliminatorio o Pool (parejas rotativas con puntos individuales). */
 export type TournamentFormat = 'league' | 'bracket' | 'pool';
 /** Final tras la fase regular: sin final, 1º contra 2º o (Pool) 1º+4º contra 2º+3º. */
-export type TournamentFinal = 'none' | 'top2' | 'top4';
+export type TournamentFinal = 'none' | 'top2';
 
 export interface TournamentTeam {
   id: string;
@@ -190,8 +190,6 @@ export interface TournamentTemplate {
   pairing: 'elo' | 'random' | 'manual';
   /** Cuadro: orden de siembra. */
   seeding: 'elo' | 'random';
-  /** Pool antiguo: partidos que juega cada jugador (ya no se usa). */
-  gamesPerPlayer: number;
   /** Pool: con cambio de pareja (sin poner: sí). */
   poolSwap?: boolean;
   /** Pool: se acaba por tiempo o por rondas (sin poner: tiempo). */

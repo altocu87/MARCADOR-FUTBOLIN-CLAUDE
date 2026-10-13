@@ -564,9 +564,6 @@
   color: var(--text-3);
   font-size: 60px;
 }
-.overlay-final {
-  background: rgba(4, 8, 15, 0.7);
-}
 .final-winner {
   font-size: 36px;
   font-weight: 900;
@@ -2321,9 +2318,6 @@
 }
 .vic-many .vic-bar {
   height: 17px;
-}
-.vic-many .vic-col-label {
-  font-size: 16px;
 }
 .vic-ach-card.rarity-rare {
   border-color: #6fb6f5;

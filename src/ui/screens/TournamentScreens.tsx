@@ -73,7 +73,6 @@ import { LadderRoundShow } from '../components/LadderRoundShow';
 const FINAL_LABEL: Record<TournamentFinal, string> = {
   none: 'Sin final',
   top2: '1º vs 2º',
-  top4: '1º+4º vs 2º+3º',
 };
 
 function Trophy({ size = 64 }: { size?: number }) {
@@ -1866,7 +1865,7 @@ export function TournamentDetailScreen({
     const blue = side(next.blueTeamId);
     const pr = progression ? predict(white, blue, matches, progression) : null;
     // En la escalera solo descansa el banquillo (los demás esperan su pista).
-    const resting = next.resting ?? (t.ladder ? [] : allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool'));
+    const resting = next.resting ?? [];
     const game = (next.matchIds?.length ?? 0) + 1;
     // Con uno por lado, fotos grandes; en pareja, algo menores para que quepan las dos.
     const photoSize = Math.max(white.length, blue.length) > 1 ? 68 : 92;
@@ -2191,13 +2190,13 @@ export function TournamentDetailScreen({
           ladderPanel
         ) : (
           <div className="td-panel scroll">
-            <div className="label">{t.format === 'pool' ? 'Clasificación individual' : 'Clasificación'}</div>
+            <div className="label">Clasificación</div>
             <table className="rep-table">
               <thead>
                 <tr>
                   <th>#</th>
                   <th aria-label="Cambio de puesto" />
-                  <th>{t.format === 'pool' ? 'Jugador' : 'Equipo'}</th>
+                  <th>Equipo</th>
                   <th>PJ</th>
                   <th>G</th>
                   {hasDraws && <th>E</th>}

@@ -8,7 +8,6 @@
  *   Siembra por ELO (1 contra el último) o aleatoria.
  * - Pool: 2 a 8 parejas en una escalera de pistas; se sube ganando y se baja perdiendo, con o sin
  *   cambio de pareja, por tiempo o por rondas, y acaba con la final en la pista 1 (ver ladder.ts).
- *   Los Pool antiguos (parejas rotativas con calendario fijo, pool.ts) se siguen pudiendo terminar.
  * La final puede jugarse al mejor de 3 y con otros goles. Ganar el torneo concede XP una sola vez.
  */
 import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
@@ -24,10 +23,8 @@ import {
   type TournamentPoints,
   type TournamentTeam,
 } from '../persistence';
-import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, poolGameOptions, schedulePool } from './pool';
 import { LADDER_MAX_PAIRS, LADDER_MIN_PAIRS, ladderAfterResult, ladderPlaces, ladderRoundFixtures, startLineup } from './ladder';
 
-export const TOURNAMENT_RULES_VERSION = 'torneos-2';
 export const MIN_TEAMS = 3;
 export const MAX_TEAMS = 8;
 /** Puntos por defecto: victoria 3, empate 1, derrota 0. */
@@ -71,11 +68,7 @@ export interface TournamentDraft {
   /** Liguilla y cuadro: equipos ya formados (con nombre y logo si son un equipo guardado). */
   teams: { playerIds: string[]; name?: string; logo?: string; clubId?: string }[];
   seeding: 'elo' | 'random';
-  /** Pool: jugadores inscritos. */
-  entrants?: string[];
-  /** Pool: partidos por jugador (debe ser un valor de `poolGameOptions`). */
-  gamesPerPlayer?: number;
-  /** Pool: parejas equilibradas por ELO o al azar. */
+  /** Parejas equilibradas por ELO o al azar. */
   pairing?: 'elo' | 'random';
   /** Pool en escalera (las parejas de salida van en `teams`). */
   ladder?: { swap: boolean; limit: 'time' | 'rounds'; minutes: number; rounds: number };
@@ -102,7 +95,8 @@ export interface TournamentDraft {
 export function validateDraft(d: TournamentDraft): string[] {
   const errors: string[] = [];
   if (!d.name.trim()) errors.push('Ponle un nombre al torneo.');
-  if (d.format === 'pool' && d.ladder) {
+  if (d.format === 'pool') {
+    if (!d.ladder) return ['Falta cómo se juega el Pool.'];
     const all = d.teams.flatMap((t) => t.playerIds);
     if (d.teams.length < LADDER_MIN_PAIRS || d.teams.length > LADDER_MAX_PAIRS)
       errors.push(`El Pool necesita entre ${LADDER_MIN_PAIRS} y ${LADDER_MAX_PAIRS} parejas (${LADDER_MIN_PAIRS * 2} a ${LADDER_MAX_PAIRS * 2} jugadores).`);
@@ -111,16 +105,6 @@ export function validateDraft(d: TournamentDraft): string[] {
     if (d.ladder.limit === 'time' ? !(d.ladder.minutes >= 5) : !(d.ladder.rounds >= 1)) errors.push('Pon cuánto dura el Pool.');
     return errors;
   }
-  if (d.format === 'pool') {
-    const ids = d.entrants ?? [];
-    if (ids.length < POOL_MIN_PLAYERS || ids.length > POOL_MAX_PLAYERS)
-      errors.push(`El Pool necesita entre ${POOL_MIN_PLAYERS} y ${POOL_MAX_PLAYERS} jugadores.`);
-    else if (new Set(ids).size !== ids.length) errors.push('Un jugador está repetido.');
-    else if (!poolGameOptions(ids.length).includes(d.gamesPerPlayer ?? 0))
-      errors.push('Ese número de partidos por jugador no cuadra con los inscritos.');
-    return errors;
-  }
-  if (d.final === 'top4') errors.push('La final 1º+4º vs 2º+3º solo existe en el Pool.');
   if (d.teams.length < MIN_TEAMS || d.teams.length > MAX_TEAMS) errors.push(`Entre ${MIN_TEAMS} y ${MAX_TEAMS} equipos.`);
   const all = d.teams.flatMap((t) => t.playerIds);
   if (new Set(all).size !== all.length) errors.push('Un jugador no puede estar en dos equipos.');
@@ -264,35 +248,12 @@ export function createTournament(
 ): Tournament {
   const errors = validateDraft(draft);
   if (errors.length) throw new Error(errors.join(' '));
-  if (draft.format === 'pool' && draft.ladder) return createLadder(draft, players, now, rnd);
+  if (draft.format === 'pool') return createLadder(draft, players, now, rnd);
   const bestOf = draft.finalBestOf && draft.finalBestOf > 1 ? draft.finalBestOf : undefined;
   let teams: TournamentTeam[];
   let fixtures: Fixture[];
 
-  if (draft.format === 'pool') {
-    const entrants = draft.entrants!;
-    // Un «equipo» de 1 por jugador (clasificación y campeón) y las parejas que salgan en el sorteo.
-    teams = entrants.map((id) => ({ id: newId('tt'), name: teamName([id], players), playerIds: [id] }));
-    const pairTeam = (pair: string[]) => {
-      const key = [...pair].sort().join('|');
-      let tt = teams.find((x) => x.playerIds.length === 2 && [...x.playerIds].sort().join('|') === key);
-      if (!tt) {
-        tt = { id: newId('tt'), name: teamName(pair, players), playerIds: [...pair] };
-        teams.push(tt);
-      }
-      return tt.id;
-    };
-    const rounds = schedulePool(entrants, draft.gamesPerPlayer!, draft.pairing ?? 'random', eloOf, rnd);
-    fixtures = rounds.flatMap((r, i) =>
-      r.matches.map(([w, b]) => ({
-        id: newId('fx'),
-        round: i + 1,
-        whiteTeamId: pairTeam(w),
-        blueTeamId: pairTeam(b),
-        ...(r.resting.length ? { resting: [...r.resting] } : {}),
-      })),
-    );
-  } else {
+  {
     teams = draft.teams.map((t) => ({
       id: newId('tt'),
       name: t.name?.trim() || teamName(t.playerIds, players),
@@ -330,14 +291,13 @@ export function createTournament(
     id: newId('t'),
     name: draft.name.trim(),
     format: draft.format,
-    teamSize: draft.format === 'pool' ? 2 : draft.teamSize,
+    teamSize: draft.teamSize,
     ranked: draft.ranked,
     config: { ...draft.config, mode, testMode: false },
     teams,
     fixtures,
     status: 'active',
     createdAt: now,
-    ...(draft.format === 'pool' ? { entrants: [...draft.entrants!] } : {}),
     ...(draft.format === 'league' && draft.points ? { points: { ...draft.points } } : {}),
     ...(draft.lastTitle?.trim() ? { lastTitle: draft.lastTitle.trim() } : {}),
     ...(final !== 'none' ? { final } : {}),
@@ -451,7 +411,7 @@ export interface StandingRow {
 
 /** Clasificación de la fase regular: por equipos (liguilla) o por jugador (Pool). */
 export function standings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
-  return t.format === 'pool' ? poolStandings(t, matches) : leagueStandings(t, matches);
+  return leagueStandings(t, matches);
 }
 
 export type Movement = 'up' | 'down' | 'same';
@@ -501,23 +461,6 @@ export function leagueStandings(t: Tournament, matches: StoredMatch[]): Standing
   });
 }
 
-/** Pool: cada jugador suma lo que haga su pareja de ese partido. */
-export function poolStandings(t: Tournament, matches: StoredMatch[]): StandingRow[] {
-  const byId = new Map(matches.map((m) => [m.id, m]));
-  const solo = (pid: string) => t.teams.find((x) => x.playerIds.length === 1 && x.playerIds[0] === pid)!;
-  const rows = new Map<string, StandingRow>((t.entrants ?? []).map((pid) => [pid, emptyRow(solo(pid))]));
-  for (const f of t.fixtures) {
-    const m = f.matchId ? byId.get(f.matchId) : undefined;
-    if (f.stage === 'final' || !m || !fixtureDone(f)) continue;
-    for (const [side, tid] of [['white', f.whiteTeamId], ['blue', f.blueTeamId]] as [Team, string | null][]) {
-      for (const pid of t.teams.find((x) => x.id === tid)?.playerIds ?? []) {
-        const r = rows.get(pid);
-        if (r) addResult(r, m, side, f.draw ? 'draw' : f.winnerTeamId === tid ? 'win' : 'loss', DEFAULT_POINTS);
-      }
-    }
-  }
-  return [...rows.values()].sort((a, b) => compareRows(a, b) || a.team.name.localeCompare(b.team.name, 'es'));
-}
 
 function emptyRow(team: TournamentTeam): StandingRow {
   return { team, played: 0, wins: 0, draws: 0, losses: 0, points: 0, goalsFor: 0, goalsAgainst: 0, diff: 0 };
@@ -587,25 +530,9 @@ export function recordFixtureResult(t: Tournament, fixtureId: string, match: Sto
     next.finishedAt = match.finishedAt;
     return next;
   }
-  if (next.final === 'top4' && table.length >= 4) {
-    finalFx.whiteTeamId = ensureTeam(next, [table[0].team, table[3].team]);
-    finalFx.blueTeamId = ensureTeam(next, [table[1].team, table[2].team]);
-  } else {
-    finalFx.whiteTeamId = table[0].team.id;
-    finalFx.blueTeamId = table[1].team.id;
-  }
+  finalFx.whiteTeamId = table[0].team.id;
+  finalFx.blueTeamId = table[1].team.id;
   return next;
-}
-
-/** Equipo con los jugadores de varios equipos de 1 (lo crea si no existe). */
-function ensureTeam(t: Tournament, solos: TournamentTeam[]): string {
-  const ids = solos.flatMap((s) => s.playerIds);
-  const key = [...ids].sort().join('|');
-  const found = t.teams.find((x) => [...x.playerIds].sort().join('|') === key);
-  if (found) return found.id;
-  const tt: TournamentTeam = { id: newId('tt'), name: solos.map((s) => s.name).join(' + '), playerIds: ids };
-  t.teams.push(tt);
-  return tt.id;
 }
 
 function finish(t: Tournament, winnerTeamId: string, prizeMatch: StoredMatch): void {
@@ -621,7 +548,6 @@ export function roundLabel(t: Tournament, round: number): string {
   if (t.ladder) return `Ronda ${round}`;
   if (fixtures.some((f) => f.stage === 'final')) return 'Final';
   if (t.format === 'league') return `Jornada ${round}`;
-  if (t.format === 'pool') return `Ronda ${round}`;
   const total = Math.max(...t.fixtures.map((f) => f.round));
   const fromEnd = total - round;
   return fromEnd === 0 ? 'Final' : fromEnd === 1 ? 'Semifinales' : fromEnd === 2 ? 'Cuartos' : `Ronda ${round}`;
@@ -763,7 +689,7 @@ export interface FinalPlace {
 export function finalRanking(t: Tournament, matches: StoredMatch[]): FinalPlace[] {
   const winner = t.teams.find((x) => x.id === t.winnerTeamId);
   if (t.ladder) return ladderPlaces(t).map((p) => ({ ...p, champion: p.team.id === t.winnerTeamId }));
-  let order = (t.format === 'bracket' ? leagueStandings(t, matches) : standings(t, matches)).map((r) => r.team);
+  let order = leagueStandings(t, matches).map((r) => r.team);
   if (t.format === 'bracket') {
     // Ronda más alta a la que llegó cada uno (el campeón, el primero); el orden estable deja el desempate.
     const reached = (id: string) =>

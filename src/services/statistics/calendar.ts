@@ -33,13 +33,6 @@ export function seasonLabel(key: string): string {
   return `${MONTHS[Number(rest) - 1]} ${y}`;
 }
 
-/** Inicio (epoch ms) de la temporada que contiene ts. */
-export function seasonStart(ts: number, length: SeasonLength): number {
-  const d = new Date(ts);
-  const month = length === 'month' ? d.getMonth() : Math.floor(d.getMonth() / 3) * 3;
-  return new Date(d.getFullYear(), month, 1).getTime();
-}
-
 export const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export type DayPart = 'mañana' | 'mediodía' | 'tarde' | 'noche';

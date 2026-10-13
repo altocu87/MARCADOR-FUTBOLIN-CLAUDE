@@ -13,7 +13,6 @@ export const TEMPLATE_DEFAULTS: Omit<TournamentTemplate, 'id' | 'name' | 'format
   teamSize: 1,
   pairing: 'elo',
   seeding: 'elo',
-  gamesPerPlayer: 4,
   final: 'none',
   finalBestOf: 1,
   ranked: false,
@@ -47,7 +46,6 @@ export function templatePoints(t: TournamentTemplate): NonNullable<TournamentTem
 const FINAL_LABEL: Record<TournamentTemplate['final'], string> = {
   none: 'sin final',
   top2: 'final 1º vs 2º',
-  top4: 'final 1º+4º vs 2º+3º',
 };
 
 /** Ajustes del Pool de un tipo de torneo (con los de por defecto donde no diga nada). */

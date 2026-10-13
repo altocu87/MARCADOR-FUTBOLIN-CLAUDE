@@ -71,10 +71,6 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export function displayName(player: Pick<Player, 'name' | 'alias'>): string {
-  return player.alias ? `${player.name} «${player.alias}»` : player.name;
-}
-
 export function sortPlayers(players: Player[]): Player[] {
   return [...players].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }

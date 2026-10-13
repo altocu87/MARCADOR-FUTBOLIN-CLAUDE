@@ -68,7 +68,7 @@ export function makeMatch(opts: {
 /** Tipos de torneo de ejemplo para las pruebas (la app ya no trae ninguno de fábrica). */
 const tplBase = { ...TEMPLATE_DEFAULTS };
 export const SAMPLE_TEMPLATES: TournamentTemplate[] = [
-  { ...tplBase, id: 'sample-pool', name: 'Copa Rotativa', format: 'pool', teamSize: 2, final: 'top4', finalBestOf: 3 },
+  { ...tplBase, id: 'sample-pool', name: 'Copa Rotativa', format: 'pool', teamSize: 2, finalBestOf: 3 },
   { ...tplBase, id: 'sample-league', name: 'Liguilla Rápida', format: 'league', goalsPerPeriod: 3 },
   { ...tplBase, id: 'sample-league-final', name: 'Liga + Final', format: 'league', final: 'top2', finalBestOf: 3 },
   { ...tplBase, id: 'sample-bracket', name: 'Eliminatoria', format: 'bracket', finalBestOf: 3, finalGoals: 7 },

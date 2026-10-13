@@ -78,11 +78,6 @@ export function createMatch(
 // Selectores
 // ---------------------------------------------------------------------------
 
-/** Ids de goles anulados según la cronología (−1 y deshacer). */
-export function annulledGoalIds(state: MatchState): Set<string> {
-  return annulledGoalIdsFromEvents(state.events);
-}
-
 export function annulledGoalIdsFromEvents(events: MatchEvent[]): Set<string> {
   const annulled = new Set<string>();
   const byId = new Map(events.map((e) => [e.id, e]));

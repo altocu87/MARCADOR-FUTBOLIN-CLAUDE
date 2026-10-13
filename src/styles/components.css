@@ -182,11 +182,6 @@
   border-color: var(--accent);
   color: var(--accent);
 }
-.badge-chaos {
-  border-color: var(--chaos);
-  color: var(--chaos);
-  background: var(--chaos-soft);
-}
 .badge-ranked {
   border-color: var(--ranked);
   color: var(--ranked);

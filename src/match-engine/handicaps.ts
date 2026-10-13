@@ -231,12 +231,6 @@ export const MAX_VISITS = 2;
 export const VISIT_CHANCE = 0.35;
 const MINUTE = 60_000;
 
-export const ANIMAL_NAME: Record<Visitor['animal'], string> = {
-  squirrel: 'la ardilla ladrona',
-  snail: 'el caracol',
-  cat: 'el gato vomitón',
-};
-
 /**
  * Momento de la próxima visita: entre el final del hándicap recién anunciado y el siguiente,
  * dejando al menos 8 s a cada lado. Devuelve undefined si no cabe o si ya hubo dos.

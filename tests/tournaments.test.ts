@@ -16,7 +16,6 @@ import {
   roundRobin,
   draftFromTemplate,
   newTemplate,
-  effectivePoolGames,
   fixtureConfig,
   fixtureProgress,
   finalRanking,
@@ -30,10 +29,7 @@ import {
   standingsMovement,
   formTeams,
   playableFixtures,
-  poolGameOptions,
-  poolStandings,
   recordFixtureResult,
-  schedulePool,
   templateFit,
   validateDraft,
   type TournamentDraft,
@@ -59,97 +55,16 @@ function playAll(t: Tournament, winnerOf: (white: string[], blue: string[]) => '
   return { t, matches };
 }
 
-const poolDraft = (ids: string[], extra: Partial<TournamentDraft> = {}): TournamentDraft => ({
-  name: 'Pool',
-  format: 'pool',
-  teamSize: 2,
+/** Liguilla de 1 contra 1 con estos jugadores, en el orden dado. */
+const leagueDraft = (ids: string[], extra: Partial<TournamentDraft> = {}): TournamentDraft => ({
+  name: 'Liga',
+  format: 'league',
+  teamSize: 1,
   ranked: false,
   config: DEFAULT_CONFIG,
-  teams: [],
+  teams: ids.map((id) => ({ playerIds: [id] })),
   seeding: 'random',
-  entrants: ids,
-  gamesPerPlayer: effectivePoolGames(ids.length, 4),
-  pairing: 'random',
   ...extra,
-});
-
-describe('Pool rotativo', () => {
-  it('ajusta los partidos por jugador para que todos jueguen lo mismo', () => {
-    expect(poolGameOptions(5)).toEqual([4, 8]);
-    expect(effectivePoolGames(5, 3)).toBe(4);
-    expect(effectivePoolGames(6, 3)).toBe(4);
-    expect(effectivePoolGames(8, 3)).toBe(3);
-    expect(effectivePoolGames(7, 1)).toBe(4);
-  });
-
-  it.each([4, 5, 6, 7, 8, 9, 10])('con %i jugadores todos juegan lo mismo y nadie repite en su ronda', (n) => {
-    const ids = Array.from({ length: n }, (_, i) => `p${i}`);
-    const g = effectivePoolGames(n, 4);
-    const rounds = schedulePool(ids, g, 'random', () => 1200, seededRandom(`pool${n}`), 60);
-    const count = new Map(ids.map((id) => [id, 0]));
-    for (const r of rounds) {
-      const inRound = r.matches.flatMap(([w, b]) => [...w, ...b]);
-      expect(new Set(inRound).size).toBe(inRound.length);
-      expect(r.resting.length + inRound.length).toBe(n);
-      inRound.forEach((id) => count.set(id, count.get(id)! + 1));
-    }
-    expect([...count.values()].every((c) => c === g)).toBe(true);
-  });
-
-  it('con 5 jugadores: 5 partidos, cada uno descansa una vez y no repite pareja', () => {
-    const ids = ['a', 'b', 'c', 'd', 'e'];
-    const rounds = schedulePool(ids, 4, 'random', () => 1200, seededRandom('cinco'));
-    expect(rounds).toHaveLength(5);
-    expect(rounds.map((r) => r.resting[0]).sort()).toEqual(ids);
-    const pairs = rounds.flatMap((r) => r.matches.flatMap(([w, b]) => [w, b].map((p) => [...p].sort().join('|'))));
-    expect(new Set(pairs).size).toBe(pairs.length);
-  });
-
-  it('sin final gana el líder individual y recibe el premio en un partido suyo', () => {
-    const ps = players(['a', 'b', 'c', 'd', 'e']);
-    const t0 = createTournament(poolDraft(ps.map((p) => p.id)), ps, () => 1200, 0, seededRandom('x'));
-    expect(t0.fixtures).toHaveLength(5);
-    expect(t0.fixtures.every((f) => f.resting?.length === 1)).toBe(true);
-    // Gana siempre el lado de «a»; si no está, el blanco.
-    const { t, matches } = playAll(t0, (_w, b) => (b.includes('a') ? 'B' : 'W'));
-    expect(t.status).toBe('finished');
-    const table = poolStandings(t, matches);
-    expect(table[0].team.playerIds).toEqual(['a']);
-    expect(table[0].wins).toBe(4);
-    expect(t.teams.find((x) => x.id === t.winnerTeamId)!.playerIds).toEqual(['a']);
-    const prize = matches.find((m) => m.id === t.finalMatchId)!;
-    expect(prize.participants.some((p) => p.playerId === 'a')).toBe(true);
-    const prog = computeProgression(ps.map((p) => p.id), matches, DEFAULT_PROGRESSION, { tournaments: [t], challenges: false });
-    expect(prog.players.get('a')!.tournamentsWon).toBe(1);
-  });
-
-  it('final 1º+4º contra 2º+3º al mejor de 3', () => {
-    const ps = players(['a', 'b', 'c', 'd', 'e', 'f']);
-    const draft = poolDraft(ps.map((p) => p.id), { final: 'top4', finalBestOf: 3, finalConfig: { ...DEFAULT_CONFIG, goalsPerPeriod: 7 } });
-    const t0 = createTournament(draft, ps, () => 1200, 0, seededRandom('y'));
-    const final = t0.fixtures.find((f) => f.stage === 'final')!;
-    expect(final.bestOf).toBe(3);
-    expect(fixtureConfig(t0, final).goalsPerPeriod).toBe(7);
-    expect(fixtureConfig(t0, t0.fixtures[0]).goalsPerPeriod).toBe(DEFAULT_CONFIG.goalsPerPeriod);
-    // Gana el lado que tenga al jugador de menor letra.
-    const rank = (ids: string[]) => Math.min(...ids.map((id) => id.charCodeAt(0)));
-    const { t, matches } = playAll(t0, (w, b) => (rank(w) < rank(b) ? 'W' : 'B'));
-    const f = t.fixtures.find((x) => x.stage === 'final')!;
-    expect(t.status).toBe('finished');
-    expect(f.matchIds).toHaveLength(2);
-    expect(Math.max(f.series!.white, f.series!.blue)).toBe(2);
-    const champs = t.teams.find((x) => x.id === t.winnerTeamId)!.playerIds;
-    expect(champs).toHaveLength(2);
-    expect(t.finalMatchId).toBe(f.matchId);
-    const table = poolStandings(t, matches);
-    const white = t.teams.find((x) => x.id === f.whiteTeamId)!.playerIds;
-    expect(white.sort()).toEqual([table[0].team.playerIds[0], table[3].team.playerIds[0]].sort());
-  });
-
-  it('valida el número de jugadores', () => {
-    expect(validateDraft(poolDraft(['a', 'b', 'c']))).not.toHaveLength(0);
-    expect(validateDraft(poolDraft(['a', 'b', 'c', 'd', 'e']))).toHaveLength(0);
-  });
 });
 
 describe('Liguilla con final', () => {
@@ -237,10 +152,9 @@ describe('Tipos de torneo según el número de jugadores', () => {
 
 describe('Ediciones, ficha y palmarés', () => {
   const ps = players(['a', 'b', 'c', 'd', 'e']);
-  const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-pool')!;
-  // Un Pool antiguo (parejas rotativas con calendario fijo): se siguen pudiendo ver y terminar.
+  const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-league')!;
   const make = (edition: number, seed: string) => {
-    const draft = { ...poolDraft(ps.map((p) => p.id)), name: editionName(tpl.name, edition), templateId: tpl.id, templateName: tpl.name };
+    const draft = { ...leagueDraft(ps.map((p) => p.id)), name: editionName(tpl.name, edition), templateId: tpl.id, templateName: tpl.name };
     return createTournament({ ...draft, edition, final: 'none' }, ps, () => 1200, edition * 1000, seededRandom(seed));
   };
 
@@ -256,12 +170,12 @@ describe('Ediciones, ficha y palmarés', () => {
     const tA = playAll(make(1, 'p1'), (_w, b) => (b.includes('a') ? 'B' : 'W'), all).t;
     const tB = playAll(make(2, 'p2'), (_w, b) => (b.includes('a') ? 'B' : 'W'), all).t;
     const r = tournamentReport(tA, all, ps);
-    expect(r.matches).toHaveLength(5);
-    expect(r.totalGoals).toBe(25);
+    expect(r.matches).toHaveLength(10);
+    expect(r.totalGoals).toBe(50);
     expect(r.mvp?.playerId).toBe('a');
     expect(r.championIds).toEqual(['a']);
     const [c] = competitions([tA, tB], all, ps);
-    expect(c.name).toBe('Copa Rotativa');
+    expect(c.name).toBe('Liguilla Rápida');
     expect(c.editions.map((e) => e.edition)).toEqual([2, 1]);
     expect(c.honours[0]).toMatchObject({ playerId: 'a', titles: 2, mvps: 2, editions: 2 });
   });
@@ -321,7 +235,7 @@ describe('Torneos de un jugador (perfil)', () => {
 describe('Fusionar dos fichas del mismo jugador', () => {
   it('pasa partidos, goleadores y torneos a la que queda y la otra desaparece', () => {
     const ps: Player[] = [...players(['a', 'b', 'c', 'd']), { id: 'g', name: 'Pepe', active: true, createdAt: 0, updatedAt: 0 }];
-    const t0 = createTournament(poolDraft(['a', 'b', 'c', 'g']), ps, () => 1200, 0, seededRandom('m'));
+    const t0 = createTournament(leagueDraft(['a', 'b', 'c', 'g']), ps, () => 1200, 0, seededRandom('m'));
     const { t, matches } = playAll(t0, (_w, b) => (b.includes('g') ? 'B' : 'W'));
     const withScorer = { ...matches[0], scorers: { e1: 'g' } };
     const all = [withScorer, ...matches.slice(1)];
@@ -329,7 +243,7 @@ describe('Fusionar dos fichas del mismo jugador', () => {
     expect(r.players.some((p) => p.id === 'g')).toBe(false);
     expect(r.matches.every((m) => m.participants.every((p) => p.playerId !== 'g'))).toBe(true);
     expect(r.matches[0].scorers?.e1).toBe('d');
-    expect(r.tournaments[0].entrants).toContain('d');
+    expect(r.tournaments[0].teams.some((x) => x.playerIds.includes('d'))).toBe(true);
     expect(r.tournaments[0].teams.some((x) => x.playerIds.includes('g'))).toBe(false);
     expect(r.movedTournaments).toBe(1);
     // El campeón (era «g») pasa a ser «d».
