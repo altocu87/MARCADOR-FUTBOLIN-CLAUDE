@@ -1514,9 +1514,11 @@ export function TournamentTemplateScreen({
   selected?: string[];
   format?: TournamentFormat;
 }) {
-  const { navigate, prefs, savePrefs, toast } = useApp();
+  const { navigate, prefs, savePrefs, toast, tournaments } = useApp();
   const saved = prefs.tournamentTemplates;
   const existing = saved.find((x) => x.id === templateId);
+  // Una competición con ediciones ya no cambia de tipo: su palmarés mezclaría ligas, copas y pools.
+  const editions = existing ? tournaments.filter((x) => x.templateId === existing.id && x.status !== 'cancelled').length : 0;
   const [tpl, setTpl] = useState<TournamentTemplate>(() => {
     if (existing) return { ...existing };
     const base = saved.find((x) => x.id === baseId);
@@ -1540,6 +1542,7 @@ export function TournamentTemplateScreen({
   const fit = n ? templateFit(tpl, n) : null;
 
   const setFormat = (f: TournamentFormat) =>
+    !editions &&
     setTpl((t) => ({
       ...t,
       format: f,
@@ -1568,6 +1571,12 @@ export function TournamentTemplateScreen({
   let body: ReactNode = null;
   if (step === 'kind') {
     body = (
+      <>
+      {editions > 0 && (
+        <div className="notice warn cr-kind-lock">
+          🔒 Ya tiene {editions} edici{editions === 1 ? 'ón jugada' : 'ones jugadas'} como {kind.title}: para otro tipo, crea una competición nueva.
+        </div>
+      )}
       <div className="tn-kinds cr-kinds">
         {KINDS.map((k) => {
           const art = !!assetUrl(`tarjeta-${k.file}-off`);
@@ -1577,6 +1586,7 @@ export function TournamentTemplateScreen({
               key={k.format}
               className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''}${on ? ' is-selected' : ''}`}
               aria-pressed={on}
+              disabled={editions > 0 && !on}
               aria-label={`${k.title}: ${k.desc}`}
               onClick={() => setFormat(k.format)}
             >
@@ -1593,6 +1603,7 @@ export function TournamentTemplateScreen({
           );
         })}
       </div>
+      </>
     );
   } else if (step === 'players') {
     const pairingOpts: OptionItem<TournamentTemplate['pairing']>[] = [
