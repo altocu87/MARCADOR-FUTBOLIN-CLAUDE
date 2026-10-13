@@ -42,7 +42,7 @@ export function PlayerEditor({
   /** Se fusionó con otro jugador por tener el mismo nombre: el que queda. */
   onMerged?: (intoId: string) => void;
 }) {
-  const { players, matches, savePlayer, mergePlayers } = useApp();
+  const { players, matches, tournaments, savePlayer, mergePlayers } = useApp();
   // Jugador que ya tiene ese nombre.
   const [clash, setClash] = useState<Player | null>(null);
   const [clashError, setClashError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export function PlayerEditor({
         return;
       }
       const [from, into] = [player, clash];
-      const blocker = mergeBlocker(from.id, into.id, matches);
+      const blocker = mergeBlocker(from.id, into.id, matches, tournaments);
       if (blocker) {
         setClashError(blocker);
         return;

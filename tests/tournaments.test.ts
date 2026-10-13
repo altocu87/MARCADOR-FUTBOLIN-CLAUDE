@@ -287,6 +287,43 @@ describe('Fusionar dos fichas del mismo jugador', () => {
     expect(champ.name).toBe('D');
   });
 
+  it('respeta el nombre de un equipo guardado y rehace solo los automáticos', () => {
+    const ps: Player[] = [...players(['a', 'b', 'c', 'd', 'e']), { id: 'g', name: 'Pepe', active: true, createdAt: 0, updatedAt: 0 }];
+    const t0 = createTournament(
+      {
+        name: 'Liga',
+        format: 'league',
+        teamSize: 2,
+        ranked: false,
+        config: DEFAULT_CONFIG,
+        teams: [{ playerIds: ['a', 'g'], name: 'Halcones' }, { playerIds: ['b', 'c'] }, { playerIds: ['d', 'e'] }],
+        seeding: 'elo',
+      },
+      ps,
+      () => 1200,
+      0,
+    );
+    const ps2: Player[] = [...ps, { id: 'z', name: 'Zeta', active: true, createdAt: 0, updatedAt: 0 }];
+    const r = mergePlayers('g', 'z', ps2, [], [t0], 5);
+    expect(r.tournaments[0].teams.find((x) => x.playerIds.includes('z'))!.name).toBe('Halcones');
+    const r2 = mergePlayers('b', 'z', ps2, [], [t0], 5);
+    expect(r2.tournaments[0].teams.find((x) => x.playerIds.includes('z'))!.name).toBe('Zeta + C');
+  });
+
+  it('no deja fusionar a dos apuntados al mismo torneo, y en el Pool cambia también las parejas de salida', () => {
+    const ps: Player[] = players(['a', 'b', 'c', 'd', 'z']);
+    const pool = createTournament(
+      { name: 'Pool', format: 'pool', teamSize: 2, ranked: false, config: DEFAULT_CONFIG, teams: [{ playerIds: ['a', 'b'] }, { playerIds: ['c', 'd'] }], seeding: 'random', ladder: { swap: true, limit: 'rounds', minutes: 30, rounds: 3 } },
+      ps,
+      () => 1200,
+      0,
+    );
+    expect(mergeBlocker('a', 'c', [], [pool])).toMatch(/apuntados/);
+    const r = mergePlayers('a', 'z', ps, [], [pool], 5);
+    expect(r.tournaments[0].ladder!.start.flat()).toContain('z');
+    expect(r.tournaments[0].ladder!.start.flat()).not.toContain('a');
+  });
+
   it('no deja fusionar a dos que jugaron en el mismo partido', () => {
     const m = makeMatch({ white: ['a'], blue: ['g'], goals: 'WWWWW' });
     expect(mergeBlocker('g', 'a', [m])).not.toBeNull();
