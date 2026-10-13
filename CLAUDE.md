@@ -13,3 +13,6 @@
 - Sin scroll, salvo en Ajustes, la clasificación y las listas (partidos, torneos, jugadores…): cada pantalla
   tiene que caber en el lienzo más pequeño (800 × 480). Los botones se reparten el alto que haya (grandes si
   sobra sitio, más bajos si no) en vez de salirse.
+- Las pantallas se miran de pie y mientras se juega, no sentado leyendo: lo importante, grande y claro de un
+  vistazo; nada repetido (si ya está en el título, en un cartel o en otra parte de la pantalla, no se vuelve a
+  poner) y fuera lo que no aporta. Las explicaciones largas, detrás de una «?».

@@ -371,10 +371,6 @@ function MoveIcon({ move }: { move?: Movement }) {
   );
 }
 
-function teamCountLabel(t: Tournament): string {
-  return t.format === 'pool' ? `${t.entrants?.length ?? 0} jugadores` : `${t.teams.length} equipos · ${t.teamSize === 1 ? '1v1' : '2v2'}`;
-}
-
 /**
  * Palmarés: lo ya jugado; las competiciones con su campeón y los últimos torneos terminados. Los torneos
  * en juego no salen aquí: se siguen desde «¿Quién juega?», que es donde se empieza todo torneo.
@@ -2337,6 +2333,7 @@ export function TournamentDetailScreen({
  */
 function TournamentReportView({ t }: { t: Tournament }) {
   const { matches, players, navigate, prefs } = useApp();
+  const [mvpHelp, setMvpHelp] = useState(false);
   const r = tournamentReport(t, matches, players);
   const champ = t.teams.find((x) => x.id === t.winnerTeamId);
   const photo = (id: string) => players.find((p) => p.id === id)?.photo;
@@ -2344,36 +2341,34 @@ function TournamentReportView({ t }: { t: Tournament }) {
   const anyScored = r.players.some((p) => p.scored > 0);
   // Columna de empates solo si los hubo (y entonces nunca se cuentan como derrota).
   const anyDraws = r.players.some((p) => p.draws > 0);
-  const total = t.fixtures.filter((f) => !f.bye).length;
+  const total = t.fixtures.filter((f) => !f.bye && !f.skipped).length;
   const minutes = (ms: number) => `${Math.max(1, Math.round(ms / 60000))} min`;
-  const sign = (n: number) => (n > 0 ? `+${n}` : String(n));
 
-  const info: [string, string][] = [
-    ['Competición', competitionName(t)],
-    ['Edición', t.edition ? `${t.edition}ª` : '—'],
-    ['Formato', `${FORMAT_LABEL[t.format]} · ${teamCountLabel(t)}`],
-    ['Empezó', shortDate(r.startedAt ?? t.createdAt)],
-    ['Terminó', t.status === 'finished' && r.finishedAt ? shortDate(r.finishedAt) : t.status === 'cancelled' ? 'Cancelado' : 'En juego'],
-    ['Partidos', t.status === 'finished' ? String(r.matches.length) : `${r.matches.length} de ${total}`],
-    ['Goles', `${r.totalGoals}${r.matches.length ? ` · ${r.avgGoals.toFixed(1)} por partido` : ''}`],
-    ['Tiempo de juego', r.matches.length ? minutes(r.playTimeMs) : '—'],
-    ['Prórroga o penaltis', String(r.extraTime)],
-    ['Cuenta para ELO', t.ranked ? 'Sí' : 'No'],
+  // Fechas: un día, o «del 3 al 5 sept» si duró varios.
+  const from = r.startedAt ?? t.createdAt;
+  const to = t.status === 'finished' ? r.finishedAt : undefined;
+  const sameDay = !to || new Date(from).toDateString() === new Date(to).toDateString();
+  const dates = sameDay ? shortDate(from) : `${new Date(from).getDate()} – ${shortDate(to!)}`;
+  // Lo que se lee de un vistazo: cuándo, cuántos partidos, cuántos goles y cuánto se jugó.
+  const tiles: { icon: string; label: string; value: string }[] = [
+    { icon: '📅', label: t.status === 'active' ? 'Empezó' : 'Fecha', value: dates },
+    { icon: '🎮', label: 'Partidos', value: t.status === 'active' && !t.ladder ? `${r.matches.length} de ${total}` : String(r.matches.length) },
+    { icon: '⚽', label: 'Goles', value: String(r.totalGoals) },
+    { icon: '⏱', label: 'Jugado', value: r.matches.length ? minutes(r.playTimeMs) : '—' },
   ];
-  if (r.finalScore) info.splice(6, 0, ['Final', r.finalScore]);
 
   const highlights: { icon: string; label: string; text: string; matchId?: string }[] = [];
   if (r.topScorer) highlights.push({ icon: '⚽', label: 'Pichichi', text: `${r.topScorer.name} · ${r.topScorer.scored} goles` });
   if (r.biggestWin) highlights.push({ icon: '💥', label: 'Mayor goleada', text: r.biggestWin.label, matchId: r.biggestWin.match.id });
-  if (r.highestScoring) highlights.push({ icon: '🔥', label: 'Partido con más goles', text: r.highestScoring.label, matchId: r.highestScoring.match.id });
-  if (r.longest) highlights.push({ icon: '⏱', label: `Partido más largo · ${minutes(r.longest.match.result.totalTimeMs)}`, text: r.longest.label, matchId: r.longest.match.id });
+  if (r.highestScoring && r.highestScoring.match.id !== r.biggestWin?.match.id)
+    highlights.push({ icon: '🔥', label: 'Partido con más goles', text: r.highestScoring.label, matchId: r.highestScoring.match.id });
 
   return (
-    <div className="rp-layout scroll">
+    <div className="rp-layout">
       <div className="rp-hero">
         <div className={`rp-champ ${champ ? '' : 'is-pending'}`}>
           {champ && prefs.effects !== 'off' && <Confetti count={24} />}
-          <Trophy size={58} />
+          {t.cup ? <Cup id={t.cup} size={60} /> : <Trophy size={58} />}
           <div className="rp-champ-body">
             <div className="label">{champ ? 'Campeón' : t.status === 'cancelled' ? 'Cancelado' : 'En juego'}</div>
             <div className="rp-champ-name">{champ?.name ?? 'Por decidir'}</div>
@@ -2382,54 +2377,49 @@ function TournamentReportView({ t }: { t: Tournament }) {
           {champ && (
             <div className="rp-avatars">
               {champ.playerIds.map((id) => (
-                <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photo(id)} size={46} />
+                <Avatar key={id} name={players.find((p) => p.id === id)?.name ?? '?'} photo={photo(id)} size={50} />
               ))}
             </div>
           )}
         </div>
         {r.mvp && (
           <div className="rp-mvp">
-            <Avatar name={r.mvp.name} photo={photo(r.mvp.playerId)} size={52} />
+            <Avatar name={r.mvp.name} photo={photo(r.mvp.playerId)} size={54} />
             <div className="rp-mvp-body">
               <div className="label">★ MVP{t.status === 'finished' ? '' : ' provisional'}</div>
               <div className="rp-mvp-name">{r.mvp.name}</div>
-              <small>
-                {r.mvp.wins} G{r.mvp.draws ? ` · ${r.mvp.draws} E` : ''} · {r.mvp.losses} P{r.mvp.scored ? ` · ${r.mvp.scored} goles` : ''} · {sign(r.mvp.goalsFor - r.mvp.goalsAgainst)} · {r.mvp.mvp} pts
-              </small>
             </div>
           </div>
         )}
       </div>
-      <div className="rp-grid">
-        <div className="rp-side">
-          <div className="rp-card">
-            <div className="label">Información</div>
-            <dl className="rp-info">
-              {info.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
-            </dl>
+      <div className="rp-tiles">
+        {tiles.map((x) => (
+          <div key={x.label} className="rp-tile">
+            <span aria-hidden="true">{x.icon}</span>
+            <span>
+              <b>{x.value}</b>
+              <small>{x.label}</small>
+            </span>
           </div>
-          {highlights.length > 0 && (
-            <div className="rp-card">
-              <div className="label">Destacados</div>
-              {highlights.map((h) => (
-                <button key={h.label} className="rp-hl" disabled={!h.matchId} onClick={() => h.matchId && openMatch(h.matchId)}>
-                  <span aria-hidden="true">{h.icon}</span>
-                  <span>
-                    <small>{h.label}</small>
-                    <b>{h.text}</b>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="rp-card">
-          <div className="label">Jugadores</div>
+        ))}
+        {t.ranked && <div className="rp-tile rp-tile-elo">📈 Cuenta para ELO</div>}
+      </div>
+      <div className="rp-grid">
+        {highlights.length > 0 && (
+          <div className="rp-card rp-side">
+            <div className="label">Destacados</div>
+            {highlights.map((h) => (
+              <button key={h.label} className="rp-hl" disabled={!h.matchId} onClick={() => h.matchId && openMatch(h.matchId)}>
+                <span aria-hidden="true">{h.icon}</span>
+                <span>
+                  <small>{h.label}</small>
+                  <b>{h.text}</b>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="rp-card rp-players scroll">
           <table className="rep-table rp-table">
             <thead>
               <tr>
@@ -2438,10 +2428,13 @@ function TournamentReportView({ t }: { t: Tournament }) {
                 <th>G</th>
                 {anyDraws && <th>E</th>}
                 <th>P</th>
-                {anyScored && <th title="Goles marcados">Goles</th>}
-                <th title="Diferencia de goles de su equipo">Dif</th>
-                <th>% vic.</th>
-                <th title="Puntuación MVP">MVP</th>
+                {anyScored && <th>Goles</th>}
+                <th>
+                  MVP{' '}
+                  <button className="rp-help" aria-label="Cómo se calcula el MVP" onClick={() => setMvpHelp((v) => !v)}>
+                    ?
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -2449,7 +2442,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
                 <tr key={p.playerId} className={i === 0 && r.mvp ? 'leader' : ''}>
                   <td>
                     <span className="rp-player">
-                      <Avatar name={p.name} photo={photo(p.playerId)} size={24} />
+                      <Avatar name={p.name} photo={photo(p.playerId)} size={30} />
                       {p.name}
                       {p.champion && <span title="Campeón"> 🏆</span>}
                     </span>
@@ -2459,18 +2452,20 @@ function TournamentReportView({ t }: { t: Tournament }) {
                   {anyDraws && <td>{p.draws}</td>}
                   <td>{p.losses}</td>
                   {anyScored && <td>{p.scored}</td>}
-                  <td>{sign(p.goalsFor - p.goalsAgainst)}</td>
-                  <td>{p.played ? `${Math.round(p.winPct)} %` : '—'}</td>
-                  <td><strong>{p.mvp}</strong></td>
+                  <td>
+                    <strong>{p.mvp}</strong>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="dim" style={{ fontSize: 10, marginTop: 6 }}>
-            MVP = 3 por victoria + 1 por empate + 1 por gol marcado + la mitad de la diferencia de goles + 2 al campeón.
-          </div>
         </div>
       </div>
+      {mvpHelp && (
+        <Modal title="Puntos de MVP" onClose={() => setMvpHelp(false)} actions={<button className="btn btn-primary" onClick={() => setMvpHelp(false)}>Vale</button>}>
+          <p style={{ margin: 0, fontSize: 18 }}>3 por victoria, 1 por empate, 1 por gol marcado, la mitad de la diferencia de goles y 2 al campeón.</p>
+        </Modal>
+      )}
     </div>
   );
 }
