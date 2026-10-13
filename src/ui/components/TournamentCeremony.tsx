@@ -55,9 +55,11 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
   const report = tournamentReport(t, matches, players);
   const matchIds = report.matches.map((m) => m.id);
   const champ = t.teams.find((x) => x.id === t.winnerTeamId);
-  // -1 = cartel del campeón; después, un puesto por paso.
+  // -1 = el campeón (con sus números, XP y logros); después, un puesto por paso desde el 2º.
+  const rest = ranking.filter((p) => !p.champion);
+  const total = Math.max(0, ...ranking.map((p) => p.place));
   const [step, setStep] = useState(-1);
-  const lastStep = ranking.length - 1;
+  const lastStep = rest.length - 1;
 
   // Igual que las ventanas: se pinta sobre la pantalla entera.
   const anchor = useRef<HTMLSpanElement>(null);
@@ -71,7 +73,7 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
       const id = window.setTimeout(() => sound.playAnthem('champion'), 500);
       return () => window.clearTimeout(id);
     }
-    sound.play(step === lastStep && step > 0 ? 'siren' : 'whoosh');
+    sound.play(step === lastStep && ranking.length > 1 ? 'siren' : 'whoosh');
     return undefined;
   }, [step, lastStep]);
 
@@ -89,42 +91,66 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '?';
   const rankOf = (id: string) => progression?.players.get(id)?.category.id ?? 'none';
 
+  // Los goles de cada jugador solo si casi todos se apuntaron (si no, no serían reales).
+  const linesOf = (ids: string[]) =>
+    ids
+      .map((id) => report.players.find((l) => l.playerId === id))
+      .filter((l): l is PlayerLine => !!l)
+      .map((l) => (report.scorersReliable ? l : { ...l, scored: 0 }));
+
   let body;
-  if (step === -1 || !ranking.length) {
+  if (step === -1 || !rest.length) {
+    const ids = champ?.playerIds ?? [];
+    const s = linesOf(ids)[0];
+    const pair = ids.length > 1;
+    // El nombre del equipo solo si no es la suma de sus nombres (equipo guardado con su escudo).
+    const showTeam = !!champ && (!!champ.logo || champ.name !== ids.map(nameOf).join(' + '));
     body = (
       <div className="cer-champion" key="champ">
         {prefs.effects !== 'off' && <Confetti count={prefs.effects === 'full' ? 80 : 24} />}
         <div className="cer-kicker">{t.name}</div>
-        <div className="cer-champ-title">¡CAMPEÓN!</div>
-        <Cup id={t.cup} size={76} className="cer-cup" />
-        <div className="cer-champ-photos">
-          {(champ?.playerIds ?? []).map((pid) => (
-            <span key={pid} className="cer-champ-player">
-              <RankPhoto name={nameOf(pid)} photo={photoOf(pid)} rank={rankOf(pid)} size={110} />
-              <b>{nameOf(pid)}</b>
-            </span>
-          ))}
+        <div className="cer-champ-head">
+          <Cup id={t.cup} size={60} className="cer-cup" />
+          <div className="cer-champ-title">¡CAMPEÓN!</div>
+          <Cup id={t.cup} size={60} className="cer-cup" />
         </div>
-        {champ && (
+        {showTeam && (
           <div className="cer-champ-name">
-            {champ.logo && <Crest id={champ.logo} size={34} />} {champ.name}
+            {champ!.logo && <Crest id={champ!.logo} size={30} />} {champ!.name}
           </div>
         )}
-        {report.finalScore && <div className="cer-sub">Final: {report.finalScore}</div>}
+        <div className="cer-sub">
+          {s && (
+            <>
+              <b>{s.played}</b> PJ · <b>{s.wins}</b> G{s.draws ? <> · <b>{s.draws}</b> E</> : null} · <b>{s.losses}</b> P · <b>{s.goalsFor}–{s.goalsAgainst}</b> goles
+            </>
+          )}
+          {report.finalScore && <> · Final {report.finalScore}</>}
+        </div>
+        <div className={`cer-players cer-champ-rewards${pair ? ' is-pair' : ''}`}>
+          {ids.map((pid) => (
+            <PlayerReward
+              key={pid}
+              name={nameOf(pid)}
+              photo={photoOf(pid)}
+              rank={rankOf(pid)}
+              reward={rewardOf(pid, matchIds, progression)}
+              progressionOn={!!progression}
+              photoSize={pair ? 88 : 104}
+              compact={pair}
+            />
+          ))}
+        </div>
       </div>
     );
   } else {
-    const place = ranking[step];
+    const place = rest[step];
     body = (
       <PlaceCard
         key={place.team.id}
         place={place}
         last={step === lastStep && ranking.length > 1}
-        // Los goles de cada jugador solo si casi todos se apuntaron (si no, no serían reales).
-        lines={place.team.playerIds
-          .map((id) => report.players.find((l) => l.playerId === id))
-          .filter((l): l is PlayerLine => !!l)
-          .map((l) => (report.scorersReliable ? l : { ...l, scored: 0 }))}
+        lines={linesOf(place.team.playerIds)}
         rewards={place.team.playerIds.map((id) => rewardOf(id, matchIds, progression))}
         nameOf={nameOf}
         photoOf={photoOf}
@@ -136,10 +162,10 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
   }
 
   const content = (
-    <div className={`tn-ceremony ${step === lastStep && step > 0 ? 'is-last' : step <= 0 ? 'is-gold' : ''}`} role="dialog" aria-modal="true" aria-label="Resumen del torneo">
+    <div className={`tn-ceremony ${step === -1 ? 'is-gold' : step === lastStep && ranking.length > 1 ? 'is-last' : ''}`} role="dialog" aria-modal="true" aria-label="Resumen del torneo">
       <div className="victory-rays" aria-hidden="true" />
       <div className="cer-top">
-        <span className="cer-count">{step === -1 ? 'Campeón' : `Puesto ${step + 1} de ${ranking.length}`}</span>
+        <span className="cer-count">{step === -1 ? 'Campeón' : `Puesto ${rest[step].place} de ${total}`}</span>
         <button className="btn btn-sm btn-ghost" onClick={onClose}>
           Saltar
         </button>
@@ -150,7 +176,7 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
           ◀
         </button>
         <div className="cer-dots" aria-hidden="true">
-          {ranking.map((p, i) => (
+          {rest.map((p, i) => (
             <i key={p.team.id} className={i === step ? 'on' : i < step ? 'seen' : ''} />
           ))}
         </div>

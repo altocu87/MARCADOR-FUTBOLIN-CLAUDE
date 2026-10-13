@@ -5406,16 +5406,10 @@ div > .name-clash:first-child {
 .cer-cup {
   filter: drop-shadow(0 0 18px rgba(242, 201, 76, 0.8));
 }
-.cer-champ-photos {
+.cer-champ-head {
   display: flex;
-  gap: 24px;
-}
-.cer-champ-player {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  font-size: 22px;
+  gap: 18px;
 }
 .cer-champ-name {
   font-size: 26px;
@@ -5426,7 +5420,16 @@ div > .name-clash:first-child {
 }
 .cer-sub {
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 16px;
+}
+.cer-sub b {
+  color: var(--text);
+}
+/* El campeón: sus jugadores con la XP y los logros (lo que antes salía en una tarjeta aparte). */
+.cer-champ-rewards {
+  width: min(900px, 100%);
+  margin-top: 8px;
+  text-align: left;
 }
 
 /* Ficha de cada puesto */
@@ -7162,4 +7165,14 @@ div > .name-clash:first-child {
 .td-layout.is-wide .bracket {
   gap: 24px;
   padding: 10px 16px;
+}
+/* En pareja los logros, más pequeños, para que quepan en fila. */
+.cer-players.is-pair .cer-ach {
+  font-size: 12px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.cer-players.is-pair .cer-ach > :first-child {
+  width: 20px !important;
+  height: 20px !important;
 }
