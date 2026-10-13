@@ -70,7 +70,7 @@ export function poolLimitText(t: TournamentTemplate): string {
 export function describeTemplate(t: TournamentTemplate): string {
   const parts: string[] = [FORMAT_LABEL[t.format]];
   if (t.format === 'pool') parts.push(poolSettings(t).swap ? 'con cambio de pareja' : 'sin cambio de pareja', poolLimitText(t));
-  else parts.push(t.teamSize === 1 ? '1 contra 1' : `parejas ${t.pairing === 'elo' ? 'equilibradas' : t.pairing === 'manual' ? 'elegidas' : 'al azar'}`);
+  else parts.push(t.teamSize === 1 ? '1 vs 1' : `parejas ${t.pairing === 'elo' ? 'equilibradas' : t.pairing === 'manual' ? 'elegidas' : 'al azar'}`);
   if (t.format === 'league') {
     if ((t.legs ?? 1) === 2) parts.push('ida y vuelta');
     const p = templatePoints(t);

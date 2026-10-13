@@ -31,7 +31,7 @@ export function RankingScreen({ tab: initialTab }: { tab?: RankingTab }) {
           { id: 'standings', label: 'Clasificación' },
           { id: 'history', label: 'Historial' },
           { id: 'players', label: 'Jugadores' },
-          { id: 'fame', label: 'Hall of Fame' },
+          { id: 'fame', label: 'Salón de la fama' },
           { id: 'records', label: 'Récords' },
           { id: 'pairs', label: 'Parejas' },
           { id: 'digest', label: 'Resumen' },
@@ -252,7 +252,7 @@ function HallOfFame() {
     return (
       <div className="empty">
         <div>
-          <strong>Hall of Fame vacío</strong>
+          <strong>Salón de la fama vacío</strong>
           Los líderes aparecerán al guardar partidos.
         </div>
       </div>
@@ -332,7 +332,7 @@ function Pairs() {
       <div className="empty">
         <div>
           <strong>Sin parejas todavía</strong>
-          Juega partidos de 2 contra 2 para ver qué parejas funcionan mejor.
+          Juega partidos de 2 vs 2 para ver qué parejas funcionan mejor.
         </div>
       </div>
     );

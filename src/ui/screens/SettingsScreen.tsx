@@ -650,7 +650,7 @@ function SystemTab() {
             </>
           }
         >
-          <p style={{ margin: 0 }}>Se eliminarán jugadores, historial, preferencias y la partida en curso de este dispositivo. Exporta antes una copia si la necesitas.</p>
+          <p style={{ margin: 0 }}>Se eliminarán jugadores, historial, preferencias y el partido en curso de este dispositivo. Exporta antes una copia si la necesitas.</p>
         </Modal>
       )}
     </div>

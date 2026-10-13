@@ -120,7 +120,7 @@ export function validateDraft(d: TournamentDraft): string[] {
       errors.push('Ese número de partidos por jugador no cuadra con los inscritos.');
     return errors;
   }
-  if (d.final === 'top4') errors.push('La final 1º+4º contra 2º+3º solo existe en el Pool.');
+  if (d.final === 'top4') errors.push('La final 1º+4º vs 2º+3º solo existe en el Pool.');
   if (d.teams.length < MIN_TEAMS || d.teams.length > MAX_TEAMS) errors.push(`Entre ${MIN_TEAMS} y ${MAX_TEAMS} equipos.`);
   const all = d.teams.flatMap((t) => t.playerIds);
   if (new Set(all).size !== all.length) errors.push('Un jugador no puede estar en dos equipos.');

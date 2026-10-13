@@ -190,7 +190,7 @@ export function HomeScreen() {
 
       {snapshot && (
         <Modal
-          title="Partida sin terminar"
+          title="Partido sin terminar"
           actions={
             <>
               <button className="btn btn-danger" onClick={discard}>

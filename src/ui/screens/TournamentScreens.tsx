@@ -72,8 +72,8 @@ import { LadderRoundShow } from '../components/LadderRoundShow';
 
 const FINAL_LABEL: Record<TournamentFinal, string> = {
   none: 'Sin final',
-  top2: '1º contra 2º',
-  top4: '1º+4º contra 2º+3º',
+  top2: '1º vs 2º',
+  top4: '1º+4º vs 2º+3º',
 };
 
 function Trophy({ size = 64 }: { size?: number }) {
@@ -1438,7 +1438,7 @@ export function TournamentTemplateScreen({
             <OptionList<1 | 2>
               value={tpl.teamSize}
               options={[
-                { v: 1, title: '1 contra 1' },
+                { v: 1, title: '1 vs 1' },
                 { v: 2, title: 'Parejas fijas', help: 'Las mismas parejas durante todo el torneo. Hace falta un número par de jugadores.' },
               ]}
               onChange={(v) => set('teamSize', v)}

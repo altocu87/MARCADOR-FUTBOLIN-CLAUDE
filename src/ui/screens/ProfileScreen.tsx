@@ -180,7 +180,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               <StatTile
                 k="Goles apuntados"
                 v={goals}
-                help="Los goles que se apuntaron a su nombre. En 1 contra 1 se apuntan solos; en parejas, solo si alguien toca su ficha al marcar."
+                help="Los goles que se apuntaron a su nombre. En 1 vs 1 se apuntan solos; en 2 vs 2, solo si alguien toca su ficha al marcar."
               />
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
@@ -257,7 +257,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
             {stats.rivals.length === 0 ? <div className="muted">Sin enfrentamientos.</div> : <div className="list">{stats.rivals.map(rivalRow)}</div>}
             {stats.teammates.length > 0 && (
               <>
-                <div className="label">Compañeros (2v2)</div>
+                <div className="label">Compañeros (2 vs 2)</div>
                 <div className="list">{stats.teammates.map(rivalRow)}</div>
               </>
             )}
