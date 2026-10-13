@@ -1951,6 +1951,8 @@ export function TournamentDetailScreen({
   }
 
   const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
+  // Copa terminada: no queda nada que jugar, así que el cuadro ocupa todo el ancho.
+  const bracketDone = t.format === 'bracket' && t.status !== 'active';
 
   // Pool en escalera: cada jugador con su foto (y si ha subido o bajado) y el nombre debajo.
   // Quien ha subido lleva marco verde y una flecha que sube; quien ha bajado, marco rojo y una que baja.
@@ -2156,22 +2158,55 @@ export function TournamentDetailScreen({
           </button>
         </div>
       )}
-      <div className="td-layout">
+      <div className={`td-layout${t.format === 'bracket' ? (bracketDone ? ' is-wide' : ' is-bracket') : ''}`}>
         {t.format === 'bracket' ? (
+          // El cuadro es el único sitio con los partidos de la copa: fotos, marcador, quién pasa (en verde),
+          // la final en dorado y el siguiente partido señalado.
           <div className="td-panel bracket scroll">
-            {rounds.map((r) => (
-              <div key={r} className="bracket-round">
-                <div className="label">{roundLabel(t, r)}</div>
-                {t.fixtures
-                  .filter((f) => f.round === r)
-                  .map((f) => (
-                    <div key={f.id} className={`bracket-match ${f.winnerTeamId ? 'done' : ''}`}>
-                      <span className={f.winnerTeamId && f.winnerTeamId === f.whiteTeamId ? 'win' : ''}>{teamLabel(f.whiteTeamId)}</span>
-                      <span className={f.winnerTeamId && f.winnerTeamId === f.blueTeamId ? 'win' : ''}>{f.bye && !f.blueTeamId ? 'pase directo' : teamLabel(f.blueTeamId)}</span>
-                    </div>
-                  ))}
-              </div>
-            ))}
+            {bracketDone && lastMatch && (
+              <button className="td-tool bracket-undo" onClick={() => setConfirmUndo(true)}>
+                ↶ Repetir último partido
+              </button>
+            )}
+            {rounds.map((r) => {
+              const isFinal = r === rounds[rounds.length - 1];
+              return (
+                <div key={r} className={`bracket-round${isFinal ? ' is-final' : ''}`}>
+                  <div className="label bracket-label">{isFinal ? '🏆 Final' : roundLabel(t, r)}</div>
+                  <div className="bracket-col">
+                    {t.fixtures
+                      .filter((f) => f.round === r)
+                      .map((f) => {
+                        const m = f.matchId ? byId.get(f.matchId) : undefined;
+                        const isNext = f.id === next?.id;
+                        return (
+                          <div key={f.id} className={`bm${isFinal ? ' is-final' : ''}${isNext ? ' is-next' : ''}`}>
+                            {isNext && <span className="bm-next">SIGUIENTE</span>}
+                            {(['white', 'blue'] as const).map((side) => {
+                              const tid = side === 'white' ? f.whiteTeamId : f.blueTeamId;
+                              const score = f.series ? f.series[side] : m?.result.score[side];
+                              const state = f.winnerTeamId && tid ? (f.winnerTeamId === tid ? 'win' : 'out') : '';
+                              return (
+                                <div key={side} className={`bm-row ${state}`}>
+                                  {tid ? (
+                                    <>
+                                      {miniPhotos(tid)}
+                                      <span className="bm-name">{teamLabel(tid)}</span>
+                                      {!f.bye && score !== undefined && <b className="bm-score">{score}</b>}
+                                    </>
+                                  ) : (
+                                    <span className="bm-name bm-empty">{f.bye ? 'pase directo' : 'por decidir'}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : ladderPanel ? (
           ladderPanel
@@ -2213,6 +2248,7 @@ export function TournamentDetailScreen({
             {finalCard}
           </div>
         )}
+        {!bracketDone && (
         <div className="td-panel scroll">
           {pending && (
             <button className="td-resume" onClick={resume}>
@@ -2245,9 +2281,10 @@ export function TournamentDetailScreen({
               )}
             </div>
           )}
-          <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'bracket' || t.format === 'pool' ? 'Rondas' : 'Jornadas'}</div>
+          {/* En la copa los partidos ya están en el cuadro: aquí solo se juega. */}
+          {t.format !== 'bracket' && <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'pool' ? 'Rondas' : 'Jornadas'}</div>}
           {rounds
-            .filter((r) => t.format === 'bracket' || !!t.ladder || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
+            .filter((r) => t.format !== 'bracket' && (!!t.ladder || !t.fixtures.some((f) => f.round === r && f.stage === 'final')))
             .map((r) => {
               // En la escalera, de la pista 1 hacia abajo.
               const fx = t.fixtures
@@ -2272,6 +2309,7 @@ export function TournamentDetailScreen({
               );
             })}
         </div>
+        )}
       </div>
       </>
       )}
