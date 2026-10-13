@@ -263,6 +263,9 @@ export function createTournament(
   rnd: () => number = Math.random,
 ): Tournament {
   const errors = validateDraft(draft);
+  // Con ELO no juegan invitados: moverían el ELO de los demás contra alguien que no lo tiene.
+  const ids = [...draft.teams.flatMap((x) => x.playerIds), ...(draft.entrants ?? [])];
+  if (draft.ranked && ids.some((id) => players.find((p) => p.id === id)?.guest)) errors.push('Un torneo con ELO no admite invitados.');
   if (errors.length) throw new Error(errors.join(' '));
   if (draft.format === 'pool' && draft.ladder) return createLadder(draft, players, now, rnd);
   const bestOf = draft.finalBestOf && draft.finalBestOf > 1 ? draft.finalBestOf : undefined;

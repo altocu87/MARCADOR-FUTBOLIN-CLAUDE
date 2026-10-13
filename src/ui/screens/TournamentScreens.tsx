@@ -755,7 +755,9 @@ export function TournamentNewScreen({
 
   // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de los creados.
   // Los que no encajan con este número de jugadores, plegados al final.
-  const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
+  // Invitados elegidos: una competición con ELO no los admite.
+  const guests = selected.filter((id) => players.find((p) => p.id === id)?.guest).length;
+  const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n, guests) }));
   const kindInfo = KINDS.find((k) => k.format === kind);
   const fits = allFits.filter((x) => x.t.format === kind);
   const shown = fits.filter((x) => x.fit.ok);
@@ -1514,7 +1516,7 @@ export function TournamentTemplateScreen({
   selected?: string[];
   format?: TournamentFormat;
 }) {
-  const { navigate, prefs, savePrefs, toast, tournaments } = useApp();
+  const { navigate, prefs, savePrefs, toast, tournaments, players } = useApp();
   const saved = prefs.tournamentTemplates;
   const existing = saved.find((x) => x.id === templateId);
   // Una competición con ediciones ya no cambia de tipo: su palmarés mezclaría ligas, copas y pools.
@@ -1539,7 +1541,7 @@ export function TournamentTemplateScreen({
   const idx = Math.max(0, CREATOR_STEPS.findIndex((x) => x.id === step));
   const last = idx === CREATOR_STEPS.length - 1;
   const n = selected?.length ?? 0;
-  const fit = n ? templateFit(tpl, n) : null;
+  const fit = n ? templateFit(tpl, n, (selected ?? []).filter((id) => players.find((p) => p.id === id)?.guest).length) : null;
 
   const setFormat = (f: TournamentFormat) =>
     !editions &&

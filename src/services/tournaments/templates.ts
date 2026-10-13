@@ -174,8 +174,12 @@ export interface TemplateFit {
   summary?: string;
 }
 
-/** ¿Se puede jugar este tipo de torneo con `n` jugadores? Y, si se puede, cómo saldría. */
-export function templateFit(t: TournamentTemplate, n: number): TemplateFit {
+/**
+ * ¿Se puede jugar este tipo de torneo con `n` jugadores? Y, si se puede, cómo saldría. Una competición
+ * que cuenta para ELO no admite invitados (`guests`): no tienen ELO de verdad contra el que medirse.
+ */
+export function templateFit(t: TournamentTemplate, n: number, guests = 0): TemplateFit {
+  if (t.ranked && guests > 0) return { ok: false, reason: `Cuenta para ELO: no admite invitados (hay ${guests})` };
   const finalExtra = t.format !== 'bracket' && t.final !== 'none' ? ' + final' + (t.finalBestOf > 1 ? ' al mejor de 3' : '') : '';
   if (t.format === 'pool') {
     if (n % 2 === 1) return { ok: false, reason: 'Necesita número par de jugadores' };

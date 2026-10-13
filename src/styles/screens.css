@@ -6950,3 +6950,9 @@ div > .name-clash:first-child {
   opacity: 0.35;
   filter: grayscale(0.8);
 }
+
+/* Clasificatorio: los invitados salen bloqueados (no tienen ELO). */
+.pick-card.is-locked {
+  opacity: 0.45;
+  filter: grayscale(0.85);
+}

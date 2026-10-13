@@ -40,7 +40,13 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
   const [options, setOptions] = useState<Player | null>(null);
   const longPress = useLongPress();
 
-  const available = useMemo(() => sortPlayers(players.filter((p) => p.active)), [players]);
+  // En Clasificatorio no juegan invitados: no tienen ELO y moverían el de los demás. Salen al final, bloqueados.
+  const ranked = config.mode === 'ranked';
+  const lockedGuest = (p: Player | undefined) => ranked && !!p?.guest;
+  const available = useMemo(() => {
+    const list = sortPlayers(players.filter((p) => p.active));
+    return ranked ? [...list.filter((p) => !p.guest), ...list.filter((p) => p.guest)] : list;
+  }, [players, ranked]);
   // Equipo guardado de cada lado: si los dos de un equipo están juntos, el lado pasa a ser ese equipo.
   const clubs: Record<Team, Club | undefined> = { white: findClub(prefs.clubs, teams.white), blue: findClub(prefs.clubs, teams.blue) };
   const sideName = (t: Team) => clubs[t]?.name ?? TEAM_NAME[t];
@@ -97,6 +103,10 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
 
   // Tocar un jugador libre: entra en el equipo que elige.
   const pick = (playerId: string) => {
+    if (lockedGuest(byId.get(playerId))) {
+      toast('Los invitados no juegan Clasificatorio: no tienen ELO. Hazlo jugador en Ajustes o juega un Rápido.');
+      return;
+    }
     const current = teams[step];
     if (current.includes(playerId) || teams[OTHER[step]].includes(playerId)) return;
     if (current.length >= MAX_PER_TEAM) {
@@ -120,10 +130,12 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
     })),
   );
   const whiteReady = teams.white.length > 0;
-  const valid = whiteReady && teams.blue.length > 0 && validateParticipants(participants).length === 0;
+  const guestIn = participants.some((x) => lockedGuest(byId.get(x.playerId)));
+  const valid = whiteReady && teams.blue.length > 0 && validateParticipants(participants).length === 0 && !guestIn;
   const count = teams[step].length;
-  const status =
-    step === 'blue' && valid
+  const status = guestIn
+    ? 'Clasificatorio sin invitados: quita al invitado'
+    : step === 'blue' && valid
       ? `${teams.white.length} contra ${teams.blue.length} listo`
       : count === 0
         ? `Equipo ${sideName(step)}: elige de 1 a ${MAX_PER_TEAM} jugadores`
@@ -231,12 +243,19 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
   // Ficha de jugador libre: la imagen ocupa toda la tarjeta y debajo va su información.
   const playerCard = (p: Player) => {
     const { meta, title } = metaOf(p);
+    const locked = lockedGuest(p);
     return (
-      <button key={p.id} data-flip={p.id} className="pick-card" {...longPress(() => setOptions(p), () => pick(p.id))} aria-label={`Elegir a ${p.name}`}>
+      <button
+        key={p.id}
+        data-flip={p.id}
+        className={`pick-card${locked ? ' is-locked' : ''}`}
+        {...longPress(() => setOptions(p), () => pick(p.id))}
+        aria-label={locked ? `${p.name}: invitado, no juega Clasificatorio` : `Elegir a ${p.name}`}
+      >
         <span className="pick-photo">{photoOf(p)}</span>
         <span className="pick-info">
           <span className="pick-name">{p.name}</span>
-          <span className="pick-meta">{meta}</span>
+          <span className="pick-meta">{locked ? '🔒 Invitado' : meta}</span>
           {title && <span className="pick-title">{title}</span>}
         </span>
       </button>

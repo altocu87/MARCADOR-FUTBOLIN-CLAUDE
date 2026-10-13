@@ -223,6 +223,15 @@ describe('Tipos de torneo según el número de jugadores', () => {
     expect(templateFit(tpl('sample-pool'), 2).ok).toBe(false);
     expect(templateFit(tpl('sample-pool'), 18).ok).toBe(false);
   });
+  it('una competición con ELO no admite invitados (ni encaja ni se puede crear)', () => {
+    const ranked = { ...tpl('sample-league'), ranked: true };
+    expect(templateFit(ranked, 4, 1)).toMatchObject({ ok: false, reason: expect.stringMatching(/invitados/) });
+    expect(templateFit(tpl('sample-league'), 4, 1).ok).toBe(true);
+    const ps = [...players(['a', 'b', 'c']), { id: 'g', name: 'Invi', guest: true, active: true, createdAt: 0, updatedAt: 0 }];
+    const { draft } = draftFromTemplate(ranked, 'Liga', ['a', 'b', 'c', 'g'], () => 1200);
+    expect(() => createTournament(draft, ps, () => 1200, 0)).toThrow(/invitados/);
+    expect(() => createTournament({ ...draft, ranked: false }, ps, () => 1200, 0)).not.toThrow();
+  });
   it('un tipo de Pool da un borrador de escalera con sus parejas', () => {
     const t = { ...tpl('sample-pool'), poolSwap: false, poolLimit: 'rounds' as const, poolRounds: 6 };
     const { draft } = draftFromTemplate(t, 'Pool', ['a', 'b', 'c', 'd'], () => 1200, {}, seededRandom('x'));
