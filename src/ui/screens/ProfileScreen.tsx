@@ -249,13 +249,17 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               <div className="card">
                 <div className="label">Rival favorito</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
-                  {stats.favoriteRival ? `${stats.favoriteRival.name} · ${stats.favoriteRival.winPct.toFixed(0)} %` : 'Datos insuficientes'}
+                  {stats.favoriteRival
+                    ? `${stats.favoriteRival.name} · le ganas el ${stats.favoriteRival.winPct.toFixed(0)} %`
+                    : 'Aún sin rival favorito'}
                 </div>
               </div>
               <div className="card">
                 <div className="label">Némesis</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
-                  {stats.nemesis ? `${stats.nemesis.name} · ${stats.nemesis.winPct.toFixed(0)} %` : 'Datos insuficientes'}
+                  {stats.nemesis
+                    ? `${stats.nemesis.name} · te gana el ${Math.round((stats.nemesis.losses / stats.nemesis.played) * 100)} %`
+                    : 'Aún sin némesis'}
                 </div>
               </div>
             </div>

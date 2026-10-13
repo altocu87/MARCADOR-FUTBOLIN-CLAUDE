@@ -114,6 +114,21 @@ describe('Estadísticas', () => {
     const s = computePlayerStats('a', ms);
     expect(s.favoriteRival?.playerId).toBe('b');
     expect(s.favoriteRival?.winPct).toBe(80);
+    // Con un solo rival no puede ser también su némesis.
+    expect(s.nemesis).toBeNull();
+  });
+  it('el favorito es a quien ganas más de la mitad y el némesis quien te gana más de la mitad: nunca el mismo', () => {
+    const vs = (rival: string, wins: number, losses: number) => [
+      ...Array.from({ length: wins }, (_, i) => makeMatch({ white: ['a'], blue: [rival], goals: 'W', at: i })),
+      ...Array.from({ length: losses }, (_, i) => makeMatch({ white: ['a'], blue: [rival], goals: 'B', at: 100 + i })),
+    ];
+    // Al 50 %: ni una cosa ni la otra.
+    const half = computePlayerStats('a', [...vs('b', 3, 3)]);
+    expect(half.favoriteRival).toBeNull();
+    expect(half.nemesis).toBeNull();
+    const s = computePlayerStats('a', [...vs('b', 4, 1), ...vs('c', 1, 4), ...vs('d', 3, 3)]);
+    expect(s.favoriteRival?.playerId).toBe('b');
+    expect(s.nemesis?.playerId).toBe('c');
   });
   it('remontada', () => {
     expect(comebackSize(makeMatch({ white: ['a'], blue: ['b'], goals: 'BBWWW' }))).toBe(2);

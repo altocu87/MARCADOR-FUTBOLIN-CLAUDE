@@ -166,11 +166,12 @@ export function computePlayerStats(playerId: string, matches: StoredMatch[]): Pl
 
   const rivalList = [...rivals.values()].sort((a, b) => b.played - a.played);
   const eligible = rivalList.filter((r) => r.played >= RIVAL_MIN_MATCHES);
-  // Propuesta de algoritmo: favorito = mayor % de victorias; némesis = menor. Desempate: más partidos.
-  const favoriteRival =
-    eligible.length > 0 ? [...eligible].sort((a, b) => b.winPct - a.winPct || b.played - a.played)[0] : null;
-  const nemesis =
-    eligible.length > 0 ? [...eligible].sort((a, b) => a.winPct - b.winPct || b.played - a.played)[0] : null;
+  // Favorito: al que le ganas más de la mitad de las veces (el de mejor %). Némesis: el que te gana más
+  // de la mitad (el que más te gana). Así nunca son el mismo, y sin ninguno que cumpla, no hay.
+  // Desempate: más partidos.
+  const lossPct = (r: RivalStat) => (r.losses / r.played) * 100;
+  const favoriteRival = [...eligible].filter((r) => r.winPct > 50).sort((a, b) => b.winPct - a.winPct || b.played - a.played)[0] ?? null;
+  const nemesis = [...eligible].filter((r) => lossPct(r) > 50).sort((a, b) => lossPct(b) - lossPct(a) || b.played - a.played)[0] ?? null;
 
   return {
     playerId,

@@ -240,8 +240,8 @@ export function ProfilePage() {
       {tab === 'rivales' && (
         <>
           <div className="duo">
-            <Highlight label="Rival favorito" id={p.favoriteRival} list={p.rivals} person={person} />
-            <Highlight label="Némesis" id={p.nemesis} list={p.rivals} person={person} />
+            <Highlight label="Rival favorito" id={p.favoriteRival} list={p.rivals} person={person} empty="Aún sin rival favorito" />
+            <Highlight label="Némesis" id={p.nemesis} list={p.rivals} person={person} nemesis empty="Aún sin némesis" />
           </div>
           <h2>Contra quién juega</h2>
           <People list={p.rivals} person={person} empty="Sin enfrentamientos todavía." />
@@ -328,11 +328,16 @@ function Highlight({
   id,
   list,
   person,
+  nemesis = false,
+  empty,
 }: {
   label: string;
   id: string | null;
   list: SnapshotRival[];
   person: (id: string) => { name: string; photo?: string };
+  /** Némesis: se dice cuánto te gana; favorito: cuánto le ganas. */
+  nemesis?: boolean;
+  empty: string;
 }) {
   const r = id ? list.find((x) => x.id === id) : undefined;
   return (
@@ -343,11 +348,15 @@ function Highlight({
           <Avatar name={person(id).name} photo={person(id).photo} size={48} />
           <span>
             <b>{person(id).name}</b>
-            {r && <small>{r.winPct} % de victorias en {r.played}</small>}
+            {r && (
+              <small>
+                {nemesis ? `Te gana el ${Math.round((r.losses / r.played) * 100)} %` : `Le ganas el ${r.winPct} %`} de {r.played} partidos
+              </small>
+            )}
           </span>
         </div>
       ) : (
-        <small className="muted">Faltan partidos para saberlo</small>
+        <small className="muted">{empty}</small>
       )}
     </div>
   );
