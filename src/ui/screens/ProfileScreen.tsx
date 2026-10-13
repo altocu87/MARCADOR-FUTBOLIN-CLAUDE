@@ -4,14 +4,12 @@ import {
   ACHIEVEMENTS,
   CATEGORY_LABEL,
   RARITY_LABEL,
-  availableTitles,
   categoryFor,
   displayTitle,
   levelProgress,
   xpForLevel,
   type AchievementCategory,
 } from '../../services/progression';
-import { ANTHEMS, sound } from '../../services/sound/sound';
 import {
   RIVAL_MIN_MATCHES,
   computePlayerStats,
@@ -30,7 +28,7 @@ import { PlayerOptions } from '../components/PlayerQr';
 import { MatchLine, PlayerTag } from '../components/PlayerFaces';
 import { TournamentHistory } from '../components/TournamentHistory';
 
-type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
+type ProfileTab = 'general' | 'habits' | 'rivals' | 'history' | 'tournaments' | 'achievements';
 
 function Block({ b }: { b: StatBlock }) {
   return (
@@ -60,8 +58,10 @@ function Bar({ label, played, winPct }: { label: string; played: number; winPct:
 }
 
 export function ProfileScreen({ playerId }: { playerId: string }) {
-  const { players, matches, progression, navigate, prefs, tournaments, savePlayer, toast } = useApp();
+  const { players, matches, progression, navigate, prefs, tournaments } = useApp();
   const [tab, setTab] = useState<ProfileTab>('general');
+  // General: los números de todos los partidos o solo de los clasificatorios.
+  const [scope, setScope] = useState<'all' | 'ranked'>('all');
   const [showOptions, setShowOptions] = useState(false);
   const player = players.find((p) => p.id === playerId);
   const stats = useMemo(() => computePlayerStats(playerId, matches), [playerId, matches]);
@@ -84,13 +84,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
 
   const title = displayTitle(prog, player.titleId);
   const category = prog?.category ?? categoryFor(prefs.progression.eloInitial);
-  const update = async (patch: Partial<typeof player>) => {
-    try {
-      await savePlayer({ ...player, ...patch, updatedAt: Date.now() });
-    } catch {
-      toast('No se pudo guardar');
-    }
-  };
+
 
   // Tocar un rival abre el cara a cara con él; los compañeros no se enfrentan, así que su fila no se toca.
   const rivalRow = (r: RivalStat, rival = true) => {
@@ -168,46 +162,54 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
         onChange={setTab}
         tabs={[
           { id: 'general', label: 'General' },
-          { id: 'ranked', label: 'Clasificatorio' },
           { id: 'habits', label: 'Hábitos' },
-          { id: 'tournaments', label: 'Torneos' },
           { id: 'rivals', label: 'Rivales' },
-          { id: 'achievements', label: `Logros ${prog ? prog.achievements.length : 0}/${ACHIEVEMENTS.length}` },
           { id: 'history', label: 'Historial' },
-          { id: 'style', label: 'Estilo' },
+          { id: 'tournaments', label: 'Torneos' },
+          { id: 'achievements', label: `Logros ${prog ? prog.achievements.length : 0}/${ACHIEVEMENTS.length}` },
         ]}
       />
       <div className="scroll" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tab === 'general' && (
           <>
-            <Block b={stats.general} />
-            <div className="grid-4">
-              <StatTile
-                k="Racha actual"
-                v={
-                  stats.currentStreak.type
-                    ? `${stats.currentStreak.count} ${stats.currentStreak.type === 'G' ? 'victoria' : 'derrota'}${stats.currentStreak.count === 1 ? '' : 's'}`
-                    : '—'
-                }
-              />
-              <StatTile k="Mejor racha" v={stats.bestWinStreak} />
-              <StatTile k="Tiempo jugado" v={formatDuration(stats.totalPlayTimeMs)} />
-              <StatTile
-                k="Goles apuntados"
-                v={goals}
-                help="Los goles que se apuntaron a su nombre. En 1 vs 1 se apuntan solos; en 2 vs 2, solo si alguien toca su ficha al marcar."
-              />
+            <div className="segmented prof-scope">
+              <button className="seg" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>
+                TODOS
+              </button>
+              <button className="seg" aria-pressed={scope === 'ranked'} onClick={() => setScope('ranked')}>
+                CLASIFICATORIOS
+              </button>
             </div>
-            <div className="muted" style={{ fontSize: 12 }}>
-              Últimos partidos: <FormChips form={stats.recent} />
-            </div>
-          </>
-        )}
-        {tab === 'ranked' && (
-          <>
-            <Block b={stats.ranked} />
+            <Block b={scope === 'all' ? stats.general : stats.ranked} />
+            {scope === 'all' && (
+              <div className="grid-4">
+                <StatTile
+                  k="Racha actual"
+                  v={
+                    stats.currentStreak.type
+                      ? `${stats.currentStreak.count} ${stats.currentStreak.type === 'G' ? 'victoria' : 'derrota'}${stats.currentStreak.count === 1 ? '' : 's'}`
+                      : '—'
+                  }
+                />
+                <StatTile k="Mejor racha" v={stats.bestWinStreak} />
+                <StatTile k="Tiempo jugado" v={formatDuration(stats.totalPlayTimeMs)} />
+                <StatTile
+                  k="Goles apuntados"
+                  v={goals}
+                  help="Los goles que se apuntaron a su nombre. En 1 vs 1 se apuntan solos; en 2 vs 2, solo si alguien toca su ficha al marcar."
+                />
+              </div>
+            )}
             <div className="muted" style={{ fontSize: 13 }}>
-              Forma (últimas 5 clasificatorias): <FormChips form={stats.form} empty="Sin clasificatorios" />
+              {scope === 'all' ? (
+                <>
+                  Últimos partidos: <FormChips form={stats.recent} />
+                </>
+              ) : (
+                <>
+                  Últimos clasificatorios: <FormChips form={stats.form} empty="Sin clasificatorios" />
+                </>
+              )}
             </div>
             {prog && (
               <div className="card">
@@ -335,43 +337,6 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               })}
             </div>
           ))}
-        {tab === 'style' && (
-          <div className="grid-2" style={{ alignItems: 'start' }}>
-            <div className="card">
-              <div className="label">Título visible</div>
-              <p className="dim" style={{ fontSize: 12, margin: '4px 0 8px' }}>Se desbloquean con algunos logros y aparecen bajo el nombre.</p>
-              <div className="chip-wrap">
-                <button className={`pick-chip ${!player.titleId ? 'pick-blue' : ''}`} onClick={() => update({ titleId: undefined })}>Automático</button>
-                <button className={`pick-chip ${player.titleId === 'none' ? 'pick-blue' : ''}`} onClick={() => update({ titleId: 'none' })}>Sin título</button>
-                {availableTitles(prog).map((t) => (
-                  <button key={t.id} className={`pick-chip ${player.titleId === t.id ? 'pick-blue' : ''}`} onClick={() => update({ titleId: t.id })}>
-                    {t.title}
-                  </button>
-                ))}
-              </div>
-              {availableTitles(prog).length === 0 && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Aún no tiene títulos.</div>}
-            </div>
-            <div className="card">
-              <div className="label">Melodía de victoria</div>
-              <p className="dim" style={{ fontSize: 12, margin: '4px 0 8px' }}>Suena en la pantalla de victoria cuando gana.</p>
-              <div className="chip-wrap">
-                {Object.entries(ANTHEMS).map(([id, a]) => (
-                  <button
-                    key={id}
-                    className={`pick-chip ${(player.anthem ?? 'fanfare') === id ? 'pick-blue' : ''}`}
-                    onClick={() => {
-                      sound.unlock();
-                      sound.playAnthem(id);
-                      void update({ anthem: id });
-                    }}
-                  >
-                    ♪ {a.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </ScreenFrame>
   );

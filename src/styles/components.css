@@ -1262,3 +1262,18 @@ button.row:active {
 .card.card-btn:disabled {
   cursor: default;
 }
+/* Título y melodía (menú del jugador). */
+.pstyle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pstyle .chip-wrap {
+  margin-top: 6px;
+}
+.po-actions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.po-btn {
+  white-space: nowrap;
+}

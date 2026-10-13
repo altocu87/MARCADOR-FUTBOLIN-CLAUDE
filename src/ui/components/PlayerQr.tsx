@@ -8,6 +8,7 @@ import { useApp } from '../../app/AppContext';
 import type { Player } from '../../services/persistence';
 import { setPlayerActive } from '../../services/players';
 import { PlayerEditor } from './PlayerEditor';
+import { PlayerStyle } from './PlayerStyle';
 import { Avatar, Modal } from './common';
 
 /** Código QR en SVG (nítido a cualquier tamaño). */
@@ -84,8 +85,9 @@ export function PlayerOptions({ player: initial, onClose, inProfile = false }: {
   const { navigate, profileLink, demoMode, players, savePlayer, toast } = useApp();
   // Siempre con los datos al día (tras editarlo, el nombre y la foto nuevos).
   const player = players.find((p) => p.id === initial.id) ?? initial;
-  const [view, setView] = useState<'menu' | 'qr' | 'edit'>('menu');
+  const [view, setView] = useState<'menu' | 'qr' | 'edit' | 'style'>('menu');
   const qr = view === 'qr';
+  const sub = view === 'qr' || view === 'style';
   const link = useMemo(() => profileLink(player.id), [player, profileLink]);
   const [estado, setEstado] = useState<Estado>(link?.online ? 'subiendo' : 'local');
 
@@ -127,7 +129,7 @@ export function PlayerOptions({ player: initial, onClose, inProfile = false }: {
       onClose={onClose}
       actions={
         <>
-          {qr && (
+          {sub && (
             <button className="btn" onClick={() => setView('menu')}>
               Atrás
             </button>
@@ -138,7 +140,9 @@ export function PlayerOptions({ player: initial, onClose, inProfile = false }: {
         </>
       }
     >
-      {!qr ? (
+      {view === 'style' ? (
+        <PlayerStyle player={player} />
+      ) : !qr ? (
         <div className="po">
           <div className="po-head">
             <Avatar name={player.name} photo={player.photo} size={64} />
@@ -161,6 +165,9 @@ export function PlayerOptions({ player: initial, onClose, inProfile = false }: {
             </button>
             <button className="btn btn-lg po-btn" onClick={() => setView('edit')}>
               <span className="po-ico">✏️</span> Editar
+            </button>
+            <button className="btn btn-lg po-btn" onClick={() => setView('style')}>
+              <span className="po-ico">🎨</span> Título y melodía
             </button>
             <button className="btn btn-lg po-btn" onClick={() => void toggleActive()}>
               <span className="po-ico">{player.active ? '⏸' : '▶'}</span> {player.active ? 'Desactivar' : 'Activar'}

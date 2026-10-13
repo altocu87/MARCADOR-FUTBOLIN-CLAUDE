@@ -6933,3 +6933,11 @@ div > .name-clash:first-child {
   font-size: 20px;
   cursor: pointer;
 }
+/* Perfil → General: Todos / Clasificatorios. */
+.prof-scope {
+  flex: none;
+}
+.prof-scope .seg {
+  min-height: 48px;
+  font-size: 16px;
+}
