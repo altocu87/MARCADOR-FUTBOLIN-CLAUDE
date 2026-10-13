@@ -381,7 +381,7 @@ function teamCountLabel(t: Tournament): string {
  */
 export function TournamentListScreen() {
   const { navigate, tournaments, matches, players } = useApp();
-  const played = tournaments.filter((t) => t.status !== 'active').sort((a, b) => (b.finishedAt ?? b.createdAt) - (a.finishedAt ?? a.createdAt));
+  // Una tarjeta por competición (las que ya tienen algún campeón): su historial se abre al tocarla.
   const comps = competitions(tournaments, matches, players).filter((c) => c.lastChampion);
   const playerOf = (id: string) => players.find((p) => p.id === id);
   const faces = (ids: string[], size: number) => (
@@ -391,11 +391,10 @@ export function TournamentListScreen() {
       ))}
     </span>
   );
-  const open = (t: Tournament) => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' });
 
   return (
     <ScreenFrame title="Palmarés" className="select-screen tn-screen" background={TN_BG} onBack={() => navigate({ name: 'tournamentNew' })}>
-      {played.length === 0 ? (
+      {comps.length === 0 ? (
         <div className="empty">
           <div>
             <Trophy size={70} />
@@ -404,70 +403,46 @@ export function TournamentListScreen() {
           </div>
         </div>
       ) : (
-        <div className="tn-honours scroll">
-          {comps.length > 0 && (
-            <>
-              <div className="label">Competiciones</div>
-              <div className="hon-grid">
-                {comps.map((c) => {
-                  const top = c.honours[0];
-                  const last = c.lastChampion!;
-                  return (
-                    <button key={c.key} className={`hon-card${c.banner ? ' has-banner' : ''}`} onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
-                      <span className="hon-card-head">
-                        <BannerArt id={c.banner} className="hon-card-banner" />
-                        {c.logo ? <Crest id={c.logo} size={40} /> : null}
-                        {c.cup ? <Cup id={c.cup} size={40} /> : <Trophy size={40} />}
-                        <span>
-                          <strong>{c.name}</strong>
-                          <small>
-                            {c.editions.length} edici{c.editions.length === 1 ? 'ón' : 'ones'}
-                          </small>
-                        </span>
-                      </span>
-                      <span className="hon-last">
-                        <small>Último campeón · {shortDate(last.date)}</small>
-                        <span className="tn-champ-line">
-                          {faces(last.championIds, 28)}
-                          <b>{last.champion}</b>
-                        </span>
-                      </span>
-                      {top && top.titles > 1 && (
-                        <span className="hon-top">
-                          Más títulos: <b>{top.name}</b> · {top.titles} 🏆
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-          <div className="label" style={{ marginTop: comps.length ? 12 : 0 }}>Últimos torneos jugados</div>
-          <div className="list">
-            {played.map((t) => {
-              const winner = t.teams.find((x) => x.id === t.winnerTeamId);
-              return (
-                <button key={t.id} className="row tn-row" onClick={() => open(t)}>
-                  {t.cup && winner ? <Cup id={t.cup} size={34} /> : <span style={{ fontSize: 24 }} aria-hidden="true">{winner ? '🏆' : '✕'}</span>}
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <strong>{t.name}</strong>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {FORMAT_LABEL[t.format]} · {shortDate(t.finishedAt ?? t.createdAt)}
-                    </div>
+        <div className="cmp-grid scroll">
+          {comps.map((c) => {
+            const done = c.editions.filter((e) => e.tournament.status === 'finished').length;
+            const live = c.editions.length - done;
+            const last = c.lastChampion!;
+            const top = c.honours[0];
+            return (
+              <button key={c.key} className="cmp-card" onClick={() => navigate({ name: 'tournamentHonours', key: c.key })}>
+                <BannerArt id={c.banner ?? defaultBanner(c.name, c.editions[0]?.tournament.format)} className="cmp-banner" />
+                <span className="cmp-head">
+                  <Crest id={c.logo ?? defaultLogo(c.name)} size={54} />
+                  <span className="cmp-title">
+                    <strong>{c.name}</strong>
+                    <small>
+                      {c.format} · {done} edici{done === 1 ? 'ón jugada' : 'ones jugadas'}
+                      {live ? ' · 1 en juego' : ''}
+                    </small>
                   </span>
-                  {winner ? (
-                    <span className="tn-champ-line">
-                      {faces(winner.playerIds, 30)}
-                      <b>{winner.name}</b>
+                  <Cup id={c.cup ?? defaultCup()} size={66} className="cmp-cup" />
+                </span>
+                <span className="cmp-row">
+                  <small>Último campeón · {shortDate(last.date)}</small>
+                  <span className="cmp-who">
+                    {faces(last.championIds, 38)}
+                    <b>{last.champion}</b>
+                  </span>
+                </span>
+                {top && top.titles > 1 && (
+                  <span className="cmp-row">
+                    <small>Más títulos</small>
+                    <span className="cmp-who">
+                      {faces([top.playerId], 30)}
+                      <b>{top.name}</b>
+                      <em>{top.titles} 🏆</em>
                     </span>
-                  ) : (
-                    <span className="badge">Cancelado</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </ScreenFrame>
