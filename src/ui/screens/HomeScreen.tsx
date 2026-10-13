@@ -7,6 +7,7 @@ import type { ActiveMatchSnapshot } from '../../services/persistence';
 import { sound } from '../../services/sound/sound';
 import { useHardware } from '../../inputs/hardware/useHardware';
 import { AssetImage, assetUrl } from '../components/assets';
+import { Faces } from '../components/PlayerFaces';
 import { MODE_LABEL, Modal, formatDate } from '../components/common';
 
 // Textos de una sola frase: se tienen que entender de un vistazo, de pie y jugando.
@@ -205,11 +206,28 @@ export function HomeScreen() {
           <p className="muted" style={{ margin: 0 }}>
             {MODE_LABEL[snapshot.state.config.mode]} guardado el {formatDate(snapshot.savedAt)}.
           </p>
-          <p style={{ fontSize: 22, fontWeight: 800, margin: '10px 0' }}>
-            {snapshot.state.participants.filter((p) => p.team === 'white').map((p) => p.nameSnapshot).join(' + ')}{' '}
-            {getScore(snapshot.state).white} – {getScore(snapshot.state).blue}{' '}
-            {snapshot.state.participants.filter((p) => p.team === 'blue').map((p) => p.nameSnapshot).join(' + ')}
-          </p>
+          <div className="match-line resume-line">
+            {(['white', 'blue'] as const).map((team, i) => {
+              const people = snapshot.state.participants.filter((p) => p.team === team);
+              const side = (
+                <span key={team} className={`side-tag${i ? ' is-right' : ''}`}>
+                  {i ? null : <Faces ids={people.map((p) => p.playerId)} size={40} />}
+                  <span className="side-names">{people.map((p) => p.nameSnapshot).join(' + ')}</span>
+                  {i ? <Faces ids={people.map((p) => p.playerId)} size={40} /> : null}
+                </span>
+              );
+              return i ? (
+                [
+                  <b key="score" className="match-line-score">
+                    {getScore(snapshot.state).white} – {getScore(snapshot.state).blue}
+                  </b>,
+                  side,
+                ]
+              ) : (
+                side
+              );
+            })}
+          </div>
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
             Se reanuda en pausa con el tiempo que tenía al guardarse. El tiempo con la aplicación cerrada no cuenta.
           </p>

@@ -10,6 +10,7 @@ import { PlayerEditor } from '../components/PlayerEditor';
 import { PlayerOptions, useLongPress } from '../components/PlayerQr';
 import { Crest } from '../components/Crest';
 import { findClub, type Club } from '../../services/clubs';
+import { Faces } from '../components/PlayerFaces';
 import { sound } from '../../services/sound/sound';
 
 const TEAM_NAME: Record<Team, string> = { white: 'BLANCO', blue: 'AZUL' };
@@ -343,7 +344,10 @@ function ClubFormation({ club }: { club: Club }) {
         <Crest id={club.logo} size={120} />
       </span>
       <span className="club-fx-kicker">¡EQUIPO FORMADO!</span>
-      <span className="club-fx-name">{club.name}</span>
+      <span className="club-fx-who">
+        <Faces ids={club.playerIds} size={40} />
+        <span className="club-fx-name">{club.name}</span>
+      </span>
     </div>
   );
 }

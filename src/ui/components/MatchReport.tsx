@@ -13,15 +13,6 @@ const TEAM: Record<Team, string> = { white: 'Blanco', blue: 'Azul' };
 const PERIOD: Record<Period, string> = { first: '1ª parte', second: '2ª parte', overtime: 'Prórroga', shootout: 'Penaltis' };
 const REASON = { regulation: 'Tiempo reglamentario', golden_goal: 'Gol de oro en la prórroga', penalties: 'Tanda de penaltis' };
 
-export function resultLine(m: StoredMatch): string {
-  const r = m.result;
-  const base = `${r.score.white}–${r.score.blue}`;
-  if (!r.winner) return `${base} · Empate`;
-  if (r.penaltyScore) return `${base} · Penaltis ${r.penaltyScore.white}–${r.penaltyScore.blue} · Gana ${TEAM[r.winner]}`;
-  if (r.reason === 'golden_goal') return `${base} · Gol de oro · Gana ${TEAM[r.winner]}`;
-  return `${base} · Gana ${TEAM[r.winner]}`;
-}
-
 /** Por goles no hay partes: el periodo único se llama «Partido» (los partidos antiguos sí tenían dos). */
 function periodName(m: StoredMatch, period: Period): string {
   const single = isSinglePeriod(m.config) && !m.periods.some((p) => p.period === 'second');

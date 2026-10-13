@@ -1195,3 +1195,59 @@ button.row:active {
   font: inherit;
   color: inherit;
 }
+/* Caras de jugadores en listas y resúmenes (PlayerFaces.tsx). */
+.faces {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+}
+.ptag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ptag-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+.ptag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.side-tag.is-right {
+  justify-content: flex-end;
+}
+.side-names {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.match-line > .side-tag {
+  flex: 1 1 0;
+}
+.match-line-score {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.match-line.is-faces > .side-tag {
+  flex: 0 0 auto;
+}
+.match-line.is-faces .match-line-score {
+  font-size: 1.25em;
+}

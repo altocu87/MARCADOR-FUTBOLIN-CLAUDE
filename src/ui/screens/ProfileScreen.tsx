@@ -26,8 +26,8 @@ import {
 } from '../../services/statistics';
 import { Avatar, FormChips, MODE_LABEL, ScreenFrame, StatTile, Tabs, formatDate, pct } from '../components/common';
 import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics';
-import { resultLine } from '../components/MatchReport';
 import { PlayerOptions } from '../components/PlayerQr';
+import { MatchLine, PlayerTag } from '../components/PlayerFaces';
 import { TournamentHistory } from '../components/TournamentHistory';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
@@ -94,7 +94,9 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
 
   const rivalRow = (r: RivalStat) => (
     <div key={r.playerId} className="row">
-      <span style={{ flex: 1 }}>{r.name}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <PlayerTag id={r.playerId} name={r.name} size={30} />
+      </span>
       <span className="muted">{r.played} PJ</span>
       <span>{r.wins}G{r.draws ? ` · ${r.draws}E` : ''} · {r.losses}P</span>
       <strong style={{ width: 60, textAlign: 'right' }}>{r.winPct.toFixed(0)} %</strong>
@@ -236,17 +238,25 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               <div className="card">
                 <div className="label">Rival favorito</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
-                  {stats.favoriteRival
-                    ? `${stats.favoriteRival.name} · le ganas el ${stats.favoriteRival.winPct.toFixed(0)} %`
-                    : 'Aún sin rival favorito'}
+                  {stats.favoriteRival ? (
+                    <PlayerTag id={stats.favoriteRival.playerId} name={stats.favoriteRival.name} size={48}>
+                      <span className="muted" style={{ fontSize: 14 }}>le ganas el {stats.favoriteRival.winPct.toFixed(0)} %</span>
+                    </PlayerTag>
+                  ) : (
+                    'Aún sin rival favorito'
+                  )}
                 </div>
               </div>
               <div className="card">
                 <div className="label">Némesis</div>
                 <div style={{ fontSize: 18, fontWeight: 800 }}>
-                  {stats.nemesis
-                    ? `${stats.nemesis.name} · te gana el ${Math.round((stats.nemesis.losses / stats.nemesis.played) * 100)} %`
-                    : 'Aún sin némesis'}
+                  {stats.nemesis ? (
+                    <PlayerTag id={stats.nemesis.playerId} name={stats.nemesis.name} size={48}>
+                      <span className="muted" style={{ fontSize: 14 }}>te gana el {Math.round((stats.nemesis.losses / stats.nemesis.played) * 100)} %</span>
+                    </PlayerTag>
+                  ) : (
+                    'Aún sin némesis'
+                  )}
                 </div>
               </div>
             </div>
@@ -304,7 +314,9 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                     <span className={`form-chip ${res}`}>{res}</span>
                     <span className="dim" style={{ width: 120, fontSize: 12 }}>{formatDate(m.finishedAt)}</span>
                     <span className="muted" style={{ width: 110, fontSize: 12 }}>{MODE_LABEL[m.config.mode]}</span>
-                    <span style={{ flex: 1 }}>{resultLine(m)}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <MatchLine match={m} size={24} />
+                    </span>
                   </button>
                 );
               })}

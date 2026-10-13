@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { sortMatches } from '../../services/statistics';
+import { MatchLine, PlayerTag } from './PlayerFaces';
 import { SevenSegment } from './SevenSegment';
 
 export function SleepOverlay({ minutes, enabled }: { minutes: number; enabled: boolean }) {
@@ -17,12 +18,7 @@ export function SleepOverlay({ minutes, enabled }: { minutes: number; enabled: b
       .filter((p) => p.rankedPlayed > 0)
       .sort((a, b) => b.elo - a.elo)[0];
     const last = sortMatches(matches).pop();
-    const names = (t: 'white' | 'blue') =>
-      last?.participants.filter((p) => p.team === t).map((p) => p.nameSnapshot).join(' + ');
-    return {
-      leader: leader ? `${players.find((p) => p.id === leader.playerId)?.name ?? '?'} · ${leader.elo}` : null,
-      last: last ? `${names('white')} ${last.result.score.white}–${last.result.score.blue} ${names('blue')}` : null,
-    };
+    return { leader: leader ? { id: leader.playerId, elo: leader.elo } : null, last: last ?? null };
   }, [players, matches, progression]);
 
   useEffect(() => {
@@ -103,13 +99,21 @@ export function SleepOverlay({ minutes, enabled }: { minutes: number; enabled: b
       {(info.leader || info.last) && (
         <div className="sleep-info">
           {info.leader && (
-            <span>
-              👑 Líder: <strong>{info.leader}</strong>
+            <span className="sleep-line">
+              👑 Líder:{' '}
+              <strong>
+                <PlayerTag id={info.leader.id} size={34}>
+                  <span className="muted">{info.leader.elo} ELO</span>
+                </PlayerTag>
+              </strong>
             </span>
           )}
           {info.last && (
-            <span>
-              Último: <strong>{info.last}</strong>
+            <span className="sleep-line">
+              Último:{' '}
+              <strong>
+                <MatchLine match={info.last} size={30} />
+              </strong>
             </span>
           )}
         </div>

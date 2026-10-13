@@ -64,6 +64,7 @@ import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { RankPhoto } from '../components/PlayerCards';
+import { Faces, MatchLine, PlayerTag } from '../components/PlayerFaces';
 import { PlayerOptions, useLongPress } from '../components/PlayerQr';
 import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
@@ -486,7 +487,7 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
                     {e.tournament.status === 'finished' ? shortDate(e.date) : `En juego desde ${shortDate(e.tournament.createdAt)}`}
                   </small>
                   {e.champion ? <b>🏆 {e.champion}</b> : <b className="dim">Sin campeón todavía</b>}
-                  {e.mvp && <span>MVP: {e.mvp.name}</span>}
+                  {e.mvp && <span className="hon-mvp">MVP: <PlayerTag id={e.mvp.playerId} name={e.mvp.name} size={22} /></span>}
                 </span>
                 <span className="hon-ed-avatars">
                   {e.championIds.map((id) => (
@@ -513,7 +514,9 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
               {c.honours.map((h, i) => (
                 <tr key={h.playerId} className={i === 0 && h.titles > 0 ? 'leader' : ''}>
                   <td>{i + 1}</td>
-                  <td>{h.name}</td>
+                  <td>
+                    <PlayerTag id={h.playerId} name={h.name} size={30} />
+                  </td>
                   <td><strong>{h.titles}</strong></td>
                   <td>{h.mvps}</td>
                   <td>{h.editions}</td>
@@ -1929,7 +1932,11 @@ export function TournamentDetailScreen({
             <b className="next-odds-b">{bp} %</b>
           </div>
         )}
-        {resting.length > 0 && <div className="next-rest">{t.ladder ? 'Banquillo' : `Descansa${resting.length > 1 ? 'n' : ''}`}: {resting.map(nameOf).join(', ')}</div>}
+        {resting.length > 0 && (
+          <div className="next-rest">
+            {t.ladder ? 'Banquillo' : `Descansa${resting.length > 1 ? 'n' : ''}`}: <Faces ids={resting} size={26} /> {resting.map(nameOf).join(', ')}
+          </div>
+        )}
         <button className="neon-go next-btn" onClick={() => play(next)}>
           ▶ SIGUIENTE PARTIDO
         </button>
@@ -2212,7 +2219,12 @@ export function TournamentDetailScreen({
                     <td>
                       <MoveIcon move={movement.get(r.team.id)} />
                     </td>
-                    <td>{teamLabel(r.team.id)}</td>
+                    <td>
+                      <span className="std-team">
+                        {miniPhotos(r.team.id)}
+                        {teamLabel(r.team.id)}
+                      </span>
+                    </td>
                     <td>{r.played}</td>
                     <td>{r.wins}</td>
                     {hasDraws && <td>{r.draws}</td>}
@@ -2280,7 +2292,11 @@ export function TournamentDetailScreen({
                   <div className="round-head">
                     <b>{roundLabel(t, r)}</b>
                     <span>{state === 'done' ? 'Jugada' : state === 'current' ? 'En juego' : 'Pendiente'}</span>
-                    {resting.length > 0 && <small>{t.ladder ? 'banquillo' : `descansa${resting.length > 1 ? 'n' : ''}`}: {resting.map(nameOf).join(', ')}</small>}
+                    {resting.length > 0 && (
+                      <small className="round-rest">
+                        {t.ladder ? 'banquillo' : `descansa${resting.length > 1 ? 'n' : ''}`}: <Faces ids={resting} size={20} /> {resting.map(nameOf).join(', ')}
+                      </small>
+                    )}
                   </div>
                   {fx.map((f) => (t.ladder ? ladderCourt(f) : fixtureRow(f)))}
                 </div>
@@ -2302,12 +2318,9 @@ export function TournamentDetailScreen({
             </>
           }
         >
-          <p style={{ margin: 0 }}>
-            <b>
-              {lastMatch.participants.filter((p) => p.team === 'white').map((p) => p.nameSnapshot).join(' + ')} {lastMatch.result.score.white}–
-              {lastMatch.result.score.blue} {lastMatch.participants.filter((p) => p.team === 'blue').map((p) => p.nameSnapshot).join(' + ')}
-            </b>
-          </p>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>
+            <MatchLine match={lastMatch} size={36} />
+          </div>
           <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>
             Se borra este resultado (también de las estadísticas) y el partido vuelve a quedar pendiente para jugarlo otra vez.
           </p>
@@ -2374,11 +2387,21 @@ function TournamentReportView({ t }: { t: Tournament }) {
     { icon: '⏱', label: 'Jugado', value: r.matches.length ? minutes(r.playTimeMs) : '—' },
   ];
 
-  const highlights: { icon: string; label: string; text: string; matchId?: string }[] = [];
-  if (r.topScorer) highlights.push({ icon: '⚽', label: 'Pichichi', text: `${r.topScorer.name} · ${r.topScorer.scored} goles` });
-  if (r.biggestWin) highlights.push({ icon: '💥', label: 'Mayor goleada', text: r.biggestWin.label, matchId: r.biggestWin.match.id });
+  // Cada destacado con sus caras: el pichichi, o los dos lados del partido.
+  const highlights: { icon: string; label: string; body: ReactNode; matchId?: string }[] = [];
+  if (r.topScorer)
+    highlights.push({
+      icon: '⚽',
+      label: 'Pichichi',
+      body: (
+        <PlayerTag id={r.topScorer.playerId} name={r.topScorer.name} size={32}>
+          <span className="muted">{r.topScorer.scored} goles</span>
+        </PlayerTag>
+      ),
+    });
+  if (r.biggestWin) highlights.push({ icon: '💥', label: 'Mayor goleada', body: <MatchLine match={r.biggestWin.match} size={30} facesOnly />, matchId: r.biggestWin.match.id });
   if (r.highestScoring && r.highestScoring.match.id !== r.biggestWin?.match.id)
-    highlights.push({ icon: '🔥', label: 'Partido con más goles', text: r.highestScoring.label, matchId: r.highestScoring.match.id });
+    highlights.push({ icon: '🔥', label: 'Partido con más goles', body: <MatchLine match={r.highestScoring.match} size={30} facesOnly />, matchId: r.highestScoring.match.id });
 
   return (
     <div className="rp-layout">
@@ -2428,9 +2451,9 @@ function TournamentReportView({ t }: { t: Tournament }) {
             {highlights.map((h) => (
               <button key={h.label} className="rp-hl" disabled={!h.matchId} onClick={() => h.matchId && openMatch(h.matchId)}>
                 <span aria-hidden="true">{h.icon}</span>
-                <span>
+                <span className="rp-hl-body">
                   <small>{h.label}</small>
-                  <b>{h.text}</b>
+                  <b>{h.body}</b>
                 </span>
               </button>
             ))}

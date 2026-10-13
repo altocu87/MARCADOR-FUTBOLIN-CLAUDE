@@ -23,6 +23,7 @@ import { sound } from '../../services/sound/sound';
 import { formatDuration } from '../../services/statistics';
 import { AssetImage } from './assets';
 import { Avatar } from './common';
+import { PlayerTag } from './PlayerFaces';
 import { AchievementIcon, CategoryBadge, Confetti } from './graphics';
 
 const OTHER: Record<Team, Team> = { white: 'blue', blue: 'white' };
@@ -116,8 +117,7 @@ export function VictoryScreen({
   // Logros nuevos agrupados: cada logro una vez, con quién lo ha conseguido.
   const unlocked = new Map<string, string[]>();
   for (const e of entries?.values() ?? []) {
-    const name = state.participants.find((p) => p.playerId === e.playerId)?.nameSnapshot ?? '?';
-    for (const id of e.unlocked) unlocked.set(id, [...(unlocked.get(id) ?? []), name]);
+    for (const id of e.unlocked) unlocked.set(id, [...(unlocked.get(id) ?? []), e.playerId]);
   }
   const achievements = [...unlocked.entries()]
     .map(([id, who]) => ({ def: ACHIEVEMENTS.find((a) => a.id === id), who }))
@@ -260,7 +260,11 @@ export function VictoryScreen({
                       {def!.name} <span className="vic-ach-rarity">{RARITY_LABEL[def!.rarity]}</span>
                     </div>
                     <div className="vic-ach-desc">{def!.description}</div>
-                    <div className="vic-ach-who">{who.join(' · ')}</div>
+                    <div className="vic-ach-who">
+                      {who.map((pid) => (
+                        <PlayerTag key={pid} id={pid} name={state.participants.find((p) => p.playerId === pid)?.nameSnapshot} size={22} />
+                      ))}
+                    </div>
                   </div>
                 </button>
               ))}

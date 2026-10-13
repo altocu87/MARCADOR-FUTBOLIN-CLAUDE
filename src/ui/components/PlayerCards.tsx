@@ -12,6 +12,7 @@ import { initials } from '../../services/players';
 import { nextCategory, type PlayerProgress } from '../../services/progression';
 import { computePlayerStats, resultFor, resultForTeam, type PlayerStats, type ResultLetter } from '../../services/statistics';
 import { MODE_LABEL, Modal } from './common';
+import { PlayerTag } from './PlayerFaces';
 import { CategoryBadge } from './graphics';
 
 /** ¿Se jugó entre estas mismas alineaciones (en cualquier lado de la mesa)? */
@@ -176,11 +177,7 @@ export function PlayerCard({
 /** Ventana con los datos de un partido de la racha: fecha, tipo, resultado y equipos. */
 export function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; playerId: string; onClose: () => void }) {
   const r = match.result;
-  const names = (t: Team) =>
-    match.participants
-      .filter((p) => p.team === t)
-      .sort((a, b) => a.slot - b.slot)
-      .map((p) => p.nameSnapshot);
+  const people = (t: Team) => match.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot);
   const mine = match.participants.find((p) => p.playerId === playerId);
   const res = mine ? resultForTeam(match, mine.team) : null;
   const side = (t: Team) => (
@@ -189,9 +186,9 @@ export function MatchDetail({ match, playerId, onClose }: { match: StoredMatch; 
         <TeamName team={t} participants={match.participants} size={20} />
         {r.winner === t && ' 🏆'}
       </div>
-      {names(t).map((n) => (
-        <div key={n} className={`md-name ${mine?.team === t && n === mine.nameSnapshot ? 'me' : ''}`}>
-          {n}
+      {people(t).map((p) => (
+        <div key={p.playerId} className={`md-name ${p.playerId === mine?.playerId ? 'me' : ''}`}>
+          <PlayerTag id={p.playerId} name={p.nameSnapshot} size={32} />
         </div>
       ))}
     </div>

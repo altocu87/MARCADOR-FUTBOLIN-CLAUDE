@@ -15,6 +15,7 @@ import {
 } from '../../services/statistics';
 import { Avatar, FormChips, MODE_LABEL, ScreenFrame, Tabs, formatDate, pct } from '../components/common';
 import { CategoryBadge, Podium } from '../components/graphics';
+import { MatchLine, PlayerTag, SideTag } from '../components/PlayerFaces';
 
 const PAGE = 20;
 
@@ -154,8 +155,6 @@ function History() {
   );
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
   const current = list.slice(page * PAGE, page * PAGE + PAGE);
-  const names = (m: (typeof matches)[number], t: 'white' | 'blue') =>
-    m.participants.filter((p) => p.team === t).sort((a, b) => a.slot - b.slot).map((p) => p.nameSnapshot).join(' + ');
 
   return (
     <>
@@ -190,11 +189,11 @@ function History() {
             <button key={m.id} className="row hist-row" onClick={() => navigate({ name: 'matchDetail', matchId: m.id })}>
               <span className="dim hist-date">{formatDate(m.finishedAt)}</span>
               <span className={`hist-mode mode-${m.config.mode}`}>{MODE_LABEL[m.config.mode]}</span>
-              <span className={`hist-name ${m.result.winner === 'white' ? 'win' : ''}`}>{names(m, 'white')}</span>
+              <span className={`hist-name ${m.result.winner === 'white' ? 'win' : ''}`}><SideTag match={m} team="white" /></span>
               <span className="hist-score">
                 {m.result.score.white}–{m.result.score.blue}
               </span>
-              <span className={`hist-name right ${m.result.winner === 'blue' ? 'win' : ''}`}>{names(m, 'blue')}</span>
+              <span className={`hist-name right ${m.result.winner === 'blue' ? 'win' : ''}`}><SideTag match={m} team="blue" right /></span>
               <span className="hist-tags">
                 {m.result.reason === 'golden_goal' && <span className="badge">Prórroga</span>}
                 {m.result.penaltyScore && (
@@ -274,7 +273,7 @@ function HallOfFame() {
             <button key={c.key} className="fame-leader" onClick={() => go(c.playerId)}>
               <span aria-hidden="true">🏆</span>
               <span className="ellipsis" style={{ flex: 1, textAlign: 'left' }}>
-                {players.find((p) => p.id === c.playerId)?.name ?? '?'}
+                <PlayerTag id={c.playerId} size={30} />
               </span>
               <span className="dim" style={{ fontSize: 11 }}>{seasonLabel(c.key)}</span>
             </button>
@@ -310,11 +309,17 @@ function Records() {
               : r.playerId && navigate({ name: 'profile', playerId: r.playerId })
           }
         >
-          <span style={{ flex: 1 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
             <strong>{r.title}</strong>
-            <div className="muted" style={{ fontSize: 12 }}>
-              {r.holder}
-              {r.at ? ` · ${formatDate(r.at)}` : ''}
+            <div className="muted rec-holder" style={{ fontSize: 13 }}>
+              {r.playerId ? (
+                <PlayerTag id={r.playerId} size={26} />
+              ) : r.matchId && matches.find((x) => x.id === r.matchId) ? (
+                <MatchLine match={matches.find((x) => x.id === r.matchId)!} size={22} />
+              ) : (
+                r.holder
+              )}
+              {r.at ? <span className="dim">{formatDate(r.at)}</span> : null}
             </div>
           </span>
           <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--ranked)' }}>{r.value}</span>
@@ -342,10 +347,10 @@ function Pairs() {
       {pairs.map((p, i) => (
         <div key={p.key} className="row">
           <span className={`std-pos pos-${i + 1}`} style={{ width: 30 }}>{i + 1}</span>
-          <span style={{ flex: 1, fontWeight: 800 }}>
-            <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: p.playerIds[0] })}>{p.names.split(' + ')[0]}</button>
-            {' + '}
-            <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: p.playerIds[1] })}>{p.names.split(' + ')[1]}</button>
+          <span className="pair-who" style={{ flex: 1, fontWeight: 800 }}>
+            <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: p.playerIds[0] })}><PlayerTag id={p.playerIds[0]} name={p.names.split(' + ')[0]} size={30} /></button>
+            <span className="pair-plus">+</span>
+            <button className="link-btn" onClick={() => navigate({ name: 'profile', playerId: p.playerIds[1] })}><PlayerTag id={p.playerIds[1]} name={p.names.split(' + ')[1]} size={30} /></button>
           </span>
           <span className="muted">{p.rec.played} PJ</span>
           <span>{p.rec.wins}G{p.rec.draws ? ` · ${p.rec.draws}E` : ''} · {p.rec.losses}P</span>
@@ -369,8 +374,7 @@ function Digest() {
       <div className="digest-body">{body}</div>
     </button>
   );
-  const resultOf = (m: (typeof matches)[number]) =>
-    `${m.participants.filter((p) => p.team === 'white').map((p) => p.nameSnapshot).join(' + ')} ${m.result.score.white}–${m.result.score.blue} ${m.participants.filter((p) => p.team === 'blue').map((p) => p.nameSnapshot).join(' + ')}`;
+  const resultOf = (m: (typeof matches)[number]) => <MatchLine match={m} size={26} />;
   return (
     <>
       <div className="segmented" style={{ width: 400 }}>
@@ -387,13 +391,13 @@ function Digest() {
       ) : (
         <div className="digest-grid scroll">
           {tile(span === 'week' ? 'Jugador de la semana' : 'Jugador del mes', d.playerOfPeriod ? (
-            <><strong>{d.playerOfPeriod.name}</strong><span className="muted"> · {d.playerOfPeriod.wins} victorias en {d.playerOfPeriod.played}</span></>
+            <PlayerTag id={d.playerOfPeriod.playerId} name={d.playerOfPeriod.name} size={44}><span className="muted">{d.playerOfPeriod.wins} victorias en {d.playerOfPeriod.played}</span></PlayerTag>
           ) : '—', d.playerOfPeriod ? () => navigate({ name: 'profile', playerId: d.playerOfPeriod!.playerId }) : undefined)}
-          {tile('Más activo', d.mostActive ? (<><strong>{d.mostActive.name}</strong><span className="muted"> · {d.mostActive.played} partidos</span></>) : '—')}
+          {tile('Más activo', d.mostActive ? (<PlayerTag id={d.mostActive.playerId} name={d.mostActive.name} size={44}><span className="muted">{d.mostActive.played} partidos</span></PlayerTag>) : '—')}
           {tile('Partidos · goles', <strong>{d.matches} · {d.goals}</strong>)}
           {tile('Partido más igualado', d.closest ? resultOf(d.closest) : '—', d.closest ? () => navigate({ name: 'matchDetail', matchId: d.closest!.id }) : undefined)}
           {tile('Mayor paliza', d.biggest ? resultOf(d.biggest) : '—', d.biggest ? () => navigate({ name: 'matchDetail', matchId: d.biggest!.id }) : undefined)}
-          {tile('Pichichi', d.topScorer ? (<><strong>{d.topScorer.name}</strong><span className="muted"> · {d.topScorer.goals} goles</span></>) : 'Faltan goles por apuntar')}
+          {tile('Pichichi', d.topScorer ? (<PlayerTag id={d.topScorer.playerId} name={d.topScorer.name} size={44}><span className="muted">{d.topScorer.goals} goles</span></PlayerTag>) : 'Faltan goles por apuntar')}
         </div>
       )}
     </>

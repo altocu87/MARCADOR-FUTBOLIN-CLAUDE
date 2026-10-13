@@ -3414,9 +3414,14 @@
 .rp-hl:disabled {
   cursor: default;
 }
-.rp-hl span:last-child {
+.rp-hl > span:last-child {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-width: 0;
+}
+.rp-hl b {
+  display: flex;
   min-width: 0;
 }
 .rp-hl small {
@@ -6803,4 +6808,58 @@ div > .name-clash:first-child {
 @keyframes saved-fade {
   0%, 100% { opacity: 0; }
   10%, 85% { opacity: 1; }
+}
+/* Caras en el historial, los récords y las parejas del Ranking. */
+.hist-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.hist-name.right {
+  justify-content: flex-end;
+}
+.rec-holder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  min-width: 0;
+}
+.pair-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pair-plus {
+  color: var(--text-2);
+}
+/* Reposo: líder y último partido con sus caras, apagadas como el resto de la pantalla. */
+.sleep-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.sleep-line .avatar {
+  opacity: 0.6;
+}
+/* «¡Equipo formado!»: las caras de la pareja junto al nombre. */
+.club-fx-who {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* «Partido sin terminar»: los dos lados con sus caras y el marcador en grande. */
+.resume-line {
+  margin: 12px 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+.resume-line .match-line-score {
+  font-size: 26px;
+}
+.rec-holder .match-line > .side-tag {
+  flex: 0 1 auto;
 }
