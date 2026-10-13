@@ -2079,7 +2079,7 @@ export function TournamentDetailScreen({
       {finalFx.whiteTeamId ? (
         fixtureRow(finalFx)
       ) : (
-        <div className="dim" style={{ fontSize: 12 }}>Se decide al acabar la fase regular.</div>
+        <div className="dim" style={{ fontSize: 13 }}>Se decide al acabar la fase regular.</div>
       )}
     </div>
   );

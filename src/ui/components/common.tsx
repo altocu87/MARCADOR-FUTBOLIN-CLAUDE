@@ -102,7 +102,7 @@ export function Toggle({
       <span className="track" />
       <span>
         <strong style={{ display: 'block', fontSize: 15 }}>{label}</strong>
-        {description && <span className="muted" style={{ fontSize: 12 }}>{description}</span>}
+        {description && <span className="muted" style={{ fontSize: 13 }}>{description}</span>}
       </span>
     </button>
   );

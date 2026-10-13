@@ -98,17 +98,17 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
                     <Avatar name={p.nameSnapshot} photo={photos.get(p.playerId)} size={34} />
                     <div style={{ flex: 1 }}>
                       <strong>{p.nameSnapshot}</strong>{' '}
-                      <span className="muted" style={{ fontSize: 12 }}>
+                      <span className="muted" style={{ fontSize: 13 }}>
                         Nivel {e.levelBefore}
                         {e.levelAfter !== e.levelBefore && ` → ${e.levelAfter}`}
                       </span>
-                      <div className="dim" style={{ fontSize: 12 }}>
+                      <div className="dim" style={{ fontSize: 13 }}>
                         {e.deferred
                           ? 'Torneo en juego: la experiencia y los logros se dan al terminarlo.'
                           : e.xpBreakdown.map((l) => `${l.label} +${l.xp}`).join(' · ')}
                       </div>
                       {e.unlocked.length > 0 && (
-                        <div style={{ fontSize: 12, color: 'var(--ranked)' }}>
+                        <div style={{ fontSize: 13, color: 'var(--ranked)' }}>
                           Logros: {e.unlocked.map((id) => ACHIEVEMENTS.find((a) => a.id === id)?.name ?? id).join(', ')}
                         </div>
                       )}

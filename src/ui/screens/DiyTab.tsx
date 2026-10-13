@@ -63,7 +63,7 @@ export function DiyTab({ initialBoard }: { initialBoard?: string }) {
                 <span className="diy-level-n">{l.id}</span>
                 <strong>{l.title}</strong>
               </div>
-              <div className="muted" style={{ fontSize: 12 }}>{l.summary}</div>
+              <div className="muted" style={{ fontSize: 13 }}>{l.summary}</div>
               <ul className="diy-list">
                 {l.needs.map((n) => (
                   <li key={n}>{n}</li>
@@ -117,7 +117,7 @@ export function DiyTab({ initialBoard }: { initialBoard?: string }) {
 
       {section === 'detection' && (
         <div className="diy-detect">
-          <div className="notice" style={{ fontSize: 12 }}>
+          <div className="notice" style={{ fontSize: 13 }}>
             Cualquier sensor con salida de «contacto» vale: el programa aprende al encender cómo está «sin balón» y cuenta gol
             cuando cambia. El mejor sitio es el <strong>canal interior por el que cae la bola</strong> tras el gol.
           </div>
@@ -130,13 +130,13 @@ export function DiyTab({ initialBoard }: { initialBoard?: string }) {
                 <span className="badge">{d.cost}</span>
                 <Difficulty value={d.difficulty} />
               </div>
-              <div style={{ fontSize: 12 }}>{d.how}</div>
+              <div style={{ fontSize: 13 }}>{d.how}</div>
               <div className="diy-two">
                 <div>
                   <div className="label">Dónde</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{d.where}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>{d.where}</div>
                   <div className="label" style={{ marginTop: 6 }}>Conexión</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{d.wiring}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>{d.wiring}</div>
                 </div>
                 <div>
                   <ul className="diy-list pros">
@@ -163,7 +163,7 @@ export function DiyTab({ initialBoard }: { initialBoard?: string }) {
               {s}
             </div>
           ))}
-          <div className="card" style={{ fontSize: 12 }}>
+          <div className="card" style={{ fontSize: 13 }}>
             <div className="label">¿Tu placa no está en la lista?</div>
             Si habla el protocolo MFV3 (una orden por línea: <code>GB</code>, <code>GA</code>, <code>AB</code>, <code>AA</code>,{' '}
             <code>PAUSA</code>) por USB, Wi-Fi o Bluetooth, la app la acepta. Todos los detalles están en docs/MANUAL_DIY.md y
@@ -185,7 +185,7 @@ function BoardDetail({ board }: { board: BoardInfo }) {
           {board.status === 'probada' ? 'Probada en placa' : 'Probada en simulador'}
         </span>
       </div>
-      <div className="dim" style={{ fontSize: 11 }}>{board.aka}</div>
+      <div className="dim" style={{ fontSize: 13 }}>{board.aka}</div>
       <div className="chip-wrap" style={{ margin: '6px 0' }}>
         <span className="badge badge-accent">{ROLE_LABEL[board.role]}</span>
         <span className="badge">{board.chip}</span>
@@ -196,7 +196,7 @@ function BoardDetail({ board }: { board: BoardInfo }) {
         <span className="badge">{board.price}</span>
       </div>
       {board.notes.map((n) => (
-        <div key={n} className="muted" style={{ fontSize: 12 }}>· {n}</div>
+        <div key={n} className="muted" style={{ fontSize: 13 }}>· {n}</div>
       ))}
 
       {used.length > 0 && (
@@ -224,7 +224,7 @@ function BoardDetail({ board }: { board: BoardInfo }) {
             </tbody>
           </table>
           <WiringDiagram board={board} used={used} />
-          <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+          <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>
             Línea continua: del pin al componente · Línea discontinua: el otro cable de cada componente, todos unidos a{' '}
             {board.role === 'pantalla' ? 'COM' : 'GND'}.
           </div>

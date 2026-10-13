@@ -112,7 +112,7 @@ export function PlayerCard({
         <RankPhoto name={name} photo={player?.photo} rank="none" size={PHOTO_SIZE[size]} />
         <div className="pre-info">
           <div className="pre-name">{name}</div>
-          <div className="muted" style={{ fontSize: 12 }}>Progresión pendiente</div>
+          <div className="muted" style={{ fontSize: 13 }}>Progresión pendiente</div>
         </div>
       </div>
     );
@@ -124,7 +124,7 @@ export function PlayerCard({
         <RankPhoto name={name} photo={player?.photo} rank={cat.id} size={PHOTO_SIZE.sm} />
         <div className="pre-info">
           <div className="pre-name">{name}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
+          <div className="muted" style={{ fontSize: 13 }}>
             ELO {prog.elo} · <span className="pre-cat" style={{ color: cat.color, fontWeight: 800 }}>{cat.name}</span> · Nv {prog.level}
           </div>
           <div className="pre-form">{form}</div>

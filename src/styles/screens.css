@@ -20,7 +20,7 @@
   min-height: 60px;
 }
 .home-top .status-pill {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.06em;
 }
 .home-warn {
@@ -410,7 +410,7 @@
   width: 100%;
   text-align: center;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 13px;
 }
 /* Fichas de jugador: la imagen llena la tarjeta y debajo el nombre y los datos. */
 .pick-grid {
@@ -478,16 +478,15 @@
   text-overflow: ellipsis;
 }
 .pick-meta {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-2);
   white-space: nowrap;
 }
 .pick-title {
   max-width: 100%;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ranked);
   white-space: nowrap;
   overflow: hidden;
@@ -989,7 +988,7 @@
   box-shadow: 0 0 8px var(--cat);
 }
 .pre-rankbar-text {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .pre-record {
@@ -1100,7 +1099,7 @@
 }
 .pre-meeting-date {
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1181,7 +1180,7 @@
   animation: pop-in 0.18s ease-out;
 }
 .pre-info-panel .dim {
-  font-size: 11px;
+  font-size: 13px;
 }
 /* ---------- Informe / resumen ---------- */
 /* Fondo a pantalla completa (ya desenfocado en la imagen); se recorta sin deformarse. */
@@ -1294,7 +1293,7 @@
 }
 .pre-compact .pre-recent .form-chip {
   height: 18px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .pre-compact.pre-sm .pre-player {
   padding: 3px 6px 3px 3px;
@@ -1314,7 +1313,7 @@
 }
 .pre-compact.pre-sm .pre-recent .form-chip {
   height: 15px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .pre-compact {
   gap: 5px;
@@ -1376,7 +1375,7 @@
   color: var(--text-2);
 }
 .rep-date {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-3);
 }
 /* Cronología de goles: eje central; Blanco sale a la izquierda y Azul a la derecha. */
@@ -1448,7 +1447,7 @@
   gap: 5px;
   padding: 1px 7px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
   border: 1px solid;
 }
@@ -1486,7 +1485,7 @@
   box-shadow: 0 0 6px var(--danger);
 }
 .rep-tl-tag {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   color: var(--danger);
 }
@@ -1501,7 +1500,7 @@
 }
 .rep-table th {
   text-align: left;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-2);
@@ -1605,22 +1604,22 @@
 }
 .chart-axis {
   fill: #a6b7cf;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .chart-axis.end {
   fill: var(--ranked);
-  font-size: 11px;
+  font-size: 13px;
 }
 .chart-axis.unit {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   fill: #5f7391;
 }
 .chart-axis.period {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   fill: var(--ranked);
 }
@@ -1699,7 +1698,7 @@
 }
 .sc-total .rank-photo {
   border-radius: 50%;
-  font-size: 10px !important;
+  font-size: 13px !important;
 }
 .sc-pending {
   padding: 4px 12px;
@@ -1715,7 +1714,7 @@
   border-radius: 8px;
   background: rgba(4, 8, 15, 0.8);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 13px;
 }
 /* Lista de goles en un panel de cristal oscuro. */
 .sc-list {
@@ -1759,7 +1758,7 @@
   column-gap: 10px;
 }
 .sc-team {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.18em;
   color: var(--k);
@@ -1838,7 +1837,7 @@
   gap: 8px;
 }
 .std-head {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1865,10 +1864,10 @@
   gap: 8px;
 }
 .hist-date {
-  font-size: 12px;
+  font-size: 13px;
 }
 .hist-mode {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2165,7 +2164,7 @@
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(7, 11, 18, 0.6);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2209,12 +2208,12 @@
   min-width: 0;
 }
 .podium-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   max-width: 100%;
 }
 .podium-value {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
   font-weight: 700;
 }
@@ -2380,7 +2379,7 @@
   grid-template-columns: 96px 1fr 104px;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 5px;
   text-transform: capitalize;
 }
@@ -2429,7 +2428,7 @@
   background: linear-gradient(160deg, rgba(242, 201, 76, 0.2), var(--card));
 }
 .challenge-scope {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.12em;
   color: var(--text-2);
@@ -2450,7 +2449,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .cp-track {
@@ -2670,7 +2669,7 @@
   border: 1px solid var(--line);
   background: rgba(7, 16, 28, 0.6);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2684,7 +2683,7 @@
   border-radius: 50%;
   background: var(--surface);
   color: var(--text);
-  font-size: 11px;
+  font-size: 13px;
 }
 .cr-step.is-done b {
   background: color-mix(in srgb, #62d6ff 35%, transparent);
@@ -3149,16 +3148,16 @@
   letter-spacing: 0.02em;
 }
 .tpl-card span {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .tpl-card .tpl-fit {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--neon);
 }
 .tpl-card .tpl-why {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #ff8a8a;
 }
@@ -3283,11 +3282,11 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  font-size: 12px;
+  font-size: 13px;
 }
 .hon-ed-body small {
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 13px;
 }
 .hon-ed-body b {
   font-size: 14px;
@@ -3352,7 +3351,7 @@
 }
 .rp-champ small,
 .rp-mvp small {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .rp-avatars {
@@ -3425,11 +3424,11 @@
   min-width: 0;
 }
 .rp-hl small {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .rp-hl b {
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3452,7 +3451,7 @@
 }
 .fx-series {
   display: block;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-2);
 }
@@ -3496,7 +3495,7 @@
   text-align: center;
   font-weight: 900;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 13px;
 }
 .td-layout.is-bracket {
   grid-template-columns: 1.5fr 1fr;
@@ -3552,7 +3551,7 @@
   border-radius: 0 0 0 6px;
   background: var(--accent);
   color: #04111d;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.06em;
 }
@@ -3761,7 +3760,7 @@
 .diy-list {
   margin: 0;
   padding-left: 16px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .diy-list.pros li::marker {
@@ -3806,7 +3805,7 @@
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   width: 100%;
@@ -3823,13 +3822,13 @@
 .diy-pins {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 .diy-pins th {
   text-align: left;
   color: var(--text-3);
   font-weight: 700;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 4px 6px;
@@ -3840,7 +3839,7 @@
   vertical-align: top;
 }
 .diy-pins .dim {
-  font-size: 10px;
+  font-size: 13px;
 }
 .diy-pin {
   font-family: Consolas, monospace;
@@ -3851,7 +3850,7 @@
 .diy-steps {
   margin: 0;
   padding-left: 20px;
-  font-size: 12px;
+  font-size: 13px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -4204,7 +4203,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text);
   /* Legible sobre el degradado blanco y celeste. */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.7);
@@ -4222,7 +4221,7 @@
   border-radius: 8px;
   border: 1.5px solid currentColor;
   background: rgba(6, 12, 24, 0.85);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.2em;
 }
@@ -4282,7 +4281,7 @@
   text-shadow: 0 0 10px rgba(242, 201, 76, 0.8);
 }
 .next-rest {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
   text-align: center;
 }
@@ -4326,7 +4325,7 @@
 .move {
   display: inline-block;
   width: 14px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   text-align: center;
 }
@@ -4365,11 +4364,11 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   margin-bottom: 2px;
 }
 .round-head span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -4380,14 +4379,14 @@
 }
 .round-head small {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .fixture.is-next {
   outline: 1px solid rgba(242, 201, 76, 0.7);
 }
 .fx-next {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.1em;
   color: var(--ranked);
@@ -4409,7 +4408,7 @@
     inset 0 0 14px rgba(61, 220, 132, 0.12);
 }
 .tn-resume-tag {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -4429,7 +4428,7 @@
   text-overflow: ellipsis;
 }
 .tn-resume-body small {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 
@@ -4465,7 +4464,7 @@ div > .name-clash:first-child {
   font-size: 14px;
 }
 .name-clash-head small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .name-clash-actions {
@@ -4528,7 +4527,7 @@ div > .name-clash:first-child {
   background: rgba(7, 16, 28, 0.6);
   color: var(--text-2);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -4567,7 +4566,7 @@ div > .name-clash:first-child {
   border-radius: 999px;
   background: rgba(20, 14, 2, 0.85);
   border: 1px solid var(--ranked);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--ranked);
   text-align: center;
@@ -4874,7 +4873,7 @@ div > .name-clash:first-child {
   position: relative;
   z-index: 2;
   margin-top: 26px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.14em;
   white-space: nowrap;
@@ -5234,7 +5233,7 @@ div > .name-clash:first-child {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .cer-achs {
@@ -5472,7 +5471,7 @@ div > .name-clash:first-child {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(4, 10, 20, 0.75);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -5530,7 +5529,7 @@ div > .name-clash:first-child {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -5539,7 +5538,7 @@ div > .name-clash:first-child {
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
 }
 .next-rest {
-  font-size: 12px;
+  font-size: 13px;
 }
 /* Filas de jornadas: fotos pequeñas junto al nombre. */
 .fx-team {
@@ -5627,7 +5626,7 @@ div > .name-clash:first-child {
   border-radius: 999px;
   background: rgba(3, 8, 16, 0.75);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5699,7 +5698,7 @@ div > .name-clash:first-child {
   text-transform: uppercase;
 }
 .rule-way-toggle small {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .rule-way-amount {
@@ -6015,7 +6014,7 @@ div > .name-clash:first-child {
   background: var(--mv);
   color: #06120b;
   font-style: normal;
-  font-size: 8px;
+  font-size: 13px;
   line-height: 1;
 }
 .lad-move.up {
@@ -6127,7 +6126,7 @@ div > .name-clash:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .ladder-pair.win .ladder-name {
@@ -6151,7 +6150,7 @@ div > .name-clash:first-child {
   place-items: center;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-align: center;
@@ -6169,14 +6168,14 @@ div > .name-clash:first-child {
 }
 .ladder-note {
   margin-top: auto;
-  font-size: 12px;
+  font-size: 13px;
 }
 .fixture.is-skipped {
   opacity: 0.5;
 }
 .fx-skipped {
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
 }
 .next-chip-court {
   border-color: rgba(214, 92, 255, 0.7);
@@ -6206,12 +6205,12 @@ div > .name-clash:first-child {
 .cer-players.is-pair .cer-stamp {
   padding: 1px 5px;
   border-width: 2px;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.04em;
 }
 .cer-players.is-pair .cer-stamp.is-long {
   max-width: 90px;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 /* Pista 1: la de la final, más grande y adornada. */
@@ -6481,7 +6480,7 @@ div > .name-clash:first-child {
   line-height: 1;
 }
 .th-place small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .th-live {
@@ -6489,7 +6488,7 @@ div > .name-clash:first-child {
   border-radius: 999px;
   border: 1px solid var(--accent);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
 }
 .th-cup.is-dim {
@@ -6517,7 +6516,7 @@ div > .name-clash:first-child {
   z-index: 2;
   background: linear-gradient(180deg, #ffe08a, #e0a82e);
   color: #3a2600;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.06em;
 }
@@ -6670,7 +6669,7 @@ div > .name-clash:first-child {
   white-space: nowrap;
 }
 .rp-tile small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-2);
 }
 .rp-tile-elo {
@@ -6697,7 +6696,7 @@ div > .name-clash:first-child {
   font-size: 24px;
 }
 .rp-hl small {
-  font-size: 12px;
+  font-size: 13px;
 }
 .rp-hl b {
   font-size: 16px;
@@ -6720,7 +6719,7 @@ div > .name-clash:first-child {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-weight: 900;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
 }
 .rp-hl b {
@@ -6755,7 +6754,7 @@ div > .name-clash:first-child {
 }
 /* En pareja los logros, más pequeños, para que quepan en fila. */
 .cer-players.is-pair .cer-ach {
-  font-size: 12px;
+  font-size: 13px;
   padding-top: 1px;
   padding-bottom: 1px;
 }

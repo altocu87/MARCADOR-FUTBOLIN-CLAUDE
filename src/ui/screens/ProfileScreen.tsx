@@ -134,7 +134,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
           {title && <div className="player-title">{title}</div>}
           {prog ? (
             <>
-              <div className="muted" style={{ fontSize: 12 }}>
+              <div className="muted" style={{ fontSize: 13 }}>
                 Nivel {prog.level} · {prog.xp} XP · siguiente a {xpForLevel(prog.level + 1)} XP
               </div>
               <div className="xpbar" style={{ marginTop: 4, maxWidth: 300 }}>
@@ -151,7 +151,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
             <div>
               <div style={{ color: category.color, fontWeight: 800, fontSize: 13 }}>{category.name}</div>
               <div style={{ fontSize: 24, fontWeight: 900 }}>{prog.elo}</div>
-              <div className="dim" style={{ fontSize: 10 }}>ELO · máx {prog.maxElo}</div>
+              <div className="dim" style={{ fontSize: 13 }}>ELO · máx {prog.maxElo}</div>
             </div>
           </div>
         )}
@@ -229,7 +229,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               {hab.byDayPart.map((d) => (
                 <Bar key={d.label} label={d.label} played={d.rec.played} winPct={d.rec.winPct} />
               ))}
-              <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+              <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>
                 {hab.bestDayPart ? `Rinde mejor por la ${hab.bestDayPart}.` : 'Mejor franja: se necesitan 3 partidos en alguna.'}
               </div>
             </div>
@@ -238,7 +238,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               {hab.byWeekday.map((d) => (
                 <Bar key={d.label} label={d.label} played={d.rec.played} winPct={d.rec.winPct} />
               ))}
-              <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+              <div className="dim" style={{ fontSize: 13, marginTop: 4 }}>
                 {hab.favoriteDay ? `Día favorito: ${hab.favoriteDay}.` : 'Sin partidos aún.'}
               </div>
             </div>
@@ -258,7 +258,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                       <span className="muted" style={{ fontSize: 14 }}>le ganas el {stats.favoriteRival.winPct.toFixed(0)} %</span>
                     </PlayerTag>
                   ) : (
-                    'Aún sin rival favorito'
+                    `Aún sin rival favorito (hacen falta ${RIVAL_MIN_MATCHES} partidos contra alguien)`
                   )}
                 </div>
               </button>
@@ -270,13 +270,10 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                       <span className="muted" style={{ fontSize: 14 }}>te gana el {Math.round((stats.nemesis.losses / stats.nemesis.played) * 100)} %</span>
                     </PlayerTag>
                   ) : (
-                    'Aún sin némesis'
+                    `Aún sin némesis (hacen falta ${RIVAL_MIN_MATCHES} partidos contra alguien)`
                   )}
                 </div>
               </button>
-            </div>
-            <div className="dim" style={{ fontSize: 11 }}>
-              Requiere al menos {RIVAL_MIN_MATCHES} enfrentamientos.
             </div>
             <div className="label">Enfrentamientos directos</div>
             {stats.rivals.length === 0 ? <div className="muted">Sin enfrentamientos.</div> : <div className="list">{stats.rivals.map((r) => rivalRow(r))}</div>}
@@ -290,7 +287,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
         )}
         {tab === 'achievements' && (
           <>
-            <div className="dim" style={{ fontSize: 11 }}>Los secretos se revelan al conseguirlos.</div>
+            <div className="dim" style={{ fontSize: 13 }}>Los secretos se revelan al conseguirlos.</div>
             {(Object.keys(CATEGORY_LABEL) as AchievementCategory[]).map((cat) => (
               <div key={cat}>
                 <div className="label" style={{ margin: '4px 0' }}>{CATEGORY_LABEL[cat]}</div>
@@ -304,7 +301,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                         <span style={{ minWidth: 0 }}>
                           <strong>{hidden ? 'Logro secreto' : a.name}</strong>
                           {a.title && !hidden && <span className="player-title" style={{ marginLeft: 6 }}>«{a.title}»</span>}
-                          <div className="muted" style={{ fontSize: 11 }}>
+                          <div className="muted" style={{ fontSize: 13 }}>
                             {hidden ? '???' : a.description} · {RARITY_LABEL[a.rarity]}
                             {got && ` · ${formatDate(got.at)}`}
                           </div>
@@ -327,8 +324,8 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
                 return (
                   <button key={m.id} className="row" onClick={() => navigate({ name: 'matchDetail', matchId: m.id })}>
                     <span className={`form-chip ${res}`}>{res}</span>
-                    <span className="dim" style={{ width: 120, fontSize: 12 }}>{formatDate(m.finishedAt)}</span>
-                    <span className="muted" style={{ width: 110, fontSize: 12 }}>{MODE_LABEL[m.config.mode]}</span>
+                    <span className="dim" style={{ width: 120, fontSize: 13 }}>{formatDate(m.finishedAt)}</span>
+                    <span className="muted" style={{ width: 110, fontSize: 13 }}>{MODE_LABEL[m.config.mode]}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <MatchLine match={m} size={24} />
                     </span>

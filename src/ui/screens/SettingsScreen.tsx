@@ -433,7 +433,7 @@ function Audio() {
             </button>
           ))}
         </div>
-        <p className="dim" style={{ fontSize: 12 }}>
+        <p className="dim" style={{ fontSize: 13 }}>
           Base: flash, explosión, ondas, partículas y líneas de velocidad. «Reducidos» evita destellos. Los sonidos se
           sintetizan en local (sin archivos externos).
         </p>
@@ -488,7 +488,7 @@ function Progression() {
           </button>
         </div>
       </div>
-      <p className="dim" style={{ fontSize: 12 }}>
+      <p className="dim" style={{ fontSize: 13 }}>
         Cómo se gana XP: partido +50 · victoria +100 · derrota +25 · victoria clasificatoria +50 · prórroga +25 · penaltis +25 ·
         logros +25/+50/+100. Nivel N requiere 100 × N^1,35 XP acumulado (0–100). Solo Clasificatorio modifica ELO.
       </p>
@@ -565,7 +565,7 @@ function SystemTab() {
         <div className="muted" style={{ fontSize: 13 }}>
           {players.length} jugadores · {matches.length} partidos · {usage} usados
         </div>
-        <p className="dim" style={{ fontSize: 12 }}>
+        <p className="dim" style={{ fontSize: 13 }}>
           Sin backend ni conexión online: base de datos y funciones online son la última fase. Una copia dentro del
           navegador no es un backup externo: exporta un archivo de vez en cuando.
         </p>
@@ -577,7 +577,7 @@ function SystemTab() {
           <button className="btn btn-sm" onClick={() => fileRef.current?.click()}>Importar archivo</button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
-        <p className="dim" style={{ fontSize: 12 }}>Incluye jugadores, preferencias e historial (formato v{STORAGE_FORMAT_VERSION}). La progresión se recalcula.</p>
+        <p className="dim" style={{ fontSize: 13 }}>Incluye jugadores, preferencias e historial (formato v{STORAGE_FORMAT_VERSION}). La progresión se recalcula.</p>
         {errors.length > 0 && <div className="notice error">{errors.join(' ')}</div>}
       </div>
       <div className="card">
@@ -585,7 +585,7 @@ function SystemTab() {
         <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>
           Teclado de desarrollo: Q/A gol Blanco · P/L gol Azul · Espacio pausa · Intro salta la cuenta atrás.
         </p>
-        <p className="dim" style={{ fontSize: 12, margin: 0 }}>
+        <p className="dim" style={{ fontSize: 13, margin: 0 }}>
           Simulador de pulsadores/sensores: en la consola, <code>marcador.enviar('GOL_BLANCO', 'button')</code>.
           Todas las entradas pasan por el mismo motor y respetan el bloqueo de 3 s.
         </p>
@@ -595,7 +595,7 @@ function SystemTab() {
         <button className="btn btn-danger btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirmWipe(true)}>
           Borrar todos los datos locales
         </button>
-        <p className="dim" style={{ fontSize: 12 }}>Firmware, OTA, Wi-Fi y reinicio remoto: pendientes del bloque de hardware/conectividad.</p>
+        <p className="dim" style={{ fontSize: 13 }}>Firmware, OTA, Wi-Fi y reinicio remoto: pendientes del bloque de hardware/conectividad.</p>
       </div>
       <div className="card">
         <div className="label">Administración</div>

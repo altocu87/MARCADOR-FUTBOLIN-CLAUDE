@@ -229,7 +229,7 @@
   font-size: 13px;
 }
 .match-card .pick-title {
-  font-size: 11px;
+  font-size: 13px;
 }
 .team-cards.count-1 .match-card {
   height: 100px;
@@ -251,7 +251,7 @@
   font-size: 14px;
 }
 .team-cards.count-1 .match-card .pick-title {
-  font-size: 12px;
+  font-size: 13px;
 }
 .match-card .team-card-info {
   overflow: hidden;
@@ -278,11 +278,11 @@
   letter-spacing: 0;
 }
 .team-cards.many .match-card .pick-meta {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: -0.02em;
 }
 .team-cards.many .match-card .pick-title {
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .center-col {
@@ -342,7 +342,7 @@
   white-space: nowrap;
 }
 .center-badges .badge {
-  font-size: 11px;
+  font-size: 13px;
 }
 /* Reloj sobre un panel oscuro para que destaque; el brillo toma el color del tiempo. */
 .clock-panel {
@@ -963,7 +963,7 @@
   box-shadow: 0 0 24px rgba(242, 201, 76, 0.6);
 }
 .player-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2041,7 +2041,7 @@
   font-variant-numeric: tabular-nums;
 }
 .vic-elo {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   padding: 1px 8px;
   border-radius: 999px;
@@ -2057,7 +2057,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   color: var(--ranked);
 }
@@ -2158,7 +2158,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   color: #ffffff;
   text-shadow: 0 0 3px #000, 0 1px 2px #000;
@@ -2231,7 +2231,7 @@
   animation: gs-rise 0.25s both;
 }
 .vic-bd-item {
-  font-size: 11px;
+  font-size: 13px;
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -2245,7 +2245,7 @@
   margin-top: auto;
 }
 .vic-ach-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.16em;
   color: var(--ranked);
@@ -2334,7 +2334,7 @@
   font-weight: 900;
 }
 .vic-ach-rarity {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2342,12 +2342,12 @@
   margin-left: 4px;
 }
 .vic-ach-desc {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-2);
   line-height: 1.15;
 }
 .vic-ach-who {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--ranked);
 }
@@ -2383,7 +2383,7 @@
   border-radius: 999px;
   background: #ffd400;
   color: #1a1203;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.06em;
 }

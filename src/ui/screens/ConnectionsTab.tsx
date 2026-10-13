@@ -53,19 +53,19 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
           <strong style={{ flex: 1 }}>{INFO[kind].title}</strong>
           <span className={`badge ${on ? 'badge-ok' : st.status === 'error' ? 'badge-danger' : ''}`}>{STATUS_LABEL[st.status]}</span>
         </div>
-        <div className="muted" style={{ fontSize: 12 }}>{INFO[kind].text}</div>
+        <div className="muted" style={{ fontSize: 13 }}>{INFO[kind].text}</div>
         {kind === 'websocket' && (
           <input className="input" style={{ minHeight: 44, fontSize: 14 }} value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Dirección WebSocket" />
         )}
         {(st.board || st.detail) && (
-          <div className="dim" style={{ fontSize: 11 }}>
+          <div className="dim" style={{ fontSize: 13 }}>
             {st.board ? `Placa: ${st.board}` : ''} {st.detail ?? ''}
           </div>
         )}
         {on && st.caps && st.caps.length > 0 && (
           <div className="chip-wrap" aria-label="Lo que sabe hacer la placa">
             {st.caps.map((c) => (
-              <span key={c} className="badge" style={{ fontSize: 10 }}>{CAP_LABEL[c] ?? c}</span>
+              <span key={c} className="badge" style={{ fontSize: 13 }}>{CAP_LABEL[c] ?? c}</span>
             ))}
           </div>
         )}
@@ -73,7 +73,7 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
           <button className="btn btn-sm" onClick={() => onShowGuide(st.boardId)}>Ver esquema de conexión</button>
         )}
         {!supported ? (
-          <div className="notice warn" style={{ fontSize: 11 }}>No disponible aquí. {INFO[kind].needs}</div>
+          <div className="notice warn" style={{ fontSize: 13 }}>No disponible aquí. {INFO[kind].needs}</div>
         ) : on || busy ? (
           <button className="btn btn-sm btn-danger" onClick={() => void hub.disconnect(kind)}>Desconectar</button>
         ) : (
@@ -109,7 +109,7 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
             <button className="btn btn-sm" onClick={() => sendExternalInput('ANULAR_BLANCO', 'button')}>ANULAR_BLANCO</button>
             <button className="btn btn-sm" onClick={() => sendExternalInput('PAUSA', 'button')}>PAUSA</button>
           </div>
-          <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>
+          <div className="dim" style={{ fontSize: 13, marginTop: 6 }}>
             ¿Quieres montar tu propia placa con pulsadores o sensores?{' '}
             {onShowGuide ? (
               <button className="btn btn-sm" style={{ marginTop: 4 }} onClick={() => onShowGuide()}>
@@ -122,7 +122,7 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
         </div>
         <div className="card conn-log">
           <div className="label">Registro</div>
-          <div className="scroll" style={{ flex: 1, minHeight: 0, fontFamily: 'Consolas, monospace', fontSize: 11 }}>
+          <div className="scroll" style={{ flex: 1, minHeight: 0, fontFamily: 'Consolas, monospace', fontSize: 13 }}>
             {hub.log.length === 0 ? (
               <span className="dim">Sin mensajes.</span>
             ) : (

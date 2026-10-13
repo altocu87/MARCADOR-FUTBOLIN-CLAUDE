@@ -12,7 +12,7 @@ import {
   seasonLabel,
   sortMatches,
 } from '../../services/statistics';
-import { Avatar, FormChips, MODE_LABEL, ScreenFrame, Tabs, formatDate, pct } from '../components/common';
+import { Avatar, FormChips, HelpButton, MODE_LABEL, ScreenFrame, Tabs, formatDate, pct } from '../components/common';
 import { CategoryBadge, Podium } from '../components/graphics';
 import { MatchLine, PlayerTag, SideTag } from '../components/PlayerFaces';
 
@@ -90,9 +90,11 @@ function Standings() {
             HISTÓRICO
           </button>
         </div>
-        <span className="dim" style={{ fontSize: 11 }}>
-          {scope === 'season' ? 'ELO de temporada: todos empiezan en 1200.' : 'ELO acumulado de siempre.'}
-        </span>
+        <HelpButton
+          title="ELO"
+          text="En la temporada, todos empiezan en 1200 y se cuenta solo lo jugado en ella. En «Histórico», el ELO acumulado de siempre."
+          className="head-help"
+        />
       </div>
       {rows.length === 0 ? (
         <div className="empty">
@@ -281,7 +283,7 @@ function HallOfFame() {
               <span className="ellipsis" style={{ flex: 1, textAlign: 'left' }}>
                 <PlayerTag id={c.playerId} size={30} />
               </span>
-              <span className="dim" style={{ fontSize: 11 }}>{seasonLabel(c.key)}</span>
+              <span className="dim" style={{ fontSize: 13 }}>{seasonLabel(c.key)}</span>
             </button>
           ))}
         </div>
@@ -368,7 +370,6 @@ function Pairs() {
           <strong style={{ width: 60, textAlign: 'right', color: 'var(--ranked)' }}>{pct(p.rec.winPct)}</strong>
         </div>
       ))}
-      <div className="dim" style={{ fontSize: 11 }}>Ordenado por % de victorias; con pocos partidos es orientativo.</div>
     </div>
   );
 }

@@ -608,7 +608,7 @@ function PenaltiesView({ ctl }: { ctl: MatchController }) {
             <>
               <div className="label">Lanza</div>
               <div className={`pen-turn team-${turn}`}>{TEAM_LABEL[turn]}</div>
-              <div className="dim" style={{ fontSize: 12, textAlign: 'center' }}>
+              <div className="dim" style={{ fontSize: 13, textAlign: 'center' }}>
                 Intento {state.penalties.filter((k) => k.team === turn).length + 1}
                 {sudden ? ' · se decide por parejas' : ` de ${state.config.penaltyRounds}`}
               </div>

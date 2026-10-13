@@ -145,7 +145,7 @@ export function EloChart({ points, initial }: { points: { elo: number; at: numbe
   const W = 360;
   const H = 120;
   const data = [initial, ...points.map((p) => p.elo)];
-  if (data.length < 2) return <div className="dim" style={{ fontSize: 12 }}>Sin clasificatorios todavía.</div>;
+  if (data.length < 2) return <div className="dim" style={{ fontSize: 13 }}>Sin clasificatorios todavía.</div>;
   const min = Math.min(...data) - 10;
   const max = Math.max(...data) + 10;
   const x = (i: number) => 8 + (i / (data.length - 1)) * (W - 16);
