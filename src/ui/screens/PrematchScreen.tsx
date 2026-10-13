@@ -133,7 +133,7 @@ export function PrematchScreen({
                 {prediction.directMatches} enfrentamientos directos. Pesos del cálculo: ELO {(prediction.weights.elo * 100).toFixed(0)} % ·
                 enfrentamientos directos {(prediction.weights.h2h * 100).toFixed(0)} % · forma {(prediction.weights.form * 100).toFixed(0)} %.
               </span>
-              <span className="dim">Estimación, nunca una certeza. Fórmula propuesta pendiente de aprobación.</span>
+              <span className="dim">Estimación, nunca una certeza.</span>
               <span className="dim">Toca para cerrar</span>
             </button>
           )}

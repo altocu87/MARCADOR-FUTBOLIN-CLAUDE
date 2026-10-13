@@ -251,7 +251,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               </div>
             </div>
             <div className="dim" style={{ fontSize: 11 }}>
-              Requiere al menos {RIVAL_MIN_MATCHES} enfrentamientos. Algoritmo propuesto pendiente de aprobación.
+              Requiere al menos {RIVAL_MIN_MATCHES} enfrentamientos.
             </div>
             <div className="label">Enfrentamientos directos</div>
             {stats.rivals.length === 0 ? <div className="muted">Sin enfrentamientos.</div> : <div className="list">{stats.rivals.map(rivalRow)}</div>}
@@ -265,7 +265,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
         )}
         {tab === 'achievements' && (
           <>
-            <div className="dim" style={{ fontSize: 11 }}>Catálogo propuesto pendiente de aprobación · los secretos se revelan al conseguirlos.</div>
+            <div className="dim" style={{ fontSize: 11 }}>Los secretos se revelan al conseguirlos.</div>
             {(Object.keys(CATEGORY_LABEL) as AchievementCategory[]).map((cat) => (
               <div key={cat}>
                 <div className="label" style={{ margin: '4px 0' }}>{CATEGORY_LABEL[cat]}</div>

@@ -134,9 +134,6 @@ export function MatchReport({ match: given }: { match: StoredMatch }) {
                   </div>
                 );
               })}
-              <div className="dim" style={{ fontSize: 11 }}>
-                Reglas propuestas ({progression.rulesVersion}) pendientes de aprobación.
-              </div>
             </div>
           )}
         </div>

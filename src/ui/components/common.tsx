@@ -239,26 +239,33 @@ export function TestModeBadge() {
   );
 }
 
+/** Botón «?»: al tocarlo enseña la explicación en una burbuja; un toque en cualquier sitio la cierra. */
+export function HelpButton({ title, text, className }: { title: string; text: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className={`cr-help ${className ?? ''}${open ? ' is-open' : ''}`} aria-label={`¿Qué es «${title}»?`} onClick={() => setOpen((x) => !x)}>
+        ?
+      </button>
+      {open && (
+        <div className="cr-help-layer" onClick={() => setOpen(false)}>
+          <div className="cr-help-bubble" role="note">
+            <b>{title}</b>
+            <span>{text}</span>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** Casilla de un dato. Con `help`, lleva una «?» que lo explica al tocarla. */
 export function StatTile({ k, v, help }: { k: string; v: ReactNode; help?: string }) {
-  const [open, setOpen] = useState(false);
   return (
     <div className={`stat${help ? ' has-help' : ''}`}>
       <div className="v">{v}</div>
       <div className="k">{k}</div>
-      {help && (
-        <button className={`cr-help stat-help${open ? ' is-open' : ''}`} aria-label={`¿Qué es «${k}»?`} onClick={() => setOpen((x) => !x)}>
-          ?
-        </button>
-      )}
-      {help && open && (
-        <div className="cr-help-layer" onClick={() => setOpen(false)}>
-          <div className="cr-help-bubble" role="note">
-            <b>{k}</b>
-            <span>{help}</span>
-          </div>
-        </div>
-      )}
+      {help && <HelpButton title={k} text={help} className="stat-help" />}
     </div>
   );
 }

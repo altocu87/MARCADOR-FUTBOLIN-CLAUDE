@@ -17,7 +17,6 @@ import {
   type Preferences,
 } from '../../services/persistence';
 import { setPlayerActive, sortPlayers } from '../../services/players';
-import { PROGRESSION_RULES_VERSION } from '../../services/progression';
 import { GOAL_SOUNDS, sound } from '../../services/sound/sound';
 import { voice } from '../../services/sound/voice';
 import { fullscreenAvailable, toggleFullscreen, wakeLock } from '../../services/system/device';
@@ -164,7 +163,7 @@ function General() {
         />
       </div>
       <div className="card">
-        <div className="label">Primer lanzador en penaltis (propuesta)</div>
+        <div className="label">Primer lanzador en penaltis</div>
         <div className="segmented" style={{ marginTop: 6 }}>
           <button className="seg" aria-pressed={prefs.penaltyFirstTeam === 'white'} onClick={() => update({ penaltyFirstTeam: 'white' })}>
             BLANCO
@@ -458,8 +457,7 @@ function Progression() {
   return (
     <>
       <div className="notice warn" style={{ marginBottom: 8 }}>
-        Parámetros PROPUESTOS ({PROGRESSION_RULES_VERSION}), pendientes de aprobación. Todo se recalcula desde el historial: cambiar
-        un valor reprocesa ELO, XP, niveles y logros sin duplicar premios.
+        Cambiar un valor recalcula ELO, XP y niveles desde el historial.
       </div>
       <div className="settings-grid">
         <div className="card">
@@ -491,15 +489,15 @@ function Progression() {
           <Stepper label="partidos provisionales" value={p.provisionalMatches} min={0} max={50} onChange={(v) => set({ provisionalMatches: v })} />
         </div>
         <div className="card">
-          <div className="label">ELO inicial (aprobado: 1200)</div>
+          <div className="label">ELO inicial</div>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{p.eloInitial}</div>
           <button className="btn btn-sm" onClick={() => set({ ...DEFAULT_PROGRESSION, enabled: p.enabled })}>
-            Restaurar propuesta
+            Valores por defecto
           </button>
         </div>
       </div>
       <p className="dim" style={{ fontSize: 12 }}>
-        XP propuesto: partido +50 · victoria +100 · derrota +25 · victoria clasificatoria +50 · prórroga +25 · penaltis +25 ·
+        Cómo se gana XP: partido +50 · victoria +100 · derrota +25 · victoria clasificatoria +50 · prórroga +25 · penaltis +25 ·
         logros +25/+50/+100. Nivel N requiere 100 × N^1,35 XP acumulado (0–100). Solo Clasificatorio modifica ELO.
       </p>
     </>
@@ -659,24 +657,6 @@ function SystemTab() {
   );
 }
 
-const PENDING = [
-  ['Loco', 'Partido Loco: un hándicap al azar cada 30–60 s de juego (14 tipos). Pendiente de aprobación.'],
-  ['Torneos', 'Implementada propuesta torneos-1 (liguilla y cuadro 3–8 equipos). Pendiente de aprobación.'],
-  ['Goleador', 'Asignación opcional tras el partido (1v1 automática). El documento original no lo registraba.'],
-  ['Retos y temporadas', 'Propuestas retos-1 y temporadas mensuales/trimestrales. Pendientes de aprobación.'],
-  ['Correcciones', 'Operaciones permitidas al finalizar parte/partido y corrección de penaltis.'],
-  ['Penaltis', 'Equipo que inicia (propuesta: Blanco configurable) y política de corrección.'],
-  ['XP y niveles', 'Acumulación, fórmula de nivel, redondeos y tope.'],
-  ['ELO', 'K exacto, redondeos, equipos con K distintos y multiplicador por goles.'],
-  ['Categorías', 'Umbrales finales y posible histéresis.'],
-  ['Ranking', 'Desempates y muestra mínima.'],
-  ['Estadísticas', 'Empates tras tanda, atribución en 2v2, rachas y remontadas.'],
-  ['Predicción', 'Fórmula por factor y redistribución con pocos datos.'],
-  ['Logros y récords', 'Catálogo, condiciones, muestras mínimas y premios.'],
-  ['Recuperación', 'Comportamiento del reloj tras recarga, cierre o apagado.'],
-  ['Hardware', 'Viabilidad en S3, runtime, transporte con C3, sensores y alimentación.'],
-  ['Última fase', 'Modelo de acceso remoto, migración y conflictos entre dispositivos.'],
-];
 
 function Info() {
   return (
@@ -685,15 +665,6 @@ function Info() {
         <div className="stat"><div className="v" style={{ fontSize: 16 }}>{APP_VERSION}</div><div className="k">Aplicación</div></div>
         <div className="stat"><div className="v" style={{ fontSize: 16 }}>{ENGINE_VERSION}</div><div className="k">Motor · {RULES_VERSION}</div></div>
         <div className="stat"><div className="v" style={{ fontSize: 16 }}>{STATS_DEFINITIONS_VERSION}</div><div className="k">Definiciones</div></div>
-      </div>
-      <div className="label" style={{ marginBottom: 6 }}>Decisiones pendientes del propietario</div>
-      <div className="list">
-        {PENDING.map(([k, v]) => (
-          <div key={k} className="row" style={{ minHeight: 40 }}>
-            <strong style={{ width: 150 }}>{k}</strong>
-            <span className="muted" style={{ fontSize: 13 }}>{v}</span>
-          </div>
-        ))}
       </div>
     </>
   );

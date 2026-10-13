@@ -1188,3 +1188,10 @@ button.row:active {
 .stat .stat-help {
   right: 8px;
 }
+/* «?» en la cabecera de una pantalla: en su sitio, no flotando. */
+.cr-help.head-help {
+  position: static;
+  transform: none;
+  width: 44px;
+  height: 44px;
+}

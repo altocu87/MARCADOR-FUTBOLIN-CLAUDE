@@ -135,9 +135,6 @@ function Standings() {
           </div>
         </>
       )}
-      <div className="dim" style={{ fontSize: 11 }}>
-        Reglas propuestas pendientes de aprobación · temporada {prefs.seasonLength === 'month' ? 'mensual' : 'trimestral'} (Ajustes → General).
-      </div>
     </>
   );
 }

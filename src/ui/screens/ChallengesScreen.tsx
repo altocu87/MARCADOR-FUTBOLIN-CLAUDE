@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { activeChallenges, challengeProgress } from '../../services/progression';
 import { sortPlayers } from '../../services/players';
-import { Avatar, ScreenFrame } from '../components/common';
+import { Avatar, HelpButton, ScreenFrame } from '../components/common';
 
 /** Retos del día y de la semana con el progreso de cada jugador activo. */
 export function ChallengesScreen() {
@@ -19,7 +19,12 @@ export function ChallengesScreen() {
   const hoursLeft = Math.max(0, Math.round((endOfDay.getTime() - now) / 3_600_000));
 
   return (
-    <ScreenFrame title="Retos" subtitle="diarios y semanales" onBack={() => navigate({ name: 'home' })}>
+    <ScreenFrame
+      title="Retos"
+      subtitle="diarios y semanales"
+      onBack={() => navigate({ name: 'home' })}
+      right={<HelpButton title="Retos" text="1 reto diario (+40 XP) y 3 semanales (+100 XP). Solo cuentan los partidos guardados." className="head-help" />}
+    >
       {!prefs.challenges && <div className="notice warn">Los retos están desactivados en Ajustes → General: no conceden XP.</div>}
       <div className="challenge-cards">
         {challenges.map((c) => (
@@ -55,9 +60,6 @@ export function ChallengesScreen() {
           ))}
         </div>
       )}
-      <div className="dim" style={{ fontSize: 11 }}>
-        Propuesta «retos-1»: 1 reto diario (+40 XP) y 3 semanales (+100 XP), elegidos según la fecha. Solo cuentan partidos guardados.
-      </div>
     </ScreenFrame>
   );
 }
