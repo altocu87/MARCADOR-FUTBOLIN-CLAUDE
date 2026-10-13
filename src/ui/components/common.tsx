@@ -239,11 +239,26 @@ export function TestModeBadge() {
   );
 }
 
-export function StatTile({ k, v }: { k: string; v: ReactNode }) {
+/** Casilla de un dato. Con `help`, lleva una «?» que lo explica al tocarla. */
+export function StatTile({ k, v, help }: { k: string; v: ReactNode; help?: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="stat">
+    <div className={`stat${help ? ' has-help' : ''}`}>
       <div className="v">{v}</div>
       <div className="k">{k}</div>
+      {help && (
+        <button className={`cr-help stat-help${open ? ' is-open' : ''}`} aria-label={`¿Qué es «${k}»?`} onClick={() => setOpen((x) => !x)}>
+          ?
+        </button>
+      )}
+      {help && open && (
+        <div className="cr-help-layer" onClick={() => setOpen(false)}>
+          <div className="cr-help-bubble" role="note">
+            <b>{k}</b>
+            <span>{help}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

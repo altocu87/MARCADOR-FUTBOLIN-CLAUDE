@@ -126,7 +126,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
           {prog ? (
             <>
               <div className="muted" style={{ fontSize: 12 }}>
-                Nivel {prog.level} · {prog.xp} XP · siguiente a {xpForLevel(prog.level + 1)} XP · {goals} goles apuntados
+                Nivel {prog.level} · {prog.xp} XP · siguiente a {xpForLevel(prog.level + 1)} XP
               </div>
               <div className="xpbar" style={{ marginTop: 4, maxWidth: 300 }}>
                 <span style={{ width: `${levelProgress(prog.xp) * 100}%` }} />
@@ -177,10 +177,14 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               />
               <StatTile k="Mejor racha" v={stats.bestWinStreak} />
               <StatTile k="Tiempo jugado" v={formatDuration(stats.totalPlayTimeMs)} />
-              <StatTile k="Goles personales" v={goals} />
+              <StatTile
+                k="Goles apuntados"
+                v={goals}
+                help="Los goles que se apuntaron a su nombre. En 1 contra 1 se apuntan solos; en parejas, solo si alguien toca su ficha al marcar."
+              />
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
-              Últimos partidos: <FormChips form={stats.recent} /> · Goles del perfil = goles del equipo mientras participaba; los personales solo cuentan si se asignan.
+              Últimos partidos: <FormChips form={stats.recent} />
             </div>
           </>
         )}

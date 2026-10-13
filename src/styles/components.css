@@ -1180,3 +1180,11 @@ button.row:active {
   -webkit-touch-callout: none;
   -webkit-user-drag: none;
 }
+/* Casilla con «?»: la «?» a la derecha, sin tapar el número. */
+.stat.has-help {
+  position: relative;
+  padding-right: 48px;
+}
+.stat .stat-help {
+  right: 8px;
+}
