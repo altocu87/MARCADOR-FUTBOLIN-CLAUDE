@@ -3,7 +3,7 @@
  * y se recalcula desde el historial (coherente ante correcciones posteriores).
  */
 import type { Player, StoredMatch } from '../persistence';
-import { personalGoals } from '../statistics/extras';
+import { fullyScored, personalGoals } from '../statistics/extras';
 import { comebackSize, computePlayerStats, fastestGoalMs, formatDuration, sortMatches } from '../statistics/statistics';
 import type { ProgressionSnapshot } from './progression';
 
@@ -134,8 +134,9 @@ export function computeHallOfFame(
     }, (v) => `${v.toFixed(0)} %`),
     top('matches', 'Más partidos', (p) => stats.get(p.id)!.general.played, (v) => String(v)),
   ];
-  const goals = personalGoals(matches);
-  rows.push(top('scorer', 'Pichichi (goles asignados)', (p) => goals.get(p.id) ?? null, (v) => String(v)));
+  // Solo partidos con todos los goles apuntados: con goles sin autor, el pichichi no sería real.
+  const goals = personalGoals(matches.filter(fullyScored));
+  rows.push(top('scorer', 'Pichichi', (p) => goals.get(p.id) ?? null, (v) => String(v)));
   if (progression) {
     rows.push(top('tournaments', 'Torneos ganados', (p) => progression.players.get(p.id)?.tournamentsWon ?? null, (v) => String(v)));
   }

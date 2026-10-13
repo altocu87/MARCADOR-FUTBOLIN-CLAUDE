@@ -2338,7 +2338,8 @@ function TournamentReportView({ t }: { t: Tournament }) {
   const champ = t.teams.find((x) => x.id === t.winnerTeamId);
   const photo = (id: string) => players.find((p) => p.id === id)?.photo;
   const openMatch = (matchId: string) => navigate({ name: 'matchDetail', matchId, fromTournament: true });
-  const anyScored = r.players.some((p) => p.scored > 0);
+  // Goles por jugador solo si casi todos tienen autor apuntado (si no, la columna mentiría).
+  const anyScored = r.scorersReliable && r.players.some((p) => p.scored > 0);
   // Columna de empates solo si los hubo (y entonces nunca se cuentan como derrota).
   const anyDraws = r.players.some((p) => p.draws > 0);
   const total = t.fixtures.filter((f) => !f.bye && !f.skipped).length;
@@ -2463,7 +2464,7 @@ function TournamentReportView({ t }: { t: Tournament }) {
       </div>
       {mvpHelp && (
         <Modal title="Puntos de MVP" onClose={() => setMvpHelp(false)} actions={<button className="btn btn-primary" onClick={() => setMvpHelp(false)}>Vale</button>}>
-          <p style={{ margin: 0, fontSize: 18 }}>3 por victoria, 1 por empate, 1 por gol marcado, la mitad de la diferencia de goles y 2 al campeón.</p>
+          <p style={{ margin: 0, fontSize: 18 }}>3 por victoria, 1 por empate, la mitad de la diferencia de goles de su equipo y 2 al campeón. Los goles de cada jugador no cuentan: no siempre se apunta quién marcó.</p>
         </Modal>
       )}
     </div>

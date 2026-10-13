@@ -396,7 +396,7 @@ function Digest() {
           {tile('Partidos · goles', <strong>{d.matches} · {d.goals}</strong>)}
           {tile('Partido más igualado', d.closest ? resultOf(d.closest) : '—', d.closest ? () => navigate({ name: 'matchDetail', matchId: d.closest!.id }) : undefined)}
           {tile('Mayor paliza', d.biggest ? resultOf(d.biggest) : '—', d.biggest ? () => navigate({ name: 'matchDetail', matchId: d.biggest!.id }) : undefined)}
-          {tile('Pichichi', d.topScorer ? (<><strong>{d.topScorer.name}</strong><span className="muted"> · {d.topScorer.goals} goles</span></>) : 'Sin goleadores asignados')}
+          {tile('Pichichi', d.topScorer ? (<><strong>{d.topScorer.name}</strong><span className="muted"> · {d.topScorer.goals} goles</span></>) : 'Faltan goles por apuntar')}
         </div>
       )}
     </>

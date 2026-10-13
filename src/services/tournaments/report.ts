@@ -7,7 +7,7 @@
  */
 import type { Team } from '../../match-engine';
 import type { Player, StoredMatch, Tournament } from '../persistence';
-import { personalGoalsInMatch } from '../statistics/extras';
+import { SCORER_COVERAGE_MIN, personalGoalsInMatch, scorerCoverage } from '../statistics/extras';
 import { FORMAT_LABEL, finalRanking } from './tournaments';
 
 /** Clave de un nombre de competición (sin mayúsculas ni espacios de más). */
@@ -64,7 +64,7 @@ export interface PlayerLine {
   /** Goles de su equipo a favor y en contra. */
   goalsFor: number;
   goalsAgainst: number;
-  /** Goles marcados por él (solo si se apuntaron goleadores o jugó solo). */
+  /** Goles apuntados a él (en 1 contra 1, todos los suyos; en parejas, los que alguien apuntó). */
   scored: number;
   winPct: number;
   champion: boolean;
@@ -88,8 +88,10 @@ export interface TournamentReport {
   extraTime: number;
   players: PlayerLine[];
   mvp?: PlayerLine;
-  /** Máximo goleador (solo si hay goles con autor). */
+  /** Máximo goleador (solo si el dato es fiable: ver `scorersReliable`). */
   topScorer?: PlayerLine;
+  /** ¿Tienen autor casi todos los goles (`SCORER_COVERAGE_MIN`)? Si no, los goles por jugador no se enseñan. */
+  scorersReliable: boolean;
   biggestWin?: MatchHighlight;
   longest?: MatchHighlight;
   highestScoring?: MatchHighlight;
@@ -99,11 +101,12 @@ export interface TournamentReport {
 }
 
 /**
- * MVP: 3 por victoria + 1 por empate + 1 por gol marcado + la mitad de su diferencia de goles + 2 si es campeón.
- * Premia ganar, marcar y dominar; el campeón tiene ventaja pero no lo gana por defecto.
+ * MVP: 3 por victoria + 1 por empate + la mitad de su diferencia de goles + 2 si es campeón.
+ * Solo con lo que siempre se sabe: los goles apuntados a cada jugador no cuentan, porque en parejas
+ * muchas veces no se apunta quién marcó y saldría perjudicado quien no lo hace.
  */
-export function mvpScore(l: Pick<PlayerLine, 'wins' | 'draws' | 'scored' | 'goalsFor' | 'goalsAgainst' | 'champion'>): number {
-  return l.wins * 3 + l.draws + l.scored + (l.goalsFor - l.goalsAgainst) / 2 + (l.champion ? 2 : 0);
+export function mvpScore(l: Pick<PlayerLine, 'wins' | 'draws' | 'goalsFor' | 'goalsAgainst' | 'champion'>): number {
+  return l.wins * 3 + l.draws + (l.goalsFor - l.goalsAgainst) / 2 + (l.champion ? 2 : 0);
 }
 
 const scoreText = (m: StoredMatch) => `${m.result.score.white}–${m.result.score.blue}`;
@@ -161,7 +164,12 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
     winPct: l.played ? (l.wins / l.played) * 100 : 0,
     mvp: Math.round(mvpScore(l) * 10) / 10,
   }));
-  rows.sort((a, b) => b.mvp - a.mvp || b.winPct - a.winPct || b.scored - a.scored || a.name.localeCompare(b.name, 'es'));
+  rows.sort((a, b) => b.mvp - a.mvp || b.winPct - a.winPct || a.name.localeCompare(b.name, 'es'));
+  const coverage = ms.reduce((acc, m) => {
+    const c = scorerCoverage(m);
+    return { total: acc.total + c.total, assigned: acc.assigned + c.assigned };
+  }, { total: 0, assigned: 0 });
+  const scorersReliable = coverage.total > 0 && coverage.assigned / coverage.total >= SCORER_COVERAGE_MIN;
 
   const pick = (score: (m: StoredMatch) => number) => ms.reduce<StoredMatch | undefined>((best, m) => (!best || score(m) > score(best) ? m : best), undefined);
   const biggest = pick((m) => Math.abs(m.result.score.white - m.result.score.blue));
@@ -190,7 +198,8 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
     extraTime,
     players: rows,
     mvp: ms.length && rows[0]?.played ? rows[0] : undefined,
-    topScorer: scorers[0],
+    topScorer: scorersReliable ? scorers[0] : undefined,
+    scorersReliable,
     biggestWin: biggest && { match: biggest, label: matchLabel(biggest) },
     longest: longest && { match: longest, label: matchLabel(longest) },
     highestScoring: highest && { match: highest, label: matchLabel(highest) },

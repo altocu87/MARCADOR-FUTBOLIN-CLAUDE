@@ -145,7 +145,7 @@ export function ProfilePage() {
           <section className="tiles">
             <Tile k="Partidos" v={g.played} />
             <Tile k="Victorias" v={g.wins} hint={pct(g.winPct)} />
-            <Tile k="Goles suyos" v={p.stats.personalGoals} />
+            <Tile k="Goles apuntados" v={p.stats.personalGoals} />
             <Tile k="Mejor racha" v={p.stats.bestWinStreak} hint="victorias seguidas" />
             <Tile
               k="Racha actual"

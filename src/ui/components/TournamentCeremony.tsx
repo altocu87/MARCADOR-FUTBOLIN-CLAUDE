@@ -120,7 +120,11 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
         key={place.team.id}
         place={place}
         last={step === lastStep && ranking.length > 1}
-        lines={place.team.playerIds.map((id) => report.players.find((l) => l.playerId === id)).filter((l): l is PlayerLine => !!l)}
+        // Los goles de cada jugador solo si casi todos se apuntaron (si no, no serían reales).
+        lines={place.team.playerIds
+          .map((id) => report.players.find((l) => l.playerId === id))
+          .filter((l): l is PlayerLine => !!l)
+          .map((l) => (report.scorersReliable ? l : { ...l, scored: 0 }))}
         rewards={place.team.playerIds.map((id) => rewardOf(id, matchIds, progression))}
         nameOf={nameOf}
         photoOf={photoOf}

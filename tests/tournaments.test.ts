@@ -267,6 +267,37 @@ describe('Ediciones, ficha y palmarés', () => {
   });
 });
 
+describe('Goles apuntados: solo cuentan si el dato es fiable', () => {
+  it('el MVP no depende de los goles apuntados a cada jugador', async () => {
+    const { mvpScore } = await import('../src/services/tournaments');
+    const base = { wins: 2, draws: 0, goalsFor: 10, goalsAgainst: 6, champion: false };
+    expect(mvpScore(base)).toBe(8);
+  });
+  it('el pichichi del torneo solo sale si al menos el 80 % de los goles tiene autor', () => {
+    const ps = players(['a', 'b', 'c', 'd']);
+    const t0 = createTournament(
+      { name: 'L', format: 'league', teamSize: 2, ranked: false, config: DEFAULT_CONFIG, teams: [{ playerIds: ['a', 'b'] }, { playerIds: ['c', 'd'] }, { playerIds: ['e', 'f'] }], seeding: 'elo' },
+      players(['a', 'b', 'c', 'd', 'e', 'f']),
+      () => 1200,
+      0,
+    );
+    const { t, matches } = playAll(t0, () => 'W');
+    // Sin goleadores apuntados: ni pichichi ni goles por jugador.
+    const none = tournamentReport(t, matches, ps);
+    expect(none.scorersReliable).toBe(false);
+    expect(none.topScorer).toBeUndefined();
+    // Con todos los goles apuntados a «a» o a su compañero: sí.
+    const all = matches.map((m) => {
+      const w = m.participants.filter((p) => p.team === 'white')[0].playerId;
+      const b = m.participants.filter((p) => p.team === 'blue')[0].playerId;
+      return { ...m, scorers: Object.fromEntries(m.events.filter((e) => e.type === 'GOAL').map((e) => [e.id, e.team === 'white' ? w : b])) };
+    });
+    const full = tournamentReport(t, all, ps);
+    expect(full.scorersReliable).toBe(true);
+    expect(full.topScorer).toBeDefined();
+  });
+});
+
 describe('Torneos de un jugador (perfil)', () => {
   it('del más reciente al más antiguo, sin descartados y con el puesto en que quedó', async () => {
     const { playerTournaments } = await import('../src/services/tournaments');

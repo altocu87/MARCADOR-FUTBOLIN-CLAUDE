@@ -105,9 +105,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   A({ id: 'goal_fest', name: 'Festival', description: 'Juega un partido con 15 o más goles.', category: 'goles', rarity: 'common', icon: '🎉', check: (c) => c.totalGoals >= 15 }),
   A({ id: 'early_goal', name: 'Madrugador', description: 'Tu equipo marca en los primeros 10 segundos de una parte.', category: 'goles', rarity: 'rare', icon: '☄', check: (c) => c.earliestOwnGoalMs !== null && c.earliestOwnGoalMs <= 10_000 }),
   A({ id: 'run5', name: 'Apisonadora', description: 'Tu equipo marca 5 goles seguidos sin respuesta.', category: 'goles', rarity: 'rare', icon: '⛟', title: 'Apisonadora', check: (c) => c.ownGoalRun >= 5 }),
-  A({ id: 'hat_trick', name: 'Hat-trick', description: 'Marca 3 goles personales (asignados) en un partido.', category: 'goles', rarity: 'rare', icon: '⚽', check: (c) => c.personalGoalsInMatch >= 3 }),
-  A({ id: 'scorer50', name: 'Goleador', description: 'Llega a 50 goles personales asignados.', category: 'goles', rarity: 'epic', icon: '🥅', title: 'Pichichi', check: (c) => c.personalGoalsTotal >= 50 }),
-  A({ id: 'first_blood', name: 'Primera sangre', description: 'Marca (asignado) el primer gol de un partido.', category: 'goles', rarity: 'common', secret: true, icon: '◉', check: (c) => c.firstGoalOfMatch }),
+  A({ id: 'hat_trick', name: 'Hat-trick', description: 'Marca 3 goles apuntados a ti en un partido.', category: 'goles', rarity: 'rare', icon: '⚽', check: (c) => c.personalGoalsInMatch >= 3 }),
+  A({ id: 'scorer50', name: 'Goleador', description: 'Llega a 50 goles apuntados a ti.', category: 'goles', rarity: 'epic', icon: '🥅', title: 'Pichichi', check: (c) => c.personalGoalsTotal >= 50 }),
+  A({ id: 'first_blood', name: 'Primera sangre', description: 'Marca (apuntado a ti) el primer gol de un partido.', category: 'goles', rarity: 'common', secret: true, icon: '◉', check: (c) => c.firstGoalOfMatch }),
   // Competición
   A({ id: 'ranked_debut', name: 'Competidor', description: 'Juega tu primer partido clasificatorio.', category: 'competicion', rarity: 'common', icon: '⚔', check: (c) => c.rankedPlayed >= 1 }),
   A({ id: 'platinum', name: 'Platino', description: 'Alcanza 1500 de ELO.', category: 'competicion', rarity: 'rare', icon: '◆', check: (c) => c.elo >= 1500 }),

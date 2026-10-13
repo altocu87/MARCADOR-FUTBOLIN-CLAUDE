@@ -126,7 +126,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
           {prog ? (
             <>
               <div className="muted" style={{ fontSize: 12 }}>
-                Nivel {prog.level} · {prog.xp} XP · siguiente a {xpForLevel(prog.level + 1)} XP · {goals} goles asignados
+                Nivel {prog.level} · {prog.xp} XP · siguiente a {xpForLevel(prog.level + 1)} XP · {goals} goles apuntados
               </div>
               <div className="xpbar" style={{ marginTop: 4, maxWidth: 300 }}>
                 <span style={{ width: `${levelProgress(prog.xp) * 100}%` }} />

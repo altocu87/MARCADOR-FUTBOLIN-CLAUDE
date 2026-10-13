@@ -106,6 +106,24 @@ export function personalGoals(matches: StoredMatch[]): Map<string, number> {
   return out;
 }
 
+/** Goles válidos del partido y cuántos tienen autor apuntado. */
+export function scorerCoverage(m: StoredMatch): { total: number; assigned: number } {
+  const goals = validGoalsFromEvents(m.events);
+  return { total: goals.length, assigned: goals.filter((g) => !!m.scorers?.[g.id]).length };
+}
+
+/**
+ * ¿Se apuntaron todos sus goles? (en 1 contra 1 siempre: se asignan solos). Solo estos partidos sirven
+ * para comparar goleadores: con goles sin autor, un pichichi no sería real.
+ */
+export function fullyScored(m: StoredMatch): boolean {
+  const c = scorerCoverage(m);
+  return c.assigned === c.total;
+}
+
+/** Parte de los goles con autor a partir de la cual el pichichi de un torneo se da por bueno. */
+export const SCORER_COVERAGE_MIN = 0.8;
+
 export function personalGoalsInMatch(m: StoredMatch, playerId: string): number {
   if (!m.scorers) return 0;
   return validGoalsFromEvents(m.events).filter((g) => m.scorers![g.id] === playerId).length;
@@ -157,7 +175,8 @@ export function periodDigest(matches: StoredMatch[], players: Player[], from: nu
   const total = (m: StoredMatch) => m.result.score.white + m.result.score.blue;
   const closest = [...list].sort((a, b) => diff(a) - diff(b) || total(b) - total(a))[0] ?? null;
   const biggest = [...list].sort((a, b) => diff(b) - diff(a))[0] ?? null;
-  const pg = [...personalGoals(list).entries()].sort((a, b) => b[1] - a[1])[0];
+  // Pichichi solo con los partidos en los que se apuntaron todos los goles.
+  const pg = [...personalGoals(list.filter(fullyScored)).entries()].sort((a, b) => b[1] - a[1])[0];
   return {
     matches: list.length,
     goals: list.reduce((s, m) => s + total(m), 0),
