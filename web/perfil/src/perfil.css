@@ -277,8 +277,8 @@ h2 {
   border: 1px solid var(--line);
 }
 .honor.is-champ {
-  border-color: rgba(255, 204, 51, 0.5);
-  box-shadow: 0 0 14px rgba(255, 204, 51, 0.18);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 16px rgba(255, 204, 51, 0.35), inset 0 0 18px rgba(255, 204, 51, 0.15);
 }
 .honor-banner {
   position: absolute;
@@ -288,9 +288,14 @@ h2 {
   object-fit: cover;
   opacity: 0.32;
 }
-.honor-art,
-.honor-txt {
+.honor > :not(.honor-banner) {
   position: relative;
+}
+.honor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(4, 9, 18, 0.8) 30%, rgba(4, 9, 18, 0.3));
 }
 .honor-art {
   width: 52px;
@@ -314,8 +319,93 @@ h2 {
 .honor-txt small {
   color: var(--text-2);
 }
-.honor.is-champ .honor-txt small {
+.honor-txt {
+  flex: 1;
+}
+.honor-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+}
+.honor-place b {
+  font-size: 24px;
+  line-height: 1;
+}
+.honor-place small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.honor.is-champ .honor-place b {
   color: var(--gold);
+  text-shadow: 0 0 8px rgba(255, 204, 51, 0.6);
+}
+.honor-live {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  font-weight: 800;
+}
+.honor-cup {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  flex: 0 0 auto;
+}
+.honor-cup img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.honor-cup.is-dim {
+  filter: grayscale(0.9) brightness(0.7);
+  opacity: 0.6;
+}
+.honor.is-champ .honor-cup {
+  filter: drop-shadow(0 0 6px rgba(255, 204, 51, 0.7));
+}
+.honor-ribbon {
+  position: absolute !important;
+  top: 0;
+  left: 10px;
+  z-index: 2;
+  padding: 1px 8px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(180deg, #ffe08a, #e0a82e);
+  color: #3a2600;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+.pal-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.pal-filters button {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+.pal-filters button b {
+  margin-left: 3px;
+  opacity: 0.7;
+}
+.pal-filters button[aria-pressed='true'] {
+  border-color: #62d6ff;
+  box-shadow: 0 0 8px rgba(98, 214, 255, 0.35);
+}
+.pal-filters .pal-won[aria-pressed='true'] {
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(255, 204, 51, 0.4);
 }
 
 /* Premios */

@@ -7,6 +7,7 @@ import type { Player, StoredMatch, Tournament } from '../persistence';
 import { achievementById, displayTitle, type PlayerProgress } from '../progression';
 import { computePlayerStats, habits, personalGoals, personalGoalsInMatch, sideStats, sortMatches, teamOf, type ResultLetter, type StatBlock } from '../statistics';
 import type { WinRecord } from '../statistics/extras';
+import { playerTournaments } from '../tournaments/report';
 
 export const SNAPSHOT_VERSION = 1;
 /** Partidos del historial que viajan (los más recientes). */
@@ -57,6 +58,9 @@ export interface SnapshotTitle {
   cup?: string;
   logo?: string;
   banner?: string;
+  /** Puesto final y cuántos puestos hubo. */
+  place?: number;
+  of?: number;
 }
 
 export interface ProfileSnapshot {
@@ -172,22 +176,18 @@ export function buildProfileSnapshot(i: SnapshotInputs): ProfileSnapshot {
     };
   });
 
-  const palmares: SnapshotTitle[] = tournaments
-    .filter((t) => t.status !== 'cancelled' && (t.teams.some((x) => x.playerIds.includes(pid)) || (t.entrants ?? []).includes(pid)))
-    .map((t) => {
-      const champion = t.status === 'finished' && !!t.teams.find((x) => x.id === t.winnerTeamId)?.playerIds.includes(pid);
-      return {
-        name: t.name,
-        format: t.format,
-        status: t.status,
-        champion,
-        at: t.finishedAt ?? t.createdAt,
-        cup: t.cup,
-        logo: t.logo,
-        banner: t.banner,
-      };
-    })
-    .sort((a, b) => Number(b.champion) - Number(a.champion) || b.at - a.at);
+  // Lo más reciente arriba, con el puesto en que quedó (la misma lista que el perfil de la app).
+  const palmares: SnapshotTitle[] = playerTournaments(pid, tournaments, i.matches).map(({ tournament: t, at, champion, place, of }) => ({
+    name: t.name,
+    format: t.format,
+    status: t.status,
+    champion,
+    at,
+    cup: t.cup,
+    logo: t.logo,
+    banner: t.banner,
+    ...(place ? { place, of } : {}),
+  }));
 
   return {
     v: SNAPSHOT_VERSION,

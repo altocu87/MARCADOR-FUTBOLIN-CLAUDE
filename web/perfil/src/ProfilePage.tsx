@@ -165,26 +165,7 @@ export function ProfilePage() {
           )}
 
           <h2>Palmarés</h2>
-          {p.palmares.length === 0 ? (
-            <p className="muted">Todavía no ha jugado ningún torneo.</p>
-          ) : (
-            <div className="palmares">
-              {p.palmares.map((t, i) => (
-                <div key={i} className={`honor ${t.champion ? 'is-champ' : ''}`}>
-                  {img(t.banner) && <img className="honor-banner" src={img(t.banner)} alt="" />}
-                  <span className="honor-art">
-                    {t.champion ? img(t.cup) ? <img src={img(t.cup)} alt="" /> : '🏆' : img(t.logo) ? <img src={img(t.logo)} alt="" /> : '⚽'}
-                  </span>
-                  <span className="honor-txt">
-                    <b>{t.name}</b>
-                    <small>
-                      {FORMAT[t.format]} · {t.status === 'active' ? 'En juego' : t.champion ? `Campeón · ${fecha(t.at)}` : fecha(t.at)}
-                    </small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <Palmares list={p.palmares} />
 
           {p.rewards.length > 0 && (
             <>
@@ -380,5 +361,67 @@ function People({ list, person, empty }: { list: SnapshotRival[]; person: (id: s
         </div>
       ))}
     </div>
+  );
+}
+
+/** Torneos jugados: lo más reciente arriba, con filtros por tipo y «solo ganados» (igual que en la app). */
+function Palmares({ list }: { list: ProfileSnapshot['palmares'] }) {
+  const [format, setFormat] = useState<string>('all');
+  const [onlyWon, setOnlyWon] = useState(false);
+  if (list.length === 0) return <p className="muted">Todavía no ha jugado ningún torneo.</p>;
+  const count = (f: string) => list.filter((t) => t.format === f).length;
+  const won = list.filter((t) => t.champion).length;
+  const shown = list.filter((t) => (format === 'all' || t.format === format) && (!onlyWon || t.champion));
+  const plural: Record<string, string> = { league: 'Ligas', bracket: 'Copas', pool: 'Pools' };
+  return (
+    <>
+      <div className="pal-filters">
+        <button aria-pressed={format === 'all'} onClick={() => setFormat('all')}>
+          Todos <b>{list.length}</b>
+        </button>
+        {['league', 'bracket', 'pool']
+          .filter((f) => count(f) > 0)
+          .map((f) => (
+            <button key={f} aria-pressed={format === f} onClick={() => setFormat(format === f ? 'all' : f)}>
+              {plural[f]} <b>{count(f)}</b>
+            </button>
+          ))}
+        {won > 0 && (
+          <button className="pal-won" aria-pressed={onlyWon} onClick={() => setOnlyWon((v) => !v)}>
+            🏆 Ganados <b>{won}</b>
+          </button>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <p className="muted">Ningún torneo con este filtro.</p>
+      ) : (
+        <div className="palmares">
+          {shown.map((t, i) => (
+            <div key={i} className={`honor ${t.champion ? 'is-champ' : ''}`}>
+              {img(t.banner) && <img className="honor-banner" src={img(t.banner)} alt="" />}
+              {t.champion && <span className="honor-ribbon">🏆 CAMPEÓN</span>}
+              <span className="honor-art">{img(t.logo) ? <img src={img(t.logo)} alt="" /> : '⚽'}</span>
+              <span className="honor-txt">
+                <b>{t.name}</b>
+                <small>
+                  {FORMAT[t.format]} · {t.status === 'active' ? 'En juego' : fecha(t.at)}
+                </small>
+              </span>
+              <span className="honor-place">
+                {t.status === 'active' ? (
+                  <span className="honor-live">EN JUEGO</span>
+                ) : t.place ? (
+                  <>
+                    <b>{t.place}º</b>
+                    <small>de {t.of}</small>
+                  </>
+                ) : null}
+              </span>
+              <span className={`honor-cup ${t.champion ? '' : 'is-dim'}`}>{img(t.cup) ? <img src={img(t.cup)} alt="" /> : '🏆'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

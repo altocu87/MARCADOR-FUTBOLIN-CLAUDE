@@ -8,7 +8,7 @@
 import type { Team } from '../../match-engine';
 import type { Player, StoredMatch, Tournament } from '../persistence';
 import { personalGoalsInMatch } from '../statistics/extras';
-import { FORMAT_LABEL } from './tournaments';
+import { FORMAT_LABEL, finalRanking } from './tournaments';
 
 /** Clave de un nombre de competición (sin mayúsculas ni espacios de más). */
 export function competitionNameKey(name: string): string {
@@ -280,4 +280,36 @@ export function competitions(tournaments: Tournament[], matches: StoredMatch[], 
     });
   }
   return out.sort((a, b) => (b.editions[0]?.date ?? 0) - (a.editions[0]?.date ?? 0));
+}
+
+export interface PlayedTournament {
+  tournament: Tournament;
+  /** Cuándo acabó (o, si sigue en juego, cuándo empezó). */
+  at: number;
+  /** Puesto final y cuántos puestos hubo (solo en los terminados). */
+  place?: number;
+  of?: number;
+  champion: boolean;
+}
+
+/**
+ * Torneos de un jugador, del más reciente al más antiguo (sin los descartados), con su puesto final.
+ * Es la lista del perfil, igual en la app y en el perfil del móvil.
+ */
+export function playerTournaments(playerId: string, tournaments: Tournament[], matches: StoredMatch[]): PlayedTournament[] {
+  return tournaments
+    .filter((t) => t.status !== 'cancelled' && (t.teams.some((x) => x.playerIds.includes(playerId)) || !!t.entrants?.includes(playerId)))
+    .map((t) => {
+      const at = t.finishedAt ?? t.createdAt;
+      if (t.status !== 'finished') return { tournament: t, at, champion: false };
+      const ranking = finalRanking(t, matches);
+      const mine = ranking.find((p) => p.team.playerIds.includes(playerId));
+      return {
+        tournament: t,
+        at,
+        champion: !!t.teams.find((x) => x.id === t.winnerTeamId)?.playerIds.includes(playerId),
+        ...(mine ? { place: mine.place, of: Math.max(...ranking.map((p) => p.place)) } : {}),
+      };
+    })
+    .sort((a, b) => b.at - a.at);
 }

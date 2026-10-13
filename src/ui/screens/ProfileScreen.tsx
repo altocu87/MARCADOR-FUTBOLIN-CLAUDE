@@ -27,8 +27,8 @@ import {
 import { Avatar, FormChips, MODE_LABEL, ScreenFrame, StatTile, Tabs, formatDate, pct } from '../components/common';
 import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics';
 import { resultLine } from '../components/MatchReport';
-import { FORMAT_LABEL } from '../../services/tournaments';
 import { PlayerOptions } from '../components/PlayerQr';
+import { TournamentHistory } from '../components/TournamentHistory';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
 
@@ -100,8 +100,6 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
       <strong style={{ width: 60, textAlign: 'right' }}>{r.winPct.toFixed(0)} %</strong>
     </div>
   );
-
-  const myTournaments = tournaments.filter((t) => t.teams.some((tt) => tt.playerIds.includes(playerId)));
 
   return (
     <ScreenFrame
@@ -225,24 +223,9 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
             </div>
           </div>
         )}
-        {tab === 'tournaments' &&
-          (myTournaments.length === 0 ? (
-            <div className="muted">No ha participado en torneos.</div>
-          ) : (
-            <div className="list">
-              {myTournaments.map((t) => {
-                const won = t.teams.find((x) => x.id === t.winnerTeamId)?.playerIds.includes(playerId);
-                return (
-                  <button key={t.id} className="row" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
-                    <span style={{ flex: 1 }}>
-                      <strong>{t.name}</strong> <span className="muted">· {FORMAT_LABEL[t.format]}</span>
-                    </span>
-                    {t.status === 'finished' ? (won ? <span className="badge badge-ranked">🏆 Campeón</span> : <span className="badge">Terminado</span>) : <span className="badge badge-accent">En juego</span>}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        {tab === 'tournaments' && (
+          <TournamentHistory playerId={playerId} tournaments={tournaments} matches={matches} onOpen={(id) => navigate({ name: 'tournamentDetail', id })} />
+        )}
         {tab === 'rivals' && (
           <>
             <div className="grid-2">

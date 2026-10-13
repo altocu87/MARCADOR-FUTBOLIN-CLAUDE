@@ -267,6 +267,26 @@ describe('Ediciones, ficha y palmarés', () => {
   });
 });
 
+describe('Torneos de un jugador (perfil)', () => {
+  it('del más reciente al más antiguo, sin descartados y con el puesto en que quedó', async () => {
+    const { playerTournaments } = await import('../src/services/tournaments');
+    const ps = players(['a', 'b', 'c']);
+    const make = (at: number) =>
+      createTournament({ name: `L${at}`, format: 'league', teamSize: 1, ranked: false, config: DEFAULT_CONFIG, teams: ps.map((p) => ({ playerIds: [p.id] })), seeding: 'elo' }, ps, () => 1200, at);
+    const all: StoredMatch[] = [];
+    const t1 = playAll(make(1), (w, b) => (w.includes('a') ? 'W' : b.includes('a') ? 'B' : 'W'), all).t;
+    const t2 = playAll(make(2), (w, b) => (w.includes('a') ? 'B' : b.includes('a') ? 'W' : 'W'), all).t;
+    const cancelled = { ...make(3), status: 'cancelled' as const };
+    const live = make(30_000);
+    const list = playerTournaments('a', [{ ...t1, finishedAt: 10_000 }, { ...t2, finishedAt: 20_000 }, cancelled, live], all);
+    expect(list.map((x) => x.tournament.name)).toEqual(['L30000', 'L2', 'L1']);
+    expect(list[0]).toMatchObject({ champion: false });
+    expect(list[0].place).toBeUndefined();
+    expect(list[1]).toMatchObject({ place: 3, of: 3, champion: false });
+    expect(list[2]).toMatchObject({ place: 1, of: 3, champion: true });
+  });
+});
+
 describe('Fusionar dos fichas del mismo jugador', () => {
   it('pasa partidos, goleadores y torneos a la que queda y la otra desaparece', () => {
     const ps: Player[] = [...players(['a', 'b', 'c', 'd']), { id: 'g', name: 'Pepe', active: true, createdAt: 0, updatedAt: 0 }];
