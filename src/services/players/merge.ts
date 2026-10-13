@@ -1,5 +1,5 @@
 /**
- * Fusionar un jugador (normalmente un invitado) con otro: todo lo que jugó el primero pasa al
+ * Fusionar un jugador con otro: todo lo que jugó el primero pasa al
  * segundo —partidos, goles, torneos y palmarés— y el primero desaparece. Como la progresión,
  * el ranking y los logros se calculan a partir de los partidos, se recalculan solos.
  */

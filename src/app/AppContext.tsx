@@ -58,7 +58,7 @@ interface AppContextValue {
   saveTournament(tournament: Tournament): Promise<void>;
   /** Descarta un torneo: se borran el torneo y todos sus partidos (no cuentan para nada). */
   discardTournament(id: string): Promise<void>;
-  /** Pasa todo lo de un jugador (p. ej. un invitado) a otro y borra el primero. */
+  /** Pasa todo lo de un jugador a otro (el mismo, apuntado dos veces) y borra el primero. */
   mergePlayers(fromId: string, intoId: string): Promise<{ movedMatches: number; movedTournaments: number }>;
   savePrefs(prefs: Preferences): Promise<void>;
   /** Modo prueba: la app trabaja sobre datos ficticios y guarda ahí lo que se juegue. */

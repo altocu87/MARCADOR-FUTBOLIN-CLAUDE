@@ -24,7 +24,6 @@ import { fullscreenAvailable, toggleFullscreen, wakeLock } from '../../services/
 import { STATS_DEFINITIONS_VERSION } from '../../services/statistics';
 import { Avatar, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
 import { downloadJson } from '../components/download';
-import { GuestActions } from '../components/GuestActions';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { ClubEditor } from '../components/ClubEditor';
 import { Crest } from '../components/Crest';
@@ -366,16 +365,11 @@ function PlayerList() {
               <Avatar name={p.name} photo={p.photo} size={36} />
               <span style={{ flex: 1 }}>
                 <strong>{p.name}</strong> {p.alias && <span className="muted">«{p.alias}»</span>}
-                {p.guest && <span className="badge badge-guest" style={{ marginLeft: 8 }}>Invitado</span>}
                 {!p.active && <span className="badge" style={{ marginLeft: 8 }}>Inactivo</span>}
               </span>
-              {p.guest ? (
-                <GuestActions player={p} />
-              ) : (
-                <button className="btn btn-sm" onClick={() => setEditing(p)}>
-                  Editar
-                </button>
-              )}
+              <button className="btn btn-sm" onClick={() => setEditing(p)}>
+                Editar
+              </button>
               <button className="btn btn-sm" onClick={() => toggle(p)}>
                 {p.active ? 'Desactivar' : 'Activar'}
               </button>

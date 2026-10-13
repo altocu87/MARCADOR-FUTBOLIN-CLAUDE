@@ -7,7 +7,7 @@ import { useApp } from '../../app/AppContext';
 import type { MatchConfig } from '../../match-engine';
 import { restoreSnapshot } from '../../app/recovery';
 import type { ActiveMatchSnapshot, Fixture, Player, Tournament, TournamentFinal, TournamentFormat, TournamentTemplate } from '../../services/persistence';
-import { NAME_MAX, findNameClash, initials, sortPlayers } from '../../services/players';
+import { initials, sortPlayers } from '../../services/players';
 import { displayTitle, predict } from '../../services/progression';
 import { seededRandom } from '../../services/statistics/calendar';
 import {
@@ -62,11 +62,9 @@ import { BannerArt, Crest, Cup, IconPicker, defaultBanner, iconCategories, defau
 import { ClubEditor } from '../components/ClubEditor';
 import { findClub, saveClub } from '../../services/clubs';
 import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
-import { NameClashNotice } from '../components/NameClash';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { RankPhoto } from '../components/PlayerCards';
 import { PlayerOptions, useLongPress } from '../components/PlayerQr';
-import { newId } from '../../services/ids';
 import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
 import { TournamentCeremony } from '../components/TournamentCeremony';
@@ -698,7 +696,7 @@ export function TournamentNewScreen({
   initialStep?: 'players' | 'kind' | 'format';
   initialFormat?: TournamentFormat;
 }) {
-  const { navigate, players, progression, prefs, saveTournament, discardTournament, savePlayer, savePrefs, toast, tournaments } = useApp();
+  const { navigate, players, progression, prefs, saveTournament, discardTournament, savePrefs, toast, tournaments } = useApp();
   // Dejar pulsado un jugador: sus opciones (QR del perfil…).
   const [options, setOptions] = useState<Player | null>(null);
   const longPress = useLongPress();
@@ -723,10 +721,6 @@ export function TournamentNewScreen({
   // Semilla del sorteo: el reparto no cambia al redibujar, solo al pulsar «Sortear otra vez».
   const [seed, setSeed] = useState(() => String(Date.now()));
   const [creating, setCreating] = useState(false);
-  const [guestName, setGuestName] = useState<string | null>(null);
-  // Jugador o invitado que ya tiene el nombre escrito.
-  const [guestClash, setGuestClash] = useState<Player | null>(null);
-  const guestRef = useRef<HTMLInputElement>(null);
   // Dos toques para entrar en un tipo, como en el inicio: el primero lo enciende y el segundo entra.
   const [kindSelected, setKindSelected] = useState<TournamentFormat | null>(null);
   const [kindPressed, setKindPressed] = useState<TournamentFormat | null>(null);
@@ -755,9 +749,7 @@ export function TournamentNewScreen({
 
   // Primero se elige el tipo (liga, copa o pool) y luego, dentro de él, cuál de los creados.
   // Los que no encajan con este número de jugadores, plegados al final.
-  // Invitados elegidos: una competición con ELO no los admite.
-  const guests = selected.filter((id) => players.find((p) => p.id === id)?.guest).length;
-  const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n, guests) }));
+  const allFits = allTemplates(prefs.tournamentTemplates).map((t) => ({ t, fit: templateFit(t, n) }));
   const kindInfo = KINDS.find((k) => k.format === kind);
   const fits = allFits.filter((x) => x.t.format === kind);
   const shown = fits.filter((x) => x.fit.ok);
@@ -770,36 +762,8 @@ export function TournamentNewScreen({
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // Invitado: solo el nombre. Si ya existe alguien con ese nombre, se pregunta si es la misma persona.
-  const addGuest = async () => {
-    const clean = (guestName ?? '').trim();
-    if (!clean) return;
-    // No puede haber dos con el mismo nombre (ni jugador ni invitado): se pregunta qué hacer.
-    const same = findNameClash(clean, players);
-    if (same) {
-      setGuestClash(same);
-      return;
-    }
-    const now = Date.now();
-    const guest = { id: newId('p'), name: clean, guest: true, active: true, createdAt: now, updatedAt: now };
-    await savePlayer(guest);
-    setSelected((s) => [...s, guest.id]);
-    setGuestName(null);
-  };
-
-  // «Es la misma persona»: se apunta al que ya existe (si estaba de baja, se reactiva).
-  const useExisting = async () => {
-    if (!guestClash) return;
-    if (!guestClash.active) await savePlayer({ ...guestClash, active: true, updatedAt: Date.now() });
-    setSelected((s) => (s.includes(guestClash.id) ? s : [...s, guestClash.id]));
-    toast(`${guestClash.name} apuntado`);
-    setGuestClash(null);
-    setGuestName(null);
-  };
-
   if (step === 'players') {
-    // Los invitados, al final de la lista.
-    const available = sortPlayers(players.filter((p) => p.active)).sort((a, b) => Number(!!a.guest) - Number(!!b.guest));
+    const available = sortPlayers(players.filter((p) => p.active));
     const runningList = tournaments.filter((t) => t.status === 'active').sort((a, b) => b.createdAt - a.createdAt);
     const running = runningList.length;
     return (
@@ -815,7 +779,6 @@ export function TournamentNewScreen({
               {running ? `En curso · ${running}` : 'Palmarés'}
             </button>
             <button className="btn btn-sm" onClick={() => setCreating(true)}>+ Jugador</button>
-            <button className="btn btn-sm tn-guest-btn" onClick={() => setGuestName('')}>+ Invitado</button>
           </>
         }
         footer={
@@ -898,8 +861,8 @@ export function TournamentNewScreen({
                   </span>
                   <span className="pick-info">
                     <span className="pick-name">{p.name}</span>
-                    <span className="pick-meta">{prog && !p.guest ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
-                    {p.guest ? <span className="pick-title tn-guest-tag">Invitado</span> : title && <span className="pick-title">{title}</span>}
+                    <span className="pick-meta">{prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '\u00a0'}</span>
+                    {title && <span className="pick-title">{title}</span>}
                   </span>
                 </button>
               );
@@ -908,61 +871,6 @@ export function TournamentNewScreen({
         </div>
         {creating && <PlayerEditor onClose={() => setCreating(false)} onSaved={(p) => setSelected((s) => [...s, p.id])} />}
         {options && <PlayerOptions player={options} onClose={() => setOptions(null)} />}
-        {guestName !== null && (
-          <Modal
-            title="Añadir invitado"
-            onClose={() => {
-              setGuestName(null);
-              setGuestClash(null);
-            }}
-            actions={
-              <>
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setGuestName(null);
-                    setGuestClash(null);
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button className="btn btn-primary" disabled={!guestName.trim() || !!guestClash} onClick={addGuest}>
-                  Aceptar
-                </button>
-              </>
-            }
-          >
-            <input
-              ref={guestRef}
-              className="input"
-              autoFocus
-              value={guestName}
-              maxLength={NAME_MAX}
-              placeholder="Nombre del invitado"
-              aria-label="Nombre del invitado"
-              onChange={(e) => {
-                setGuestName(e.target.value);
-                setGuestClash(null);
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && void addGuest()}
-            />
-            {guestClash && (
-              <NameClashNotice
-                clash={guestClash}
-                sameLabel="Es la misma persona: apuntarlo"
-                onSame={() => void useExisting()}
-                onRename={() => {
-                  setGuestClash(null);
-                  guestRef.current?.focus();
-                  guestRef.current?.select();
-                }}
-              />
-            )}
-            <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-              Juega el torneo con su nombre y no sale en el ranking. Queda guardado para la próxima vez.
-            </p>
-          </Modal>
-        )}
       </ScreenFrame>
     );
   }
@@ -1516,7 +1424,7 @@ export function TournamentTemplateScreen({
   selected?: string[];
   format?: TournamentFormat;
 }) {
-  const { navigate, prefs, savePrefs, toast, tournaments, players } = useApp();
+  const { navigate, prefs, savePrefs, toast, tournaments } = useApp();
   const saved = prefs.tournamentTemplates;
   const existing = saved.find((x) => x.id === templateId);
   // Una competición con ediciones ya no cambia de tipo: su palmarés mezclaría ligas, copas y pools.
@@ -1541,7 +1449,7 @@ export function TournamentTemplateScreen({
   const idx = Math.max(0, CREATOR_STEPS.findIndex((x) => x.id === step));
   const last = idx === CREATOR_STEPS.length - 1;
   const n = selected?.length ?? 0;
-  const fit = n ? templateFit(tpl, n, (selected ?? []).filter((id) => players.find((p) => p.id === id)?.guest).length) : null;
+  const fit = n ? templateFit(tpl, n) : null;
 
   const setFormat = (f: TournamentFormat) =>
     !editions &&
@@ -2101,7 +2009,7 @@ export function TournamentDetailScreen({
             {ids.map((pid) => {
               const photo = players.find((p) => p.id === pid)?.photo;
               const rank = rankOf(pid);
-              // Con rango, su marco; sin él (invitados), la foto redonda.
+              // Con rango, su marco; sin él, la foto redonda.
               return rank !== 'none' ? (
                 <RankPhoto key={pid} name={nameOf(pid)} photo={photo} rank={rank} size={photoSize} />
               ) : (

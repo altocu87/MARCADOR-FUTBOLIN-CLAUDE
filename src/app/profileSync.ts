@@ -1,5 +1,5 @@
 /**
- * Mantiene al día en internet el perfil de cada jugador (no invitados): un rato después de cada cambio
+ * Mantiene al día en internet el perfil de cada jugador: un rato después de cada cambio
  * (partido, torneo, nombre, foto…) se calcula su «foto» y se sube solo si ha cambiado. Sin conexión o sin
  * Supabase configurado no hace nada: se reintenta en el siguiente cambio o al volver a abrir la app.
  */
@@ -10,7 +10,6 @@ import {
   buildProfileSnapshot,
   credentialsFor,
   deleteProfile,
-  hasPublicProfile,
   publishProfile,
   readCredentials,
   snapshotHash,
@@ -79,10 +78,10 @@ export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow
     running.current = true;
     try {
       const { players, store } = latest.current;
-      for (const p of players) if (hasPublicProfile(p)) await publishOne(p);
+      for (const p of players) await publishOne(p);
       // Jugadores que ya no están (borrados o fusionados): su perfil se retira.
       const all = readCredentials(store);
-      const alive = new Set(players.filter(hasPublicProfile).map((p) => p.id));
+      const alive = new Set(players.map((p) => p.id));
       for (const [id, c] of Object.entries(all)) {
         if (alive.has(id)) continue;
         try {
@@ -107,7 +106,7 @@ export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow
   const publishNow = useCallback(
     async (playerId: string) => {
       const p = latest.current.players.find((x) => x.id === playerId);
-      return p && hasPublicProfile(p) ? publishOne(p) : false;
+      return p ? publishOne(p) : false;
     },
     [publishOne],
   );

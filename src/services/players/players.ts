@@ -22,7 +22,7 @@ export function nameKey(name: string): string {
     .toLowerCase();
 }
 
-/** Jugador o invitado que ya usa ese nombre (no puede haber dos iguales). */
+/** Jugador que ya usa ese nombre (no puede haber dos iguales). */
 export function findNameClash(name: string, players: Player[], exceptId?: string): Player | undefined {
   const key = nameKey(name);
   return key ? players.find((p) => p.id !== exceptId && nameKey(p.name) === key) : undefined;

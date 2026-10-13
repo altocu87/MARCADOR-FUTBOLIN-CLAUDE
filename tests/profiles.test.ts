@@ -4,7 +4,6 @@ import {
   buildProfileSnapshot,
   credentialsFor,
   fetchProfile,
-  hasPublicProfile,
   profileUrl,
   publishProfile,
   randomCode,
@@ -59,10 +58,6 @@ describe('Perfil público del jugador', () => {
     expect(snapshotHash(again)).toBe(snapshotHash(snap));
     const more = buildProfileSnapshot({ player: players[0], players, matches: [...matches, makeMatch({ white: ['ana'], blue: ['dani'], goals: 'W', at: 4000 })], tournaments: [torneo], now: 9000 });
     expect(snapshotHash(more)).not.toBe(snapshotHash(snap));
-  });
-  it('los invitados no tienen perfil', () => {
-    expect(hasPublicProfile(player('x', { guest: true }))).toBe(false);
-    expect(hasPublicProfile(players[0])).toBe(true);
   });
 });
 

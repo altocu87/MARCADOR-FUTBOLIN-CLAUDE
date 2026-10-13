@@ -28,7 +28,6 @@ import { Avatar, FormChips, MODE_LABEL, ScreenFrame, StatTile, Tabs, formatDate,
 import { AchievementIcon, CategoryBadge, EloChart } from '../components/graphics';
 import { resultLine } from '../components/MatchReport';
 import { FORMAT_LABEL } from '../../services/tournaments';
-import { GuestActions } from '../components/GuestActions';
 import { PlayerOptions } from '../components/PlayerQr';
 
 type ProfileTab = 'general' | 'ranked' | 'habits' | 'tournaments' | 'rivals' | 'achievements' | 'history' | 'style';
@@ -109,16 +108,9 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
       title="Perfil"
       onBack={() => navigate({ name: 'ranking', tab: 'players' })}
       right={
-        player.guest ? (
-          <>
-            <span className="badge badge-guest">Invitado</span>
-            <GuestActions player={player} onMerged={(id) => navigate({ name: 'profile', playerId: id })} />
-          </>
-        ) : (
-          <button className="btn btn-sm" onClick={() => setShowQr(true)} title="Para ver este perfil en el móvil">
-            ▦ QR del perfil
-          </button>
-        )
+        <button className="btn btn-sm" onClick={() => setShowQr(true)} title="Para ver este perfil en el móvil">
+          ▦ QR del perfil
+        </button>
       }
     >
       {showQr && <PlayerOptions player={player} startWithQr onClose={() => setShowQr(false)} />}

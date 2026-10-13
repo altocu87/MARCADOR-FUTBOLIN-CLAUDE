@@ -34,19 +34,16 @@ export function PlayerEditor({
   player,
   onClose,
   onSaved,
-  promote = false,
   onMerged,
 }: {
   player?: Player;
   onClose: () => void;
   onSaved?: (p: Player) => void;
-  /** Convertir un invitado en jugador definitivo (deja de ser invitado al guardar). */
-  promote?: boolean;
   /** Se fusionó con otro jugador por tener el mismo nombre: el que queda. */
   onMerged?: (intoId: string) => void;
 }) {
   const { players, matches, savePlayer, mergePlayers } = useApp();
-  // Jugador o invitado que ya tiene ese nombre.
+  // Jugador que ya tiene ese nombre.
   const [clash, setClash] = useState<Player | null>(null);
   const [clashError, setClashError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,18 +68,17 @@ export function PlayerEditor({
     if (errs.length) return;
     const now = Date.now();
     const updated = player ? updatePlayer(player, draft, now) : createPlayer(draft, now);
-    const next = promote ? { ...updated, guest: undefined, active: true } : updated;
     try {
-      await savePlayer(next);
-      onSaved?.(next);
+      await savePlayer(updated);
+      onSaved?.(updated);
       onClose();
     } catch (err) {
       setErrors([err instanceof Error ? err.message : 'No se pudo guardar.']);
     }
   };
 
-  // «Es la misma persona»: si se está creando, se usa (o se hace definitivo) el que ya existe;
-  // si se edita uno que ya existía, se fusionan (el invitado pasa al jugador, nunca al revés).
+  // «Es la misma persona»: si se está creando, se usa el que ya existe; si se edita uno que ya
+  // existía, se fusionan (lo de este pasa al que ya tenía el nombre).
   const useSame = async () => {
     if (!clash) return;
     setBusy(true);
@@ -94,8 +90,6 @@ export function PlayerEditor({
           alias: alias.trim() || clash.alias,
           photo: photo ?? clash.photo,
           active: true,
-          // Se estaba creando un jugador: si el que existía era invitado, pasa a definitivo.
-          guest: undefined,
           updatedAt: now,
         };
         await savePlayer(kept);
@@ -103,7 +97,7 @@ export function PlayerEditor({
         onClose();
         return;
       }
-      const [from, into] = player.guest && !clash.guest ? [player, clash] : !player.guest && clash.guest ? [clash, player] : [player, clash];
+      const [from, into] = [player, clash];
       const blocker = mergeBlocker(from.id, into.id, matches);
       if (blocker) {
         setClashError(blocker);
@@ -117,7 +111,6 @@ export function PlayerEditor({
         alias: alias.trim() || keptBase.alias,
         photo: photo ?? keptBase.photo,
         active: true,
-        guest: undefined,
         updatedAt: now,
       };
       await savePlayer(kept);
@@ -149,7 +142,7 @@ export function PlayerEditor({
 
   return (
     <Modal
-      title={promote ? 'Hacer jugador definitivo' : player ? 'Editar jugador' : 'Nuevo jugador'}
+      title={player ? 'Editar jugador' : 'Nuevo jugador'}
       onClose={onClose}
       actions={
         clash ? (
@@ -158,7 +151,7 @@ export function PlayerEditor({
               Usar otro nombre
             </button>
             <button className="btn btn-primary" onClick={() => void useSame()} disabled={busy}>
-              {player ? 'Es la misma persona: fusionar' : clash.guest ? 'Es la misma persona: hacerlo jugador' : 'Es la misma persona'}
+              {player ? 'Es la misma persona: fusionar' : 'Es la misma persona'}
             </button>
           </>
         ) : (
@@ -167,7 +160,7 @@ export function PlayerEditor({
               Cancelar
             </button>
             <button className="btn btn-primary" onClick={save}>
-              {promote ? 'Hacer definitivo' : 'Guardar'}
+              Guardar
             </button>
           </>
         )
@@ -219,11 +212,6 @@ export function PlayerEditor({
           </label>
         </div>
       </div>
-      {promote && (
-        <p className="muted" style={{ margin: '10px 0 0', fontSize: 12 }}>
-          Conserva todos sus partidos, torneos y palmarés. Pasará a salir en el ranking.
-        </p>
-      )}
       {errors.length > 0 && (
         <div className="notice error" style={{ marginTop: 10 }}>
           {errors.join(' ')}

@@ -1,5 +1,5 @@
 /**
- * Aviso de nombre repetido: no puede haber dos jugadores ni invitados con el mismo nombre.
+ * Aviso de nombre repetido: no puede haber dos jugadores con el mismo nombre.
  * Ofrece poner otro nombre o decir que es la misma persona (se usa o se fusiona con la que ya existe).
  */
 import type { Player } from '../../services/persistence';
@@ -29,7 +29,7 @@ export function NameClashNotice({
         <Avatar name={clash.name} photo={clash.photo} size={40} />
         <span>
           <b>
-            Ya existe {clash.guest ? 'un invitado' : 'un jugador'} llamado «{clash.name}»
+            Ya existe un jugador llamado «{clash.name}»
             {!clash.active && ' (dado de baja)'}.
           </b>
           <small>¿Es la misma persona? Si no, elige otro nombre.</small>

@@ -77,8 +77,8 @@ type Estado = 'subiendo' | 'listo' | 'sin-conexion' | 'local';
 /** Opciones del jugador: ver el QR de su perfil o su perfil en la app. */
 export function PlayerOptions({ player, onClose, startWithQr = false }: { player: Player; onClose: () => void; startWithQr?: boolean }) {
   const { navigate, profileLink, demoMode } = useApp();
-  const [qr, setQr] = useState(startWithQr && !player.guest);
-  const link = useMemo(() => (player.guest ? null : profileLink(player.id)), [player, profileLink]);
+  const [qr, setQr] = useState(startWithQr);
+  const link = useMemo(() => profileLink(player.id), [player, profileLink]);
   const [estado, setEstado] = useState<Estado>(link?.online ? 'subiendo' : 'local');
 
   useEffect(() => {
@@ -113,15 +113,12 @@ export function PlayerOptions({ player, onClose, startWithQr = false }: { player
             <Avatar name={player.name} photo={player.photo} size={64} />
             <div>
               <b>{player.name}</b>
-              {player.guest && <div className="muted">Invitado: no tiene perfil propio</div>}
             </div>
           </div>
           <div className="po-actions">
-            {!player.guest && (
-              <button className="btn btn-lg po-btn" onClick={() => setQr(true)}>
-                <span className="po-ico">▦</span> Ver QR del perfil
-              </button>
-            )}
+            <button className="btn btn-lg po-btn" onClick={() => setQr(true)}>
+              <span className="po-ico">▦</span> Ver QR del perfil
+            </button>
             <button
               className="btn btn-lg po-btn"
               onClick={() => {

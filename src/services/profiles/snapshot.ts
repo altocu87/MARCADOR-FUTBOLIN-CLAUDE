@@ -247,5 +247,3 @@ export function snapshotHash(s: ProfileSnapshot): string {
   return `${h1.toString(36)}${h2.toString(36)}${text.length.toString(36)}`;
 }
 
-/** ¿Tiene perfil público? Los invitados no. */
-export const hasPublicProfile = (p: Player) => !p.guest;
