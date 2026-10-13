@@ -662,7 +662,8 @@ export function TournamentNewScreen({
             <span className="tn-count" aria-live="polite">
               <b>{n}</b> {n === 1 ? 'jugador' : 'jugadores'}
             </span>
-            <span className="notice select-status">{n < 3 ? `Marca al menos ${3 - n} más` : `${n} jugadores listos`}</span>
+            {/* El número ya va en grande al lado: el aviso solo sale si falta alguien. */}
+            {n < 3 && <span className="notice select-status">Marca al menos {3 - n} más</span>}
             <button className="btn btn-sm" onClick={() => setSelected(n === available.length ? [] : available.map((p) => p.id))}>
               {n === available.length && n > 0 ? 'Quitar todos' : 'Todos'}
             </button>
@@ -1023,9 +1024,10 @@ export function TournamentNewScreen({
       }
       footer={
         <>
-          <span className={`notice select-status tn-status ${mainErrors.length ? 'warn' : ''}`}>
-            {mainErrors[0] ?? `${n} jugadores${withPairs ? ' · ahora, las parejas' : ' listos'}`}
-          </span>
+          {/* El número de jugadores ya está en el subtítulo: aquí solo un aviso o el siguiente paso. */}
+          {(mainErrors.length > 0 || withPairs) && (
+            <span className={`notice select-status tn-status ${mainErrors.length ? 'warn' : ''}`}>{mainErrors[0] ?? 'Ahora, las parejas'}</span>
+          )}
           {blocked.length > 0 && (
             <button className="tpl-more tn-foot-more" onClick={() => setShowBlocked((v) => !v)}>
               {showBlocked ? 'Ocultar las que no encajan' : `Ver las que no encajan (${blocked.length})`}
