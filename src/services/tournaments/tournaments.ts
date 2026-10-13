@@ -6,8 +6,9 @@
  *   Opcional: final entre los dos primeros (la final nunca acaba en empate).
  * - Cuadro: eliminación directa para 3 a 8 equipos; los huecos dan pase directo.
  *   Siembra por ELO (1 contra el último) o aleatoria.
- * - Pool: 4 a 16 jugadores, parejas que cambian en cada partido y puntos individuales
- *   (ver pool.ts). Opcional: final 1º contra 2º o 1º+4º contra 2º+3º.
+ * - Pool: 2 a 8 parejas en una escalera de pistas; se sube ganando y se baja perdiendo, con o sin
+ *   cambio de pareja, por tiempo o por rondas, y acaba con la final en la pista 1 (ver ladder.ts).
+ *   Los Pool antiguos (parejas rotativas con calendario fijo, pool.ts) se siguen pudiendo terminar.
  * La final puede jugarse al mejor de 3 y con otros goles. Ganar el torneo concede XP una sola vez.
  */
 import type { MatchConfig, ParticipantRef, Team } from '../../match-engine';
@@ -24,6 +25,7 @@ import {
   type TournamentTeam,
 } from '../persistence';
 import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, poolGameOptions, schedulePool } from './pool';
+import { LADDER_MAX_PAIRS, LADDER_MIN_PAIRS, ladderAfterResult, ladderPlaces, ladderRoundFixtures, startLineup } from './ladder';
 
 export const TOURNAMENT_RULES_VERSION = 'torneos-2';
 export const MIN_TEAMS = 3;
@@ -75,6 +77,8 @@ export interface TournamentDraft {
   gamesPerPlayer?: number;
   /** Pool: parejas equilibradas por ELO o al azar. */
   pairing?: 'elo' | 'random';
+  /** Pool en escalera (las parejas de salida van en `teams`). */
+  ladder?: { swap: boolean; limit: 'time' | 'rounds'; minutes: number; rounds: number };
   /** Liga: a una vuelta o ida y vuelta. */
   legs?: 1 | 2;
   /** Liga: puntos por victoria, empate y derrota. */
@@ -98,6 +102,15 @@ export interface TournamentDraft {
 export function validateDraft(d: TournamentDraft): string[] {
   const errors: string[] = [];
   if (!d.name.trim()) errors.push('Ponle un nombre al torneo.');
+  if (d.format === 'pool' && d.ladder) {
+    const all = d.teams.flatMap((t) => t.playerIds);
+    if (d.teams.length < LADDER_MIN_PAIRS || d.teams.length > LADDER_MAX_PAIRS)
+      errors.push(`El Pool necesita entre ${LADDER_MIN_PAIRS} y ${LADDER_MAX_PAIRS} parejas (${LADDER_MIN_PAIRS * 2} a ${LADDER_MAX_PAIRS * 2} jugadores).`);
+    else if (d.teams.some((t) => t.playerIds.length !== 2)) errors.push('En el Pool se juega por parejas: hace falta un número par de jugadores.');
+    else if (new Set(all).size !== all.length) errors.push('Un jugador no puede estar en dos parejas.');
+    if (d.ladder.limit === 'time' ? !(d.ladder.minutes >= 5) : !(d.ladder.rounds >= 1)) errors.push('Pon cuánto dura el Pool.');
+    return errors;
+  }
   if (d.format === 'pool') {
     const ids = d.entrants ?? [];
     if (ids.length < POOL_MIN_PLAYERS || ids.length > POOL_MAX_PLAYERS)
@@ -251,6 +264,7 @@ export function createTournament(
 ): Tournament {
   const errors = validateDraft(draft);
   if (errors.length) throw new Error(errors.join(' '));
+  if (draft.format === 'pool' && draft.ladder) return createLadder(draft, players, now, rnd);
   const bestOf = draft.finalBestOf && draft.finalBestOf > 1 ? draft.finalBestOf : undefined;
   let teams: TournamentTeam[];
   let fixtures: Fixture[];
@@ -338,9 +352,59 @@ export function createTournament(
   };
 }
 
+/** Pool en escalera: las parejas de salida se colocan en las pistas al azar y empieza la ronda 1. */
+function createLadder(draft: TournamentDraft, players: Player[], now: number, rnd: () => number): Tournament {
+  const mode = draft.ranked ? 'ranked' : 'quick';
+  const entrants = draft.teams.flatMap((x) => x.playerIds);
+  const pairs = shuffle(draft.teams, rnd);
+  const finalBestOf = draft.finalBestOf && draft.finalBestOf > 1 ? draft.finalBestOf : 1;
+  const t: Tournament = {
+    formatVersion: STORAGE_FORMAT_VERSION,
+    id: newId('t'),
+    name: draft.name.trim(),
+    format: 'pool',
+    teamSize: 2,
+    ranked: draft.ranked,
+    config: { ...draft.config, mode, testMode: false },
+    // Un «equipo» de 1 por jugador (sus nombres) y las parejas de salida, con su nombre y escudo si los tienen.
+    teams: [
+      ...entrants.map((id) => ({ id: newId('tt'), name: teamName([id], players), playerIds: [id] })),
+      ...pairs.map((p) => ({
+        id: newId('tt'),
+        name: p.name?.trim() || teamName(p.playerIds, players),
+        playerIds: [...p.playerIds],
+        ...(p.logo ? { logo: p.logo } : {}),
+        ...(p.clubId ? { clubId: p.clubId } : {}),
+      })),
+    ],
+    fixtures: [],
+    status: 'active',
+    createdAt: now,
+    entrants,
+    ladder: { ...draft.ladder!, finalBestOf, start: pairs.map((p) => [...p.playerIds]) },
+    ...(draft.lastTitle?.trim() ? { lastTitle: draft.lastTitle.trim() } : {}),
+    ...(draft.finalConfig ? { finalConfig: { ...draft.finalConfig, mode, testMode: false } } : {}),
+    ...(draft.templateName ? { templateName: draft.templateName } : {}),
+    ...(draft.templateId ? { templateId: draft.templateId } : {}),
+    ...(draft.edition ? { edition: draft.edition } : {}),
+    ...(draft.competition?.trim() ? { competition: draft.competition.trim() } : {}),
+    ...(draft.logo ? { logo: draft.logo } : {}),
+    ...(draft.banner ? { banner: draft.banner } : {}),
+    ...(draft.cup ? { cup: draft.cup } : {}),
+  };
+  t.fixtures = firstLadderRound(t);
+  return t;
+}
+
+/** Ronda 1 del Pool en escalera (si solo se juega una ronda, su pista 1 ya es la final). */
+function firstLadderRound(t: Tournament): Fixture[] {
+  const s = t.ladder!;
+  return ladderRoundFixtures(t, 1, startLineup(s.start), s.limit === 'rounds' && s.rounds <= 1);
+}
+
 export function playableFixtures(t: Tournament): Fixture[] {
   if (t.status !== 'active') return [];
-  return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !fixtureDone(f));
+  return t.fixtures.filter((f) => f.whiteTeamId && f.blueTeamId && !fixtureDone(f) && !f.skipped);
 }
 
 /** Siguiente partido: el primero pendiente por orden de jornada y de calendario. */
@@ -351,7 +415,7 @@ export function nextFixture(t: Tournament): Fixture | undefined {
 
 /** Partidos decididos y totales (sin contar pases directos). */
 export function fixtureProgress(t: Tournament): { done: number; total: number } {
-  const real = t.fixtures.filter((f) => !f.bye);
+  const real = t.fixtures.filter((f) => !f.bye && !f.skipped);
   return { done: real.filter(fixtureDone).length, total: real.length };
 }
 
@@ -479,7 +543,7 @@ function compareRows(a: StandingRow, b: StandingRow): number {
 export function recordFixtureResult(t: Tournament, fixtureId: string, match: StoredMatch, matches: StoredMatch[]): Tournament {
   const next: Tournament = { ...t, teams: [...t.teams], fixtures: t.fixtures.map((x) => ({ ...x })) };
   const f = next.fixtures.find((x) => x.id === fixtureId);
-  if (!f || fixtureDone(f) || !f.whiteTeamId || !f.blueTeamId) return t;
+  if (!f || fixtureDone(f) || f.skipped || !f.whiteTeamId || !f.blueTeamId) return t;
   if (f.matchId === match.id || f.matchIds?.includes(match.id)) return t;
   const side = match.result.winner;
   // Un empate solo vale en la fase regular de una liga; en una eliminatoria o una final no cuenta.
@@ -500,6 +564,10 @@ export function recordFixtureResult(t: Tournament, fixtureId: string, match: Sto
 
   if (isFinalFixture(next, f)) {
     finish(next, f.winnerTeamId!, match);
+    return next;
+  }
+  if (next.ladder) {
+    ladderAfterResult(next, f.round, all);
     return next;
   }
   const regularDone = next.fixtures.every((x) => x.stage === 'final' || fixtureDone(x) || (!x.whiteTeamId && !x.blueTeamId));
@@ -549,6 +617,8 @@ function finish(t: Tournament, winnerTeamId: string, prizeMatch: StoredMatch): v
 
 export function roundLabel(t: Tournament, round: number): string {
   const fixtures = t.fixtures.filter((f) => f.round === round);
+  // En la escalera, la final es la pista 1 de una ronda que también tiene otras pistas.
+  if (t.ladder) return `Ronda ${round}`;
   if (fixtures.some((f) => f.stage === 'final')) return 'Final';
   if (t.format === 'league') return `Jornada ${round}`;
   if (t.format === 'pool') return `Ronda ${round}`;
@@ -583,6 +653,8 @@ export function phaseInfo(t: Tournament, f: Fixture): PhaseInfo {
   if (f.stage === 'final') {
     tier = 'final';
     title = 'GRAN FINAL';
+  } else if (t.ladder && f.court) {
+    title = `PISTA ${f.court} · ${title}`;
   } else if (t.format === 'bracket') {
     const fromEnd = Math.max(...t.fixtures.map((x) => x.round)) - f.round;
     const names: [PhaseTier, string][] = [
@@ -615,6 +687,19 @@ export function recordedMatches(t: Tournament, matches: StoredMatch[]): StoredMa
  * apuntan de nuevo, en orden, todos los demás resultados. Sirve para repetir un partido mal apuntado.
  */
 export function undoMatch(t: Tournament, matchId: string, matches: StoredMatch[]): Tournament {
+  if (t.ladder) {
+    // Se vuelve a la ronda 1 y se apuntan los demás: las rondas siguientes salen iguales (sorteos con semilla).
+    const { winnerTeamId: _w, finishedAt: _f, finalMatchId: _fm, ...base } = t;
+    let next: Tournament = { ...base, status: 'active', teams: [...t.teams], fixtures: [] };
+    next.fixtures = firstLadderRound(next);
+    const played: StoredMatch[] = [];
+    for (const m of recordedMatches(t, matches)) {
+      if (m.id === matchId) continue;
+      played.push(m);
+      next = recordFixtureResult(next, m.tournament!.fixtureId, m, played);
+    }
+    return next;
+  }
   const fixtures: Fixture[] = t.fixtures.map((f) => {
     if (f.bye) return { ...f };
     const { winnerTeamId: _w, draw: _d, matchId: _m, matchIds: _ids, series: _s, ...rest } = f;
@@ -647,7 +732,9 @@ export function updateTournamentRules(t: Tournament, rules: MatchRules, finalRul
     return finalBestOf > 1 ? { ...rest, bestOf: finalBestOf } : rest;
   });
   const { finalConfig: _old, ...base } = t;
-  return { ...base, config, fixtures, ...(finalConfig ? { finalConfig } : {}) };
+  // En la escalera la final aún no existe: se apunta para cuando toque.
+  const ladder = t.ladder && finalBestOf && finalSeriesEditable(t) ? { ladder: { ...t.ladder, finalBestOf } } : {};
+  return { ...base, config, fixtures, ...ladder, ...(finalConfig ? { finalConfig } : {}) };
 }
 
 /** ¿Se puede cambiar todavía si la final es a 1 partido o al mejor de 3? */
@@ -675,6 +762,7 @@ export interface FinalPlace {
  */
 export function finalRanking(t: Tournament, matches: StoredMatch[]): FinalPlace[] {
   const winner = t.teams.find((x) => x.id === t.winnerTeamId);
+  if (t.ladder) return ladderPlaces(t).map((p) => ({ ...p, champion: p.team.id === t.winnerTeamId }));
   let order = (t.format === 'bracket' ? leagueStandings(t, matches) : standings(t, matches)).map((r) => r.team);
   if (t.format === 'bracket') {
     // Ronda más alta a la que llegó cada uno (el campeón, el primero); el orden estable deja el desempate.

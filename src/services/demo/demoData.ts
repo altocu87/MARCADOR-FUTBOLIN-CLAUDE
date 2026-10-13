@@ -24,7 +24,6 @@ import { DEMO_PHOTOS } from './demoPhotos';
 import {
   createTournament,
   editionName,
-  effectivePoolGames,
   fixtureConfig,
   fixtureParticipants,
   playableFixtures,
@@ -256,9 +255,9 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
     maxMatches = Infinity,
     extra: Partial<TournamentDraft> = {},
   ) => {
-    // En el Pool `count` son jugadores; en el resto, equipos.
-    const ids = shuffled(players).slice(0, format === 'pool' ? count : count * teamSize).map((p) => p.id);
-    const teams = format === 'pool' ? [] : Array.from({ length: count }, (_, i) => ({ playerIds: ids.slice(i * teamSize, (i + 1) * teamSize) }));
+    // `count` son equipos (en el Pool, parejas).
+    const ids = shuffled(players).slice(0, count * teamSize).map((p) => p.id);
+    const teams = Array.from({ length: count }, (_, i) => ({ playerIds: ids.slice(i * teamSize, (i + 1) * teamSize) }));
     let t = createTournament(
       {
         name,
@@ -268,7 +267,7 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
         config: { ...DEFAULT_CONFIG, goalsPerPeriod: 5, testMode: false },
         teams,
         seeding: 'random',
-        ...(format === 'pool' ? { entrants: ids, gamesPerPlayer: effectivePoolGames(count, 4), pairing: 'random' as const } : {}),
+        ...(format === 'pool' ? { ladder: { swap: true, limit: 'rounds' as const, minutes: 30, rounds: 4 } } : {}),
         ...extra,
       },
       players,
@@ -286,8 +285,8 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
       matches.push(match);
       t = recordFixtureResult(t, fx.id, match, matches);
       played += 1;
-      // Varios partidos por tarde; cada 4 se salta al día siguiente.
-      clock = played % 4 === 0 ? dayStartOf(match.finishedAt + DAY) + 17 * 3_600_000 : match.finishedAt + Math.round(between(3, 12) * 60_000);
+      // Varios partidos por tarde; cada 4 se salta al día siguiente (el Pool se juega entero en una tarde).
+      clock = played % 4 === 0 && format !== 'pool' ? dayStartOf(match.finishedAt + DAY) + 17 * 3_600_000 : match.finishedAt + Math.round(between(3, 12) * 60_000);
     }
     tournaments.push(t);
   };
@@ -301,9 +300,10 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
   });
   runTournament(editionName('Liguilla Rápida', 1), 'league', 1, 5, true, startDay + 10 * DAY, Infinity, edition('builtin-league', 'Liguilla Rápida', 1));
   runTournament(editionName('Copa Parejas', 1), 'bracket', 2, 4, false, startDay + 45 * DAY, Infinity, edition('builtin-pairs', 'Copa Parejas', 1, { finalBestOf: 3 }));
-  const rotativa = { final: 'top4' as const, finalBestOf: 3 };
-  runTournament(editionName('Copa Rotativa', 1), 'pool', 2, 5, false, startDay + 80 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 1, rotativa));
-  runTournament(editionName('Copa Rotativa', 2), 'pool', 2, 6, false, startDay + 100 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 2, rotativa));
+  // Pool en escalera con cambio de pareja: 4 rondas y la final en la pista 1.
+  runTournament(editionName('Copa Rotativa', 1), 'pool', 2, 4, false, startDay + 80 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 1));
+  runTournament(editionName('Copa Rotativa', 2), 'pool', 2, 5, false, startDay + 100 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 2));
+  runTournament(editionName('Copa Rotativa', 3), 'pool', 2, 6, false, now - 2 * DAY, 5, edition('builtin-pool', 'Copa Rotativa', 3)); // en juego
   runTournament(editionName('Liguilla Rápida', 2), 'league', 1, 6, true, now - 6 * DAY, 8, edition('builtin-league', 'Liguilla Rápida', 2)); // en juego
 
   matches.sort((a, b) => a.finishedAt - b.finishedAt);

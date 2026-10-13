@@ -11,7 +11,9 @@ describe('datos de prueba', () => {
     expect(data.players.length).toBeGreaterThanOrEqual(10);
     expect(data.matches.length).toBeGreaterThanOrEqual(100);
     expect(data.tournaments.filter((t) => t.status === 'finished').length).toBe(4);
-    expect(data.tournaments.filter((t) => t.status === 'active').length).toBe(1);
+    // En juego: la Liguilla Rápida y un Pool en escalera.
+    expect(data.tournaments.filter((t) => t.status === 'active').length).toBe(2);
+    expect(data.tournaments.filter((t) => t.ladder).length).toBe(3);
   });
 
   it('los partidos son coherentes y anteriores a hoy', () => {

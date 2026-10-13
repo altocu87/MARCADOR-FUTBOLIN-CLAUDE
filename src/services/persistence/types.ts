@@ -97,6 +97,10 @@ export interface Fixture {
   stage?: 'final';
   /** Pool: jugadores que descansan en esta ronda. */
   resting?: string[];
+  /** Pool en escalera: pista del partido (1 = la mejor). */
+  court?: number;
+  /** Pool en escalera: no se llegó a jugar porque ya tocaba la final. */
+  skipped?: boolean;
   /** Serie al mejor de N partidos (por defecto 1). */
   bestOf?: number;
   /** Victorias de cada lado en la serie. */
@@ -126,6 +130,8 @@ export interface Tournament {
   finalMatchId?: string;
   /** Pool: jugadores inscritos (las parejas cambian en cada partido). */
   entrants?: string[];
+  /** Pool en escalera de pistas (sin él, un Pool antiguo de parejas rotativas con calendario fijo). */
+  ladder?: LadderSettings;
   /** Liga: puntos por victoria, empate y derrota (sin poner: 3, 1 y 0). */
   points?: TournamentPoints;
   /** Título que se lleva el último en la ceremonia final. */
@@ -149,6 +155,23 @@ export interface Tournament {
   cup?: string;
 }
 
+/**
+ * Pool en escalera: una pista por cada dos parejas (la 1 es la mejor). Cada ronda se juega un partido en
+ * cada pista; el que gana sube y el que pierde baja. Con número impar de parejas, una espera en el banquillo.
+ */
+export interface LadderSettings {
+  /** Con cambio de pareja: en cada pista, las dos parejas se deshacen y se rehacen por sorteo. */
+  swap: boolean;
+  /** Se acaba por tiempo (la final, cuando ya solo da para un partido) o tras un número de rondas. */
+  limit: 'time' | 'rounds';
+  minutes: number;
+  rounds: number;
+  /** Partidos de la final (1 o al mejor de 3). */
+  finalBestOf: number;
+  /** Parejas de salida en orden de escalera: [0,1] pista 1, [2,3] pista 2…; si sobra una, al banquillo. */
+  start: string[][];
+}
+
 /** Puntos que da cada resultado en la clasificación. */
 export interface TournamentPoints {
   win: number;
@@ -169,8 +192,16 @@ export interface TournamentTemplate {
   pairing: 'elo' | 'random' | 'manual';
   /** Cuadro: orden de siembra. */
   seeding: 'elo' | 'random';
-  /** Pool: partidos que juega cada jugador (se ajusta para que todos jueguen los mismos). */
+  /** Pool antiguo: partidos que juega cada jugador (ya no se usa). */
   gamesPerPlayer: number;
+  /** Pool: con cambio de pareja (sin poner: sí). */
+  poolSwap?: boolean;
+  /** Pool: se acaba por tiempo o por rondas (sin poner: tiempo). */
+  poolLimit?: 'time' | 'rounds';
+  /** Pool: minutos que dura (sin poner: 30). */
+  poolMinutes?: number;
+  /** Pool: rondas que se juegan (sin poner: 5). */
+  poolRounds?: number;
   final: TournamentFinal;
   /** Final al mejor de 1 o de 3. */
   finalBestOf: 1 | 3;

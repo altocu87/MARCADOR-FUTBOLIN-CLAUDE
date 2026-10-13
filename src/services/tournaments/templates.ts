@@ -5,7 +5,7 @@
 import { DEFAULT_CONFIG, type MatchConfig } from '../../match-engine';
 import type { TournamentTemplate } from '../persistence';
 import { newId } from '../ids';
-import { POOL_MAX_PLAYERS, POOL_MIN_PLAYERS, effectivePoolGames } from './pool';
+import { LADDER_DEFAULTS, LADDER_MAX_PAIRS, LADDER_MIN_PAIRS, ladderShape } from './ladder';
 import { DEFAULT_POINTS, FORMAT_LABEL, MAX_TEAMS, MIN_TEAMS, formTeams, rulesShort, sameRules, type MatchRules, type TournamentDraft } from './tournaments';
 
 /** Punto de partida de un tipo nuevo en el creador: 1 contra 1, a 5 goles, sin final. */
@@ -31,7 +31,7 @@ export function allTemplates(saved: TournamentTemplate[]): TournamentTemplate[] 
 /** Tipo nuevo: copia de otro o, sin él, los valores por defecto del formato dado. */
 export function newTemplate(from?: TournamentTemplate, format: TournamentTemplate['format'] = 'league'): TournamentTemplate {
   if (from) return { ...from, id: newId('tpl'), name: `${from.name} (copia)`, builtIn: false };
-  return { ...TEMPLATE_DEFAULTS, id: newId('tpl'), name: '', format, teamSize: format === 'pool' ? 2 : 1 };
+  return { ...TEMPLATE_DEFAULTS, id: newId('tpl'), name: '', format, teamSize: format === 'pool' ? 2 : 1, ...(format === 'pool' ? { pairing: 'random' as const } : {}) };
 }
 
 /** Liga: ¿se puede empatar? Solo a tiempo (o «ambas»); a goles siempre hay ganador. */
@@ -50,10 +50,26 @@ const FINAL_LABEL: Record<TournamentTemplate['final'], string> = {
   top4: 'final 1º+4º vs 2º+3º',
 };
 
-/** Resumen en una línea: «Pool rotativo · 4 partidos por jugador · final 1º+4º vs 2º+3º al mejor de 3 · a 5 goles». */
+/** Ajustes del Pool de un tipo de torneo (con los de por defecto donde no diga nada). */
+export function poolSettings(t: TournamentTemplate): { swap: boolean; limit: 'time' | 'rounds'; minutes: number; rounds: number } {
+  return {
+    swap: t.poolSwap ?? LADDER_DEFAULTS.swap,
+    limit: t.poolLimit ?? LADDER_DEFAULTS.limit,
+    minutes: t.poolMinutes ?? LADDER_DEFAULTS.minutes,
+    rounds: t.poolRounds ?? LADDER_DEFAULTS.rounds,
+  };
+}
+
+/** «30 min» / «5 rondas». */
+export function poolLimitText(t: TournamentTemplate): string {
+  const p = poolSettings(t);
+  return p.limit === 'time' ? `${p.minutes} min` : `${p.rounds} rondas`;
+}
+
+/** Resumen en una línea: «Pool · con cambio de pareja · 30 min · final en la pista 1 · a 5 goles». */
 export function describeTemplate(t: TournamentTemplate): string {
   const parts: string[] = [FORMAT_LABEL[t.format]];
-  if (t.format === 'pool') parts.push(`${t.gamesPerPlayer} partidos por jugador`);
+  if (t.format === 'pool') parts.push(poolSettings(t).swap ? 'con cambio de pareja' : 'sin cambio de pareja', poolLimitText(t));
   else parts.push(t.teamSize === 1 ? '1 contra 1' : `parejas ${t.pairing === 'elo' ? 'equilibradas' : t.pairing === 'manual' ? 'elegidas' : 'al azar'}`);
   if (t.format === 'league') {
     if ((t.legs ?? 1) === 2) parts.push('ida y vuelta');
@@ -63,7 +79,8 @@ export function describeTemplate(t: TournamentTemplate): string {
   const bo = t.finalBestOf > 1 ? ' al mejor de 3' : '';
   if (t.format === 'bracket') {
     if (bo) parts.push(`final${bo}`);
-  } else parts.push(FINAL_LABEL[t.final] + (t.final !== 'none' ? bo : ''));
+  } else if (t.format === 'pool') parts.push(`final en la pista 1${bo}`);
+  else parts.push(FINAL_LABEL[t.final] + (t.final !== 'none' ? bo : ''));
   parts.push(rulesShort(t) + (hasTemplateFinal(t) && !sameRules(t, finalRulesOf(t)) ? ` (final ${rulesShort(finalRulesOf(t))})` : ''));
   if (t.ranked) parts.push('cuenta para ELO');
   return parts.join(' · ');
@@ -71,13 +88,14 @@ export function describeTemplate(t: TournamentTemplate): string {
 
 /** Opciones de final que tienen sentido para cada formato. */
 export function finalOptions(format: TournamentTemplate['format']): TournamentTemplate['final'][] {
-  if (format === 'bracket') return [];
-  return format === 'pool' ? ['none', 'top2', 'top4'] : ['none', 'top2'];
+  // La copa y el Pool siempre acaban en final (la copa con los dos que llegan; el Pool, en la pista 1).
+  if (format === 'bracket' || format === 'pool') return [];
+  return ['none', 'top2'];
 }
 
-/** ¿Este tipo de torneo acaba en final? (el cuadro siempre; liguilla y Pool si la tienen). */
+/** ¿Este tipo de torneo acaba en final? (copa y Pool siempre; la liga si la tiene). */
 export function hasTemplateFinal(t: TournamentTemplate): boolean {
-  return t.format === 'bracket' || (t.final !== 'none' && finalOptions(t.format).includes(t.final));
+  return t.format === 'bracket' || t.format === 'pool' || (t.final !== 'none' && finalOptions(t.format).includes(t.final));
 }
 
 /** Reglas de la final: las suyas propias o, si no tiene, las del resto. */
@@ -135,26 +153,17 @@ export function draftFromTemplate(
     ...(t.lastTitle?.trim() ? { lastTitle: t.lastTitle.trim() } : {}),
     ...(t.format === 'league' ? { legs: t.legs ?? 1, points: { ...templatePoints(t) } } : {}),
   };
-  if (t.format === 'pool') {
-    return {
-      draft: {
-        ...common,
-        teamSize: 2,
-        teams: [],
-        entrants: [...selected],
-        gamesPerPlayer: effectivePoolGames(selected.length, t.gamesPerPlayer),
-        pairing: t.pairing === 'elo' ? 'elo' : 'random',
-      },
-      leftover: [],
-    };
-  }
+  // El Pool se juega por parejas (las de salida, al azar o elegidas), como las parejas fijas.
+  const size = t.format === 'pool' ? 2 : t.teamSize;
+  const pairing = t.format === 'pool' && t.pairing === 'elo' ? 'random' : t.pairing;
+  const ladder = t.format === 'pool' ? { ladder: poolSettings(t) } : {};
   // Los equipos guardados (o las parejas elegidas a mano) se respetan; el resto se empareja como diga
   // el tipo de torneo. Con parejas elegidas por los jugadores no se forma ninguna sola: lo que quede sin
   // pareja vuelve en `leftover`.
-  const fixed = t.teamSize === 2 ? keepPairs(fixedPairs, selected) : [];
+  const fixed = size === 2 ? keepPairs(fixedPairs, selected) : [];
   const rest = selected.filter((id) => !fixed.some((p) => p.includes(id)));
-  const formed = t.teamSize === 2 && t.pairing === 'manual' ? { teams: [], leftover: rest } : formTeams(rest, t.teamSize, t.pairing === 'elo' ? 'elo' : 'random', eloOf, rnd);
-  return { draft: { ...common, teamSize: t.teamSize, teams: [...fixed.map((p) => ({ playerIds: [...p] })), ...formed.teams] }, leftover: formed.leftover };
+  const formed = size === 2 && pairing === 'manual' ? { teams: [], leftover: rest } : formTeams(rest, size, pairing === 'elo' ? 'elo' : 'random', eloOf, rnd);
+  return { draft: { ...common, teamSize: size, ...ladder, teams: [...fixed.map((p) => ({ playerIds: [...p] })), ...formed.teams] }, leftover: formed.leftover };
 }
 
 export interface TemplateFit {
@@ -169,12 +178,12 @@ export interface TemplateFit {
 export function templateFit(t: TournamentTemplate, n: number): TemplateFit {
   const finalExtra = t.format !== 'bracket' && t.final !== 'none' ? ' + final' + (t.finalBestOf > 1 ? ' al mejor de 3' : '') : '';
   if (t.format === 'pool') {
-    if (n < POOL_MIN_PLAYERS) return { ok: false, reason: `Mínimo ${POOL_MIN_PLAYERS} jugadores` };
-    if (n > POOL_MAX_PLAYERS) return { ok: false, reason: `Máximo ${POOL_MAX_PLAYERS} jugadores` };
-    const g = effectivePoolGames(n, t.gamesPerPlayer);
-    const rest = n % 4;
-    const resting = rest === 0 ? 'sin descansos' : `descansa${rest > 1 ? 'n' : ''} ${rest} por ronda`;
-    return { ok: true, summary: `${(n * g) / 4} partidos${finalExtra} · cada uno juega ${g} · ${resting}` };
+    if (n % 2 === 1) return { ok: false, reason: 'Necesita número par de jugadores' };
+    if (n < LADDER_MIN_PAIRS * 2) return { ok: false, reason: `Mínimo ${LADDER_MIN_PAIRS * 2} jugadores` };
+    if (n > LADDER_MAX_PAIRS * 2) return { ok: false, reason: `Máximo ${LADDER_MAX_PAIRS * 2} jugadores` };
+    const shape = ladderShape(n / 2);
+    const courts = `${shape.courts} pista${shape.courts > 1 ? 's' : ''}${shape.bench ? ' + banquillo' : ''}`;
+    return { ok: true, summary: `${n / 2} parejas · ${courts} · ${poolLimitText(t)} · final en la pista 1${t.finalBestOf > 1 ? ' al mejor de 3' : ''}` };
   }
   const size = t.teamSize;
   const unit = size === 1 ? 'jugadores' : 'parejas';

@@ -35,6 +35,12 @@ import {
   updateTournamentRules,
   hasTemplateFinal,
   withFinalRules,
+  poolSettings,
+  poolLimitText,
+  LADDER_MINUTES,
+  LADDER_ROUNDS,
+  ladderClock,
+  lineupOfRound,
   type MatchRules,
   rulesShort,
   fixtureConfig,
@@ -218,7 +224,10 @@ function RulesEditor({ t, onClose, onSave }: { t: Tournament; onClose: () => voi
 /** Las reglas de una competición en iconos, para verlas de un vistazo en su tarjeta. */
 function ruleChips(t: TournamentTemplate): { icon: string; text: string }[] {
   const out: { icon: string; text: string }[] = [];
-  out.push(t.format === 'pool' ? { icon: '🔄', text: 'Parejas que rotan' } : t.teamSize === 2 ? { icon: '👥', text: 'Parejas' } : { icon: '👤', text: '1 vs 1' });
+  if (t.format === 'pool') {
+    out.push(poolSettings(t).swap ? { icon: '🔄', text: 'Cambio de pareja' } : { icon: '👥', text: 'Parejas fijas' });
+    out.push({ icon: poolSettings(t).limit === 'time' ? '⌛' : '🔢', text: poolLimitText(t) });
+  } else out.push(t.teamSize === 2 ? { icon: '👥', text: 'Parejas' } : { icon: '👤', text: '1 vs 1' });
   if (t.endCondition !== 'time') out.push({ icon: '⚽', text: `A ${t.goalsPerPeriod}` });
   if (t.endCondition !== 'goals') out.push({ icon: '⏱', text: `${t.minutesPerPeriod}'` });
   if (t.format === 'league') {
@@ -240,6 +249,30 @@ function RulesSummary({ tpl }: { tpl: TournamentTemplate }) {
         <span className="label">Partidos</span>
         <span>{rulesText(tpl)}</span>
       </div>
+      {tpl.format === 'pool' && (
+        <>
+          <div>
+            <span className="label">Pistas</span>
+            <span>Una pista por cada dos parejas: el que gana sube y el que pierde baja. Si sobra una pareja, espera en el banquillo.</span>
+          </div>
+          <div>
+            <span className="label">Parejas</span>
+            <span>
+              {poolSettings(tpl).swap
+                ? 'Con cambio de pareja: en cada pista, cada uno juega con uno de la otra pareja, por sorteo.'
+                : 'Sin cambio de pareja: las mismas parejas todo el pool.'}
+            </span>
+          </div>
+          <div>
+            <span className="label">Duración</span>
+            <span>
+              {poolSettings(tpl).limit === 'time'
+                ? `${poolSettings(tpl).minutes} minutos: cuando ya solo da tiempo a un partido, se juega la final en la pista 1.`
+                : `${poolSettings(tpl).rounds} rondas: la pista 1 de la última ronda es la final.`}
+            </span>
+          </div>
+        </>
+      )}
       {tpl.format === 'league' && (
         <>
           <div>
@@ -267,7 +300,7 @@ function RulesSummary({ tpl }: { tpl: TournamentTemplate }) {
         <span className="label">🏆 Final</span>
         <span>
           {hasTemplateFinal(tpl)
-            ? `${tpl.format === 'bracket' ? '' : `${FINAL_LABEL[tpl.final]}, `}${tpl.finalBestOf > 1 ? 'al mejor de 3' : 'a un partido'}. ${rulesText(finalRulesOf(tpl))}`
+            ? `${tpl.format === 'bracket' ? '' : tpl.format === 'pool' ? 'En la pista 1, ' : `${FINAL_LABEL[tpl.final]}, `}${tpl.finalBestOf > 1 ? 'al mejor de 3' : 'a un partido'}. ${rulesText(finalRulesOf(tpl))}`
             : 'Sin final: gana el primero de la clasificación.'}
         </span>
       </div>
@@ -428,7 +461,7 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
                         <span style={{ width: `${pr.total ? (pr.done / pr.total) * 100 : 0}%` }} />
                       </span>
                       <small>
-                        {pr.done} de {pr.total} partidos
+                        {t.ladder ? `${pr.done} partidos jugados` : `${pr.done} de ${pr.total} partidos`}
                         {nx ? ` · siguiente: ${side(nx.whiteTeamId)?.name ?? '?'} vs ${side(nx.blueTeamId)?.name ?? '?'}` : ''}
                       </small>
                     </span>
@@ -645,7 +678,7 @@ const KINDS: {
 }[] = [
   { format: 'league', file: 'liga', title: 'Liga', noun: 'liga', the: 'la liga', none: 'ninguna', first: 'primera', created: 'creada', color: '#62d6ff', desc: 'Todos contra todos. Gana quien más puntos sume; puede acabar con final.' },
   { format: 'bracket', file: 'copa', title: 'Copa', noun: 'copa', the: 'la copa', none: 'ninguna', first: 'primera', created: 'creada', color: '#f2c94c', desc: 'Eliminatoria: quien pierde, fuera, hasta llegar a la final.' },
-  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', none: 'ningún', first: 'primer', created: 'creado', color: '#d65cff', desc: 'Las parejas cambian en cada partido y puntúa cada jugador por su cuenta.' },
+  { format: 'pool', file: 'pool', title: 'Pool', noun: 'pool', the: 'el pool', none: 'ningún', first: 'primer', created: 'creado', color: '#d65cff', desc: 'Escalera de pistas: el que gana sube y el que pierde baja. La final, en la pista 1.' },
 ];
 
 /** Igual que las tarjetas de modo del inicio: la elegida se apaga sola si nadie confirma, y la pulsada
@@ -810,7 +843,7 @@ export function TournamentNewScreen({
               <span className="tn-resume-body">
                 <b>{t.name}</b>
                 <small>
-                  {pr.done} de {pr.total} partidos{nx ? ` · siguiente: ${teamOf(nx.whiteTeamId)} vs ${teamOf(nx.blueTeamId)}` : ''}
+                  {t.ladder ? `${pr.done} partidos jugados` : `${pr.done} de ${pr.total} partidos`}{nx ? ` · siguiente: ${teamOf(nx.whiteTeamId)} vs ${teamOf(nx.blueTeamId)}` : ''}
                   {running > 1 ? ` · y ${running - 1} más en «En curso»` : ''}
                 </small>
               </span>
@@ -1045,8 +1078,12 @@ export function TournamentNewScreen({
   const banner = tpl?.banner ?? prevEdition?.banner ?? defaultBanner(compName || 'torneo', tpl?.format);
   const name = tpl ? editionName(compName.trim() || tpl.name, edition) : '';
   // Parejas elegidas por los jugadores: solo valen las que se formen aquí (no los equipos guardados).
-  const isManual = !!tpl && tpl.format !== 'pool' && tpl.teamSize === 2 && tpl.pairing === 'manual';
-  const fixedPairs = isManual ? manualPairs.filter((p) => p.every((id) => selected.includes(id))) : prefs.clubs.map((c) => c.playerIds);
+  // El Pool también se juega por parejas: las de salida, al azar o elegidas aquí.
+  const isPool = tpl?.format === 'pool';
+  const swapPool = !!tpl && isPool && poolSettings(tpl).swap;
+  const isManual = !!tpl && (isPool || tpl.teamSize === 2) && tpl.pairing === 'manual';
+  // Con cambio de pareja, las parejas solo valen para el primer partido: los equipos guardados no cuentan.
+  const fixedPairs = isManual ? manualPairs.filter((p) => p.every((id) => selected.includes(id))) : swapPool ? [] : prefs.clubs.map((c) => c.playerIds);
   const built = tpl ? draftFromTemplate(tpl, name, selected, elo, { penaltyFirstTeam: prefs.penaltyFirstTeam }, seededRandom(seed), fixedPairs) : null;
   // Parejas fijas: su equipo guardado o lo que se haya escrito aquí.
   const teamKey = (ids: string[]) => [...ids].sort().join('|');
@@ -1078,9 +1115,8 @@ export function TournamentNewScreen({
     : leftover.length
       ? [isManual ? `Faltan ${leftover.length} jugadores por emparejar.` : `Sobra ${nameOf(leftover[0])}.`]
       : validateDraft(draft);
-  const isPool = tpl?.format === 'pool';
-  // Torneo de parejas fijas: antes de crear se pasa por la ventana de parejas de esta edición.
-  const withPairs = !!tpl && !isPool && tpl.teamSize === 2;
+  // Torneo por parejas (y el Pool): antes de crear se pasa por la ventana de parejas de esta edición.
+  const withPairs = !!tpl && (isPool || tpl.teamSize === 2);
   // En la pantalla principal, con parejas a mano aún sin formar no es un error: se forman en la ventana.
   const mainErrors = isManual && !!draft && n % 2 === 0 ? [] : errors;
 
@@ -1245,7 +1281,7 @@ export function TournamentNewScreen({
       )}
       {pairsOpen && draft && (
         <Modal
-          title={`Parejas · ${edition}ª edición`}
+          title={swapPool ? 'Parejas del primer partido' : `Parejas · ${edition}ª edición`}
           onClose={() => {
             setPairsOpen(false);
             setPickA(null);
@@ -1300,9 +1336,10 @@ export function TournamentNewScreen({
           <div className="tn-pair-list">
             {draft.teams.map((tm) => (
               <div key={tm.playerIds.join('|')} className="tn-pair">
-                <Crest id={tm.logo} size={30} />
+                {/* Con cambio de pareja, la pareja solo dura un partido: ni nombre ni escudo. */}
+                {!swapPool && <Crest id={tm.logo} size={30} />}
                 <span className="tn-pair-names">
-                  <b>{tm.name ?? 'Sin nombre'}</b>
+                  {!swapPool && <b>{tm.name ?? 'Sin nombre'}</b>}
                   <span>
                     {tm.playerIds.map((id) => {
                       const p = players.find((x) => x.id === id);
@@ -1315,9 +1352,11 @@ export function TournamentNewScreen({
                     })}
                   </span>
                 </span>
-                <button className="btn btn-sm btn-ghost" onClick={() => setEditingTeam(tm.playerIds)} aria-label="Poner nombre a la pareja">
-                  ✎
-                </button>
+                {!swapPool && (
+                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingTeam(tm.playerIds)} aria-label="Poner nombre a la pareja">
+                    ✎
+                  </button>
+                )}
                 {isManual && (
                   <button
                     className="btn btn-sm btn-ghost"
@@ -1351,14 +1390,16 @@ const LAST_TITLES = ['Farolillo rojo', 'Cuchara de madera', 'Colista', 'El paque
 const ALL_CREATOR_STEPS = [
   { id: 'kind', label: 'Tipo' },
   { id: 'players', label: 'Jugadores' },
+  { id: 'duration', label: 'Duración' },
   { id: 'rules', label: 'Partidos' },
   { id: 'points', label: 'Puntos' },
   { id: 'final', label: 'Final' },
   { id: 'name', label: 'Nombre' },
 ] as const;
 type CreatorStep = (typeof ALL_CREATOR_STEPS)[number]['id'];
-/** Pasos del creador para un formato: «Puntos» (vueltas y puntuación) solo en la liga. */
-const creatorSteps = (format: TournamentFormat) => ALL_CREATOR_STEPS.filter((x) => x.id !== 'points' || format === 'league');
+/** Pasos del creador para un formato: «Puntos» (vueltas y puntuación) solo en la liga; «Duración», solo en el Pool. */
+const creatorSteps = (format: TournamentFormat) =>
+  ALL_CREATOR_STEPS.filter((x) => (x.id !== 'points' || format === 'league') && (x.id !== 'duration' || format === 'pool'));
 
 interface OptionItem<T> {
   v: T;
@@ -1502,6 +1543,8 @@ export function TournamentTemplateScreen({
       ...t,
       format: f,
       teamSize: f === 'pool' ? 2 : t.format === 'pool' ? 1 : t.teamSize,
+      // En el Pool las parejas son al azar o elegidas (no equilibradas).
+      pairing: f === 'pool' && t.pairing === 'elo' ? 'random' : t.pairing,
       final: finalOptions(f).includes(t.final) ? t.final : 'none',
     }));
   const setOwnFinal = (own: boolean) =>
@@ -1556,21 +1599,28 @@ export function TournamentTemplateScreen({
       { v: 'manual', title: 'Las elegimos nosotros' },
       { v: 'elo', title: 'Equilibradas', help: 'Se junta a un jugador fuerte con uno flojo según su ELO, para que todas las parejas estén igualadas.' },
     ];
+    const swap = poolSettings(tpl).swap;
     body = isPool ? (
       <div className="cr-cols">
         <div className="cr-col">
-          <CreatorField label="Partidos por jugador" note="Se ajusta al crear el torneo para que todos jueguen los mismos.">
-            <Seg value={tpl.gamesPerPlayer} options={[[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']]} onChange={(v) => set('gamesPerPlayer', v)} />
+          <CreatorField label="Parejas">
+            <OptionList<boolean>
+              value={swap}
+              options={[
+                { v: true, title: 'Con cambio de pareja', help: 'En cada pista, las dos parejas se deshacen y cada uno juega con uno de la otra pareja, por sorteo.' },
+                { v: false, title: 'Sin cambio de pareja', help: 'Las mismas parejas durante todo el pool: suben y bajan juntas.' },
+              ]}
+              onChange={(v) => set('poolSwap', v)}
+            />
           </CreatorField>
-          <small className="cr-note">Vale con número par o impar de jugadores: si sobra alguien, descansa por turnos.</small>
         </div>
         <div className="cr-col">
-          <CreatorField label="Parejas de cada partido">
-            <OptionList<'elo' | 'random'>
-              value={tpl.pairing === 'elo' ? 'elo' : 'random'}
+          <CreatorField label={swap ? 'Parejas del primer partido' : 'Cómo se forman las parejas'} note="Hace falta un número par de jugadores.">
+            <OptionList<TournamentTemplate['pairing']>
+              value={tpl.pairing === 'manual' ? 'manual' : 'random'}
               options={[
                 { v: 'random', title: 'Al azar' },
-                { v: 'elo', title: 'Equilibradas', help: 'En cada partido se junta a fuertes con flojos según el ELO, para que estén igualados.' },
+                { v: 'manual', title: 'Las elegimos nosotros' },
               ]}
               onChange={(v) => set('pairing', v)}
             />
@@ -1613,6 +1663,40 @@ export function TournamentTemplateScreen({
             </SubPanel>
           </div>
         )}
+      </div>
+    );
+  } else if (step === 'duration') {
+    const p = poolSettings(tpl);
+    body = (
+      <div className="cr-cols">
+        <div className="cr-col">
+          <CreatorField label="Cuándo se acaba">
+            <OptionList<'time' | 'rounds'>
+              value={p.limit}
+              options={[
+                { v: 'time', title: 'Por tiempo', help: 'Cuando ya solo da tiempo a un partido, se juega la final en la pista 1.' },
+                { v: 'rounds', title: 'Por rondas', help: 'En cada ronda se juega un partido en cada pista. En la última ronda, la pista 1 es la final.' },
+              ]}
+              onChange={(v) => set('poolLimit', v)}
+              parentOf={['time', 'rounds']}
+            />
+          </CreatorField>
+        </div>
+        <div className="cr-col">
+          {p.limit === 'time' ? (
+            <SubPanel parent="Por tiempo">
+              <CreatorField label="Minutos" note="El reloj arranca con el primer partido.">
+                <Seg<number> value={p.minutes} options={LADDER_MINUTES.map((m) => [m, `${m} MIN`])} onChange={(v) => set('poolMinutes', v)} />
+              </CreatorField>
+            </SubPanel>
+          ) : (
+            <SubPanel parent="Por rondas">
+              <CreatorField label="Rondas">
+                <Seg<number> value={p.rounds} options={LADDER_ROUNDS.map((r) => [r, String(r)])} onChange={(v) => set('poolRounds', v)} />
+              </CreatorField>
+            </SubPanel>
+          )}
+        </div>
       </div>
     );
   } else if (step === 'rules') {
@@ -1687,6 +1771,8 @@ export function TournamentTemplateScreen({
               parentOf={finals.filter((f) => f !== 'none')}
             />
           </CreatorField>
+        ) : isPool ? (
+          <small className="cr-note">El pool siempre acaba con la final en la pista 1: la juegan los que estén arriba cuando llegue la hora.</small>
         ) : (
           <small className="cr-note">La copa siempre acaba en final: la juegan los dos que llegan.</small>
         )}
@@ -1949,14 +2035,14 @@ export function TournamentDetailScreen({
     const series = (f.bestOf ?? 1) > 1;
     const isNext = f.id === next?.id;
     return (
-      <div key={f.id} className={`fixture ${fixtureDone(f) ? 'done' : ''} ${f.draw ? 'is-draw' : ''} ${isNext ? 'is-next' : ''}`}>
+      <div key={f.id} className={`fixture ${fixtureDone(f) ? 'done' : ''} ${f.draw ? 'is-draw' : ''} ${isNext ? 'is-next' : ''} ${f.skipped ? 'is-skipped' : ''}`}>
         <span className={`fx-team ${f.winnerTeamId === f.whiteTeamId ? 'win' : ''}`}>
           <i className="pre-dot white" aria-label="Blanco" />
           {miniPhotos(f.whiteTeamId)}
           <span className="fx-name">{teamLabel(f.whiteTeamId)}</span>
         </span>
         <span className="fx-score">
-          {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : fixtureScore(f, byId) ?? 'vs'}
+          {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.bye ? 'pase' : f.skipped ? <small className="fx-skipped">no se jugó</small> : fixtureScore(f, byId) ?? 'vs'}
           {series && <small className="fx-series">al mejor de {f.bestOf}</small>}
         </span>
         <span className={`fx-team right ${f.winnerTeamId === f.blueTeamId ? 'win' : ''}`}>
@@ -1975,7 +2061,8 @@ export function TournamentDetailScreen({
     const white = side(next.whiteTeamId);
     const blue = side(next.blueTeamId);
     const pr = progression ? predict(white, blue, matches, progression) : null;
-    const resting = next.resting ?? allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool');
+    // En la escalera solo descansa el banquillo (los demás esperan su pista).
+    const resting = next.resting ?? (t.ladder ? [] : allPlayerIds.filter((id) => !white.includes(id) && !blue.includes(id) && t.format === 'pool'));
     const game = (next.matchIds?.length ?? 0) + 1;
     // Con uno por lado, fotos grandes; en pareja, algo menores para que quepan las dos.
     const photoSize = Math.max(white.length, blue.length) > 1 ? 68 : 92;
@@ -2012,10 +2099,9 @@ export function TournamentDetailScreen({
         <div className="next-head">
           <span className="label">Siguiente partido</span>
           <span className="next-chips">
+            {t.ladder && next.court && <span className="next-chip next-chip-court">{next.stage === 'final' ? '🏆 Final · pista 1' : `Pista ${next.court}`}</span>}
             <span className="next-chip">{roundLabel(t, next.round)}</span>
-            <span className="next-chip">
-              Partido {progress.done + 1} de {progress.total}
-            </span>
+            <span className="next-chip">{t.ladder ? `Partido ${progress.done + 1}` : `Partido ${progress.done + 1} de ${progress.total}`}</span>
             {(next.bestOf ?? 1) > 1 && (
               <span className="next-chip">
                 Serie {next.series?.white ?? 0}–{next.series?.blue ?? 0} · partido {game}
@@ -2040,7 +2126,7 @@ export function TournamentDetailScreen({
             <b className="next-odds-b">{bp} %</b>
           </div>
         )}
-        {resting.length > 0 && <div className="next-rest">Descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</div>}
+        {resting.length > 0 && <div className="next-rest">{t.ladder ? 'Banquillo' : `Descansa${resting.length > 1 ? 'n' : ''}`}: {resting.map(nameOf).join(', ')}</div>}
         <button className="neon-go next-btn" onClick={() => play(next)}>
           ▶ SIGUIENTE PARTIDO
         </button>
@@ -2049,6 +2135,88 @@ export function TournamentDetailScreen({
   }
 
   const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
+
+  // Pool en escalera: cada jugador con su foto (y si ha subido o bajado) y el nombre debajo.
+  const ladderPlayer = (pid: string, moves?: Map<string, 'up' | 'down'>) => (
+    <span key={pid} className="ladder-player">
+      <span className="fx-photo">
+        <Avatar name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={34} />
+        {moves?.get(pid) && <i className={`lad-move ${moves.get(pid)}`}>{moves.get(pid) === 'up' ? '▲' : '▼'}</i>}
+      </span>
+      <span className="ladder-name">{nameOf(pid)}</span>
+    </span>
+  );
+  // Una pista: sus dos parejas (la que ganó, en verde) y el marcador.
+  const ladderCourt = (f: Fixture, moves?: Map<string, 'up' | 'down'>) => {
+    const isNext = f.id === next?.id;
+    const side = (tid: string | null) => (
+      <span className={`ladder-pair ${f.winnerTeamId && f.winnerTeamId === tid ? 'win' : ''}`}>
+        {(t.teams.find((x) => x.id === tid)?.playerIds ?? []).map((pid) => ladderPlayer(pid, moves))}
+      </span>
+    );
+    return (
+      <div key={f.id} className={`ladder-court ${f.court === 1 ? 'is-top' : ''} ${f.stage === 'final' ? 'is-final' : ''} ${isNext ? 'is-next' : ''} ${f.skipped ? 'is-skipped' : ''}`}>
+        <span className="ladder-badge">{f.stage === 'final' ? '🏆 FINAL' : `PISTA ${f.court}`}</span>
+        {side(f.whiteTeamId)}
+        <span className="ladder-score">
+          {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.skipped ? <small className="fx-skipped">no se jugó</small> : fixtureScore(f, byId) ?? 'vs'}
+          {(f.bestOf ?? 1) > 1 && <small className="fx-series">al mejor de {f.bestOf}</small>}
+        </span>
+        {side(f.blueTeamId)}
+      </div>
+    );
+  };
+
+  // Las pistas de la ronda en juego (o la última), con quién ha subido y quién ha bajado.
+  let ladderPanel: ReactNode = null;
+  if (t.ladder) {
+    const round = next?.round ?? Math.max(...rounds);
+    const courtOf = (r: number) => {
+      const lu = lineupOfRound(t, r);
+      const out = new Map<string, number>();
+      lu.courts.forEach((c, i) => c.flat().forEach((pid) => out.set(pid, i + 1)));
+      lu.bench?.forEach((pid) => out.set(pid, lu.courts.length + 1));
+      return out;
+    };
+    const now = courtOf(round);
+    const before = round > 1 ? courtOf(round - 1) : new Map<string, number>();
+    const moves = new Map<string, 'up' | 'down'>();
+    now.forEach((c, pid) => {
+      const was = before.get(pid);
+      if (was && was !== c) moves.set(pid, was > c ? 'up' : 'down');
+    });
+    const fx = t.fixtures.filter((f) => f.round === round).sort((a, b) => (a.court ?? 0) - (b.court ?? 0));
+    const bench = fx[0]?.resting ?? [];
+    const finalOn = t.fixtures.some((f) => f.stage === 'final');
+    let clock = '';
+    if (t.status === 'active') {
+      if (finalOn) clock = '🏆 Toca la final';
+      else if (t.ladder.limit === 'rounds') clock = `Ronda ${round} de ${t.ladder.rounds}`;
+      else {
+        const c = ladderClock(t, matches, Date.now());
+        clock = c.started ? (c.remainingMs > 0 ? `⌛ Quedan ${Math.ceil(c.remainingMs / 60_000)} min` : '⌛ Tiempo cumplido') : `⌛ ${t.ladder.minutes} min`;
+      }
+    }
+    ladderPanel = (
+      <div className="td-panel scroll ladder-panel">
+        <div className="ladder-head">
+          <span className="label">Pistas · {roundLabel(t, round)}</span>
+          {clock && <span className="ladder-clock">{clock}</span>}
+        </div>
+        {fx.map((f) => ladderCourt(f, moves))}
+        {bench.length > 0 && (
+          <div className="ladder-court ladder-bench">
+            <span className="ladder-badge">BANQUILLO</span>
+            <span className="ladder-pair">{bench.map((pid) => ladderPlayer(pid, moves))}</span>
+          </div>
+        )}
+        <small className="cr-note ladder-note">
+          {t.ladder.swap ? 'Con cambio de pareja: ' : 'Sin cambio de pareja: '}el que gana sube y el que pierde baja.
+          {t.ladder.limit === 'time' && !finalOn && ' El reloj arranca con el primer partido; cuando ya solo dé para uno, se juega la final en la pista 1.'}
+        </small>
+      </div>
+    );
+  }
   const finalCard = finalFx && (
     <div className="final-card">
       <div className="label" style={{ color: 'var(--ranked)' }}>
@@ -2084,7 +2252,7 @@ export function TournamentDetailScreen({
             value={view}
             onChange={setView}
             tabs={[
-              { id: 'play', label: t.format === 'bracket' ? 'Cuadro' : 'Clasificación' },
+              { id: 'play', label: t.format === 'bracket' ? 'Cuadro' : t.ladder ? 'Pistas' : 'Clasificación' },
               { id: 'report', label: 'Ficha' },
             ]}
           />
@@ -2149,6 +2317,8 @@ export function TournamentDetailScreen({
               </div>
             ))}
           </div>
+        ) : ladderPanel ? (
+          ladderPanel
         ) : (
           <div className="td-panel scroll">
             <div className="label">{t.format === 'pool' ? 'Clasificación individual' : 'Clasificación'}</div>
@@ -2209,11 +2379,14 @@ export function TournamentDetailScreen({
               )}
             </div>
           )}
-          <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'bracket' ? 'Rondas' : 'Jornadas'}</div>
+          <div className="label" style={{ marginTop: nextCard ? 10 : 0 }}>{t.format === 'bracket' || t.format === 'pool' ? 'Rondas' : 'Jornadas'}</div>
           {rounds
-            .filter((r) => t.format === 'bracket' || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
+            .filter((r) => t.format === 'bracket' || !!t.ladder || !t.fixtures.some((f) => f.round === r && f.stage === 'final'))
             .map((r) => {
-              const fx = t.fixtures.filter((f) => f.round === r && (f.whiteTeamId || f.blueTeamId));
+              // En la escalera, de la pista 1 hacia abajo.
+              const fx = t.fixtures
+                .filter((f) => f.round === r && (f.whiteTeamId || f.blueTeamId))
+                .sort((a, b) => (t.ladder ? (a.court ?? 0) - (b.court ?? 0) : 0));
               // Liguilla con número impar: el equipo que no juega esa jornada descansa.
               const resting =
                 fx[0]?.resting ??
@@ -2226,9 +2399,9 @@ export function TournamentDetailScreen({
                   <div className="round-head">
                     <b>{roundLabel(t, r)}</b>
                     <span>{state === 'done' ? 'Jugada' : state === 'current' ? 'En juego' : 'Pendiente'}</span>
-                    {resting.length > 0 && <small>descansa{resting.length > 1 ? 'n' : ''}: {resting.map(nameOf).join(', ')}</small>}
+                    {resting.length > 0 && <small>{t.ladder ? 'banquillo' : `descansa${resting.length > 1 ? 'n' : ''}`}: {resting.map(nameOf).join(', ')}</small>}
                   </div>
-                  {fx.map(fixtureRow)}
+                  {fx.map((f) => (t.ladder ? ladderCourt(f) : fixtureRow(f)))}
                 </div>
               );
             })}

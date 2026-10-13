@@ -171,10 +171,13 @@ export function tournamentReport(t: Tournament, allMatches: StoredMatch[], playe
 
   const finalFx = t.fixtures.find((f) => f.stage === 'final') ?? (t.format === 'bracket' ? t.fixtures.reduce((a, b) => (b.round > a.round ? b : a)) : undefined);
   let finalScore: string | undefined;
-  if (finalFx?.series) finalScore = `${finalFx.series.white}–${finalFx.series.blue} en la serie`;
+  // Siempre con el campeón primero: «2–0 en la serie», aunque jugase de Azul.
+  const champFirst = finalFx?.winnerTeamId && finalFx.winnerTeamId === finalFx.blueTeamId;
+  const pair = (w: number, b: number) => (champFirst ? `${b}–${w}` : `${w}–${b}`);
+  if (finalFx?.series) finalScore = `${pair(finalFx.series.white, finalFx.series.blue)} en la serie`;
   else if (finalFx?.matchId) {
     const fm = ms.find((m) => m.id === finalFx.matchId);
-    if (fm) finalScore = scoreText(fm);
+    if (fm) finalScore = pair(fm.result.score.white, fm.result.score.blue);
   }
 
   return {

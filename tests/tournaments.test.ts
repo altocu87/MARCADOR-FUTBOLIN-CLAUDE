@@ -216,10 +216,19 @@ describe('Tipos de torneo según el número de jugadores', () => {
     expect(fit.reason).toMatch(/par/);
     expect(templateFit(tpl('sample-pairs'), 8).ok).toBe(true);
   });
-  it('el Pool encaja con pares e impares y resume los descansos', () => {
-    expect(templateFit(tpl('sample-pool'), 5).summary).toMatch(/descansa 1/);
-    expect(templateFit(tpl('sample-pool'), 8).summary).toMatch(/sin descansos/);
-    expect(templateFit(tpl('sample-pool'), 3).ok).toBe(false);
+  it('el Pool va por parejas: dice cuántas pistas salen y si hay banquillo', () => {
+    expect(templateFit(tpl('sample-pool'), 8).summary).toMatch(/^4 parejas · 2 pistas · 30 min · final en la pista 1/);
+    expect(templateFit(tpl('sample-pool'), 6).summary).toMatch(/1 pista \+ banquillo/);
+    expect(templateFit(tpl('sample-pool'), 5).reason).toMatch(/par/);
+    expect(templateFit(tpl('sample-pool'), 2).ok).toBe(false);
+    expect(templateFit(tpl('sample-pool'), 18).ok).toBe(false);
+  });
+  it('un tipo de Pool da un borrador de escalera con sus parejas', () => {
+    const t = { ...tpl('sample-pool'), poolSwap: false, poolLimit: 'rounds' as const, poolRounds: 6 };
+    const { draft } = draftFromTemplate(t, 'Pool', ['a', 'b', 'c', 'd'], () => 1200, {}, seededRandom('x'));
+    expect(draft.ladder).toEqual({ swap: false, limit: 'rounds', minutes: 30, rounds: 6 });
+    expect(draft.teams.map((x) => x.playerIds.length)).toEqual([2, 2]);
+    expect(describeTemplate(t)).toMatch(/Pool · sin cambio de pareja · 6 rondas · final en la pista 1/);
   });
   it('la liguilla individual tiene tope de 8', () => {
     expect(templateFit(tpl('sample-league'), 9).ok).toBe(false);
@@ -229,8 +238,9 @@ describe('Tipos de torneo según el número de jugadores', () => {
 describe('Ediciones, ficha y palmarés', () => {
   const ps = players(['a', 'b', 'c', 'd', 'e']);
   const tpl = SAMPLE_TEMPLATES.find((x) => x.id === 'sample-pool')!;
+  // Un Pool antiguo (parejas rotativas con calendario fijo): se siguen pudiendo ver y terminar.
   const make = (edition: number, seed: string) => {
-    const { draft } = draftFromTemplate(tpl, editionName(tpl.name, edition), ps.map((p) => p.id), () => 1200, {}, seededRandom(seed));
+    const draft = { ...poolDraft(ps.map((p) => p.id)), name: editionName(tpl.name, edition), templateId: tpl.id, templateName: tpl.name };
     return createTournament({ ...draft, edition, final: 'none' }, ps, () => 1200, edition * 1000, seededRandom(seed));
   };
 

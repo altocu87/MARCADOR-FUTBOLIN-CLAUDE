@@ -188,8 +188,11 @@ function PlaceCard({
   rankOf: (id: string) => string;
   progressionOn: boolean;
 }) {
-  // En pareja juegan los mismos partidos: los números del equipo son los del primero.
+  // Pareja fija: juegan los mismos partidos y los números del equipo son los del primero. Con cambio de
+  // pareja (Pool), cada uno ha jugado los suyos: van debajo de cada jugador.
   const s = lines[0];
+  const shared = lines.every((l) => l.played === s?.played && l.wins === s.wins && l.goalsFor === s.goalsFor && l.goalsAgainst === s.goalsAgainst);
+  const pair = place.team.playerIds.length > 1;
   const shame = last ? (lastTitle?.trim() || 'Patético').toUpperCase() : undefined;
   const tag = place.champion ? 'CAMPEÓN' : (shame ?? (place.place === 2 ? 'SUBCAMPEÓN' : null));
   // El nombre del equipo solo hace falta si es una pareja o un equipo con logo.
@@ -206,7 +209,7 @@ function PlaceCard({
             {place.team.logo && <Crest id={place.team.logo} size={28} />} {place.team.name}
           </div>
         )}
-        {s && (
+        {s && shared && (
           <div className="cer-stats">
             <span><b>{s.played}</b> PJ</span>
             <span><b>{s.wins}</b> G</span>
@@ -222,17 +225,19 @@ function PlaceCard({
             )}
           </div>
         )}
-        <div className="cer-players">
+        <div className={`cer-players${pair ? ' is-pair' : ''}`}>
           {place.team.playerIds.map((pid, i) => (
             <PlayerReward
               key={pid}
+              stats={shared ? undefined : lines.find((l) => l.playerId === pid)}
+              compact={pair}
               name={nameOf(pid)}
               photo={photoOf(pid)}
               rank={rankOf(pid)}
               reward={rewards[i]}
               shame={shame}
               progressionOn={progressionOn}
-              photoSize={place.team.playerIds.length > 1 ? 84 : 112}
+              photoSize={pair ? 76 : 112}
             />
           ))}
         </div>
@@ -249,7 +254,13 @@ function PlayerReward({
   shame,
   progressionOn,
   photoSize,
+  stats,
+  compact,
 }: {
+  /** Sus números, si no son los mismos que los de su pareja. */
+  stats?: PlayerLine;
+  /** En pareja: sin el desglose de la XP, para que quepan los dos. */
+  compact?: boolean;
   name: string;
   photo?: string;
   rank: string;
@@ -286,6 +297,12 @@ function PlayerReward({
         <strong className="cer-player-name">
           {name}
         </strong>
+        {stats && (
+          <span className="cer-player-stats">
+            <b>{stats.played}</b> PJ · <b>{stats.wins}</b> G{stats.draws > 0 && <> · <b>{stats.draws}</b> E</>} · <b>{stats.losses}</b> P · <b>{stats.goalsFor}–{stats.goalsAgainst}</b>
+            {stats.scored > 0 && <> · <b>{stats.scored}</b> marcados</>}
+          </span>
+        )}
         {!progressionOn ? (
           <span className="dim">Progresión desactivada</span>
         ) : reward ? (
@@ -308,13 +325,13 @@ function PlayerReward({
                 <span className="vic-bar-fill" style={{ width: `${Math.round(fill * 100)}%`, transition: 'width 1.2s cubic-bezier(0.3, 0.8, 0.3, 1)' }} />
               </span>
             </span>
-            <span className="cer-lines">
+            {!compact && <span className="cer-lines">
               {reward.lines.map((l) => (
                 <span key={l.label}>
                   {l.label} <b>+{l.xp}</b>
                 </span>
               ))}
-            </span>
+            </span>}
             {achs.length > 0 && (
               <span className="cer-achs">
                 {achs.map((a, i) => (
