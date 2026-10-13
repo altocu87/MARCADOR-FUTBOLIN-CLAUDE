@@ -2137,26 +2137,43 @@ export function TournamentDetailScreen({
   const rounds = [...new Set(t.fixtures.map((f) => f.round))].sort((a, b) => a - b);
 
   // Pool en escalera: cada jugador con su foto (y si ha subido o bajado) y el nombre debajo.
-  const ladderPlayer = (pid: string, moves?: Map<string, 'up' | 'down'>) => (
-    <span key={pid} className="ladder-player">
-      <span className="fx-photo">
-        <Avatar name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={34} />
-        {moves?.get(pid) && <i className={`lad-move ${moves.get(pid)}`}>{moves.get(pid) === 'up' ? '▲' : '▼'}</i>}
+  // Quien ha subido lleva marco verde y una flecha que sube; quien ha bajado, marco rojo y una que baja.
+  const ladderPlayer = (pid: string, moves?: Map<string, 'up' | 'down'>, size = 34) => {
+    const mv = moves?.get(pid);
+    return (
+      <span key={pid} className="ladder-player">
+        <span className={`fx-photo${mv ? ` mv-${mv}` : ''}`}>
+          <Avatar name={nameOf(pid)} photo={players.find((p) => p.id === pid)?.photo} size={size} />
+          {mv && (
+            <i className={`lad-move ${mv}`} aria-label={mv === 'up' ? 'Sube' : 'Baja'}>
+              {mv === 'up' ? '▲' : '▼'}
+            </i>
+          )}
+        </span>
+        <span className="ladder-name">{nameOf(pid)}</span>
       </span>
-      <span className="ladder-name">{nameOf(pid)}</span>
-    </span>
-  );
+    );
+  };
   // Una pista: sus dos parejas (la que ganó, en verde) y el marcador.
-  const ladderCourt = (f: Fixture, moves?: Map<string, 'up' | 'down'>) => {
+  // En el panel de pistas (`live`), la 1 sale más grande y adornada y la última, cutre.
+  const ladderCourt = (f: Fixture, moves?: Map<string, 'up' | 'down'>, live = false) => {
     const isNext = f.id === next?.id;
+    const courts = t.fixtures.filter((x) => x.round === f.round).length;
+    const top = f.court === 1;
+    const bottom = live && courts > 1 && f.court === courts;
     const side = (tid: string | null) => (
       <span className={`ladder-pair ${f.winnerTeamId && f.winnerTeamId === tid ? 'win' : ''}`}>
-        {(t.teams.find((x) => x.id === tid)?.playerIds ?? []).map((pid) => ladderPlayer(pid, moves))}
+        {(t.teams.find((x) => x.id === tid)?.playerIds ?? []).map((pid) => ladderPlayer(pid, moves, live && top ? 42 : 34))}
       </span>
     );
     return (
-      <div key={f.id} className={`ladder-court ${f.court === 1 ? 'is-top' : ''} ${f.stage === 'final' ? 'is-final' : ''} ${isNext ? 'is-next' : ''} ${f.skipped ? 'is-skipped' : ''}`}>
-        <span className="ladder-badge">{f.stage === 'final' ? '🏆 FINAL' : `PISTA ${f.court}`}</span>
+      <div
+        key={f.id}
+        className={`ladder-court ${top ? 'is-top' : ''} ${live && top ? 'is-crown' : ''} ${bottom ? 'is-bottom' : ''} ${f.stage === 'final' ? 'is-final' : ''} ${isNext ? 'is-next' : ''} ${f.skipped ? 'is-skipped' : ''}`}
+      >
+        <span className="ladder-badge">
+          {f.stage === 'final' ? '🏆 FINAL' : live && top ? <>👑<b>PISTA 1</b></> : `PISTA ${f.court}`}
+        </span>
         {side(f.whiteTeamId)}
         <span className="ladder-score">
           {isNext && !f.series ? <span className="fx-next">SIGUIENTE</span> : f.skipped ? <small className="fx-skipped">no se jugó</small> : fixtureScore(f, byId) ?? 'vs'}
@@ -2203,7 +2220,7 @@ export function TournamentDetailScreen({
           <span className="label">Pistas · {roundLabel(t, round)}</span>
           {clock && <span className="ladder-clock">{clock}</span>}
         </div>
-        {fx.map((f) => ladderCourt(f, moves))}
+        {fx.map((f) => ladderCourt(f, moves, true))}
         {bench.length > 0 && (
           <div className="ladder-court ladder-bench">
             <span className="ladder-badge">BANQUILLO</span>
