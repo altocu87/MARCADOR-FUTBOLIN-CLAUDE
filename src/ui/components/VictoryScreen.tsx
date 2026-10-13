@@ -214,6 +214,12 @@ export function VictoryScreen({
         <div className="vic-facts">{facts.join(' · ')}</div>
       </div>
 
+      {/* En un torneo, cartel que baja desde arriba: el partido ya está apuntado. */}
+      {inTournament && save?.kind === 'saved' && (
+        <div className="saved-pop" role="status">
+          <span className="saved-pop-tick">✓</span> PARTIDO GUARDADO
+        </div>
+      )}
       {!save ? (
         <div className="vic-note">Guardando el partido…</div>
       ) : save.kind === 'test' ? (

@@ -2118,15 +2118,6 @@ export function TournamentDetailScreen({
           />
           {t.status === 'active' && (
             <>
-              <button
-                className="btn btn-sm"
-                onClick={() => {
-                  toast('Torneo guardado: para seguir, entra en Torneo → Continuar');
-                  navigate({ name: 'home' });
-                }}
-              >
-                Guardar y salir
-              </button>
               <button className="tn-discard tn-discard-sm" onClick={() => setConfirmCancel(true)} aria-label="Descartar torneo" title="Descartar torneo">
                 <TrashIcon />
               </button>

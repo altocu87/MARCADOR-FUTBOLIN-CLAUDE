@@ -7176,3 +7176,49 @@ div > .name-clash:first-child {
   width: 20px !important;
   height: 20px !important;
 }
+/* «Partido guardado» (partido de torneo): baja desde arriba, se queda un momento y se va. */
+.saved-pop {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 28px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #1b5e3a, #0f3d26);
+  border: 2px solid #3ee08a;
+  box-shadow: 0 0 24px rgba(62, 224, 138, 0.55), 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #eafff2;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -160%);
+  animation: saved-pop 3.2s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.3s forwards;
+}
+.saved-pop-tick {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #3ee08a;
+  color: #06331c;
+  font-size: 22px;
+}
+@keyframes saved-pop {
+  0% { transform: translate(-50%, -160%); }
+  14% { transform: translate(-50%, 0); }
+  82% { transform: translate(-50%, 0); opacity: 1; }
+  100% { transform: translate(-50%, -160%); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .saved-pop { transform: translate(-50%, 0); animation: saved-fade 3.2s 0.3s forwards; opacity: 0; }
+}
+@keyframes saved-fade {
+  0%, 100% { opacity: 0; }
+  10%, 85% { opacity: 1; }
+}
