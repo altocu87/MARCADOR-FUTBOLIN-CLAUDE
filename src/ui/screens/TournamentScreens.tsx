@@ -376,18 +376,13 @@ function teamCountLabel(t: Tournament): string {
 }
 
 /**
- * Torneos, en dos pestañas con una sola función cada una:
- * - En curso: los torneos empezados, para seguir jugando (o descartarlos).
- * - Palmarés: lo ya jugado; las competiciones con su campeón y los últimos torneos terminados.
+ * Palmarés: lo ya jugado; las competiciones con su campeón y los últimos torneos terminados. Los torneos
+ * en juego no salen aquí: se siguen desde «¿Quién juega?», que es donde se empieza todo torneo.
  */
-export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'honours' }) {
-  const { navigate, tournaments, matches, players, discardTournament, toast } = useApp();
-  const running = tournaments.filter((t) => t.status === 'active').sort((a, b) => b.createdAt - a.createdAt);
-  // Sin torneos en curso se abre directamente el palmarés.
-  const [tab, setTab] = useState<'list' | 'honours'>(initialTab ?? (running.length ? 'list' : 'honours'));
-  const [discarding, setDiscarding] = useState<Tournament | null>(null);
+export function TournamentListScreen() {
+  const { navigate, tournaments, matches, players } = useApp();
   const played = tournaments.filter((t) => t.status !== 'active').sort((a, b) => (b.finishedAt ?? b.createdAt) - (a.finishedAt ?? a.createdAt));
-  const comps = tab === 'honours' ? competitions(tournaments, matches, players).filter((c) => c.lastChampion) : [];
+  const comps = competitions(tournaments, matches, players).filter((c) => c.lastChampion);
   const playerOf = (id: string) => players.find((p) => p.id === id);
   const faces = (ids: string[], size: number) => (
     <span className="tn-faces">
@@ -399,86 +394,8 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
   const open = (t: Tournament) => navigate({ name: 'tournamentDetail', id: t.id, from: 'list' });
 
   return (
-    <ScreenFrame
-      title="Torneos"
-      className="select-screen tn-screen"
-      background={TN_BG}
-      onBack={() => navigate({ name: 'tournamentNew' })}
-      right={
-        <>
-          <Tabs
-            label="Vista"
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { id: 'list', label: running.length ? `En curso · ${running.length}` : 'En curso' },
-              { id: 'honours', label: 'Palmarés' },
-            ]}
-          />
-          <button className="btn btn-primary btn-sm" onClick={() => navigate({ name: 'tournamentNew' })}>
-            + Nuevo torneo
-          </button>
-        </>
-      }
-    >
-      {tab === 'list' ? (
-        running.length === 0 ? (
-          <div className="empty">
-            <div style={{ maxWidth: 520 }}>
-              <Trophy size={80} />
-              <strong>No hay ningún torneo en curso</strong>
-              Elige quién juega y la app te propone el torneo que mejor encaja.
-              <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                <button className="btn btn-primary" onClick={() => navigate({ name: 'tournamentNew' })}>
-                  Crear torneo
-                </button>
-                {played.length > 0 && (
-                  <button className="btn" onClick={() => setTab('honours')}>
-                    Ver palmarés
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="tn-running scroll">
-            {running.map((t) => {
-              const pr = fixtureProgress(t);
-              const nx = nextFixture(t);
-              const side = (tid: string | null) => t.teams.find((x) => x.id === tid);
-              const ids = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
-              return (
-                <div key={t.id} className="tn-run-card">
-                  <button className="tn-run-main" onClick={() => open(t)}>
-                    {t.logo ? <Crest id={t.logo} size={44} /> : <span className="tn-run-icon" aria-hidden="true">⚔</span>}
-                    <span className="tn-run-body">
-                      <b>{t.name}</b>
-                      <small>
-                        {FORMAT_LABEL[t.format]} · empezó el {shortDate(t.createdAt)}
-                      </small>
-                      <span className="tn-run-progress" aria-label={`${pr.done} de ${pr.total} partidos`}>
-                        <span style={{ width: `${pr.total ? (pr.done / pr.total) * 100 : 0}%` }} />
-                      </span>
-                      <small>
-                        {t.ladder ? `${pr.done} partidos jugados` : `${pr.done} de ${pr.total} partidos`}
-                        {nx ? ` · siguiente: ${side(nx.whiteTeamId)?.name ?? '?'} vs ${side(nx.blueTeamId)?.name ?? '?'}` : ''}
-                      </small>
-                    </span>
-                    {faces(ids.slice(0, 6), 34)}
-                    {ids.length > 6 && <span className="tn-faces-more">+{ids.length - 6}</span>}
-                  </button>
-                  <button className="neon-go tn-resume-go" onClick={() => open(t)}>
-                    ▶ CONTINUAR
-                  </button>
-                  <button className="tn-discard" onClick={() => setDiscarding(t)} aria-label={`Descartar ${t.name}`} title="Descartar torneo">
-                    <TrashIcon />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )
-      ) : played.length === 0 ? (
+    <ScreenFrame title="Palmarés" className="select-screen tn-screen" background={TN_BG} onBack={() => navigate({ name: 'tournamentNew' })}>
+      {played.length === 0 ? (
         <div className="empty">
           <div>
             <Trophy size={70} />
@@ -553,18 +470,6 @@ export function TournamentListScreen({ tab: initialTab }: { tab?: 'list' | 'hono
           </div>
         </div>
       )}
-      {discarding && (
-        <DiscardModal
-          t={discarding}
-          playedCount={fixtureProgress(discarding).done}
-          onClose={() => setDiscarding(null)}
-          onConfirm={async () => {
-            await discardTournament(discarding.id);
-            setDiscarding(null);
-            toast('Torneo descartado');
-          }}
-        />
-      )}
     </ScreenFrame>
   );
 }
@@ -575,7 +480,7 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
   const c = competitions(tournaments, matches, players).find((x) => x.key === competitionKey);
   if (!c) {
     return (
-      <ScreenFrame title="Palmarés" onBack={() => navigate({ name: 'tournament', tab: 'honours' })}>
+      <ScreenFrame title="Palmarés" onBack={() => navigate({ name: 'tournament' })}>
         <div className="empty">Competición no encontrada.</div>
       </ScreenFrame>
     );
@@ -594,7 +499,7 @@ export function TournamentHonoursScreen({ competitionKey }: { competitionKey: st
       className="select-screen tn-screen"
       background={TN_BG}
       headerArt={c.banner ? <BannerArt id={c.banner} className="screen-header-art" /> : undefined}
-      onBack={() => navigate({ name: 'tournament', tab: 'honours' })}
+      onBack={() => navigate({ name: 'tournament' })}
     >
       <div className="td-layout">
         <div className="td-panel scroll">
@@ -775,8 +680,8 @@ export function TournamentNewScreen({
         onBack={() => navigate({ name: 'home' })}
         right={
           <>
-            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournament', tab: running ? 'list' : 'honours' })}>
-              {running ? `En curso · ${running}` : 'Palmarés'}
+            <button className="btn btn-sm" onClick={() => navigate({ name: 'tournament' })}>
+              🏆 Palmarés
             </button>
             <button className="btn btn-sm" onClick={() => setCreating(true)}>+ Jugador</button>
           </>
@@ -799,7 +704,10 @@ export function TournamentNewScreen({
           </>
         }
       >
-        {runningList.slice(0, 1).map((t) => {
+        {/* Todos los torneos en juego, cada uno con su «Continuar» (si hay muchos, la lista se desplaza). */}
+        {running > 0 && (
+        <div className={`tn-resume-list${running > 2 ? ' scroll' : ''}`}>
+        {runningList.map((t) => {
           const nx = nextFixture(t);
           const pr = fixtureProgress(t);
           const teamOf = (tid: string | null) => t.teams.find((x) => x.id === tid)?.name ?? '?';
@@ -810,7 +718,6 @@ export function TournamentNewScreen({
                 <b>{t.name}</b>
                 <small>
                   {t.ladder ? `${pr.done} partidos jugados` : `${pr.done} de ${pr.total} partidos`}{nx ? ` · siguiente: ${teamOf(nx.whiteTeamId)} vs ${teamOf(nx.blueTeamId)}` : ''}
-                  {running > 1 ? ` · y ${running - 1} más en «En curso»` : ''}
                 </small>
               </span>
               <button className="neon-go tn-resume-go" onClick={() => navigate({ name: 'tournamentDetail', id: t.id })}>
@@ -822,6 +729,8 @@ export function TournamentNewScreen({
             </div>
           );
         })}
+        </div>
+        )}
         {discarding && (
           <DiscardModal
             t={discarding}
@@ -1926,7 +1835,9 @@ export function TournamentDetailScreen({
   // Columna de empates solo en una liga donde se puede empatar.
   const hasDraws = t.format === 'league' && !!t.config.allowDraw;
   const allPlayerIds = [...new Set(t.entrants ?? t.teams.flatMap((x) => x.playerIds))];
-  const back = () => (from === 'list' ? navigate({ name: 'tournament', tab: t.status === 'active' ? 'list' : 'honours' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' }));
+  // Desde el palmarés se vuelve a él; un torneo en juego vuelve a «¿Quién juega?», donde se sigue.
+  const back = () =>
+    from === 'list' && t.status !== 'active' ? navigate({ name: 'tournament' }) : navigate({ name: 'tournamentNew', selected: allPlayerIds, step: 'players' });
 
   // Siempre pasa por la pantalla de Previsión (pronóstico, últimos enfrentamientos) antes de jugar.
   const play = (f: Fixture) => {

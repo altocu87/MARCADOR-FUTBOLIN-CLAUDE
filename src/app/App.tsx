@@ -104,7 +104,7 @@ function Router() {
       screen = <ProfileScreen key={route.playerId} playerId={route.playerId} />;
       break;
     case 'tournament':
-      screen = <TournamentListScreen tab={route.tab} />;
+      screen = <TournamentListScreen />;
       break;
     case 'tournamentNew':
       screen = (

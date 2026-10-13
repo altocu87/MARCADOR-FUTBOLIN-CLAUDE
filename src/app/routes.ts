@@ -20,7 +20,7 @@ export type Route =
   | { name: 'ranking'; tab?: RankingTab }
   | { name: 'matchDetail'; matchId: string; fromTournament?: boolean }
   | { name: 'profile'; playerId: string }
-  | { name: 'tournament'; tab?: 'list' | 'honours' }
+  | { name: 'tournament' }
   /** Palmarés de una competición (todas sus ediciones). */
   | { name: 'tournamentHonours'; key: string }
   /** `format`: tipo de torneo (liga, copa o pool) ya elegido; sin él se pregunta tras elegir jugadores. */
