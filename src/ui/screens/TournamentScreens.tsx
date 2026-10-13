@@ -70,6 +70,7 @@ import { newId } from '../../services/ids';
 import { sound } from '../../services/sound/sound';
 import { Confetti } from '../components/graphics';
 import { TournamentCeremony } from '../components/TournamentCeremony';
+import { LadderRoundShow } from '../components/LadderRoundShow';
 
 const FINAL_LABEL: Record<TournamentFinal, string> = {
   none: 'Sin final',
@@ -1936,6 +1937,9 @@ export function TournamentTemplateScreen({
   );
 }
 
+/** Pool en escalera: última ronda presentada (por torneo), para no repetir la animación. */
+const SEEN_KEY = 'mfv3:pool-ronda-vista:';
+
 export function TournamentDetailScreen({
   id,
   view: initialView,
@@ -1962,6 +1966,15 @@ export function TournamentDetailScreen({
   const t = tournaments.find((x) => x.id === id);
   // Terminado: se abre en la ficha; en juego: en los partidos.
   const [view, setView] = useState<'report' | 'play'>(initialView ?? (t?.status === 'finished' ? 'report' : 'play'));
+  // Pool en escalera: última ronda ya presentada con la animación, y la que se está animando.
+  const [seenRound, setSeenRound] = useState(() => {
+    try {
+      return Number(localStorage.getItem(`${SEEN_KEY}${id}`)) || 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [animRound, setAnimRound] = useState<number | null>(null);
   if (!t) {
     return (
       <ScreenFrame title="Torneo" onBack={() => navigate({ name: 'tournament' })}>
@@ -2184,10 +2197,33 @@ export function TournamentDetailScreen({
     );
   };
 
+  // Ronda recién creada que aún no se ha presentado: antes de su primer partido, «Siguiente ronda» anima
+  // quién sube, quién baja y el cambio de pareja (se recuerda en este aparato para no repetirlo).
+  const newRound =
+    t.ladder && t.status === 'active' && next && next.round > 1 && !t.fixtures.some((f) => f.round === next.round && fixtureDone(f)) && seenRound < next.round
+      ? next.round
+      : null;
+  const markSeen = (r: number) => {
+    setSeenRound(r);
+    setAnimRound(null);
+    try {
+      localStorage.setItem(`${SEEN_KEY}${t.id}`, String(r));
+    } catch {
+      /* sin almacenamiento: se volvería a ofrecer, nada más */
+    }
+  };
+
   // Las pistas de la ronda en juego (o la última), con quién ha subido y quién ha bajado.
   let ladderPanel: ReactNode = null;
-  if (t.ladder) {
-    const round = next?.round ?? Math.max(...rounds);
+  if (t.ladder && animRound) {
+    ladderPanel = (
+      <div className="td-panel ladder-panel">
+        <LadderRoundShow t={t} round={animRound - 1} nameOf={nameOf} photoOf={(id) => players.find((p) => p.id === id)?.photo} onDone={() => markSeen(animRound)} />
+      </div>
+    );
+  } else if (t.ladder) {
+    // Con una ronda aún sin presentar, se siguen viendo las pistas de la que acaba de terminar.
+    const round = newRound ? newRound - 1 : (next?.round ?? Math.max(...rounds));
     const courtOf = (r: number) => {
       const lu = lineupOfRound(t, r);
       const out = new Map<string, number>();
@@ -2381,7 +2417,17 @@ export function TournamentDetailScreen({
               <b>▶ CONTINUAR</b>
             </button>
           )}
-          {nextCard}
+          {newRound && !animRound ? (
+            <div className="ladder-next-round">
+              <span className="label">Ronda {newRound - 1} terminada</span>
+              <p className="ladder-next-text">Los que han ganado suben de pista y los que han perdido bajan{t.ladder?.swap ? '; después, cambio de pareja' : ''}.</p>
+              <button className="neon-go next-btn" onClick={() => setAnimRound(newRound)}>
+                ▶ SIGUIENTE RONDA
+              </button>
+            </div>
+          ) : animRound ? null : (
+            nextCard
+          )}
           {(lastMatch || t.status === 'active') && (
             <div className="td-tools">
               {t.status === 'active' && (

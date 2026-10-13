@@ -105,24 +105,31 @@ function mix([top, bottom]: Court, rnd: () => number): Court {
   ];
 }
 
-/** Pistas de la ronda siguiente a una ya jugada entera: suben los que ganan y bajan los que pierden. */
-export function nextLineup(t: Tournament, round: number): Lineup {
+/**
+ * Cómo llegan las parejas a cada pista tras una ronda jugada entera, antes de mezclarse: arriba la que
+ * baja (o la que se queda en la 1) y abajo la que sube (o la que se queda abajo, o la del banquillo).
+ */
+export function arrivalLineup(t: Tournament, round: number): Lineup {
   const ids = (tid: string | null | undefined) => t.teams.find((x) => x.id === tid)?.playerIds ?? [];
   const fx = t.fixtures.filter((f) => f.round === round).sort((a, b) => (a.court ?? 0) - (b.court ?? 0));
   const { bench } = lineupOfRound(t, round);
   const won = fx.map((f) => ids(f.winnerTeamId));
   const lost = fx.map((f) => ids(f.winnerTeamId === f.whiteTeamId ? f.blueTeamId : f.whiteTeamId));
   const k = fx.length;
-  let courts: Court[] = fx.map((_, i) => {
+  const courts: Court[] = fx.map((_, i) => {
     const top = i === 0 ? won[0] : lost[i - 1];
     const bottom = i === k - 1 ? (bench ?? lost[k - 1]) : won[i + 1];
     return [top, bottom];
   });
-  if (t.ladder!.swap) {
-    const rnd = seededRandom(`${t.id}-r${round + 1}`);
-    courts = courts.map((c) => mix(c, rnd));
-  }
   return { courts, bench: bench ? lost[k - 1] : null };
+}
+
+/** Pistas de la ronda siguiente: las de llegada y, con cambio de pareja, mezcladas por sorteo. */
+export function nextLineup(t: Tournament, round: number): Lineup {
+  const arrival = arrivalLineup(t, round);
+  if (!t.ladder!.swap) return arrival;
+  const rnd = seededRandom(`${t.id}-r${round + 1}`);
+  return { ...arrival, courts: arrival.courts.map((c) => mix(c, rnd)) };
 }
 
 /** Partidos del torneo ya apuntados, del primero al último. */

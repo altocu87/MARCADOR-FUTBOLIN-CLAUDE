@@ -6562,73 +6562,76 @@ div > .name-clash:first-child {
   position: relative;
   display: inline-flex;
 }
-/* Sube: marco verde y una flecha que trepa por la esquina de arriba; baja: marco rojo y flecha que cae. */
+/* Fotos de las pistas: cuadradas con las esquinas redondeadas. Sube: marco verde y una flecha que trepa
+   por la esquina de arriba; baja: marco rojo y una flecha que cae. El marco va por dentro de la foto,
+   así nunca se sale de la tarjeta de la pista. */
+.ladder-player .avatar {
+  border-radius: 9px;
+}
 .fx-photo.mv-up .avatar,
 .fx-photo.mv-down .avatar {
-  outline: 3px solid var(--mv);
-  outline-offset: 1px;
-  box-shadow: 0 0 10px var(--mv);
+  border: 3px solid var(--mv);
+  box-shadow: inset 0 0 10px var(--mv);
 }
 .fx-photo.mv-up {
   --mv: #3ddc84;
-  animation: mv-rise 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: mv-rise 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .fx-photo.mv-down {
   --mv: #ff4d6a;
-  animation: mv-fall 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: mv-fall 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .lad-move {
   position: absolute;
-  right: -7px;
+  right: 2px;
   display: grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
   background: var(--mv);
   color: #06120b;
   font-style: normal;
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1;
-  box-shadow: 0 0 6px var(--mv);
 }
 .lad-move.up {
-  top: -7px;
+  top: 2px;
   animation: mv-arrow-up 1.4s ease-in-out infinite;
 }
 .lad-move.down {
-  bottom: -1px;
+  bottom: 2px;
   color: #fff;
   animation: mv-arrow-down 1.4s ease-in-out infinite;
 }
 @keyframes mv-rise {
   from {
-    transform: translateY(14px);
+    transform: translateY(6px);
     opacity: 0;
   }
 }
 @keyframes mv-fall {
   from {
-    transform: translateY(-14px);
+    transform: translateY(-6px);
     opacity: 0;
   }
 }
 @keyframes mv-arrow-up {
   0%,
   100% {
-    transform: translateY(2px);
+    transform: translateY(1px);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
 }
 @keyframes mv-arrow-down {
   0%,
   100% {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
   50% {
-    transform: translateY(4px);
+    transform: translateY(2px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -6864,5 +6867,76 @@ div > .name-clash:first-child {
 @media (prefers-reduced-motion: reduce) {
   .ladder-court.is-crown::after {
     animation: none;
+  }
+}
+
+/* ---------- Pool: cambio de ronda animado ---------- */
+.ladder-next-round {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 2px solid var(--accent);
+  background: linear-gradient(160deg, rgba(98, 214, 255, 0.16), rgba(7, 11, 18, 0.7));
+  box-shadow: 0 0 18px rgba(98, 214, 255, 0.25);
+}
+.ladder-next-round .label {
+  font-size: 15px;
+  color: var(--accent);
+}
+.ladder-next-text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+.lrs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lrs-caption {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.lrs-board {
+  position: relative;
+}
+.lrs-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.lrs-row.ladder-court,
+.lrs-row.ladder-court.is-crown {
+  min-height: 0;
+}
+.lrs-row.is-crown .ladder-badge {
+  font-size: 16px;
+}
+.lrs-vs {
+  grid-column: 3;
+  text-align: center;
+  font-weight: 900;
+  color: var(--text-2);
+}
+.lrs-token {
+  position: absolute;
+  z-index: 2;
+  transform: translateX(-50%);
+  transition:
+    left 1.2s cubic-bezier(0.65, 0, 0.35, 1),
+    top 1.2s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.lrs .fx-photo {
+  animation: none;
+}
+.lrs .fx-photo .avatar {
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lrs-token {
+    transition-duration: 0.01s;
   }
 }

@@ -303,7 +303,7 @@ export function generateDemoData(now: number = Date.now(), seed = 20261003): Dem
   // Pool en escalera con cambio de pareja: 4 rondas y la final en la pista 1.
   runTournament(editionName('Copa Rotativa', 1), 'pool', 2, 4, false, startDay + 80 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 1));
   runTournament(editionName('Copa Rotativa', 2), 'pool', 2, 5, false, startDay + 100 * DAY, Infinity, edition('builtin-pool', 'Copa Rotativa', 2));
-  runTournament(editionName('Copa Rotativa', 3), 'pool', 2, 6, false, now - 2 * DAY, 5, edition('builtin-pool', 'Copa Rotativa', 3)); // en juego
+  runTournament(editionName('Copa Rotativa', 3), 'pool', 2, 6, false, now - 2 * DAY, 6, edition('builtin-pool', 'Copa Rotativa', 3)); // en juego
   runTournament(editionName('Liguilla Rápida', 2), 'league', 1, 6, true, now - 6 * DAY, 8, edition('builtin-league', 'Liguilla Rápida', 2)); // en juego
 
   matches.sort((a, b) => a.finishedAt - b.finishedAt);
