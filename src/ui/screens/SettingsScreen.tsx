@@ -16,13 +16,14 @@ import {
   type Player,
   type Preferences,
 } from '../../services/persistence';
-import { setPlayerActive, sortPlayers } from '../../services/players';
+import { sortPlayers } from '../../services/players';
 import { GOAL_SOUNDS, sound } from '../../services/sound/sound';
 import { voice } from '../../services/sound/voice';
 import { fullscreenAvailable, toggleFullscreen, wakeLock } from '../../services/system/device';
 import { STATS_DEFINITIONS_VERSION } from '../../services/statistics';
 import { Avatar, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
 import { downloadJson } from '../components/download';
+import { PlayerOptions } from '../components/PlayerQr';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { ClubEditor } from '../components/ClubEditor';
 import { Crest } from '../components/Crest';
@@ -330,23 +331,18 @@ function TeamList() {
 }
 
 function PlayerList() {
-  const { players, savePlayer, toast } = useApp();
-  const [editing, setEditing] = useState<Player | 'new' | null>(null);
+  const { players } = useApp();
+  const [creating, setCreating] = useState(false);
+  // Tocar un jugador abre su menú (el mismo que en el resto de la app).
+  const [options, setOptions] = useState<Player | null>(null);
   const list = sortPlayers(players);
-  const toggle = async (p: Player) => {
-    try {
-      await savePlayer(setPlayerActive(p, !p.active, Date.now()));
-    } catch {
-      toast('No se pudo guardar');
-    }
-  };
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <span className="muted" style={{ flex: 1, fontSize: 13 }}>
-          {players.length} jugadores · la baja es lógica: los inactivos no se ofrecen para nuevos partidos pero conservan su historial.
+          {players.length} jugadores · toca uno para ver sus opciones
         </span>
-        <button className="btn btn-primary btn-sm" onClick={() => setEditing('new')}>
+        <button className="btn btn-primary btn-sm" onClick={() => setCreating(true)}>
           + Nuevo jugador
         </button>
       </div>
@@ -360,23 +356,19 @@ function PlayerList() {
       ) : (
         <div className="list">
           {list.map((p) => (
-            <div key={p.id} className="row" style={{ opacity: p.active ? 1 : 0.6 }}>
+            <button key={p.id} className="row row-btn" style={{ opacity: p.active ? 1 : 0.6 }} onClick={() => setOptions(p)}>
               <Avatar name={p.name} photo={p.photo} size={36} />
-              <span style={{ flex: 1 }}>
+              <span style={{ flex: 1, textAlign: 'left' }}>
                 <strong>{p.name}</strong> {p.alias && <span className="muted">«{p.alias}»</span>}
                 {!p.active && <span className="badge" style={{ marginLeft: 8 }}>Inactivo</span>}
               </span>
-              <button className="btn btn-sm" onClick={() => setEditing(p)}>
-                Editar
-              </button>
-              <button className="btn btn-sm" onClick={() => toggle(p)}>
-                {p.active ? 'Desactivar' : 'Activar'}
-              </button>
-            </div>
+              <span className="muted" aria-hidden="true">⋯</span>
+            </button>
           ))}
         </div>
       )}
-      {editing && <PlayerEditor player={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+      {creating && <PlayerEditor onClose={() => setCreating(false)} />}
+      {options && <PlayerOptions player={options} onClose={() => setOptions(null)} />}
     </>
   );
 }

@@ -1195,3 +1195,8 @@ button.row:active {
   width: 44px;
   height: 44px;
 }
+/* Fila que se toca entera (abre el menú del jugador). */
+.row.row-btn {
+  font: inherit;
+  color: inherit;
+}

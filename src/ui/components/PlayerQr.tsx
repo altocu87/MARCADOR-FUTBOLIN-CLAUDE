@@ -1,11 +1,13 @@
 /**
- * Opciones de un jugador al dejarlo pulsado (en las listas para elegir jugadores) y el QR de su perfil:
+ * Menú de un jugador (el mismo en toda la app) y el QR de su perfil:
  * se lee con la cámara del móvil y abre su perfil en la web (solo para ver; no hace falta contraseña).
  */
 import qrcode from 'qrcode-generator';
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { Player } from '../../services/persistence';
+import { setPlayerActive } from '../../services/players';
+import { PlayerEditor } from './PlayerEditor';
 import { Avatar, Modal } from './common';
 
 /** Código QR en SVG (nítido a cualquier tamaño). */
@@ -74,10 +76,16 @@ export function useLongPress(ms = 550) {
 
 type Estado = 'subiendo' | 'listo' | 'sin-conexion' | 'local';
 
-/** Opciones del jugador: ver el QR de su perfil o su perfil en la app. */
-export function PlayerOptions({ player, onClose, startWithQr = false }: { player: Player; onClose: () => void; startWithQr?: boolean }) {
-  const { navigate, profileLink, demoMode } = useApp();
-  const [qr, setQr] = useState(startWithQr);
+/**
+ * Menú del jugador, el mismo en toda la app (dejarlo pulsado al elegir quién juega, «Opciones» de su
+ * perfil y su fila en Ajustes → Jugadores): ver su perfil, el QR, editarlo y darlo de baja o de alta.
+ */
+export function PlayerOptions({ player: initial, onClose, inProfile = false }: { player: Player; onClose: () => void; inProfile?: boolean }) {
+  const { navigate, profileLink, demoMode, players, savePlayer, toast } = useApp();
+  // Siempre con los datos al día (tras editarlo, el nombre y la foto nuevos).
+  const player = players.find((p) => p.id === initial.id) ?? initial;
+  const [view, setView] = useState<'menu' | 'qr' | 'edit'>('menu');
+  const qr = view === 'qr';
   const link = useMemo(() => profileLink(player.id), [player, profileLink]);
   const [estado, setEstado] = useState<Estado>(link?.online ? 'subiendo' : 'local');
 
@@ -90,6 +98,29 @@ export function PlayerOptions({ player, onClose, startWithQr = false }: { player
     };
   }, [qr, link]);
 
+  const toggleActive = async () => {
+    try {
+      await savePlayer(setPlayerActive(player, !player.active, Date.now()));
+      toast(player.active ? `${player.name}, de baja` : `${player.name}, de alta`);
+      onClose();
+    } catch {
+      toast('No se pudo guardar');
+    }
+  };
+
+  if (view === 'edit')
+    return (
+      <PlayerEditor
+        player={player}
+        onClose={() => setView('menu')}
+        onSaved={() => setView('menu')}
+        onMerged={(intoId) => {
+          onClose();
+          if (inProfile) navigate({ name: 'profile', playerId: intoId });
+        }}
+      />
+    );
+
   return (
     <Modal
       title={player.name}
@@ -97,7 +128,7 @@ export function PlayerOptions({ player, onClose, startWithQr = false }: { player
       actions={
         <>
           {qr && (
-            <button className="btn" onClick={() => setQr(false)}>
+            <button className="btn" onClick={() => setView('menu')}>
               Atrás
             </button>
           )}
@@ -111,22 +142,28 @@ export function PlayerOptions({ player, onClose, startWithQr = false }: { player
         <div className="po">
           <div className="po-head">
             <Avatar name={player.name} photo={player.photo} size={64} />
-            <div>
-              <b>{player.name}</b>
-            </div>
+            {!player.active && <span className="badge">Inactivo</span>}
           </div>
           <div className="po-actions">
-            <button className="btn btn-lg po-btn" onClick={() => setQr(true)}>
-              <span className="po-ico">▦</span> Ver QR del perfil
+            {!inProfile && (
+              <button
+                className="btn btn-lg po-btn"
+                onClick={() => {
+                  onClose();
+                  navigate({ name: 'profile', playerId: player.id });
+                }}
+              >
+                <span className="po-ico">👤</span> Ver perfil
+              </button>
+            )}
+            <button className="btn btn-lg po-btn" onClick={() => setView('qr')}>
+              <span className="po-ico">▦</span> Ver QR
             </button>
-            <button
-              className="btn btn-lg po-btn"
-              onClick={() => {
-                onClose();
-                navigate({ name: 'profile', playerId: player.id });
-              }}
-            >
-              <span className="po-ico">👤</span> Ver perfil aquí
+            <button className="btn btn-lg po-btn" onClick={() => setView('edit')}>
+              <span className="po-ico">✏️</span> Editar
+            </button>
+            <button className="btn btn-lg po-btn" onClick={() => void toggleActive()}>
+              <span className="po-ico">{player.active ? '⏸' : '▶'}</span> {player.active ? 'Desactivar' : 'Activar'}
             </button>
           </div>
         </div>
