@@ -12,11 +12,13 @@ import {
   seasonLabel,
   sortMatches,
 } from '../../services/statistics';
-import { Avatar, FormChips, HelpButton, MODE_LABEL, ScreenFrame, Tabs, formatDate, pct } from '../components/common';
+import { Avatar, FormChips, HelpButton, Modal, ScreenFrame, Tabs, formatDate, pct } from '../components/common';
 import { CategoryBadge, Podium } from '../components/graphics';
 import { MatchLine, PlayerTag, SideTag } from '../components/PlayerFaces';
 
 const PAGE = 20;
+/** Modalidad en la fila del historial: corta, cabe en su columna. */
+const MODE_SHORT: Record<MatchMode, string> = { quick: 'Rápido', chaos: 'Loco', ranked: 'Clasificatorio' };
 
 export function RankingScreen({ tab: initialTab }: { tab?: RankingTab }) {
   const { navigate } = useApp();
@@ -142,6 +144,9 @@ function History() {
   const [mode, setMode] = useState<MatchMode | 'all'>('all');
   const [playerId, setPlayerId] = useState<string>('all');
   const [page, setPage] = useState(0);
+  // Elegir jugador: ventana con las caras de todos.
+  const [picking, setPicking] = useState(false);
+  const who = players.find((p) => p.id === playerId);
   const list = useMemo(
     () =>
       sortMatches(matches)
@@ -156,18 +161,23 @@ function History() {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <select className="input" style={{ minHeight: 44, fontSize: 14 }} value={mode} onChange={(e) => { setMode(e.target.value as MatchMode | 'all'); setPage(0); }} aria-label="Filtrar por modalidad">
-          <option value="all">Todas las modalidades</option>
-          <option value="quick">{MODE_LABEL.quick}</option>
-          <option value="chaos">{MODE_LABEL.chaos}</option>
-          <option value="ranked">{MODE_LABEL.ranked}</option>
-        </select>
-        <select className="input" style={{ minHeight: 44, fontSize: 14 }} value={playerId} onChange={(e) => { setPlayerId(e.target.value); setPage(0); }} aria-label="Filtrar por jugador">
-          <option value="all">Todos los jugadores</option>
-          {sortPlayers(players).map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+        <div className="segmented hist-modes" role="group" aria-label="Filtrar por modalidad">
+          {(
+            [
+              ['all', 'TODOS'],
+              ['quick', 'RÁPIDO'],
+              ['chaos', 'LOCO'],
+              ['ranked', 'CLASIFICATORIO'],
+            ] as const
+          ).map(([v, label]) => (
+            <button key={v} className="seg" aria-pressed={mode === v} onClick={() => { setMode(v); setPage(0); }}>
+              {label}
+            </button>
           ))}
-        </select>
+        </div>
+        <button className="btn hist-who" onClick={() => setPicking(true)} aria-label="Filtrar por jugador">
+          {who ? <PlayerTag id={who.id} name={who.name} size={30} /> : <span>👥 Jugador: todos</span>}
+        </button>
         <span style={{ flex: 1 }} />
         <button className="btn btn-sm" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="Página anterior">‹</button>
         <span className="muted" style={{ fontSize: 13 }}>{page + 1}/{pages}</span>
@@ -185,7 +195,7 @@ function History() {
           {current.map((m) => (
             <button key={m.id} className="row hist-row" onClick={() => navigate({ name: 'matchDetail', matchId: m.id })}>
               <span className="dim hist-date">{formatDate(m.finishedAt)}</span>
-              <span className={`hist-mode mode-${m.config.mode}`}>{MODE_LABEL[m.config.mode]}</span>
+              <span className={`hist-mode mode-${m.config.mode}`}>{MODE_SHORT[m.config.mode]}</span>
               <span className={`hist-name ${m.result.winner === 'white' ? 'win' : ''}`}><SideTag match={m} team="white" /></span>
               <span className="hist-score">
                 {m.result.score.white}–{m.result.score.blue}
@@ -200,6 +210,26 @@ function History() {
             </button>
           ))}
         </div>
+      )}
+      {picking && (
+        <Modal
+          title="¿De quién?"
+          onClose={() => setPicking(false)}
+          actions={
+            <button className="btn btn-primary" onClick={() => { setPlayerId('all'); setPage(0); setPicking(false); }}>
+              Todos los jugadores
+            </button>
+          }
+        >
+          <div className="who-grid">
+            {sortPlayers(players).map((p) => (
+              <button key={p.id} className={`who-cell${p.id === playerId ? ' is-on' : ''}`} onClick={() => { setPlayerId(p.id); setPage(0); setPicking(false); }}>
+                <Avatar name={p.name} photo={p.photo} size={56} />
+                <span>{p.name}</span>
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
     </>
   );

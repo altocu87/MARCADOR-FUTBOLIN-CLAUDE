@@ -1860,7 +1860,7 @@
 }
 .hist-row {
   display: grid;
-  grid-template-columns: 112px 96px 1fr 64px 1fr 92px;
+  grid-template-columns: 112px 124px 1fr 64px 1fr 92px;
   gap: 8px;
 }
 .hist-date {
@@ -6939,4 +6939,44 @@ div > .name-clash:first-child {
 .prof-scope .seg {
   min-height: 48px;
   font-size: 16px;
+}
+/* Historial: modalidad con botones y jugador con su cara. */
+.hist-modes {
+  flex: none;
+}
+.hist-modes .seg {
+  min-height: 48px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+.hist-who {
+  min-height: 48px;
+  max-width: 230px;
+  white-space: nowrap;
+}
+.who-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  max-height: 290px;
+  overflow-y: auto;
+}
+.who-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background: rgba(17, 34, 59, 0.75);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.who-cell.is-on {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
 }
