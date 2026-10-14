@@ -100,7 +100,7 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
             checked={prefs.hardware.autoConnect}
             onChange={(v) => void savePrefs({ ...prefs, hardware: { ...prefs.hardware, autoConnect: v, wsUrl: url } })}
             label="Reconectar al abrir"
-            description="Wi-Fi y puertos USB ya autorizados (Bluetooth siempre pide un toque)."
+            help="Wi-Fi y puertos USB ya autorizados (Bluetooth siempre pide un toque)."
           />
           <div className="label" style={{ marginTop: 8 }}>Probar sin placa</div>
           <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>

@@ -61,7 +61,7 @@ import { AssetImage, assetUrl } from '../components/assets';
 import { BannerArt, Crest, Cup, IconPicker, defaultBanner, iconCategories, defaultCup, defaultLogo } from '../components/Crest';
 import { ClubEditor } from '../components/ClubEditor';
 import { findClub, saveClub } from '../../services/clubs';
-import { Avatar, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
+import { Avatar, HelpButton, Modal, ScreenFrame, Tabs, Toggle } from '../components/common';
 import { PlayerEditor } from '../components/PlayerEditor';
 import { RankPhoto } from '../components/PlayerCards';
 import { Faces, MatchLine, PlayerTag } from '../components/PlayerFaces';
@@ -772,10 +772,10 @@ export function TournamentNewScreen({
             // Cartel con el título dentro, en reposo (-off) y pulsado (-on); sin imágenes, la tarjeta de texto.
             const art = !!assetUrl(`tarjeta-${k.file}-off`);
             return (
+              <div key={k.format} className="card-wrap">
               <button
-                key={k.format}
                 className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''} ${ok || !total ? '' : 'is-off'}${kindSelected === k.format ? ' is-selected' : ''}${kindPressed === k.format ? ' is-pressed' : ''}`}
-                aria-label={`${k.title}: ${k.desc}`}
+                aria-label={k.title}
                 aria-pressed={kindSelected === k.format}
                 onClick={() => {
                   if (kindPressed) return;
@@ -802,9 +802,8 @@ export function TournamentNewScreen({
                 ) : (
                   <strong>{k.title}</strong>
                 )}
-                <span className="tn-kind-desc">{k.desc}</span>
                 {!total ? (
-                  <span className="tpl-fit">Sin crear todavía · toca para crear</span>
+                  <span className="tpl-fit">＋ CREAR</span>
                 ) : ok ? (
                   <span className="tpl-fit">
                     {ok} disponible{ok === 1 ? '' : 's'} para {n} jugadores
@@ -813,6 +812,8 @@ export function TournamentNewScreen({
                   <span className="tpl-why">✕ {why && !why.ok ? why.reason : `Ninguna encaja con ${n} jugadores`}</span>
                 )}
               </button>
+              <HelpButton title={k.title} text={k.desc} className="card-help" />
+              </div>
             );
           })}
         </div>
@@ -1357,12 +1358,12 @@ export function TournamentTemplateScreen({
           const art = !!assetUrl(`tarjeta-${k.file}-off`);
           const on = tpl.format === k.format;
           return (
+            <div key={k.format} className="card-wrap">
             <button
-              key={k.format}
               className={`tpl-card tn-kind tn-kind-${k.file} ${art ? 'has-art' : ''}${on ? ' is-selected' : ''}`}
               aria-pressed={on}
               disabled={editions > 0 && !on}
-              aria-label={`${k.title}: ${k.desc}`}
+              aria-label={k.title}
               onClick={() => setFormat(k.format)}
             >
               {art ? (
@@ -1373,8 +1374,9 @@ export function TournamentTemplateScreen({
               ) : (
                 <strong>{k.title}</strong>
               )}
-              <span className="tn-kind-desc">{k.desc}</span>
             </button>
+            <HelpButton title={k.title} text={k.desc} className="card-help" />
+            </div>
           );
         })}
       </div>
@@ -1600,7 +1602,7 @@ export function TournamentTemplateScreen({
             placeholder={`Ej.: ${kind.format === 'league' ? 'Liga del Almacén' : kind.format === 'bracket' ? 'Copa del Viernes' : 'Pool de los Jueves'}`}
           />
         </CreatorField>
-        <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" description="Los partidos se juegan como Clasificatorio y suben o bajan el ELO." />
+        <Toggle checked={tpl.ranked} onChange={(v) => set('ranked', v)} label="Cuenta para ELO" help="Los partidos se juegan como Clasificatorio y suben o bajan el ELO." />
         <div className="cr-summary">
           <div className="label">Resumen</div>
           <span>{describeTemplate(tpl)}</span>

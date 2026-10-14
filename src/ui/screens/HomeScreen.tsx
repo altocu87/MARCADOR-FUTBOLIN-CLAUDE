@@ -8,13 +8,14 @@ import { sound } from '../../services/sound/sound';
 import { useHardware } from '../../inputs/hardware/useHardware';
 import { AssetImage, assetUrl } from '../components/assets';
 import { Faces } from '../components/PlayerFaces';
-import { MODE_LABEL, Modal, formatDate } from '../components/common';
+import { HelpButton, MODE_LABEL, Modal, formatDate } from '../components/common';
 
 // Textos de una sola frase: se tienen que entender de un vistazo, de pie y jugando.
-const MODES: { mode: MatchMode; title: string; text: string; tag: string }[] = [
-  { mode: 'quick', title: 'RÁPIDO', text: 'Empieza a jugar', tag: 'XP' },
-  { mode: 'chaos', title: 'LOCO', text: 'Un hándicap loco cada minuto', tag: 'XP' },
-  { mode: 'ranked', title: 'CLASIFICATORIO', text: 'Partido competitivo', tag: 'ELO + XP' },
+// Solo el título y lo que da; lo que no se entiende solo, en la «?».
+const MODES: { mode: MatchMode; title: string; help?: string; tag: string }[] = [
+  { mode: 'quick', title: 'RÁPIDO', tag: 'XP' },
+  { mode: 'chaos', title: 'LOCO', help: 'Cada minuto sale un hándicap al azar que cambia el partido. Da experiencia, pero no toca el ELO.', tag: 'XP' },
+  { mode: 'ranked', title: 'CLASIFICATORIO', help: 'Partido serio: sube o baja el ELO de cada jugador y da experiencia.', tag: 'ELO + XP' },
 ];
 
 // Accesos de la cabecera: cada uno con su color e icono de trazo (mismo estilo que el engranaje).
@@ -157,12 +158,12 @@ export function HomeScreen() {
 
       <div className="mode-cards">
         {MODES.map((m) => (
+          <div key={m.mode} className="card-wrap">
           <button
-            key={m.mode}
             className={`mode-card mode-${m.mode}${selected === m.mode ? ' is-selected' : ''}${pressed === m.mode ? ' is-pressed' : ''}`}
             aria-pressed={selected === m.mode}
             onClick={() => start(m.mode)}
-            aria-label={`Jugar ${m.title.toLowerCase()}: ${m.text}`}
+            aria-label={`Jugar ${m.title.toLowerCase()}`}
           >
             {assetUrl(`tarjeta-${MODE_FILE[m.mode]}-off`) ? (
               // Ilustración a tarjeta completa con dos versiones: apagada y encendida (se funden al activar).
@@ -183,9 +184,10 @@ export function HomeScreen() {
               />
             )}
             <span className="mode-title">{m.title}</span>
-            <span className="mode-text">{m.text}</span>
             <span className="mode-tag">{m.tag}</span>
           </button>
+          {m.help && <HelpButton title={m.title} text={m.help} className="card-help" />}
+          </div>
         ))}
       </div>
 

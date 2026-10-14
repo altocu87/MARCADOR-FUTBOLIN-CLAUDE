@@ -86,25 +86,30 @@ export function Tabs<T extends string>({
   );
 }
 
+/** Interruptor con su nombre; si no se entiende solo, `help` pone una «?» al lado que lo explica. */
 export function Toggle({
   checked,
   onChange,
   label,
-  description,
+  help,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
-  description?: string;
+  help?: string;
 }) {
-  return (
+  const sw = (
     <button className="toggle" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}>
       <span className="track" />
-      <span>
-        <strong style={{ display: 'block', fontSize: 15 }}>{label}</strong>
-        {description && <span className="muted" style={{ fontSize: 13 }}>{description}</span>}
-      </span>
+      <strong style={{ fontSize: 16 }}>{label}</strong>
     </button>
+  );
+  if (!help) return sw;
+  return (
+    <span className="toggle-row">
+      {sw}
+      <HelpButton title={label} text={help} className="head-help" />
+    </span>
   );
 }
 

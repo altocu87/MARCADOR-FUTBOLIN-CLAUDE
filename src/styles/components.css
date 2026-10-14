@@ -1277,3 +1277,32 @@ button.row:active {
 .po-btn {
   white-space: nowrap;
 }
+/* Interruptor con su «?» al lado. */
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.toggle-row .head-help {
+  width: 36px;
+  height: 36px;
+}
+/* Tarjeta grande con su «?» en la esquina (la «?» no puede ir dentro del botón de la tarjeta). */
+.card-wrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+.card-wrap > :first-child {
+  min-width: 0;
+  min-height: 0;
+}
+.cr-help.card-help {
+  top: 10px;
+  right: 10px;
+  transform: none;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+}

@@ -174,7 +174,6 @@
   pointer-events: none;
 }
 .mode-title,
-.mode-text,
 .mode-tag {
   position: relative;
   z-index: 1;
@@ -211,12 +210,6 @@
 .mode-ranked .mode-title {
   font-size: 22px;
   letter-spacing: 0.02em;
-}
-.mode-text {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.25;
 }
 /* Recompensa: solo informativa, así que va como texto y no como «pastilla» con borde. */
 .mode-tag {
@@ -3053,10 +3046,6 @@
   font-size: 30px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-.tpl-card.tn-kind .tn-kind-desc {
-  font-size: 14px;
-  line-height: 1.35;
 }
 .tpl-card.tn-kind .tpl-fit,
 .tpl-card.tn-kind .tpl-why {

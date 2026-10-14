@@ -108,7 +108,7 @@ function TestModeCard() {
         checked={demoMode}
         onChange={(v) => (busy ? undefined : v ? void apply(true) : setConfirmOff(true))}
         label="Modo prueba"
-        description="Carga 12 jugadores, más de 100 partidos y 4 torneos ficticios. Todo lo que juegues o añadas se guarda en el modo prueba. Al desactivarlo se borra y vuelven tus datos reales intactos."
+        help="Carga 12 jugadores, más de 100 partidos y 4 torneos ficticios. Todo lo que juegues o añadas se guarda en el modo prueba. Al desactivarlo se borra y vuelven tus datos reales intactos."
       />
       {confirmOff && (
         <Modal
@@ -188,7 +188,7 @@ function General() {
           checked={prefs.challenges}
           onChange={(v) => update({ challenges: v })}
           label="Retos diarios y semanales"
-          description="Conceden XP extra (recalculado desde el historial)."
+          help="Conceden XP extra (recalculado desde el historial)."
         />
       </div>
       <div className="card">
@@ -197,7 +197,7 @@ function General() {
           checked={prefs.keepAwake}
           onChange={(v) => update({ keepAwake: v })}
           label="Mantener pantalla encendida"
-          description={wakeLock.available ? 'Evita que el móvil o la tablet se apague con la app abierta.' : 'Este navegador no lo permite.'}
+          help={wakeLock.available ? 'Evita que el móvil o la tablet se apague con la app abierta.' : 'Este navegador no lo permite.'}
         />
         {fullscreenAvailable() && (
           <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => void toggleFullscreen()}>
@@ -383,7 +383,7 @@ function Audio() {
   return (
     <div className="settings-grid">
       <div className="card">
-        <Toggle checked={prefs.muted} onChange={(v) => update({ muted: v })} label="Silencio" description="Desactiva todos los sonidos." />
+        <Toggle checked={prefs.muted} onChange={(v) => update({ muted: v })} label="Silencio" />
         <div className="label" style={{ marginTop: 10 }}>Volumen {Math.round(prefs.volume * 100)} %</div>
         <input
           className="range"
@@ -420,7 +420,7 @@ function Audio() {
           checked={prefs.voice}
           onChange={(v) => update({ voice: v })}
           label="Locutor"
-          description={voice.available ? 'Voz del navegador: goles, bola de partido, finales.' : 'Este navegador no tiene síntesis de voz.'}
+          help={voice.available ? 'Voz del navegador: goles, bola de partido, finales.' : 'Este navegador no tiene síntesis de voz.'}
         />
         <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => voice.test('¡Gol del equipo blanco! Dos a uno.')}>
           Probar locutor
@@ -457,7 +457,7 @@ function Progression() {
             checked={p.enabled}
             onChange={(v) => set({ enabled: v })}
             label="Activar progresión"
-            description="Desactivada: se muestra «Clasificación pendiente» y no hay ELO/XP."
+            help="Desactivada: se muestra «Clasificación pendiente» y no hay ELO/XP."
           />
         </div>
         <div className="card">
@@ -465,7 +465,7 @@ function Progression() {
             checked={p.goalDiffMultiplier}
             onChange={(v) => set({ goalDiffMultiplier: v })}
             label="Multiplicador por diferencia de goles"
-            description="1→1,00 · 2→1,05 · 3→1,10 · 4→1,15 · 5+→1,20 (penaltis: 1,00)."
+            help="1→1,00 · 2→1,05 · 3→1,10 · 4→1,15 · 5+→1,20 (penaltis: 1,00)."
           />
         </div>
         <div className="card">
