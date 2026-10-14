@@ -6969,3 +6969,14 @@ div > .name-clash:first-child {
   border-color: var(--accent);
   box-shadow: var(--glow);
 }
+/* Nombre de un campo del creador con su «?» al lado. */
+.cr-field-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cr-field-label .head-help {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}

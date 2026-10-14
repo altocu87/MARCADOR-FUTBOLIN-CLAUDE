@@ -1265,10 +1265,13 @@ function SubPanel({ parent, children }: { parent: string; children: ReactNode })
 }
 
 /** Una opción del creador: título, botones y una línea que explica lo elegido. */
-function CreatorField({ label, children, note }: { label: string; children: ReactNode; note?: ReactNode }) {
+function CreatorField({ label, children, note, help }: { label: string; children: ReactNode; note?: ReactNode; help?: string }) {
   return (
     <div className="cr-field">
-      <div className="label">{label}</div>
+      <div className="label cr-field-label">
+        {label}
+        {help && <HelpButton title={label} text={help} className="head-help" />}
+      </div>
       {children}
       {note && <small className="cr-note">{note}</small>}
     </div>
@@ -1474,7 +1477,7 @@ export function TournamentTemplateScreen({
         <div className="cr-col">
           {p.limit === 'time' ? (
             <SubPanel parent="Por tiempo">
-              <CreatorField label="Minutos" note="El reloj arranca con el primer partido.">
+              <CreatorField label="Minutos" help="El reloj arranca con el primer partido.">
                 <Seg<number> value={p.minutes} options={LADDER_MINUTES.map((m) => [m, `${m} MIN`])} onChange={(v) => set('poolMinutes', v)} />
               </CreatorField>
             </SubPanel>
@@ -1591,7 +1594,7 @@ export function TournamentTemplateScreen({
     body = (
       <div className="cr-cols">
         <div className="cr-col">
-        <CreatorField label={`Nombre ${kind.format === 'pool' ? 'del pool' : `de ${kind.the}`}`} note="Así se llamará cada edición: «1ª edición», «2ª edición»…">
+        <CreatorField label={`Nombre ${kind.format === 'pool' ? 'del pool' : `de ${kind.the}`}`} help="Así se llamará cada edición: «1ª edición», «2ª edición»…">
           <input
             className="input cr-name"
             value={tpl.name}
@@ -1626,7 +1629,7 @@ export function TournamentTemplateScreen({
               <span>Copa</span>
             </button>
           </div>
-          <CreatorField label="Título del último" note="Lo que se lleva el último en la ceremonia final.">
+          <CreatorField label="Título del último" help="Lo que se lleva el último en la ceremonia final.">
             <input
               className="input"
               value={tpl.lastTitle ?? ''}
@@ -1661,7 +1664,8 @@ export function TournamentTemplateScreen({
 
   return (
     <ScreenFrame
-      title={existing ? `Editar ${kind.noun}` : 'Crear torneo'}
+      // El tipo ya lo dice el primer paso: el título, corto, para que quepa junto a los pasos.
+      title={existing ? 'Editar' : 'Crear'}
       className="select-screen tn-screen cr-screen"
       background={TN_BG}
       onBack={back}
@@ -1677,7 +1681,7 @@ export function TournamentTemplateScreen({
       }
       footer={
         <>
-          {last ? <span className="select-status" /> : <span className="notice select-status">{describeTemplate(tpl)}</span>}
+          <span className="select-status" />
           {existing && (
             <>
               <button className="btn btn-sm" onClick={() => navigate({ name: 'tournamentTemplate', baseId: existing.id, selected, format: existing.format })}>
