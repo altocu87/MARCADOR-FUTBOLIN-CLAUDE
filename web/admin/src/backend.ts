@@ -6,7 +6,15 @@
  * Las pantallas solo conocen esta interfaz, así que pasar de uno a otro no cambia el panel.
  */
 import { seedData } from './seed';
+import type { GameRules } from '../../../src/services/progression/gameRules';
 import type { AdminData, AdminSession, Collection, ItemOf, Settings } from './types';
+
+/** Reglas del juego publicadas: su contenido, cuándo y quién (null si aún no se ha publicado ninguna). */
+export interface StoredRules {
+  rules: GameRules;
+  updatedAt: number;
+  updatedBy: string;
+}
 
 /** Segundo paso al entrar en modo real: código de la app de verificación (con QR la primera vez). */
 export interface MfaStep {
@@ -31,6 +39,9 @@ export interface AdminBackend {
   upsert<C extends Collection>(col: C, item: ItemOf<C>): Promise<void>;
   remove(col: Collection, id: string): Promise<void>;
   saveSettings(s: Settings): Promise<void>;
+  /** Reglas del juego (ELO, rangos, XP, niveles) que descargan todas las mesas. */
+  loadRules(): Promise<StoredRules | null>;
+  saveRules(r: StoredRules): Promise<void>;
   /** Catálogo: sube un archivo (ruta dentro del almacén) y devuelve su dirección. */
   uploadFile(path: string, file: Blob): Promise<string>;
   removeFiles(paths: string[]): Promise<void>;
@@ -69,6 +80,7 @@ export async function hashPassword(password: string, salt: string): Promise<stri
 const DATA_KEY = 'mfv3-admin-demo-datos';
 const ACCOUNT_KEY = 'mfv3-admin-demo-cuenta';
 const SESSION_KEY = 'mfv3-admin-sesion';
+const RULES_KEY = 'mfv3-admin-demo-reglas';
 
 export class LocalBackend implements AdminBackend {
   readonly mode = 'demo' as const;
@@ -154,6 +166,16 @@ export class LocalBackend implements AdminBackend {
     const d = await this.load();
     d.settings = s;
     this.persist();
+  }
+
+  /** Demo: las reglas se guardan en este navegador (la app no las ve). */
+  async loadRules(): Promise<StoredRules | null> {
+    const raw = this.store.getItem(RULES_KEY);
+    return raw ? (JSON.parse(raw) as StoredRules) : null;
+  }
+
+  async saveRules(r: StoredRules): Promise<void> {
+    this.store.setItem(RULES_KEY, JSON.stringify(r));
   }
 
   /** Demo: el archivo se guarda dentro de los datos (en este navegador). */

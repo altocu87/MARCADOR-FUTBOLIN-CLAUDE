@@ -8,7 +8,8 @@
  * La clave «anon» de Supabase es pública por diseño; lo que protege los datos son esas políticas.
  * La sesión vive solo en esta pestaña (sessionStorage), se renueva sola y al salir se revoca en el servidor.
  */
-import type { AdminBackend, KeyValueStore, MfaStep } from './backend';
+import { sanitizeRules } from '../../../src/services/progression/gameRules';
+import type { AdminBackend, KeyValueStore, MfaStep, StoredRules } from './backend';
 import type { AdminData, AdminSession, Collection, ItemOf, Role, Settings } from './types';
 
 /** Tabla de la base de datos para cada colección del panel. */
@@ -249,6 +250,24 @@ export class SupabaseBackend implements AdminBackend {
     if (!paths.length) return;
     await this.fresh();
     await this.req(`/storage/v1/object/${CATALOG_BUCKET}`, { method: 'DELETE', headers: this.headers(), body: JSON.stringify({ prefixes: paths }) });
+  }
+
+  async loadRules(): Promise<StoredRules | null> {
+    await this.fresh();
+    const rows = await this.req<{ data: unknown; updated_at: number; updated_by: string }[]>(`/rest/v1/game_rules?id=eq.global&select=*`, {
+      headers: this.headers(),
+    });
+    const row = rows[0];
+    return row ? { rules: sanitizeRules(row.data), updatedAt: Number(row.updated_at), updatedBy: row.updated_by } : null;
+  }
+
+  async saveRules(r: StoredRules): Promise<void> {
+    await this.fresh();
+    await this.req(`/rest/v1/game_rules`, {
+      method: 'POST',
+      headers: this.headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({ id: 'global', data: r.rules, updated_at: r.updatedAt, updated_by: r.updatedBy }),
+    });
   }
 
   async saveSettings(s: Settings): Promise<void> {

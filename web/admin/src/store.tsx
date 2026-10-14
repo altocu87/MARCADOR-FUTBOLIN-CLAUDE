@@ -2,7 +2,7 @@
  * Estado del panel: datos cargados, sesión y acciones. Cada cambio deja una línea en el registro de actividad.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { AdminBackend } from './backend';
+import type { AdminBackend, StoredRules } from './backend';
 import { can, newId, type Permission } from './logic';
 import type { AdminData, AdminSession, AuditEntry, Collection, ItemOf, Settings } from './types';
 
@@ -18,6 +18,8 @@ interface Ctx {
   saveMany: <C extends Collection>(col: C, items: ItemOf<C>[], accion: string, detalle: string) => Promise<void>;
   removeMany: (col: Collection, ids: string[], accion: string, detalle: string) => Promise<void>;
   saveSettings: (s: Settings, detalle: string) => Promise<void>;
+  /** Publica las reglas del juego (todas las mesas las descargan) y lo apunta en la actividad. */
+  saveRules: (r: StoredRules, detalle: string) => Promise<void>;
   reload: () => Promise<void>;
   toast: (msg: string) => void;
   message: string | null;
@@ -108,6 +110,10 @@ export function AdminProvider({ backend, session, children }: { backend: AdminBa
         for (const id of ids) await backend.remove(col, id);
         setData((d) => (d ? { ...d, [col]: (d[col] as { id: string }[]).filter((x) => !ids.includes(x.id)) } : d));
         await audit(accion, detalle);
+      },
+      async saveRules(r, detalle) {
+        await backend.saveRules(r);
+        await audit('Reglas del juego', detalle);
       },
       async saveSettings(s, detalle) {
         await backend.saveSettings(s);

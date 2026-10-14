@@ -7,6 +7,7 @@ import { Bares } from './sections/Bares';
 import { Catalogo } from './sections/Catalogo';
 import { Envios } from './sections/Envios';
 import { Licencias } from './sections/Licencias';
+import { Reglas } from './sections/Reglas';
 import { Resumen } from './sections/Resumen';
 import { Tienda } from './sections/Tienda';
 import { Usuarios } from './sections/Usuarios';
@@ -24,6 +25,7 @@ const SECTIONS: { id: string; label: string; perm?: Permission }[] = [
   { id: 'licencias', label: 'Licencias Pro' },
   { id: 'tienda', label: 'Tienda y cupones' },
   { id: 'catalogo', label: 'Catálogo', perm: 'editar_catalogo' },
+  { id: 'reglas', label: 'Reglas del juego', perm: 'editar_reglas' },
   { id: 'avisos', label: 'Avisos' },
   { id: 'actividad', label: 'Actividad' },
   { id: 'ajustes', label: 'Ajustes' },
@@ -309,6 +311,7 @@ function Shell({ onOut }: { onOut: () => void }) {
           {current === 'licencias' && <Licencias />}
           {current === 'tienda' && <Tienda />}
           {current === 'catalogo' && <Catalogo />}
+          {current === 'reglas' && <Reglas />}
           {current === 'avisos' && <Avisos />}
           {current === 'actividad' && <Actividad />}
           {current === 'ajustes' && <Ajustes />}

@@ -6980,3 +6980,21 @@ div > .name-clash:first-child {
   height: 32px;
   font-size: 16px;
 }
+/* Ajustes → Progresión: las reglas en uso, solo para mirar. */
+.rules-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.rules-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+}
+.rules-row b {
+  white-space: nowrap;
+}

@@ -18,7 +18,18 @@ import {
 } from '../services/persistence';
 import { generateDemoData } from '../services/demo';
 import { mergePlayers } from '../services/players';
-import { computeProgression, type ProgressionSnapshot } from '../services/progression';
+import {
+  DEFAULT_RULES,
+  applyGameRules,
+  computeProgression,
+  eloSettings,
+  fetchRemoteRules,
+  readCachedRules,
+  writeCachedRules,
+  type GameRules,
+  type ProgressionSnapshot,
+  type PublishedRules,
+} from '../services/progression';
 import { sound } from '../services/sound/sound';
 import { voice } from '../services/sound/voice';
 import {
@@ -71,6 +82,9 @@ interface AppContextValue {
   toastMessage: string | null;
   /** Catálogo de eventos (lo que trae la app + lo descargado del panel). */
   catalog: Catalog;
+  /** Reglas del juego en uso (ELO, rangos, XP, niveles) y cuándo se publicaron en el panel (null: las de la app). */
+  rules: GameRules;
+  rulesUpdatedAt: number | null;
   /** Quién tiene cada pieza del catálogo. */
   rewards: RewardState;
   /** Días (YYYY-MM-DD) en que se ha abierto la app aquí. */
@@ -152,6 +166,38 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
       alive = false;
     };
   }, [injected, store]);
+
+  // Reglas del juego: las publicadas en el panel (copia guardada aquí y, si hay conexión, se piden otra vez).
+  const [published, setPublished] = useState<PublishedRules | null>(() => {
+    try {
+      return readCachedRules(store);
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (injected) return;
+    const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+    const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+    if (!url || !key) return;
+    let alive = true;
+    fetchRemoteRules(url, key)
+      .then((remote) => {
+        if (!alive || !remote) return;
+        writeCachedRules(store, remote);
+        setPublished((cur) => (cur && cur.updatedAt === remote.updatedAt ? cur : remote));
+      })
+      .catch(() => {
+        /* sin conexión o sin reglas publicadas: se quedan las guardadas */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [injected, store]);
+  const rules = published?.rules ?? DEFAULT_RULES;
+  // Se aplican antes de calcular nada: tablas de XP, rangos y niveles. Lo del ELO va en los ajustes de progresión.
+  useMemo(() => applyGameRules(rules), [rules]);
+  const effectivePrefs = useMemo<Preferences>(() => ({ ...prefs, progression: { ...prefs.progression, ...eloSettings(rules) } }), [prefs, rules]);
 
   // Apunta el día de hoy (una vez por día) entre los días en que se ha abierto la app.
   const [visitDays] = useState<string[]>(() => {
@@ -273,15 +319,15 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
 
   const progression = useMemo(
     () =>
-      prefs.progression.enabled
+      effectivePrefs.progression.enabled
         ? computeProgression(
             players.map((p) => p.id),
             matches,
-            prefs.progression,
+            effectivePrefs.progression,
             { tournaments, challenges: prefs.challenges },
           )
         : null,
-    [players, matches, tournaments, prefs.progression, prefs.challenges],
+    [players, matches, tournaments, effectivePrefs.progression, prefs.challenges],
   );
 
   const rewards = useMemo(
@@ -339,7 +385,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     players,
     matches,
     tournaments,
-    prefs,
+    prefs: effectivePrefs,
     progression,
     refresh,
     savePlayer,
@@ -356,6 +402,8 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     toast,
     toastMessage,
     catalog,
+    rules,
+    rulesUpdatedAt: published?.updatedAt ?? null,
     rewards,
     visitDays,
     profileLink,

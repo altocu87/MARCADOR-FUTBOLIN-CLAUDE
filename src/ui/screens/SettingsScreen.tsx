@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { SettingsTab } from '../../app/routes';
 import { CONFIG_LIMITS, ENGINE_VERSION, RULES_VERSION, type EndCondition } from '../../match-engine';
+import { RULE_GROUPS } from '../../services/progression';
 import {
-  DEFAULT_PROGRESSION,
   STORAGE_FORMAT_VERSION,
   applyImport,
   buildBackup,
@@ -442,56 +442,47 @@ function Audio() {
   );
 }
 
+/** Reglas del juego en uso (solo se miran aquí: se cambian en el panel de administración). */
 function Progression() {
   const { prefs, update } = usePrefs();
+  const { rules, rulesUpdatedAt } = useApp();
   const p = prefs.progression;
-  const set = (patch: Partial<typeof p>) => update({ progression: { ...p, ...patch } });
+  const shown = RULE_GROUPS.map((g) => ({
+    ...g,
+    fields: g.fields.map((f) => {
+      const v = rules[f.key];
+      return { label: f.label, value: typeof v === 'boolean' ? (v ? 'Sí' : 'No') : `${String(v).replace('.', ',')}${f.unit ? ` ${f.unit}` : ''}` };
+    }),
+  }));
   return (
     <>
-      <div className="notice warn" style={{ marginBottom: 8 }}>
-        Cambiar un valor recalcula ELO, XP y niveles desde el historial.
+      <div className="card">
+        <Toggle
+          checked={p.enabled}
+          onChange={(v) => update({ progression: { ...p, enabled: v } })}
+          label="Activar progresión"
+          help="Apagada, no hay ELO, experiencia, niveles ni logros: la clasificación sale como «pendiente»."
+        />
       </div>
-      <div className="settings-grid">
-        <div className="card">
-          <Toggle
-            checked={p.enabled}
-            onChange={(v) => set({ enabled: v })}
-            label="Activar progresión"
-            help="Desactivada: se muestra «Clasificación pendiente» y no hay ELO/XP."
-          />
-        </div>
-        <div className="card">
-          <Toggle
-            checked={p.goalDiffMultiplier}
-            onChange={(v) => set({ goalDiffMultiplier: v })}
-            label="Multiplicador por diferencia de goles"
-            help="1→1,00 · 2→1,05 · 3→1,10 · 4→1,15 · 5+→1,20 (penaltis: 1,00)."
-          />
-        </div>
-        <div className="card">
-          <div className="label">K provisional (primeros partidos)</div>
-          <Stepper label="K provisional" value={p.kProvisional} min={1} max={100} onChange={(v) => set({ kProvisional: v })} />
-        </div>
-        <div className="card">
-          <div className="label">K establecido</div>
-          <Stepper label="K establecido" value={p.kEstablished} min={1} max={100} onChange={(v) => set({ kEstablished: v })} />
-        </div>
-        <div className="card">
-          <div className="label">Partidos con K provisional</div>
-          <Stepper label="partidos provisionales" value={p.provisionalMatches} min={0} max={50} onChange={(v) => set({ provisionalMatches: v })} />
-        </div>
-        <div className="card">
-          <div className="label">ELO inicial</div>
-          <div style={{ fontSize: 28, fontWeight: 800 }}>{p.eloInitial}</div>
-          <button className="btn btn-sm" onClick={() => set({ ...DEFAULT_PROGRESSION, enabled: p.enabled })}>
-            Valores por defecto
-          </button>
-        </div>
+      <div className="notice" style={{ margin: '8px 0' }}>
+        {rulesUpdatedAt
+          ? `Reglas publicadas en el panel de administración el ${new Date(rulesUpdatedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+          : 'Reglas recomendadas (aún no se ha publicado ninguna en el panel de administración).'}{' '}
+        Se cambian allí, con la explicación de cada valor.
       </div>
-      <p className="dim" style={{ fontSize: 13 }}>
-        Cómo se gana XP: partido +50 · victoria +100 · derrota +25 · victoria clasificatoria +50 · prórroga +25 · penaltis +25 ·
-        logros +25/+50/+100. Nivel N requiere 100 × N^1,35 XP acumulado (0–100). Solo Clasificatorio modifica ELO.
-      </p>
+      <div className="rules-view">
+        {shown.map((g) => (
+          <div key={g.id} className="card">
+            <div className="label">{g.title}</div>
+            {g.fields.map((f) => (
+              <div key={f.label} className="rules-row">
+                <span>{f.label}</span>
+                <b>{f.value}</b>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </>
   );
 }

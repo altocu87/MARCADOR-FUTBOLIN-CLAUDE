@@ -1,7 +1,6 @@
 /**
- * Reglas de progresión PROPUESTAS (pendientes de aprobación del propietario).
- * Todo cálculo se versiona con PROGRESSION_RULES_VERSION y se recalcula
- * siempre desde el historial, así una corrección futura es reproducible.
+ * Reglas de progresión: ELO, rangos, XP y niveles. Los valores de aquí son los recomendados; el panel de
+ * administración puede publicar otros (gameRules.ts los aplica). Todo se recalcula siempre desde el historial.
  */
 import type { MatchMode } from '../../match-engine';
 
@@ -13,7 +12,7 @@ export function eloExpected(own: number, rival: number): number {
   return 1 / (1 + 10 ** ((rival - own) / 400));
 }
 
-/** Propuesta no definitiva: multiplicador por diferencia de goles. */
+/** Multiplicador por diferencia de goles (si las reglas lo activan). */
 export function goalDiffMultiplier(diff: number): number {
   const d = Math.abs(diff);
   if (d <= 1) return 1;
@@ -63,16 +62,24 @@ export const XP_TABLE = {
   rankedWinBonus: 50,
   overtimeWin: 25,
   penaltiesWin: 25,
-  tournamentWin: 300, // pendiente: torneos sin definir
-  personalRecord: 50, // pendiente: no se concede hasta aprobar la política
-} as const;
+  tournamentWin: 300,
+};
 
-export const MAX_LEVEL = 100;
+// Curva de niveles: XP para el nivel N = base × N^exponente. La cambian las reglas del panel (gameRules.ts).
+let levelBase = 100;
+let levelExponent = 1.35;
+export let MAX_LEVEL = 100;
 
-/** XP acumulado necesario para alcanzar el nivel N (fórmula conceptual 100 × N^1,35, redondeada). */
+export function setLevelCurve(base: number, exponent: number, max: number): void {
+  levelBase = base;
+  levelExponent = exponent;
+  MAX_LEVEL = max;
+}
+
+/** XP acumulado necesario para alcanzar el nivel N (base × N^exponente, redondeado). */
 export function xpForLevel(level: number): number {
   if (level <= 0) return 0;
-  return Math.round(100 * level ** 1.35);
+  return Math.round(levelBase * level ** levelExponent);
 }
 
 export function levelForXp(xp: number): number {

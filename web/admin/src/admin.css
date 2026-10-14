@@ -1209,3 +1209,103 @@ textarea.a-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------- Reglas del juego */
+.rg-intro ul,
+.rg-alert ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  line-height: 1.55;
+}
+.rg-alert {
+  border-color: var(--danger);
+  color: #ffd4da;
+}
+.rg-group {
+  margin-top: 14px;
+}
+.rg-group-intro {
+  margin: 4px 0 12px;
+  color: var(--text-2);
+  line-height: 1.55;
+  max-width: 900px;
+}
+.rg-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rg-field {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+.rg-field.is-off {
+  border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+}
+.rg-field.is-changed {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.rg-field-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.rg-label {
+  flex: 1 1 240px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.rg-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 190px;
+}
+.rg-input {
+  width: 110px;
+  text-align: right;
+}
+.rg-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 230px;
+}
+.rg-text {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.rg-text b {
+  color: var(--text);
+}
+.rg-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--line-2);
+}
+.rg-preview-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.rg-preview table {
+  border-collapse: collapse;
+}
+.rg-preview th {
+  text-align: left;
+  padding: 3px 18px 3px 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rg-preview td {
+  padding: 3px 0;
+  color: var(--text-2);
+}
