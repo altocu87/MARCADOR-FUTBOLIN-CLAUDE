@@ -103,6 +103,8 @@ export const CAP_LABEL: Record<string, string> = {
   salidas: 'Salidas aisladas',
   uart: 'Puerto UART',
   brillo: 'Brillo de pantalla',
+  sonido: 'Altavoces y sonidos propios',
+  sd: 'Tarjeta SD',
 };
 
 // Nombres que usaban las placas antes de presentarse con su modelo.

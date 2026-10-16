@@ -118,7 +118,11 @@ guardados sin origen y reprocesar no duplica premios.
   dejando al rival a 0 o por 4 o más (sustituye a «Victoria»). **Victoria** sustituye al pitido final y el himno del
   ganador suena después. En un mismo gol suena solo el momento más especial (remontada > 3 seguidos > empate > gol);
   si el gol termina el partido suena «Victoria»/«Goleada» (el gol de oro, antes de la victoria). La bola de partido,
-  en cola tras el gol. Al subirlo: una pista, sin silencios, volumen igualado, 10 s como mucho, WAV 22 050 Hz 16 bits.
+  en cola tras el gol. Al subirlo: una pista, sin silencios, volumen igualado, 10 s como mucho, WAV 16 000 Hz 16 bits.
+- **Sonidos en la placa «sonidos-2»**: altavoces solo en la pantalla de 7" Waveshare 7C (lo trae de serie). Los sonidos
+  pasan por el cable USB (la radio Wi-Fi es del mando). Un sonido vive en un solo sitio (chip o SD). La placa conoce
+  cada sonido por un código (FNV-1a del id). Jugando sola usa lo elegido en la app para los 13 momentos que detecta;
+  lo que esté en el aparato no lo tiene y suena su «de siempre» (notas). El volumen es el de la app.
 
 ## Pendiente de decisión del propietario (no inventado)
 

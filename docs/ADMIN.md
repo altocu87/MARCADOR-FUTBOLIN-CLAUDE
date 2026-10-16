@@ -164,3 +164,5 @@ Ajustes → Sonidos: cada mesa sube sus propios sonidos y elige cuál suena en c
 victoria, subir de nivel…). Es **solo de la mesa**: el panel de administración no los ve ni los cambia, y «Volver al
 del panel» no les afecta. El panel solo sigue decidiendo cuál de los sonidos de gol de la app es «el de siempre».
 Los sonidos se guardan en el aparato (IndexedDB, aparte de los demás datos) y van en la copia de seguridad de Datos.
+Los que se guardan en la placa de 7" (chip o tarjeta SD) se le pasan por el cable USB; la app guarda siempre una copia
+(para escucharlos, volver a pasarlos y la copia de seguridad). Detalles en `HARDWARE.md` §7.2.
