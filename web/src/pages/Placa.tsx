@@ -55,7 +55,7 @@ function firstBoot(b: BoardInfo): string[] {
       'Toca las 4 esquinas: se ponen en verde si el táctil funciona bien.',
       'Pulsa el botón BLANCO y el AZUL del mando: deben marcarse como OK.',
       b.pins.sensorBlanco ? 'Si tienes sensores, pasa la bola por cada uno (es opcional).' : 'Si algo no responde, revisa la conexión de ese elemento.',
-      'Pulsa TERMINAR. Puedes repetir la prueba cuando quieras con el botón PRUEBA de la pantalla de inicio.',
+      'Pulsa TERMINAR. Puedes repetir la prueba cuando quieras en AJUSTES → PRUEBA DE LA PLACA.',
     ];
   if (b.role === 'mando')
     return [

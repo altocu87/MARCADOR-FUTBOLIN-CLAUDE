@@ -63,12 +63,34 @@ También sirve para cualquier ESP32 si el camino A falla.
    sonido. Sin tarjeta, suenan los sonidos de siempre.
 4. Mete la tarjeta con la placa **apagada** y enciéndela: los sonidos se leen al arrancar.
 
-## Actualizar a una versión nueva
+## Actualizar a una versión nueva: por Wi-Fi, sin cables (pantalla de 7" y mando)
+
+El cable solo hace falta **la primera vez** (camino A, marcando «borrar el dispositivo»: la memoria se prepara
+en dos mitades para poder actualizarse sola). Después:
+
+1. **Wi-Fi, una sola vez:** en la pantalla, **AJUSTES → WI-FI**, toca tu red y escribe la clave con el teclado
+   (MAYUS para mayúsculas, **#+=** para símbolos, **VER** para comprobarla) → **CONECTAR**. Se guarda.
+2. **Aviso:** cada vez que se enciende, la pantalla mira un momento si hay versión nueva (de ella o del mando).
+   Si la hay, en Inicio aparece el botón dorado **ACTUALIZAR**. Nunca se actualiza sola ni durante un partido.
+3. **ACTUALIZAR → INSTALAR**:
+   - Si el mando tiene versión nueva, va primero: la pantalla se descarga su programa y, cuando lo pida,
+     **mantén pulsados los dos botones del mando 3 segundos** (su luz parpadea rápido). Se pasa por radio en
+     alrededor de un minuto; deja el mando cerca y encendido. Si no lo tienes a mano: **SALTAR EL MANDO**.
+   - Después, la pantalla se descarga la suya y se reinicia con ella. **No la apagues** mientras pone
+     «Descargando».
+4. Se conservan la configuración, el historial, el Wi-Fi y los sonidos.
+
+Si algo falla a medias (se va la luz, se corta el Wi-Fi), cada placa **sigue con el programa que tenía**: el
+nuevo solo se usa si ha llegado entero y comprobado.
+
+> El mando con un programa anterior a esta función sale como «Una vez por USB»: ponle el programa nuevo con el
+> cable (camino A) y a partir de ahí ya se actualiza por radio.
+
+### Con el cable (otras placas, o si prefieres)
 
 Igual que la primera vez (camino A). La web siempre tiene **la última versión publicada**: cada cambio que se
-aprueba en la rama principal (`main`) se compila solo en GitHub y aparece en el instalador unos minutos después.
-Cuando pregunte si quieres **borrar el dispositivo**, déjalo **sin marcar**: así se conservan la configuración y
-el historial guardados en la placa.
+aprueba en la rama principal (`main`) se compila solo en GitHub y aparece unos minutos después. Cuando pregunte
+si quieres **borrar el dispositivo**, déjalo **sin marcar** para conservar la configuración y el historial.
 
 ## Problemas típicos
 
@@ -79,3 +101,6 @@ el historial guardados en la placa.
 | No aparece ningún puerto | Otro cable USB; cierra el IDE de Arduino si está abierto; mantén BOOT al conectar. |
 | La pantalla de 7" se queda en negro | Desconecta y vuelve a conectar. Si sigue igual, apunta qué ves y pásalo para revisarlo. |
 | El mando no conecta | Que los dos tengan el mismo número de mesa (`GRUPO_MESA`, viene igual de fábrica) y estén a menos de unos metros. |
+| Wi-Fi: «No conecta: revisa la clave» | Toca **VER** para comprobar lo escrito (mayúsculas incluidas). Solo redes de 2,4 GHz: las «5G» no las ve el ESP32. |
+| ACTUALIZAR: «No se pudo consultar la web» | El Wi-Fi conecta pero no hay internet, o la web no está publicada todavía. Prueba con **BUSCAR** más tarde. |
+| «El mando no contesta» | Acércalo, pulsa un botón para despertarlo y vuelve a **INSTALAR**. |

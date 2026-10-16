@@ -2,6 +2,7 @@
 #pragma once
 #include <stdint.h>
 #include <string>
+#include <cstring>
 enum gpio_num_t {
   GPIO_NUM_NC = -1,
   GPIO_NUM_0 = 0,
@@ -155,6 +156,7 @@ struct LGFX_Device {
   void setTextSize(float) {}
   void setTextColor(uint16_t) {}
   void setTextDatum(textdatum_t) {}
+  int textWidth(const char* s) { return (int)strlen(s) * 14; }
   void drawString(const char* s, int, int) { sim::screen += s; sim::screen += '|'; }
   int getTouch(int32_t* x, int32_t* y) {
     if (!sim::touchDown) return 0;

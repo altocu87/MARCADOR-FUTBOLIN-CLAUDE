@@ -208,7 +208,7 @@ fabricante (github.com/waveshareteam/ESP32-S3-Touch-LCD-7C). El sketch
   8–48 kHz (los que prepara la app en Ajustes → Sonidos, 22 050 Hz, valen tal cual). Se leen al encender la placa.
 - **Pantalla de prueba:** el primer arranque abre «PRUEBA DE LA PLACA»: toca las 4 esquinas, pulsa los dos botones
   del mando y (opcional) pasa la bola por los sensores. Muestra también si la radio funciona y el último toque.
-  Se repite cuando quieras con el botón PRUEBA de la pantalla de inicio. En la 7C, cada esquina tocada suena (si se
+  Se repite cuando quieras en AJUSTES → PRUEBA DE LA PLACA. En la 7C, cada esquina tocada suena (si se
   oye, el altavoz va) y abajo se ve si hay tarjeta SD, su tamaño y cuántos momentos traen sonido propio.
 - **Mando inalámbrico de 2 pulsadores** (ver §7.1): toque corto = gol, toque largo = anular gol. En la pantalla
   de inicio aparece «MANDO CONECTADO» cuando lo oye.
@@ -249,7 +249,8 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
 3. `board_config.h` ya viene con **`BOARD_WAVESHARE_7C`**. Otras opciones: `BOARD_ELECROW_7` (CrowPanel 7.0"),
    `BOARD_WAVESHARE_7` (ESP32-S3-Touch-LCD-7, sin «C») o `BOARD_CUSTOM`.
 4. Herramientas → Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **16 MB** (la 7C trae 32 MB: 16 MB
-   basta), particiones **Huge APP**, USB CDC On Boot **Enabled** (para ver los mensajes por el USB).
+   basta), particiones **16M Flash (3MB APP/9.9MB FATFS)** (dos mitades: hace falta para actualizar por Wi-Fi),
+   USB CDC On Boot **Enabled** (para ver los mensajes por el USB).
 5. **Subir.**
 
 ### Limitaciones conocidas
@@ -264,6 +265,22 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
   primer encendido real se comprueba con la pantalla de prueba. Aún no usa el micrófono ni el Bluetooth, y la app
   todavía no le pasa sus sonidos (de momento se copian a la SD desde el ordenador). La radio Wi-Fi se usa para el
   mando (ESP-NOW); sincronizar con la app queda para una versión futura.
+
+### Actualizar por Wi-Fi (pantalla y mando)
+- **AJUSTES** (botón de Inicio): Wi-Fi (lista de redes y teclado en pantalla; se guarda en la NVS), ACTUALIZAR,
+  volumen y PRUEBA DE LA PLACA.
+- La placa solo se conecta al Wi-Fi un momento: al encender (para ver si hay versión nueva) y al instalar. El
+  resto del tiempo no, para que la radio del mando (ESP-NOW, canal 1) no cambie de canal.
+- GitHub compila cada placa con su número de versión (`-DMFV3_BUILD=<nº de ejecución>`) y publica en la web
+  `firmware/<placa>/ota.json` (`build`, `size`, `md5`) y `firmware/<placa>/<placa>-ota.bin`. La placa los descarga
+  por HTTPS comprobando el certificado. Compilado a mano, `MFV3_BUILD` vale 0 («versión de prueba»).
+- **Mando** (`mfv3_ota.h`): la pantalla descarga su programa a su mitad de memoria libre, comprueba el MD5 y se
+  lo pasa por radio en trozos de 200 bytes con confirmación. El mando solo lo acepta si se mantienen sus dos
+  botones 3 s (queda listo 2 minutos) y lo comprueba antes de arrancarlo. Anuncia su versión con cada saludo.
+- **Particiones con dos mitades** (hacen falta para esto): 7C `16M Flash (3MB APP/9.9MB FATFS)`, Waveshare 7
+  `8M with spiffs`, Elecrow `Minimal SPIFFS`; el mando, la de serie. Al pasar a ellas la primera vez hay que
+  instalar por USB borrando la placa.
+- Guía para el usuario: [`CARGAR_PROGRAMA.md`](CARGAR_PROGRAMA.md).
 
 ### Ver las pantallas sin la placa
 `sh hardware/test/capturas.sh` compila el sketch en el PC con la **misma LovyanGFX** que usa la placa, dibujando en

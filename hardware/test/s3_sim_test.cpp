@@ -1,6 +1,9 @@
 // Comprobación del sketch de la pantalla de 7" (ESP32-S3) en el PC con LovyanGFX/NVS simulados:
 // se juega un partido completo con toques y con líneas del protocolo MFV3 (USB y UART auxiliar).
+#include <algorithm>
 #include <cassert>
+#include <cstring>
+#include <string>
 #include <vector>
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
@@ -53,6 +56,42 @@ static std::vector<s3snd::Ev> newSounds() {
 }
 #endif
 
+// Toca la tecla de esa letra en el teclado (en el modo que esté puesto).
+static void tapChar(char c) {
+  const char* const* rows = kbMode == 2 ? ui::KEYS_SYMBOLS : kbMode == 1 ? ui::KEYS_UPPER : ui::KEYS_LOWER;
+  for (uint8_t r = 0; r < 4; r++)
+    for (uint8_t i = 0; rows[r][i]; i++)
+      if (rows[r][i] == c) {
+        ui::Rect k = ui::keyRect(r, i, (uint8_t)strlen(rows[r]));
+        tap(k.x + k.w / 2, k.y + k.h / 2);
+        return;
+      }
+  assert(!"tecla no encontrada");
+}
+static void tapBtn(const ui::Rect& r) { tap(r.x + r.w / 2, r.y + r.h / 2); }
+
+// «Mando» de verdad (receptor de mfv3_ota.h) escuchando lo que la pantalla envía por radio.
+struct MemFlash : mfv3::ota::Flash {
+  std::vector<uint8_t> data;
+  char want[33] = {0};
+  bool finished = false;
+  bool begin(uint32_t, const uint8_t md5[16]) override {
+    for (int i = 0; i < 16; i++) std::snprintf(want + i * 2, 3, "%02x", md5[i]);
+    data.clear();
+    return true;
+  }
+  bool write(const uint8_t* d, uint8_t n) override { data.insert(data.end(), d, d + n); return true; }
+  bool end() override { finished = sim::fakeMd5(data) == want; return finished; }
+  void abort() override { data.clear(); }
+};
+static const uint8_t MANDO_MAC[6] = {0xAA, 1, 2, 3, 4, 5};
+static void mandoInfo(uint32_t build) {
+  uint8_t pk[mfv3::ota::MAX_PACKET];
+  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, build, false);
+  sim::radioDeliver(MANDO_MAC, std::vector<uint8_t>(pk, pk + n));
+  loop();
+}
+
 int main() {
   sim::now = 1000;
   // Tarjeta SD: un gol propio, «ninguno» en la goleada y un archivo que no es WAV (se ignora).
@@ -91,8 +130,10 @@ int main() {
   tap(400, 430);                   // TERMINAR
   assert(!test.active && sim::nvs.count("tested") && sent("STATE idle"));
   loop();
-  assert(shows("MARCADOR FUTBOLIN V3") && shows("JUGAR") && shows("PRUEBA"));
-  tap(100, 428);                   // botón PRUEBA de inicio: vuelve a la prueba
+  assert(shows("MARCADOR FUTBOLIN V3") && shows("JUGAR") && shows("AJUSTES") && !shows("ACTUALIZAR"));
+  tap(100, 428);                   // AJUSTES → PRUEBA DE LA PLACA: vuelve a la prueba
+  assert(screen == Screen::Settings && shows("WI-FI") && shows("Sin configurar") && shows("PRUEBA DE LA PLACA"));
+  tap(400, 368);
   assert(test.active);
   tap(400, 430);
   assert(!test.active);
@@ -275,6 +316,135 @@ int main() {
     assert(!inMatch);
   }
 #endif
+
+  // ---- AJUSTES → WI-FI con teclado, versiones publicadas y actualización (pantalla y mando por radio).
+  {
+    const std::string base = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/firmware/";
+    std::string screenBin(150000, 'P'), mandoBin(9000, 'M');
+    for (size_t i = 0; i < mandoBin.size(); i++) mandoBin[i] = (char)(i * 13);
+    auto json = [](uint32_t build, const std::string& bin) {
+      std::vector<uint8_t> v(bin.begin(), bin.end());
+      return "{\"build\": " + std::to_string(build) + ", \"size\": " + std::to_string(bin.size()) + ", \"md5\": \"" + sim::fakeMd5(v) + "\"}";
+    };
+    sim::web[base + S3_BOARD_ID "/ota.json"] = json(60, screenBin);
+    sim::web[base + S3_BOARD_ID "/" S3_BOARD_ID "-ota.bin"] = screenBin;
+    sim::web[base + "mando-c3/ota.json"] = json(61, mandoBin);
+    sim::web[base + "mando-c3/mando-c3-ota.bin"] = mandoBin;
+    sim::networks = {{"CasaPepe", "Clave#1", -50}, {"Vecino", "x", -82}, {"Bar abierto", "", -70}};
+    assert(!inMatch && screen == Screen::Home);
+    tap(100, 428);  // AJUSTES
+    tapBtn(ui::SETTINGS[1].r);  // WI-FI: se dibuja «buscando» y, en la vuelta siguiente, busca y enseña la lista
+    assert(sim::scans == 1 && netCount == 3 && shows("CasaPepe") && shows("abierta") && sim::wifiChannel == mfv3::RADIO_CHANNEL);
+    tapBtn(ui::WIFI[1].r);  // CasaPepe → teclado
+    assert(screen == Screen::Keyboard && shows("Clave de CasaPepe") && shows("CONECTAR"));
+    // Clave equivocada: «No conecta» y se puede corregir.
+    for (char c : std::string("clave")) tapChar(c);
+    assert(!strcmp(kbText, "clave") && shows("*****") && !shows("clave|"));
+    tapBtn(ui::KEYBOARD[1].r);  // VER
+    assert(shows("clave"));
+    tapBtn(ui::KEYBOARD[6].r);  // CONECTAR
+    assert(screen == Screen::Connecting && shows("Conectando a CasaPepe"));
+    run(2600);
+    assert(screen == Screen::Keyboard && shows("No conecta") && !wifiSsid[0] && sim::wifiChannel == mfv3::RADIO_CHANNEL);
+    for (int i = 0; i < 5; i++) tapBtn(ui::KEYBOARD[2].r);  // BORRAR
+    assert(kbText[0] == 0);
+    tapBtn(ui::KEYBOARD[3].r); tapChar('C'); tapBtn(ui::KEYBOARD[3].r);  // MAYUS solo para la C
+    for (char c : std::string("lave")) tapChar(c);
+    tapBtn(ui::KEYBOARD[4].r); tapChar('#'); tapBtn(ui::KEYBOARD[4].r);  // símbolos
+    tapChar('1');
+    assert(!strcmp(kbText, "Clave#1"));
+    tapBtn(ui::KEYBOARD[6].r);
+    run(400);
+    // Conecta, guarda la red, mira las versiones y se desconecta (la radio vuelve a su canal).
+    assert(screen == Screen::Update && !strcmp(wifiSsid, "CasaPepe") && sim::nvs.count("wssid") && sim::nvs.count("wpass"));
+    assert(checkState == CheckState::Ok && pubScreen.build == 60 && pubMando.build == 61 && !sim::wifiUp);
+    assert(sim::wifiChannel == mfv3::RADIO_CHANNEL && !sim::insecure);
+    assert(shows("PANTALLA") && shows("Nueva: 60") && shows("INSTALAR"));
+    // El mando dice su versión (10): también hay nueva para él. En Inicio sale ACTUALIZAR.
+    mandoInfo(10);
+    assert(mandoBuild == 10 && mandoUpd() == MandoUpd::Outdated && shows("Nueva: 61"));
+    tapBtn(ui::BACK);
+    tapBtn(ui::BACK);
+    assert(screen == Screen::Home && shows("ACTUALIZAR"));
+    tap(690, 428);  // ACTUALIZAR → pantalla de versiones
+    assert(screen == Screen::Update);
+    tapBtn(ui::UPDATE[2].r);  // INSTALAR
+    assert(screen == Screen::Install && inst == Inst::MandoConnect && shows("Conectando al Wi-Fi"));
+    run(400);
+    loop();
+    loop();
+    // Descargado a la mitad libre de la memoria; luego, por radio al mando (que aún no está armado).
+    assert(inst == Inst::MandoRadio && !sim::wifiUp);
+    std::vector<uint8_t> mandoBytes(mandoBin.begin(), mandoBin.end());
+    assert(std::equal(mandoBytes.begin(), mandoBytes.end(), sim::otaSlotData.begin()));
+    MemFlash flash;
+    mfv3::ota::Receiver rx(GRUPO_MESA, 1200000);
+    size_t seenRadio = sim::radioSent.size();
+    auto mandoListens = [&](uint32_t ms) {
+      uint8_t reply[mfv3::ota::MAX_PACKET];
+      for (uint32_t t = 0; t < ms && inst == Inst::MandoRadio; t += 10) {
+        loop();
+        for (; seenRadio < sim::radioSent.size(); seenRadio++) {
+          auto& p = sim::radioSent[seenRadio];
+          uint8_t n = rx.handle(p.data(), (int)p.size(), sim::now, flash, reply);
+          if (n) sim::radioDeliver(MANDO_MAC, std::vector<uint8_t>(reply, reply + n));
+        }
+      }
+    };
+    mandoListens(1500);
+    assert(sender.waitingButtons() && shows("Manten pulsados los dos botones") && shows("SALTAR EL MANDO"));
+    rx.arm(sim::now);  // alguien mantiene los dos botones 3 s
+    mandoListens(120000);
+    assert(flash.finished && flash.data == mandoBytes);
+    assert(inst == Inst::MandoConfirm);
+    mandoInfo(61);  // el mando reinicia con la versión nueva y lo dice
+    loop();
+    // Después, la pantalla: conecta, se actualiza (con certificado) y reinicia.
+    assert(inst == Inst::ScreenConnect);
+    run(400);
+    loop();
+    loop();
+    assert(sim::selfUpdatedFrom == base + S3_BOARD_ID "/" S3_BOARD_ID "-ota.bin" && inst == Inst::Restart);
+    assert(shows("Listo. Reiniciando") && !sim::insecure && sim::restarts == 0);
+    run(1600);
+    assert(sim::restarts >= 1);
+
+    // Al encender: comprobación sin bloquear con la red guardada. Si empieza un partido, se deja.
+    sim::restarts = 0;
+    screen = Screen::Home;
+    inst = Inst::Done;
+    pubScreen = mfv3::ota::Published();
+    checkState = CheckState::Never;
+    startCheck();
+    assert(checkState == CheckState::Running);
+    run(500);
+    assert(checkState == CheckState::Ok && pubScreen.build == 60 && !sim::wifiUp);
+    checkState = CheckState::Never;
+    startCheck();
+    tap(400, 420);  // JUGAR antes de que conecte
+    run(500);
+    assert(inMatch && checkState == CheckState::Never && !sim::wifiUp);
+    tap(400, 240); tap(400, 430); tap(400, 360); tap(400, 360);  // saltar cuenta atrás, pausa y abandonar
+    assert(!inMatch);
+    // Sin internet: lo dice y no inventa versiones.
+    sim::webDown = true;
+    checkState = CheckState::Never;
+    tap(100, 428);
+    tapBtn(ui::SETTINGS[2].r);  // ACTUALIZAR (busca solo)
+    run(500);
+    assert(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar la web"));
+    sim::webDown = false;
+    // Olvidar la red.
+    tapBtn(ui::BACK);
+    tapBtn(ui::SETTINGS[1].r);
+    loop();
+    loop();
+    tapBtn(ui::WIFI[7].r);
+    assert(!wifiSsid[0]);
+    tapBtn(ui::BACK);
+    tapBtn(ui::BACK);
+    assert(screen == Screen::Home);
+  }
 
   // Reinicio: la configuración y el historial salen de la NVS.
   uint8_t savedGoals = cfg.goalsPerPeriod, savedHistory = historyCount;

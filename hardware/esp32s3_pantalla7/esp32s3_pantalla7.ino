@@ -11,6 +11,9 @@
 //     las salidas DO0/DO1 se activan 1 s con cada gol (luces, relé). En otras placas, por UART desde un
 //     Arduino o ESP32-C3 con el sketch `arduino_usb`. Siempre también por el USB (protocolo MFV3).
 //   - Guarda la configuración y los últimos resultados en la memoria interna (NVS).
+//   - AJUSTES: Wi-Fi de casa (se elige la red y se escribe la clave en la pantalla), volumen, prueba y
+//     ACTUALIZAR: al encender mira si hay versión nueva de la pantalla o del mando; se instala cuando se pulse
+//     (el mando, por radio desde la pantalla). Ver s3_ajustes.h y s3_net.h.
 //   - Sonido (Waveshare 7C): los mismos momentos que la app (gol, remontada, victoria…) por el altavoz de la
 //     placa; sonidos propios en la tarjeta SD (/sonidos/<momento>/*.wav) o, si no hay, los de siempre.
 //
@@ -28,7 +31,9 @@
 #include "s3_audio.h"
 #include "mfv3_core.h"
 #include "mfv3_engine.h"
+#include "mfv3_ota.h"
 #include "mfv3_radio.h"
+#include "s3_net.h"
 #include "ui_layout.h"
 #include "s3_types.h"
 #include "s3_sound.h"
@@ -40,6 +45,11 @@ using mfv3::Team;
 using ui::Btn;
 
 static const char* FW_VERSION = "1.0";
+// Número de compilación: lo pone GitHub al compilar (-DMFV3_BUILD=…) y sirve para saber si hay versión nueva.
+// Compilado a mano vale 0 («versión de prueba»): cualquier versión publicada se ofrece como nueva.
+#ifndef MFV3_BUILD
+#define MFV3_BUILD 0
+#endif
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
 #define S3_BOARD_ID "waveshare-7c"
 #define S3_CAPS "goles,anular,pausa,pantalla,radio,sensores,salidas,brillo"
@@ -89,6 +99,9 @@ static LastResult history[8];
 static uint8_t historyCount = 0;
 static uint32_t matchesPlayed = 0;
 
+// Wi-Fi de casa (solo para actualizar): se escribe en AJUSTES → WI-FI.
+static char wifiSsid[33] = "", wifiPass[65] = "";
+
 // Brillo elegido desde la app (orden «BRILLO 0–100»); se guarda y se recupera al despertar del reposo.
 static uint8_t userBrightness = 100;
 static uint8_t backlightLevel() { return (uint8_t)(10 + (uint16_t)userBrightness * 245 / 100); }
@@ -105,6 +118,8 @@ static void loadPrefs() {
   if (userBrightness > 100) userBrightness = 100;
   s3audio::volume = prefs.getUChar("vol", 80);
   if (s3audio::volume > 100) s3audio::volume = 100;
+  strncpy(wifiSsid, prefs.getString("wssid", "").c_str(), sizeof(wifiSsid) - 1);
+  strncpy(wifiPass, prefs.getString("wpass", "").c_str(), sizeof(wifiPass) - 1);
 }
 
 static void saveConfig() {
@@ -148,6 +163,7 @@ static const char* phaseName(Phase p) {
 
 // ---------------------------------------------------------------- estado de la interfaz
 static bool inMatch = false;       // false = pantalla de inicio
+static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
 static uint32_t lastKey = 0xFFFFFFFF;
 static uint32_t flashUntil = 0;
 static Team flashTeam = Team::White;
@@ -161,7 +177,7 @@ static bool lastLockShown = false;
 
 // ---------------------------------------------------------------- pantalla de prueba (primer arranque)
 // Comprueba el táctil (4 esquinas), el mando (pulsador BLANCO y AZUL) y los sensores, sin afectar al marcador.
-// Sale sola la primera vez que se enciende la placa; después, con el botón PRUEBA de la pantalla de inicio.
+// Sale sola la primera vez que se enciende la placa; después, en AJUSTES → PRUEBA DE LA PLACA.
 static TestState test = {};
 
 static bool testCornersOk() { return test.corner[0] && test.corner[1] && test.corner[2] && test.corner[3]; }
@@ -257,6 +273,7 @@ static void startMatch() {
 
 static void goHome() {
   inMatch = false;
+  screen = Screen::Home;
   confirmAbandon = false;
   sendLine("STATE idle");
   lastKey = 0xFFFFFFFF;
@@ -264,7 +281,7 @@ static void goHome() {
 
 static void leaveTest() {
   test.active = false;
-  prefs.putBool("tested", true);  // ya no sale sola al encender (sigue en el botón PRUEBA)
+  prefs.putBool("tested", true);  // ya no sale sola al encender (sigue en AJUSTES)
   goHome();
 }
 
@@ -365,7 +382,44 @@ static mfv3::RadioCmd radioQueue[8];
 static volatile uint32_t lastRadioAt = 0;
 static bool radioOk = false;
 
+// Actualización por radio (mfv3_ota.h): la versión del mando llega con cada saludo; las respuestas del mando
+// durante una instalación esperan en una cola a que loop() las atienda.
+static const uint8_t BROADCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static volatile uint32_t mandoBuild = 0, mandoInfoAt = 0;
+static OtaPacket otaInbox[6];
+static volatile uint8_t otaHead = 0, otaTail = 0;
+
+static void otaPush(const uint8_t* data, int len) {
+  mfv3::ota::Info in = mfv3::ota::decodeInfo(data, len, GRUPO_MESA);
+  if (in.ok) {
+    uint32_t t = millis();
+    mandoBuild = in.build;
+    mandoInfoAt = t ? t : 1;  // 0 = «nunca»
+    lastRadioAt = t;
+    return;
+  }
+  if (!mfv3::ota::typeOf(data, len, GRUPO_MESA) || len > (int)sizeof(otaInbox[0].data)) return;
+  uint8_t next = (uint8_t)((otaHead + 1) % 6);
+  if (next == otaTail) return;  // llena: el emisor repetirá
+  otaInbox[otaHead].len = (uint8_t)len;
+  memcpy(otaInbox[otaHead].data, data, len);
+  otaHead = next;
+}
+
+static void otaDrain(OtaHandler fn) {
+  while (otaTail != otaHead) {
+    fn(otaInbox[otaTail].data, otaInbox[otaTail].len);
+    otaTail = (uint8_t)((otaTail + 1) % 6);
+  }
+}
+
+static void radioSend(const uint8_t* data, uint8_t len) { esp_now_send(BROADCAST, data, len); }
+
 static void radioPush(const uint8_t* mac, const uint8_t* data, int len) {
+  if (len >= mfv3::ota::HEADER && memcmp(data, "MFVO", 4) == 0) {
+    otaPush(data, len);
+    return;
+  }
   mfv3::RadioMsg m = mfv3::radioDecode(data, len, GRUPO_MESA);
   if (!m.ok || !radioDedup.fresh(mac, m.seq)) return;
   lastRadioAt = millis();
@@ -387,6 +441,11 @@ static void radioBegin() {
   WiFi.disconnect();
   esp_wifi_set_channel(mfv3::RADIO_CHANNEL, WIFI_SECOND_CHAN_NONE);
   radioOk = esp_now_init() == ESP_OK && esp_now_register_recv_cb(onRadio) == ESP_OK;
+  esp_now_peer_info_t peer = {};  // para enviar al mando (actualizaciones)
+  memcpy(peer.peer_addr, BROADCAST, 6);
+  peer.channel = mfv3::RADIO_CHANNEL;
+  peer.encrypt = false;
+  esp_now_add_peer(&peer);
   if (!radioOk) sendLine("LOG radio ESP-NOW no disponible");
 }
 
@@ -434,6 +493,8 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
   lcd.drawFastHLine(0, 44, ui::W, C_LINE);
 }
 
+#include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
+
 static void drawHome() {
   lcd.fillScreen(C_BG);
   text("MARCADOR FUTBOLIN V3", ui::W / 2, 46, &lgfx::fonts::FreeSansBold24pt7b, C_ACCENT);
@@ -468,7 +529,8 @@ static void drawHome() {
   snprintf(v, sizeof(v), "%u", cfg.minutesPerPeriod);
   text(v, 599, 306, &lgfx::fonts::FreeSansBold24pt7b, useTime ? C_TEXT : C_LINE);
   button(ui::HOME[7].r, "JUGAR", C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold24pt7b);
-  button(ui::HOME[8].r, "PRUEBA", C_SURFACE, C_TEXT2, C_LINE, &lgfx::fonts::FreeSansBold12pt7b);
+  button(ui::HOME[8].r, "AJUSTES", C_SURFACE, C_TEXT2, C_LINE, &lgfx::fonts::FreeSansBold12pt7b);
+  if (updateAvailable()) button(ui::HOME[9].r, "ACTUALIZAR", lcd.color565(60, 50, 12), C_GOLD, C_GOLD, &lgfx::fonts::FreeSansBold12pt7b);
 }
 
 static void testLine(int y, const char* label, bool ok, bool optional) {
@@ -713,9 +775,10 @@ static uint32_t screenKey(uint32_t now) {
          (uint32_t)test.sensorBlue << 7 | (uint32_t)test.usbSeen << 8 | (uint32_t)remoteLinked() << 9 | (uint32_t)radioOk << 10;
     return k;
   }
+  if (!inMatch && screen != Screen::Home) return ajustesKey();
   if (!inMatch)
-    return 0x80000000UL | (remoteLinked() ? 0x01000000UL : 0) | ((uint32_t)cfg.endCondition << 16) | (cfg.goalsPerPeriod << 8) |
-           cfg.minutesPerPeriod;
+    return 0x80000000UL | (remoteLinked() ? 0x01000000UL : 0) | (updateAvailable() ? 0x02000000UL : 0) |
+           ((uint32_t)cfg.endCondition << 16) | (cfg.goalsPerPeriod << 8) | cfg.minutesPerPeriod;
   mfv3::Score s = eng.score();
   uint32_t k = ((uint32_t)eng.phase() << 28) | ((uint32_t)eng.period() << 25) | ((uint32_t)s.white << 17) | ((uint32_t)s.blue << 9) |
                ((uint32_t)eng.kickCount() << 2) | (eng.canUndo() ? 2 : 0) | (confirmAbandon ? 1 : 0);
@@ -730,6 +793,7 @@ static void render() {
   if (key != lastKey) {
     lastKey = key;
     if (test.active) drawTest();
+    else if (!inMatch && screen != Screen::Home) drawAjustes();
     else if (!inMatch) drawHome();
     else {
       switch (eng.phase()) {
@@ -775,6 +839,10 @@ static void onTap(int16_t x, int16_t y) {
     test.touches++;
     return;
   }
+  if (!inMatch && screen != Screen::Home) {
+    ajustesTap(x, y);
+    return;
+  }
   if (!inMatch) {
     Btn b = ui::hit(ui::HOME, x, y);
     bool useGoals = cfg.endCondition != mfv3::EndCondition::Time;
@@ -788,7 +856,8 @@ static void onTap(int16_t x, int16_t y) {
       case Btn::MinutesMinus: if (useTime && cfg.minutesPerPeriod > 1) cfg.minutesPerPeriod--; break;
       case Btn::MinutesPlus: if (useTime && cfg.minutesPerPeriod < 30) cfg.minutesPerPeriod++; break;
       case Btn::Play: saveConfig(); startMatch(); return;
-      case Btn::Test: enterTest(); return;
+      case Btn::Settings: openSettings(); return;
+      case Btn::UpdateAvail: if (updateAvailable()) openUpdate(); return;
       default: return;
     }
     return;
@@ -907,6 +976,7 @@ void setup() {
   lcd.backlight(backlightLevel());  // el brillo guardado
   s3audio::begin(lcd);              // tarjeta SD y altavoz (Waveshare 7C)
   radioBegin();
+  startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
   sendHello();
   sendLine("STATE idle");
@@ -930,6 +1000,7 @@ void loop() {
 #endif
 
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
+  ajustesLoop(now);
 
   if (buzzerUntil && now > buzzerUntil) {
     buzzerUntil = 0;
@@ -937,7 +1008,7 @@ void loop() {
   }
 
   // Atenuar la pantalla tras inactividad fuera de un partido en juego.
-  bool idleScreen = !inMatch || eng.phase() == Phase::Finished;
+  bool idleScreen = (!inMatch && screen != Screen::Install) || (inMatch && eng.phase() == Phase::Finished);
   if (idleScreen && !dimmed && now - lastActivity > SLEEP_AFTER_MS) {
     dimmed = true;
     lcd.backlight(16);

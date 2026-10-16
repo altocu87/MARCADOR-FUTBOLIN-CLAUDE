@@ -1,6 +1,7 @@
 // Recorre las pantallas de la placa de 7" y guarda una captura PNG de cada una (ver test/capturas.sh).
 #include <zlib.h>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 #include "Arduino.h"
@@ -80,5 +81,53 @@ int main(int argc, char** argv) {
   usb("GB");
   loopFor(1000);
   shot("08-victoria");
+
+  // AJUSTES, Wi-Fi, teclado y actualizar (red y versiones de mentira).
+  const std::string base = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/firmware/";
+  std::string bin(2000, 'x');
+  std::vector<uint8_t> v(bin.begin(), bin.end());
+  std::string js = "{\"build\": 61, \"size\": 2000, \"md5\": \"" + sim::fakeMd5(v) + "\"}";
+  sim::web[base + "waveshare-7c/ota.json"] = js;
+  sim::web[base + "mando-c3/ota.json"] = js;
+  sim::web[base + "mando-c3/mando-c3-ota.bin"] = bin;
+  sim::networks = {{"CasaPepe", "clave", -48}, {"MOVISTAR_8A21", "x", -66}, {"Vodafone-5G", "x", -74}, {"Bar abierto", "", -83}};
+  tap(260, 410);  // INICIO
+  tap(100, 428);  // AJUSTES
+  shot("09-ajustes");
+  tap(400, 116);  // WI-FI
+  loop();
+  shot("10-wifi");
+  tap(400, 105);  // CasaPepe
+  for (char c : std::string("cla")) {
+    for (uint8_t r = 0; r < 4; r++)
+      for (uint8_t i = 0; ui::KEYS_LOWER[r][i]; i++)
+        if (ui::KEYS_LOWER[r][i] == c) {
+          ui::Rect k = ui::keyRect(r, i, (uint8_t)strlen(ui::KEYS_LOWER[r]));
+          tap(k.x + 10, k.y + 10);
+        }
+  }
+  shot("11-teclado");
+  strcpy(kbText, "clave");
+  tap(664, 448);  // CONECTAR
+  loopFor(600);
+  // El mando dice su versión antigua: hay nueva para los dos.
+  uint8_t pk[mfv3::ota::MAX_PACKET];
+  uint8_t mac[6] = {1, 2, 3, 4, 5, 6};
+  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, 57, false);
+  sim::radioDeliver(mac, std::vector<uint8_t>(pk, pk + n));
+  shot("12-actualizar");
+  tap(590, 432);  // INSTALAR
+  loopFor(600);
+  loop();
+  loop();
+  // El mando contesta «no armado»: hay que pulsar sus dos botones.
+  uint8_t acc[16];
+  uint8_t an = mfv3::ota::header(acc, mfv3::ota::Type::Accept, GRUPO_MESA);
+  acc[an] = (uint8_t)mfv3::ota::Status::NotArmed;
+  sim::radioDeliver(mac, std::vector<uint8_t>(acc, acc + an + 1));
+  shot("13-instalar-mando");
+  screen = Screen::Home;
+  lastKey = 0xFFFFFFFF;
+  shot("14-inicio-con-aviso");
   return 0;
 }

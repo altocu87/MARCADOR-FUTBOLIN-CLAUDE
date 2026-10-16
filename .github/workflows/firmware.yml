@@ -52,7 +52,7 @@ jobs:
         run: |
           mkdir -p salida
           arduino-cli compile --fqbn "${{ matrix.placa.fqbn }}" \
-            --build-property "compiler.cpp.extra_flags=${{ matrix.placa.defines }}" \
+            --build-property "compiler.cpp.extra_flags=${{ matrix.placa.defines }} -DMFV3_BUILD=${{ github.run_number }}" \
             --output-dir salida --warnings default \
             "hardware/${{ matrix.placa.sketch }}"
           ls -la salida
@@ -67,6 +67,10 @@ jobs:
           # se recorta para que la instalación desde el navegador tarde segundos y no minutos.
           python3 -c "import sys; p=sys.argv[1]; d=open(p,'rb').read(); n=len(d.rstrip(b'\\xff')); n+=(-n)%4; open(p,'wb').write(d[:n]); print(p, len(d), '->', n)" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}.bin"
           node scripts/firmware-manifests.mjs firmware "${{ matrix.placa.id }}"
+          # Actualización por Wi-Fi: el programa solo (sin arranque ni particiones) y qué versión es.
+          # La placa compara «build» con el suyo (MFV3_BUILD) y comprueba el MD5 al instalarlo.
+          cp "salida/${{ matrix.placa.sketch }}.ino.bin" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin"
+          python3 -c "import sys,json,hashlib,os; p=sys.argv[1]; d=open(p,'rb').read(); json.dump({'build': int(sys.argv[2]), 'size': len(d), 'md5': hashlib.md5(d).hexdigest()}, open(os.path.join(os.path.dirname(p),'ota.json'),'w')); print(open(os.path.join(os.path.dirname(p),'ota.json')).read())" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin" "${{ github.run_number }}"
       - uses: actions/upload-artifact@v4
         if: matrix.placa.chip != ''
         with:

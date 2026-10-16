@@ -50,7 +50,7 @@ Todas las entradas llegan al mismo motor y respetan el bloqueo de 3 s.
   13 programas del catálogo; en `main` publica los binarios en la release `firmware-latest`). Para servir el
   instalador: `npm run firmware:get` (descarga esa release en `web/public/firmware/`) y después `npm run build:web`.
 - **Pantalla de prueba** en la placa de 7": sale sola el primer arranque (táctil en las 4 esquinas, mando, sensores)
-  y después con el botón PRUEBA.
+  y después en AJUSTES → PRUEBA DE LA PLACA. **Actualización por Wi-Fi** de la pantalla y del mando (AJUSTES).
 
 ## Panel de administración
 

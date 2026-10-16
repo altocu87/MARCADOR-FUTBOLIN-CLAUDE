@@ -451,7 +451,7 @@
         "radio"
       ],
       "sketch": "esp32s3_pantalla7",
-      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · «Huge APP» · «USB CDC On Boot: Enabled»",
+      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · Partition Scheme «16M Flash (3MB APP/9.9MB FATFS)» · «USB CDC On Boot: Enabled»",
       "core": "esp32 de Espressif + biblioteca LovyanGFX",
       "price": "≈ 50–70 €",
       "status": "simulada",
@@ -467,7 +467,7 @@
         "Las salidas DO0/DO1 se activan 1 s con cada gol (luz o relé)."
       ],
       "build": {
-        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=16M,PartitionScheme=huge_app,CDCOnBoot=cdc",
+        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,CDCOnBoot=cdc",
         "chipFamily": "ESP32-S3",
         "defines": "-DMFV3_BOARD=4"
       }
@@ -485,7 +485,7 @@
         "radio"
       ],
       "sketch": "esp32s3_pantalla7",
-      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · «Huge APP» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_ELECROW_7)",
+      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Partition Scheme «Minimal SPIFFS (1.9MB APP with OTA)» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_ELECROW_7)",
       "core": "esp32 de Espressif + biblioteca LovyanGFX",
       "price": "≈ 40–60 €",
       "status": "simulada",
@@ -494,7 +494,7 @@
         "Pulsadores con el mando inalámbrico, o con un Arduino por el conector UART (RX 18 / TX 17)."
       ],
       "build": {
-        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=4M,PartitionScheme=huge_app,CDCOnBoot=cdc",
+        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=4M,PartitionScheme=min_spiffs,CDCOnBoot=cdc",
         "chipFamily": "ESP32-S3",
         "defines": "-DMFV3_BOARD=1"
       }
@@ -512,7 +512,7 @@
         "radio"
       ],
       "sketch": "esp32s3_pantalla7",
-      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · «Huge APP» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_WAVESHARE_7)",
+      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 8 MB · Partition Scheme «8M with spiffs (3MB APP/1.5MB SPIFFS)» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_WAVESHARE_7)",
       "core": "esp32 de Espressif + biblioteca LovyanGFX",
       "price": "≈ 40–60 €",
       "status": "simulada",
@@ -521,7 +521,7 @@
         "Pulsadores con el mando inalámbrico, o con un Arduino por el UART (RX 44 / TX 43)."
       ],
       "build": {
-        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=8M,PartitionScheme=huge_app,CDCOnBoot=cdc",
+        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=8M,PartitionScheme=default_8MB,CDCOnBoot=cdc",
         "chipFamily": "ESP32-S3",
         "defines": "-DMFV3_BOARD=2"
       }

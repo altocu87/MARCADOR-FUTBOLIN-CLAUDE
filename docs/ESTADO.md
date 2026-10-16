@@ -80,6 +80,19 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   la placa real: pendiente (aún no la tenemos). Falta la compilación de verdad en GitHub Actions.
 - Pendiente: jugadores con foto en la placa, fuentes con tildes, pasar los sonidos de la app a la SD, sincronizar.
 
+## Actualización por Wi-Fi de la pantalla de 7" y del mando (16/10/2026)
+
+- **AJUSTES** en la pantalla (sustituye a PRUEBA en Inicio): Wi-Fi con lista de redes y teclado táctil, ACTUALIZAR,
+  volumen y prueba de la placa (`s3_ajustes.h`, `s3_net.h`).
+- Al encender mira si hay versión nueva (pantalla y mando) y lo avisa con un botón dorado en Inicio; se instala
+  cuando se pulsa, nunca en partido. El mando se actualiza por radio desde la pantalla (`mfv3_ota.h`), con los dos
+  botones mantenidos 3 s como permiso. Todo comprobado por MD5; si falla, cada placa sigue con lo que tenía.
+- GitHub: número de versión en cada compilación y `ota.json` + `<placa>-ota.bin` en la web. Particiones con dos
+  mitades (la primera vez, instalación por USB borrando la placa).
+- Comprobado en PC: `ota_test.cpp` (radio con pérdidas), simulación del mando y de la pantalla (teclado, conexión,
+  versiones, instalación completa mando + pantalla, comprobación al encender, sin internet). Capturas 09–14.
+  Pendiente: probarlo en las placas reales.
+
 ## Web y compilación
 
 - Web pública (`web/`) con asistente «Monta tu marcador» e instalador desde el navegador (ESP Web Tools). Los

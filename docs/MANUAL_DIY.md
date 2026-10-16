@@ -447,7 +447,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 1. Instala el IDE de Arduino (arduino.cc/en/software) en tu PC.
 2. Prepara el IDE: esp32 de Espressif + biblioteca LovyanGFX.
 3. Abre el programa hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino de este proyecto (la carpeta entera, con sus archivos .h).
-4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · «Huge APP» · «USB CDC On Boot: Enabled»». Herramientas → Puerto: el de tu placa.
+4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · Partition Scheme «16M Flash (3MB APP/9.9MB FATFS)» · «USB CDC On Boot: Enabled»». Herramientas → Puerto: el de tu placa.
 5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
 6. La pantalla arranca directamente en el marcador. Toca JUGAR.
 
@@ -462,7 +462,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 1. Instala el IDE de Arduino (arduino.cc/en/software) en tu PC.
 2. Prepara el IDE: esp32 de Espressif + biblioteca LovyanGFX.
 3. Abre el programa hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino de este proyecto (la carpeta entera, con sus archivos .h).
-4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · «Huge APP» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_ELECROW_7)». Herramientas → Puerto: el de tu placa.
+4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Partition Scheme «Minimal SPIFFS (1.9MB APP with OTA)» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_ELECROW_7)». Herramientas → Puerto: el de tu placa.
 5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
 6. La pantalla arranca directamente en el marcador. Toca JUGAR.
 
@@ -477,7 +477,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 1. Instala el IDE de Arduino (arduino.cc/en/software) en tu PC.
 2. Prepara el IDE: esp32 de Espressif + biblioteca LovyanGFX.
 3. Abre el programa hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino de este proyecto (la carpeta entera, con sus archivos .h).
-4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · «Huge APP» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_WAVESHARE_7)». Herramientas → Puerto: el de tu placa.
+4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 8 MB · Partition Scheme «8M with spiffs (3MB APP/1.5MB SPIFFS)» · «USB CDC On Boot: Enabled» (cambia MFV3_BOARD a BOARD_WAVESHARE_7)». Herramientas → Puerto: el de tu placa.
 5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
 6. La pantalla arranca directamente en el marcador. Toca JUGAR.
 
