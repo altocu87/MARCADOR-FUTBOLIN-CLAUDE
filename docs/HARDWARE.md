@@ -8,6 +8,7 @@ LEDs y zumbador, y el ESP32 además puede **servir la app sin Internet** desde s
 > Ajustes → Hazlo tú mismo): niveles, placas compatibles, qué pin va a cada pulsador y cómo detectar los goles.
 > Este documento es la referencia técnica. Las placas ESP32 también se pueden instalar **desde la web**
 > (asistente «Monta tu marcador» → tu placa → «Instalar en mi placa»), sin IDE de Arduino.
+> Guía rápida paso a paso para cargar el programa: [`CARGAR_PROGRAMA.md`](CARGAR_PROGRAMA.md).
 
 > Regla de oro: la placa solo avisa de pulsaciones. **Todas las reglas** (bloqueo de 3 s, turnos de penaltis,
 > estados del partido) las aplica el motor de la app, igual que si tocaras la pantalla.

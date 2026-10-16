@@ -90,7 +90,7 @@ desde la app (Ajustes → Sistema). Entrar pide contraseña y código de verific
 - **Placas Arduino / ESP32**: Ajustes → **Conexiones** por **USB**, **Wi-Fi** o **Bluetooth**, con registro de mensajes
   y reconexión automática. La app avisa a la placa de los goles aceptados (LEDs/zumbador).
 - **Programas para placas** en `hardware/` (Arduino USB y ESP32 con red propia que sirve la app):
-  guía completa en [`docs/HARDWARE.md`](docs/HARDWARE.md). `npm run build:esp32` prepara la app para la placa.
+  guía completa en [`docs/HARDWARE.md`](docs/HARDWARE.md). Para cargar el programa en una placa: [`docs/CARGAR_PROGRAMA.md`](docs/CARGAR_PROGRAMA.md). `npm run build:esp32` prepara la app para la placa.
 - **Hazlo tú mismo** (Ajustes → Hazlo tú mismo y [`docs/MANUAL_DIY.md`](docs/MANUAL_DIY.md)): niveles de montaje,
   13 placas compatibles con su tabla de pines y esquema dibujado, opciones para detectar goles y pasos de instalación.
   El firmware reconoce solo el modelo de placa y se presenta a la app con sus capacidades.
