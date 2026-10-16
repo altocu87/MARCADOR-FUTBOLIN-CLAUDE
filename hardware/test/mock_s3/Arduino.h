@@ -5,6 +5,9 @@
 #include <cstring>
 #define SERIAL_8N1 0x800001c
 inline uint32_t esp_random() { return 0xBEEF; }
+namespace sim { inline int restarts = 0; }
+struct EspSim { void restart() { sim::restarts++; } };
+inline EspSim ESP;
 // String de Arduino (solo lo que usan los sketches de la pantalla).
 struct String {
   std::string s;

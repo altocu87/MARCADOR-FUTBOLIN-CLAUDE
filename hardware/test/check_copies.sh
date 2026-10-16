@@ -6,10 +6,11 @@ check() { cmp -s "common/$1" "$2/$1" || { echo "Copia desactualizada en $2/ (cop
 for d in arduino_usb esp32_marcador esp32s3_pantalla7 mando_pulsadores; do check mfv3_core.h "$d"; done
 for d in arduino_usb esp32_marcador; do check mfv3_boards.h "$d"; done
 check mfv3_engine.h esp32s3_pantalla7
-for d in esp32s3_pantalla7 mando_pulsadores; do check mfv3_radio.h "$d"; done
+for d in esp32s3_pantalla7 mando_pulsadores; do check mfv3_radio.h "$d"; check mfv3_ota.h "$d"; done
 g++ -std=c++11 -Wall -Wextra -Icommon test/core_test.cpp -o /tmp/mfv3_core_test && /tmp/mfv3_core_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/engine_test.cpp -o /tmp/mfv3_engine_test && /tmp/mfv3_engine_test
 g++ -std=c++11 -Wall -Wextra -Icommon -Iesp32s3_pantalla7 test/sound_test.cpp -o /tmp/mfv3_sound_test && /tmp/mfv3_sound_test
+g++ -std=c++11 -Wall -Wextra -Icommon test/ota_test.cpp -o /tmp/mfv3_ota_test && /tmp/mfv3_ota_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/radio_test.cpp -o /tmp/mfv3_radio_test && /tmp/mfv3_radio_test
 g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO -Itest/mock -Iarduino_usb -x c++ test/arduino_sim_test.cpp -o /tmp/mfv3_ard_sim && /tmp/mfv3_ard_sim
 # ESP32 clásico, C3, S3 y S2 (este último sin Bluetooth)
