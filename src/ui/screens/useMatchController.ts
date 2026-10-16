@@ -45,6 +45,8 @@ import {
 } from '../../match-engine';
 import { newId } from '../../services/ids';
 import { sound } from '../../services/sound/sound';
+import { soundsForCommit } from '../../services/sound/soundEvents';
+import { soundPlayer } from '../../services/sound/soundPlayer';
 import { voice } from '../../services/sound/voice';
 
 const SNAPSHOT_EVERY_MS = 5000;
@@ -241,7 +243,6 @@ export function useMatchController(
         if (down) {
           setLastGoal(null);
           setAnnulled({ id: newId('a'), team: down });
-          sound.play('error');
         }
       }
       for (const e of events) {
@@ -249,19 +250,17 @@ export function useMatchController(
           setLastGoal(e);
           const moment = goalMoment(next, e);
           setGoalLabel(bonusLabel(e) ?? (moment ? MOMENT_LABEL[moment] : null));
-          sound.play('goal');
           if (next.phase !== 'finished') {
             const sc = e.scoreAfter;
             voice.say(`¡Gol del ${TEAM_VOICE[e.team]}! ${moment ? MOMENT_LABEL[moment].replace(/[¡!]/g, '') + '. ' : ''}${sc.white} a ${sc.blue}.`);
           }
         } else if (e.type === 'MATCH_END' && e.team) {
-          sound.play('matchEnd');
           voice.say(`¡Final del partido! Gana el ${TEAM_VOICE[e.team]}.`);
         } else if (e.type === 'PERIOD_END' && next.phase !== 'finished') {
-          sound.play('periodEnd');
           voice.say(`Final de la ${PERIOD_VOICE[e.period]}.`);
         } else if (e.type === 'PERIOD_START') {
-          sound.play('countdownGo');
+          // El del arranque del partido es un momento con sonido propio (soundsForCommit).
+          if (e.period !== 'first') sound.play('countdownGo');
           showBanner(
             e.period === 'overtime'
               ? { text: 'PRÓRROGA', sub: 'GOL DE ORO', tone: 'gold' }
@@ -283,15 +282,11 @@ export function useMatchController(
         } else if (e.type === 'HANDICAP_END' && e.handicap && e.reason === 'used') {
           showBanner({ text: 'FIN DEL HÁNDICAP', sub: handicapText(e.handicap, next.participants).short, tone: 'chaos' }, 1500);
         } else if (e.type === 'HANDICAP_PENALTY') {
-          if (!e.scored) {
-            sound.play('error');
-            voice.say('¡Falla el penalti!');
-          }
+          if (!e.scored) voice.say('¡Falla el penalti!');
         } else if (e.type === 'SHOOTOUT_START') {
           showBanner({ text: 'PENALTIS', sub: 'TANDA', tone: 'gold' });
           voice.say('Tanda de penaltis.');
         } else if (e.type === 'PENALTY') {
-          sound.play(e.scored ? 'goal' : 'error');
           voice.say(e.scored ? '¡Gol!' : '¡Falla!');
           if (!isSuddenDeath(prev) && isSuddenDeath(next) && next.phase === 'penalties') {
             showBanner({ text: 'MUERTE SÚBITA', tone: 'danger' });
@@ -301,11 +296,11 @@ export function useMatchController(
       // Bola de partido: aviso al aparecer.
       const mp = matchPointTeams(next);
       const key = mp.length ? `${next.period}:${getScore(next).white}-${getScore(next).blue}` : '';
-      if (key && key !== matchPointKey.current && next.period !== 'overtime') {
-        sound.play('matchPoint');
-        voice.say('¡Bola de partido!', { interrupt: false });
-      }
+      const matchPointNew = !!key && key !== matchPointKey.current && next.period !== 'overtime';
+      if (matchPointNew) voice.say('¡Bola de partido!', { interrupt: false });
       matchPointKey.current = key;
+      // Sonidos de los momentos (el de la mesa o el de siempre): el primero ya, los demás en cola.
+      soundsForCommit(prev, next, events, matchPointNew).forEach((id, i) => soundPlayer.play(id, { queue: i > 0 }));
       hardwareHub.notifyMatch(next, events);
       saveSnapshot(next, t);
     },

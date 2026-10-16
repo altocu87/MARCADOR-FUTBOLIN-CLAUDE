@@ -14,8 +14,11 @@ import {
   type Preferences,
   type Repositories,
   type StoredMatch,
+  type StoredSound,
   type Tournament,
 } from '../services/persistence';
+import { browserSoundRepository, memorySoundRepository, type SoundRepository } from '../services/sound/library';
+import { soundPlayer } from '../services/sound/soundPlayer';
 import { generateDemoData } from '../services/demo';
 import { mergePlayers } from '../services/players';
 import {
@@ -74,6 +77,10 @@ interface AppContextValue {
   /** Pasa todo lo de un jugador a otro (el mismo, apuntado dos veces) y borra el primero. */
   mergePlayers(fromId: string, intoId: string): Promise<{ movedMatches: number; movedTournaments: number }>;
   savePrefs(prefs: Preferences): Promise<void>;
+  /** Sonidos propios de la mesa (en este aparato, aparte de los demás datos). */
+  soundRepo: SoundRepository;
+  sounds: StoredSound[];
+  reloadSounds(): Promise<void>;
   /** Esos campos vuelven a seguir lo del panel de administración. */
   followPanel(keys: OverridableKey[]): Promise<void>;
   /** Modo prueba: la app trabaja sobre datos ficticios y guarda ahí lo que se juegue. */
@@ -130,6 +137,8 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   const [matches, setMatches] = useState<StoredMatch[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
+  const [soundRepo] = useState<SoundRepository>(() => (injected ? memorySoundRepository() : browserSoundRepository()));
+  const [sounds, setSounds] = useState<StoredSound[]>([]);
   const [route, setRoute] = useState<Route>({ name: 'home' });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -233,7 +242,16 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     return list;
   });
 
+  const reloadSounds = useCallback(async () => {
+    try {
+      setSounds(await soundRepo.list());
+    } catch {
+      setSounds([]);
+    }
+  }, [soundRepo]);
+
   const refresh = useCallback(async () => {
+    void reloadSounds();
     const [p, m, pr, t] = await Promise.all([
       repos.players.list(),
       repos.matches.list(),
@@ -245,7 +263,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     setTournaments(t);
     setPrefs(pr);
     setLoaded(true);
-  }, [repos]);
+  }, [repos, reloadSounds]);
 
   useEffect(() => {
     void refresh();
@@ -256,6 +274,9 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     sound.configure(ep.volume, ep.muted, ep.goalSound);
     voice.configure(ep.voice && !ep.muted);
   }, [ep.volume, ep.muted, ep.goalSound, ep.voice]);
+  // Los sonidos propios se dejan cargados en memoria: al marcar no se lee nada.
+  useEffect(() => soundPlayer.setLibrary(sounds), [sounds]);
+  useEffect(() => soundPlayer.setChoices(ep.soundEvents), [ep.soundEvents]);
 
   const savePlayer = useCallback(
     async (player: Player) => {
@@ -411,6 +432,9 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     matches,
     tournaments,
     prefs: effectivePrefs,
+    soundRepo,
+    sounds,
+    reloadSounds,
     progression,
     refresh,
     savePlayer,

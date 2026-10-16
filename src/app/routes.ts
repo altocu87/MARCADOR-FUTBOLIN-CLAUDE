@@ -3,7 +3,7 @@ import type { StoredMatch, TournamentFormat } from '../services/persistence';
 import type { SaveStatus } from './matchFinalizer';
 
 export type RankingTab = 'standings' | 'history' | 'players' | 'fame' | 'pairs' | 'digest';
-export type SettingsTab = 'match' | 'players' | 'table' | 'data';
+export type SettingsTab = 'match' | 'players' | 'sounds' | 'table' | 'data';
 
 /** Datos extra que acompañan a un partido hasta guardarlo. */
 export interface MatchExtras {

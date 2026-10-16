@@ -132,6 +132,16 @@ class HardwareHub {
     return [...this.states.values()].some((s) => s.status === 'connected' && !!s.caps?.includes('brillo'));
   }
 
+  /**
+   * ¿Hay una placa conectada que puede guardar y tocar sonidos? `chip`: en su memoria (cap «sonido»); `sd`: en su
+   * tarjeta SD (cap «sd»). Las placas de hoy no anuncian ninguna: llegará con el altavoz (fase 3).
+   */
+  get soundTargets(): { chip: boolean; sd: boolean } {
+    const caps = [...this.states.values()].filter((s) => s.status === 'connected').flatMap((s) => s.caps ?? []);
+    const chip = caps.includes('sonido');
+    return { chip, sd: chip && caps.includes('sd') };
+  }
+
   /** Brillo de la pantalla (0–100): a las placas que lo saben cambiar; se repite al conectar una. */
   setBrightness(percent: number): void {
     this.brightness = Math.max(0, Math.min(100, Math.round(percent)));

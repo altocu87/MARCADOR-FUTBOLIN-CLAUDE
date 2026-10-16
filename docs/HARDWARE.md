@@ -144,6 +144,12 @@ Texto UTF-8, **una orden por línea** terminada en `\n`, igual por USB (115200 b
 | `LOCK 3000` | Bloqueo de gol activo (ms) |
 | `WIN BLANCO\|AZUL` | Fin del partido |
 
+**Sonidos propios (previsto, fase 3).** Cada sonido de la mesa sabe dónde está guardado: en el aparato, en la memoria
+del chip o en la tarjeta SD de la placa. La app ya reconoce dos capacidades reservadas para cuando la placa tenga
+altavoz: `sonido` (guarda y toca sonidos en su memoria) y `sd` (además, en su tarjeta SD). Solo con ellas se pueden
+elegir «Chip de la placa» o «Tarjeta SD» al subir un sonido. La orden para tocarlo y la forma de pasarle los archivos
+se definirán en la fase 3. Mientras tanto, o si la placa no está conectada, suena el de siempre en la app.
+
 Durante la cuenta atrás, un gol de pulsador **solo la salta** (no suma). En penaltis, un gol del equipo que
 lanza cuenta como acierto; si no es su turno, el motor lo rechaza.
 

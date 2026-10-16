@@ -6828,3 +6828,133 @@ div > .name-clash:first-child {
   cursor: pointer;
   min-height: 32px;
 }
+
+/* ---------- Ajustes → Sonidos ---------- */
+.snd {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.snd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.snd-head .label {
+  flex: 1;
+}
+.snd-empty {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.snd-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.snd-where {
+  font-size: 14px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.snd-len {
+  font-size: 14px;
+  min-width: 44px;
+  text-align: right;
+}
+.snd-events {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+.snd-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+}
+.snd-event-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.cr-help.snd-help {
+  position: static;
+  transform: none;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+}
+.snd-choice {
+  width: 150px;
+  min-height: 48px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.snd-choice.own {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.snd-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 520px;
+  max-width: 100%;
+}
+.snd-draft-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.snd-draft-name .input {
+  flex: 1;
+  font-size: 20px;
+}
+.snd-where-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.snd-where-pick .seg,
+.snd-pick .seg {
+  min-height: 64px;
+  font-size: 17px;
+}
+.snd-where-pick .seg:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.snd-pick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 540px;
+  max-width: 100%;
+}
+.snd-pick .seg {
+  min-width: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

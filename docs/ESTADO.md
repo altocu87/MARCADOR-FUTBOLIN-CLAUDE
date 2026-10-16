@@ -1,6 +1,6 @@
 # Estado de la entrega local
 
-Fecha: 02/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por goles sin partes; por tiempo dos partes con prórroga y penaltis)
+Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por goles sin partes; por tiempo dos partes con prórroga y penaltis)
 
 ## Fases del documento maestro
 
@@ -41,6 +41,28 @@ Fecha: 02/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   (1v1/2v2, Rápido, Caos y Clasificatorio, prórrogas, penaltis, goleadores, pronósticos) y 4 torneos (3 terminados y
   1 en juego). Lo que se juegue o añada en modo prueba también se guarda ahí (`mfv3:v1:demo:`). Al desactivarlo se
   borra todo lo de prueba y vuelven los datos reales intactos. Las preferencias son comunes a ambos modos.
+
+## Sonidos propios (fase 1 hecha, 16/10/2026)
+
+- **Ajustes → Sonidos**: subir sonidos de la mesa (mp3, wav, ogg, m4a…), escucharlos con ▶ y borrarlos. Al subirlos la
+  app los prepara sola: una pista, sin silencios al principio ni al final, volumen igualado, 10 s como mucho y en WAV
+  ligero (22 050 Hz, 16 bits, unos 40 KB por segundo), que también podrá tocar la placa.
+- **Dónde se guarda** cada sonido (se elige al subirlo): «Este aparato», «Chip de la placa» o «Tarjeta SD». La app lo
+  apunta en cada sonido y lo toca desde ahí: del aparato, de la copia ya cargada en memoria (sin esperas al marcar);
+  del chip o la SD, pidiéndoselo a la placa. Si la placa no está o no puede, suena el de siempre. Chip y SD salen
+  apagados hasta que haya una placa con altavoz (fase 3, capacidades `sonido` y `sd`).
+- **16 momentos** con su sonido: «El de siempre», «Ninguno», uno propio o varios (uno al azar cada vez). Detección
+  nueva de 3 seguidos, remontada, empate, goleada, gol de oro, ganar un torneo y reto conseguido
+  (`src/services/sound/soundEvents.ts`). Un sonido propio nuevo corta al anterior; la bola de partido y el himno del
+  ganador esperan a que acabe.
+- Panel rápido: botón «Propio» en «Sonido de gol» cuando el gol tiene uno de la mesa.
+- Copia de seguridad de Datos: incluye los sonidos (en base64). Las copias antiguas se siguen pudiendo cargar y, si no
+  traen sonidos, no borran los de la mesa. «Borrar todos los datos» también los borra. Son comunes al modo prueba.
+- Comprobado: `npx vitest run` 272 pruebas (19 nuevas de sonidos: momentos del partido, preparación del audio, de
+  dónde sale cada sonido y copia de seguridad), `tsc` sin errores, `npm run build:web` correcto y recorrido en
+  Chromium a 800×480: subir dos sonidos, elegirlos, recargar (se conservan) y partido rápido donde el gol suena con el
+  propio y el empate con el de siempre. Sin errores de consola.
+- Pendiente: fase 2 (copia opcional en la nube, a decidir) y fase 3 (altavoz en la placa).
 
 ## Web y compilación
 

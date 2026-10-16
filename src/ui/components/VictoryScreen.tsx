@@ -20,6 +20,7 @@ import {
   type MatchProgressEntry,
 } from '../../services/progression';
 import { sound } from '../../services/sound/sound';
+import { soundPlayer } from '../../services/sound/soundPlayer';
 import { formatDuration } from '../../services/statistics';
 import { AssetImage } from './assets';
 import { Avatar } from './common';
@@ -93,10 +94,10 @@ export function VictoryScreen({
   const many = Math.max(byTeam('white').length, byTeam('blue').length) >= 3;
   const byId = new Map(players.map((p) => [p.id, p]));
 
-  // Melodía del primer ganador (una vez, al aparecer la pantalla).
+  // Melodía del primer ganador (una vez, al aparecer la pantalla), cuando acaba el sonido de la victoria.
   const [anthem] = useState(() => byId.get(winners[0]?.playerId ?? '')?.anthem);
   useEffect(() => {
-    const id = window.setTimeout(() => sound.playAnthem(anthem), 900);
+    const id = window.setTimeout(() => sound.playAnthem(anthem, { queue: true }), 900);
     return () => window.clearTimeout(id);
   }, [anthem]);
 
@@ -108,11 +109,14 @@ export function VictoryScreen({
     ? new Map([...raw!].map(([id, e]) => [id, { ...e, xpGained: 0, xpAfter: e.xpAfter - e.xpGained, xpBreakdown: [], unlocked: [], levelAfter: e.levelBefore, deferred: true }]))
     : raw;
   const levelUps = entries ? [...entries.values()].some((e) => e.levelAfter > e.levelBefore) : false;
+  // Retos conseguidos en este partido (en un torneo esperan al final, como la XP).
+  const challengeDone = !tournamentXp && !!entries && [...entries.values()].some((e) => e.challenges.length > 0);
   useEffect(() => {
-    if (!levelUps) return;
-    const id = window.setTimeout(() => sound.play('levelUp'), 1700);
-    return () => window.clearTimeout(id);
-  }, [levelUps]);
+    const timers: number[] = [];
+    if (levelUps) timers.push(window.setTimeout(() => soundPlayer.play('levelUp', { queue: true }), 1700));
+    if (challengeDone) timers.push(window.setTimeout(() => soundPlayer.play('challenge', { queue: true }), levelUps ? 1800 : 1700));
+    return () => timers.forEach((x) => window.clearTimeout(x));
+  }, [levelUps, challengeDone]);
 
   // Logros nuevos agrupados: cada logro una vez, con quién lo ha conseguido.
   const unlocked = new Map<string, string[]>();

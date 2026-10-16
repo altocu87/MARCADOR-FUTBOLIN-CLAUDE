@@ -154,6 +154,13 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 ## Panel rápido de la mesa
 
 Deslizando el dedo desde el borde de arriba (o tocando la rayita de arriba) baja un panel con volumen y silencio, brillo,
-sonido de gol, efectos, locutor, pantalla completa y un botón a Ajustes. No se abre durante un partido. Todo se guarda en
+sonido de gol (los de la app y «Propio» si en Ajustes → Sonidos el gol tiene uno de la mesa), efectos, locutor, pantalla completa y un botón a Ajustes. No se abre durante un partido. Todo se guarda en
 la mesa. El brillo va a la placa si sabe cambiarlo (orden `BRILLO`, la placa de 7" lo recuerda); si no, la app oscurece la
 pantalla con una capa.
+
+## Sonidos propios de la mesa
+
+Ajustes → Sonidos: cada mesa sube sus propios sonidos y elige cuál suena en cada momento del partido (gol, remontada,
+victoria, subir de nivel…). Es **solo de la mesa**: el panel de administración no los ve ni los cambia, y «Volver al
+del panel» no les afecta. El panel solo sigue decidiendo cuál de los sonidos de gol de la app es «el de siempre».
+Los sonidos se guardan en el aparato (IndexedDB, aparte de los demás datos) y van en la copia de seguridad de Datos.

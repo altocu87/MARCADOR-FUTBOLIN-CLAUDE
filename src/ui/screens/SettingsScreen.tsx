@@ -22,6 +22,7 @@ import { ClubEditor } from '../components/ClubEditor';
 import { Crest } from '../components/Crest';
 import { saveClub, type Club } from '../../services/clubs';
 import { ConnectionsTab } from './ConnectionsTab';
+import { SoundsTab } from './SoundsTab';
 import { WEB_URL } from '../../services/profiles';
 
 export const APP_VERSION = '0.3.0';
@@ -38,6 +39,7 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
         tabs={[
           { id: 'match', label: 'Partido' },
           { id: 'players', label: 'Jugadores' },
+          { id: 'sounds', label: 'Sonidos' },
           { id: 'table', label: 'Mesa' },
           { id: 'data', label: 'Datos' },
         ]}
@@ -45,6 +47,7 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
       <div className="scroll settings-body">
         {tab === 'match' && <MatchTab />}
         {tab === 'players' && <Players />}
+        {tab === 'sounds' && <SoundsTab />}
         {tab === 'table' && <ConnectionsTab />}
         {tab === 'data' && <DataTab />}
       </div>
@@ -330,7 +333,7 @@ function adminUrl(): string {
 
 /** Datos de esta mesa: copia de seguridad, modo prueba, borrar todo, versión, reglas en uso y el panel. */
 function DataTab() {
-  const { repos, refresh, persistent, players, matches, toast, rulesUpdatedAt } = useApp();
+  const { repos, refresh, persistent, players, matches, sounds, soundRepo, toast, rulesUpdatedAt } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ backup: BackupFile; preview: ImportPreview } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -349,7 +352,7 @@ function DataTab() {
   })();
 
   const doExport = async () => {
-    const backup = await buildBackup(repos);
+    const backup = await buildBackup(repos, new Date(), soundRepo);
     downloadJson(`marcador-futbolin-backup-${new Date().toISOString().slice(0, 10)}.json`, backup);
   };
 
@@ -361,13 +364,13 @@ function DataTab() {
       setErrors(parsed.errors);
       return;
     }
-    setPending({ backup: parsed.backup, preview: await previewImport(repos, parsed.backup) });
+    setPending({ backup: parsed.backup, preview: await previewImport(repos, parsed.backup, soundRepo) });
   };
 
   const doImport = async (strategy: 'merge' | 'replace') => {
     if (!pending) return;
     try {
-      await applyImport(repos, pending.backup, strategy);
+      await applyImport(repos, pending.backup, strategy, soundRepo);
       await refresh();
       toast('Importación completada');
     } catch (err) {
@@ -378,6 +381,7 @@ function DataTab() {
 
   const wipe = async () => {
     await repos.wipe();
+    await soundRepo.saveAll([]).catch(() => undefined);
     await refresh();
     setConfirmWipe(false);
     toast('Datos locales borrados');
@@ -393,7 +397,7 @@ function DataTab() {
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
         <p className="muted" style={{ fontSize: 13 }}>
-          {players.length} jugadores · {matches.length} partidos · {usage} usados{persistent ? '' : ' · ¡este navegador no guarda los datos!'}
+          {players.length} jugadores · {matches.length} partidos · {sounds.length} sonidos · {usage} usados{persistent ? '' : ' · ¡este navegador no guarda los datos!'}
         </p>
         {errors.length > 0 && <div className="notice error">{errors.join(' ')}</div>}
       </div>
@@ -433,10 +437,16 @@ function DataTab() {
             Jugadores: {pending.preview.players.total} ({pending.preview.players.new} nuevos, {pending.preview.players.existing} ya existentes).
             <br />
             Partidos: {pending.preview.matches.total} ({pending.preview.matches.new} nuevos, {pending.preview.matches.existing} ya existentes).
+            {pending.preview.sounds.total > 0 && (
+              <>
+                <br />
+                Sonidos: {pending.preview.sounds.total} ({pending.preview.sounds.new} nuevos, {pending.preview.sounds.existing} ya existentes).
+              </>
+            )}
           </p>
           <p className="muted" style={{ fontSize: 13 }}>
             <strong>Combinar</strong> añade solo lo nuevo y no sobrescribe nada local. <strong>Reemplazar</strong> borra
-            jugadores, historial y preferencias actuales y los sustituye por los del archivo.
+            jugadores, historial, preferencias y sonidos actuales y los sustituye por los del archivo.
           </p>
         </Modal>
       )}
@@ -451,7 +461,7 @@ function DataTab() {
             </>
           }
         >
-          <p style={{ margin: 0 }}>Se eliminarán jugadores, historial, preferencias y el partido en curso de este dispositivo. Exporta antes una copia si la necesitas.</p>
+          <p style={{ margin: 0 }}>Se eliminarán jugadores, historial, preferencias, sonidos y el partido en curso de este dispositivo. Exporta antes una copia si la necesitas.</p>
         </Modal>
       )}
     </div>

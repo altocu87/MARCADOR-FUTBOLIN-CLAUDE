@@ -1,8 +1,9 @@
 /**
- * Copia de seguridad local: exportar/importar jugadores, preferencias e historial
- * en un archivo JSON versionado. La progresión no se exporta porque se recalcula
+ * Copia de seguridad local: exportar/importar jugadores, preferencias, historial y sonidos propios
+ * en un archivo JSON versionado (los sonidos, en base64). La progresión no se exporta porque se recalcula
  * siempre a partir del historial.
  */
+import type { SoundRepository } from '../sound/library';
 import { normalizePreferences } from './defaults';
 import {
   STORAGE_FORMAT_VERSION,
@@ -10,6 +11,7 @@ import {
   type Preferences,
   type Repositories,
   type StoredMatch,
+  type StoredSound,
   type Tournament,
 } from './types';
 
@@ -23,16 +25,39 @@ export interface BackupFile {
   matches: StoredMatch[];
   tournaments: Tournament[];
   preferences: Preferences;
+  /** Sonidos propios de la mesa (las copias antiguas no los tienen). */
+  sounds?: BackupSound[];
 }
+
+/** Un sonido dentro de la copia: el audio en base64. */
+export type BackupSound = Omit<StoredSound, 'wav'> & { wav: string };
+
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+function fromBase64(text: string): ArrayBuffer {
+  const bin = atob(text);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+export const soundToBackup = (s: StoredSound): BackupSound => ({ ...s, wav: toBase64(s.wav) });
+export const soundFromBackup = (s: BackupSound): StoredSound => ({ ...s, wav: fromBase64(s.wav) });
 
 export type ImportStrategy = 'merge' | 'replace';
 
 export interface ImportPreview {
   players: { total: number; new: number; existing: number };
   matches: { total: number; new: number; existing: number };
+  sounds: { total: number; new: number; existing: number };
 }
 
-export async function buildBackup(repos: Repositories, now = new Date()): Promise<BackupFile> {
+export async function buildBackup(repos: Repositories, now = new Date(), sounds?: SoundRepository): Promise<BackupFile> {
   return {
     app: BACKUP_APP_ID,
     formatVersion: STORAGE_FORMAT_VERSION,
@@ -41,7 +66,19 @@ export async function buildBackup(repos: Repositories, now = new Date()): Promis
     matches: await repos.matches.list(),
     tournaments: await repos.tournaments.list(),
     preferences: await repos.preferences.load(),
+    sounds: sounds ? (await sounds.list()).map(soundToBackup) : [],
   };
+}
+
+function isBackupSound(v: unknown): v is BackupSound {
+  return (
+    isObj(v) &&
+    typeof v.id === 'string' &&
+    typeof v.name === 'string' &&
+    (v.location === 'device' || v.location === 'chip' || v.location === 'sd') &&
+    typeof v.durationMs === 'number' &&
+    typeof v.wav === 'string'
+  );
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -90,32 +127,46 @@ export function parseBackup(text: string): { ok: true; backup: BackupFile } | { 
       matches: data.matches as StoredMatch[],
       tournaments: Array.isArray(data.tournaments) ? (data.tournaments as Tournament[]) : [],
       preferences: normalizePreferences(data.preferences),
+      sounds: Array.isArray(data.sounds)
+        ? data.sounds.filter(isBackupSound).map((x) => ({ ...x, createdAt: typeof x.createdAt === 'number' ? x.createdAt : 0 }))
+        : undefined,
     },
   };
 }
 
-export async function previewImport(repos: Repositories, backup: BackupFile): Promise<ImportPreview> {
+export async function previewImport(repos: Repositories, backup: BackupFile, sounds?: SoundRepository): Promise<ImportPreview> {
   const players = new Set((await repos.players.list()).map((p) => p.id));
   const matches = new Set((await repos.matches.list()).map((m) => m.id));
   const pNew = backup.players.filter((p) => !players.has(p.id)).length;
   const mNew = backup.matches.filter((m) => !matches.has(m.id)).length;
+  const sIds = new Set(sounds ? (await sounds.list()).map((x) => x.id) : []);
+  const bSounds = backup.sounds ?? [];
+  const sNew = bSounds.filter((x) => !sIds.has(x.id)).length;
   return {
     players: { total: backup.players.length, new: pNew, existing: backup.players.length - pNew },
     matches: { total: backup.matches.length, new: mNew, existing: backup.matches.length - mNew },
+    sounds: { total: bSounds.length, new: sNew, existing: bSounds.length - sNew },
   };
 }
 
 /**
  * merge: añade lo nuevo y conserva los datos locales existentes (no sobrescribe).
- * replace: sustituye jugadores, historial y preferencias por los del archivo.
+ * replace: sustituye jugadores, historial, preferencias y sonidos por los del archivo (si la copia no trae
+ * sonidos, porque es antigua, se quedan los de la mesa).
  */
-export async function applyImport(repos: Repositories, backup: BackupFile, strategy: ImportStrategy): Promise<void> {
+export async function applyImport(repos: Repositories, backup: BackupFile, strategy: ImportStrategy, sounds?: SoundRepository): Promise<void> {
+  const incoming = (backup.sounds ?? []).map(soundFromBackup);
   if (strategy === 'replace') {
     await repos.players.saveAll(backup.players);
     await repos.matches.saveAll(backup.matches);
     await repos.tournaments.saveAll(backup.tournaments);
     await repos.preferences.save(backup.preferences);
+    if (sounds && backup.sounds) await sounds.saveAll(incoming);
     return;
+  }
+  if (sounds) {
+    const have = new Set((await sounds.list()).map((x) => x.id));
+    for (const x of incoming) if (!have.has(x.id)) await sounds.save(x);
   }
   const players = await repos.players.list();
   const pIds = new Set(players.map((p) => p.id));

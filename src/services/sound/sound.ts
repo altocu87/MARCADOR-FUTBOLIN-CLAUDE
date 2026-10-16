@@ -120,11 +120,21 @@ const PATTERNS: Record<Exclude<SoundName, 'goal'>, Note[]> = {
   ],
 };
 
+/** `queue`: esperar a que termine lo que está sonando (p. ej. la bola de partido tras el gol). */
+export interface PlayOptions {
+  queue?: boolean;
+}
+
 class SoundService {
   private ctx: AudioContext | null = null;
   private volume = 0.7;
   private muted = false;
   private goalSound: GoalSoundId = 'arcade';
+  /** Hasta cuándo (reloj del audio) hay algo sonando, para poner en cola. */
+  private busyUntil = 0;
+  /** Sonido propio sonando: uno nuevo sin cola lo corta (un gol nuevo no espera a la canción del anterior). */
+  private clip: AudioBufferSourceNode | null = null;
+  private buffers = new WeakMap<Float32Array, AudioBuffer>();
 
   configure(volume: number, muted: boolean, goalSound: GoalSoundId = 'arcade'): void {
     this.volume = Math.min(1, Math.max(0, volume));
@@ -146,25 +156,77 @@ class SoundService {
     }
   }
 
-  play(name: SoundName): void {
-    this.playNotes(name === 'goal' ? GOAL_SOUNDS[this.goalSound].notes : PATTERNS[name]);
+  /** ¿Sonaría algo ahora mismo? (sin silencio ni volumen a 0). */
+  get audible(): boolean {
+    return !this.muted && this.volume > 0;
+  }
+
+  play(name: SoundName, opts: PlayOptions = {}): void {
+    this.playNotes(name === 'goal' ? GOAL_SOUNDS[this.goalSound].notes : PATTERNS[name], opts);
   }
 
   playGoalVariant(id: GoalSoundId): void {
     this.playNotes(GOAL_SOUNDS[id].notes);
   }
 
-  playAnthem(id: string | undefined): void {
-    this.playNotes((ANTHEMS[id ?? ''] ?? ANTHEMS.fanfare).notes);
+  playAnthem(id: string | undefined, opts: PlayOptions = {}): void {
+    this.playNotes((ANTHEMS[id ?? ''] ?? ANTHEMS.fanfare).notes, opts);
   }
 
-  private playNotes(notes: Note[]): void {
-    if (this.muted || this.volume <= 0) return;
+  private startAt(ctx: AudioContext, opts: PlayOptions): number {
+    const now = ctx.currentTime + 0.01;
+    return opts.queue ? Math.max(now, this.busyUntil) : now;
+  }
+
+  /** Sonido propio ya preparado (muestras en memoria: suena al instante, sin descodificar nada). */
+  playClip(samples: Float32Array, rate: number, opts: PlayOptions = {}): void {
+    if (!this.audible || !samples.length) return;
     this.unlock();
     const ctx = this.ctx;
     if (!ctx) return;
     try {
-      const t0 = ctx.currentTime + 0.01;
+      let buffer = this.buffers.get(samples);
+      if (!buffer) {
+        buffer = ctx.createBuffer(1, samples.length, rate);
+        buffer.getChannelData(0).set(samples);
+        this.buffers.set(samples, buffer);
+      }
+      if (!opts.queue) this.stopClip();
+      const t0 = this.startAt(ctx, opts);
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain();
+      g.gain.value = this.volume * 0.9;
+      src.buffer = buffer;
+      src.connect(g).connect(ctx.destination);
+      src.onended = () => {
+        if (this.clip === src) this.clip = null;
+      };
+      src.start(t0);
+      this.clip = src;
+      this.busyUntil = t0 + buffer.duration;
+    } catch {
+      // Un fallo de audio nunca afecta al partido.
+    }
+  }
+
+  /** Corta el sonido propio que esté sonando. */
+  stopClip(): void {
+    try {
+      this.clip?.stop();
+    } catch {
+      /* ya parado */
+    }
+    this.clip = null;
+  }
+
+  private playNotes(notes: Note[], opts: PlayOptions = {}): void {
+    if (!this.audible) return;
+    this.unlock();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const t0 = this.startAt(ctx, opts);
+      this.busyUntil = Math.max(this.busyUntil, t0 + Math.max(0, ...notes.map((n) => n.start + n.dur)));
       const master = ctx.createGain();
       master.gain.value = this.volume * 0.35;
       master.connect(ctx.destination);

@@ -8,6 +8,8 @@ import { useApp } from '../../app/AppContext';
 import { hardwareHub } from '../../inputs/hardware/hub';
 import type { EffectsLevel, GoalSoundId, Preferences } from '../../services/persistence';
 import { GOAL_SOUNDS, sound } from '../../services/sound/sound';
+import { choiceFor } from '../../services/sound/soundEvents';
+import { soundPlayer } from '../../services/sound/soundPlayer';
 import { fullscreenAvailable, toggleFullscreen } from '../../services/system/device';
 
 /** Hasta dónde llega el «borde de arriba» y cuánto hay que bajar el dedo (en píxeles del lienzo). */
@@ -29,6 +31,8 @@ export function QuickPanel() {
     () => hardwareHub.controlsBrightness,
   );
   const brightness = prefs.brightness ?? 100;
+  // Sonido de gol: los de la app o «Propio» si en Ajustes → Sonidos se le ha puesto uno de la mesa.
+  const goal = choiceFor(prefs.soundEvents, 'goal');
 
   // El brillo pedido viaja a la placa (si sabe cambiarlo) también al conectarla más tarde.
   useEffect(() => hardwareHub.setBrightness(brightness), [brightness]);
@@ -124,16 +128,31 @@ export function QuickPanel() {
                 <button
                   key={id}
                   className="seg"
-                  aria-pressed={prefs.goalSound === id}
+                  aria-pressed={goal.kind === 'default' && prefs.goalSound === id}
                   onClick={() => {
                     sound.unlock();
                     sound.playGoalVariant(id);
-                    update({ goalSound: id });
+                    update({ goalSound: id, soundEvents: { ...prefs.soundEvents, goal: { ...goal, kind: 'default' } } });
                   }}
                 >
                   {GOAL_SOUNDS[id].label}
                 </button>
               ))}
+              {goal.ids.length > 0 && (
+                <button
+                  className="seg"
+                  aria-pressed={goal.kind === 'custom'}
+                  onClick={() => {
+                    const next = { ...goal, kind: 'custom' as const };
+                    soundPlayer.setChoices({ ...prefs.soundEvents, goal: next });
+                    sound.unlock();
+                    soundPlayer.play('goal');
+                    update({ soundEvents: { ...prefs.soundEvents, goal: next } });
+                  }}
+                >
+                  Propio
+                </button>
+              )}
             </div>
             <div className="qp-label">Efectos de gol</div>
             <div className="segmented qp-seg">

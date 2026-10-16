@@ -10,6 +10,7 @@ import { useApp } from '../../app/AppContext';
 import type { Tournament } from '../../services/persistence';
 import { ACHIEVEMENTS, levelProgress, type ProgressionSnapshot } from '../../services/progression';
 import { sound } from '../../services/sound/sound';
+import { soundPlayer } from '../../services/sound/soundPlayer';
 import { finalRanking, tournamentReport, type FinalPlace, type PlayerLine } from '../../services/tournaments';
 import { Crest, Cup } from './Crest';
 import { AchievementIcon, Confetti } from './graphics';
@@ -70,7 +71,7 @@ export function TournamentCeremony({ t, onClose }: { t: Tournament; onClose: () 
 
   useEffect(() => {
     if (step === -1) {
-      const id = window.setTimeout(() => sound.playAnthem('champion'), 500);
+      const id = window.setTimeout(() => soundPlayer.play('tournamentWin'), 500);
       return () => window.clearTimeout(id);
     }
     sound.play(step === lastStep && ranking.length > 1 ? 'siren' : 'whoosh');
@@ -311,7 +312,7 @@ function PlayerReward({
       timers.push(window.setTimeout(() => setShown(Math.round((reward.xp * k) / steps)), 400 + k * 50));
     }
     timers.push(window.setTimeout(() => setFill(reward.levelFill), 400));
-    if (reward.levelAfter > reward.levelBefore) timers.push(window.setTimeout(() => sound.play('levelUp'), 1500));
+    if (reward.levelAfter > reward.levelBefore) timers.push(window.setTimeout(() => soundPlayer.play('levelUp', { queue: true }), 1500));
     return () => timers.forEach((x) => window.clearTimeout(x));
   }, [reward]);
   const achs = (reward?.unlocked ?? []).map((id) => ACHIEVEMENTS.find((a) => a.id === id)).filter((a) => !!a);

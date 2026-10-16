@@ -1,3 +1,4 @@
+import { normalizeSoundChoices } from '../sound/soundEvents';
 import { STORAGE_FORMAT_VERSION, type Preferences, type ProgressionSettings } from './types';
 
 /** Parámetros de progresión PROPUESTOS (pendientes de aprobación del propietario). */
@@ -34,6 +35,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   clubs: [],
   overrides: [],
   brightness: 100,
+  soundEvents: {},
 };
 
 /** Completa preferencias guardadas con valores por defecto (migración suave). */
@@ -52,5 +54,6 @@ export function normalizePreferences(raw: unknown): Preferences {
     clubs: Array.isArray(r.clubs) ? r.clubs : [],
     overrides: Array.isArray(r.overrides) ? r.overrides.filter((k) => typeof k === 'string') : [],
     brightness: typeof r.brightness === 'number' ? Math.max(10, Math.min(100, Math.round(r.brightness))) : 100,
+    soundEvents: normalizeSoundChoices(r.soundEvents),
   };
 }

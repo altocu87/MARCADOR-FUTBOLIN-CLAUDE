@@ -111,6 +111,15 @@ guardados sin origen y reprocesar no duplica premios.
 - **Logros**: 54 (10 secretos) con títulos elegibles. **Sorteo de equipos**: el reparto con menor diferencia
   de ELO medio. **Avisos**: bola de partido = el siguiente gol daría la victoria (2ª parte con goles, o prórroga).
 
+- **Sonidos propios «sonidos-1»** (aprobado por el propietario): cada mesa tiene su propia biblioteca de sonidos (no
+  hay colección común ni sonido por jugador). 16 momentos con «El de siempre», «Ninguno», uno propio o varios al
+  azar. **Remontada** = ponerse por delante tras ir perdiendo por 2 o más (igualar es «Empate»). **Empate** = el gol
+  que iguala (no el 0-0). **3 seguidos** = el tercer gol seguido sin respuesta (el 4º ya no). **Goleada** = ganar
+  dejando al rival a 0 o por 4 o más (sustituye a «Victoria»). **Victoria** sustituye al pitido final y el himno del
+  ganador suena después. En un mismo gol suena solo el momento más especial (remontada > 3 seguidos > empate > gol);
+  si el gol termina el partido suena «Victoria»/«Goleada» (el gol de oro, antes de la victoria). La bola de partido,
+  en cola tras el gol. Al subirlo: una pista, sin silencios, volumen igualado, 10 s como mucho, WAV 22 050 Hz 16 bits.
+
 ## Pendiente de decisión del propietario (no inventado)
 
 - Correcciones tras finalizar parte o partido, política de edición de historial.

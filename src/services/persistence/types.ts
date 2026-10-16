@@ -14,6 +14,7 @@ import type {
   PeriodRecord,
   Team,
 } from '../../match-engine';
+import type { SoundChoices } from '../sound/soundEvents';
 
 export const STORAGE_FORMAT_VERSION = 1;
 
@@ -275,6 +276,23 @@ export interface Preferences {
   overrides?: OverridableKey[];
   /** Brillo de la pantalla (10–100) desde el panel rápido: a la placa si sabe cambiarlo, si no, capa oscura. */
   brightness?: number;
+  /** Sonido de cada momento del partido (solo de esta mesa; el panel de administración no lo toca). */
+  soundEvents?: SoundChoices;
+}
+
+/** Dónde está guardado un sonido propio: en este aparato, en la memoria del chip de la placa o en su tarjeta SD. */
+export type SoundLocation = 'device' | 'chip' | 'sd';
+
+/** Sonido subido a esta mesa, ya preparado (WAV de una pista, 22 050 Hz, 16 bits, 10 s como mucho). */
+export interface StoredSound {
+  id: string;
+  name: string;
+  /** De dónde se toca: `device` en la app; `chip`/`sd` se le pide a la placa (si no está, suena el de siempre). */
+  location: SoundLocation;
+  durationMs: number;
+  createdAt: number;
+  /** Copia en el aparato (para escucharlo, pasarlo a la placa y la copia de seguridad). */
+  wav: ArrayBuffer;
 }
 
 export type OverridableKey =
