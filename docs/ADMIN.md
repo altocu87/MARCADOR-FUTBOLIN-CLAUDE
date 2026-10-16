@@ -36,6 +36,7 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 | **Tienda y cupones** | Productos (precio, a la venta u oculto, stock de kits) y cupones (porcentaje o importe, usos máximos, caducidad) |
 | **Catálogo** | Copas, escudos, avatares, marcos, fondos, podios, títulos, colores y sonidos, en colecciones con rareza, cómo se consiguen (gratis, entrando en la app, jugando o ganando un partido —rápido, loco, clasificatorio, de liga, copa o pool—, ganando una liga, copa o pool, nivel, rango, logro, torneos, partidos, evento, monedas, dinero, código o regalo; la colección entera o pieza a pieza), cuándo (siempre, entre fechas o cada año: Navidad, Halloween…) y, en copas, escudos y banners, para qué torneos (todos o solo liga, copa o pool). Se suben varios archivos a la vez y se ajustan solos al formato. Solo administradores |
 | **Reglas del juego** | ELO (inicial, puntos en juego, partidos de colocación, premiar goleadas), ELO mínimo de cada rango, duración de la temporada y retos sí/no, experiencia por partido, logros y retos, y la curva de niveles. Cada dato con qué significa, el valor recomendado y por qué, y debajo de cada grupo un ejemplo de cómo queda. Al publicar, todas las mesas lo descargan y recalculan la progresión desde el historial. Solo administradores |
+| **Comportamiento de la app** | Partido suelto por defecto (cómo se gana, goles, minutos, primer lanzador), sonido y efectos de una mesa nueva (volumen, sonido de gol, locutor, efectos) y pantalla y placa (mantener encendida, reposo, reconectar la placa). Se publica junto con las reglas. Solo administradores |
 | **Avisos** | Mensajes para los usuarios de la app (novedades, mantenimiento) con fechas y vista previa |
 | **Actividad** | Registro de todo lo que se cambia en el panel: quién, cuándo y qué. No se puede editar. Exportar CSV |
 | **Ajustes** | Nombre y correo de soporte, precios, IVA incluido, modo mantenimiento, plataforma de pagos, equipo, conexión con la base de datos, exportar todo |
@@ -139,3 +140,20 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
 - Como todo se recalcula desde el historial, cambiar una regla cambia también los partidos ya jugados, y volver a
   publicar los valores de antes lo deja todo como estaba.
 - En la app ya no hay nada de esto en Ajustes: la progresión está siempre activa y en Ajustes → Datos solo se ve de cuándo son las reglas en uso.
+
+## Comportamiento de la app
+
+- Se guarda en la misma fila que las reglas del juego (`game_rules`), así que no hace falta otra migración. Cada sección
+  publica solo lo suyo: lo de la otra se queda como estaba publicado.
+- **Partido suelto y sonido son valores por defecto.** Lo que una mesa cambia (Ajustes → Partido o el panel rápido) queda
+  apuntado como suyo y manda sobre el panel; «Volver al del panel» lo devuelve. Lo que la mesa no ha tocado sigue siempre
+  lo publicado.
+- **Pantalla y placa las fija el panel** en todas las mesas: no aparecen en los ajustes de la mesa.
+- Las reglas de los torneos no están aquí: cada torneo lleva las suyas y son iguales en todas las mesas.
+
+## Panel rápido de la mesa
+
+Deslizando el dedo desde el borde de arriba (o tocando la rayita de arriba) baja un panel con volumen y silencio, brillo,
+sonido de gol, efectos, locutor, pantalla completa y un botón a Ajustes. No se abre durante un partido. Todo se guarda en
+la mesa. El brillo va a la placa si sabe cambiarlo (orden `BRILLO`, la placa de 7" lo recuerda); si no, la app oscurece la
+pantalla con una capa.

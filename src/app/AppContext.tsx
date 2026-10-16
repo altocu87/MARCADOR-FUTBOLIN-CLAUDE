@@ -30,6 +30,8 @@ import {
   type ProgressionSnapshot,
   type PublishedRules,
 } from '../services/progression';
+import { applyPanelPrefs, markOverrides, resetToPanel } from '../services/panelPrefs';
+import type { OverridableKey } from '../services/persistence/types';
 import { sound } from '../services/sound/sound';
 import { voice } from '../services/sound/voice';
 import {
@@ -72,6 +74,8 @@ interface AppContextValue {
   /** Pasa todo lo de un jugador a otro (el mismo, apuntado dos veces) y borra el primero. */
   mergePlayers(fromId: string, intoId: string): Promise<{ movedMatches: number; movedTournaments: number }>;
   savePrefs(prefs: Preferences): Promise<void>;
+  /** Esos campos vuelven a seguir lo del panel de administración. */
+  followPanel(keys: OverridableKey[]): Promise<void>;
   /** Modo prueba: la app trabaja sobre datos ficticios y guarda ahí lo que se juegue. */
   demoMode: boolean;
   /** Activa (carga datos ficticios) o desactiva (borra todo lo de prueba y vuelve a los reales). */
@@ -200,7 +204,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   // Lo que deciden las reglas del panel manda sobre lo guardado aquí: ELO, temporadas y retos. La progresión, siempre activa.
   const effectivePrefs = useMemo<Preferences>(
     () => ({
-      ...prefs,
+      ...applyPanelPrefs(prefs, rules),
       progression: { ...prefs.progression, ...eloSettings(rules), enabled: true },
       seasonLength: rules.seasonLength,
       challenges: rules.challenges,
@@ -247,10 +251,11 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     void refresh();
   }, [refresh]);
 
+  const ep = effectivePrefs;
   useEffect(() => {
-    sound.configure(prefs.volume, prefs.muted, prefs.goalSound);
-    voice.configure(prefs.voice && !prefs.muted);
-  }, [prefs.volume, prefs.muted, prefs.goalSound, prefs.voice]);
+    sound.configure(ep.volume, ep.muted, ep.goalSound);
+    voice.configure(ep.voice && !ep.muted);
+  }, [ep.volume, ep.muted, ep.goalSound, ep.voice]);
 
   const savePlayer = useCallback(
     async (player: Player) => {
@@ -318,12 +323,23 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [repos, refresh],
   );
 
+  // Lo que se guarda desde la mesa y difiere de lo que se veía pasa a ser de esta mesa (deja de seguir al panel).
   const savePrefs = useCallback(
     async (next: Preferences) => {
-      await repos.preferences.save(next);
-      setPrefs(next);
+      const stored = markOverrides(effectivePrefs, next);
+      await repos.preferences.save(stored);
+      setPrefs(stored);
     },
-    [repos],
+    [repos, effectivePrefs],
+  );
+
+  const followPanel = useCallback(
+    async (keys: OverridableKey[]) => {
+      const stored = resetToPanel(prefs, keys);
+      await repos.preferences.save(stored);
+      setPrefs(stored);
+    },
+    [repos, prefs],
   );
 
   const progression = useMemo(
@@ -404,6 +420,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     discardTournament,
     mergePlayers: mergePlayersCb,
     savePrefs,
+    followPanel,
     demoMode,
     setDemoMode,
     route,

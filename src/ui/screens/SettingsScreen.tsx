@@ -8,17 +8,13 @@ import {
   parseBackup,
   previewImport,
   type BackupFile,
-  type EffectsLevel,
-  type GoalSoundId,
   type ImportPreview,
   type Player,
+  type OverridableKey,
   type Preferences,
 } from '../../services/persistence';
 import { sortPlayers } from '../../services/players';
-import { GOAL_SOUNDS, sound } from '../../services/sound/sound';
-import { voice } from '../../services/sound/voice';
-import { fullscreenAvailable, toggleFullscreen, wakeLock } from '../../services/system/device';
-import { Avatar, HelpButton, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
+import { Avatar, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
 import { downloadJson } from '../components/download';
 import { PlayerOptions } from '../components/PlayerQr';
 import { PlayerEditor } from '../components/PlayerEditor';
@@ -42,7 +38,6 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
         tabs={[
           { id: 'match', label: 'Partido' },
           { id: 'players', label: 'Jugadores' },
-          { id: 'sound', label: 'Sonido y pantalla' },
           { id: 'table', label: 'Mesa' },
           { id: 'data', label: 'Datos' },
         ]}
@@ -50,7 +45,6 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
       <div className="scroll settings-body">
         {tab === 'match' && <MatchTab />}
         {tab === 'players' && <Players />}
-        {tab === 'sound' && <SoundTab />}
         {tab === 'table' && <ConnectionsTab />}
         {tab === 'data' && <DataTab />}
       </div>
@@ -110,13 +104,28 @@ function TestModeCard() {
   );
 }
 
-/** Cómo empieza un partido nuevo. */
+/** De dónde sale cada valor: del panel de administración o cambiado en esta mesa (y cómo volver al del panel). */
+function Origin({ keys }: { keys: OverridableKey[] }) {
+  const { prefs, followPanel, toast } = useApp();
+  const own = keys.some((k) => prefs.overrides?.includes(k));
+  if (!own) return <span className="origin-tag">Del panel</span>;
+  return (
+    <button
+      className="origin-tag own"
+      onClick={() => void followPanel(keys).then(() => toast('Vuelve al valor del panel'), () => toast('No se pudo guardar'))}
+    >
+      Solo esta mesa · ↺ Volver al del panel
+    </button>
+  );
+}
+
+/** Cómo empieza un partido suelto en esta mesa (lo de los torneos lo decide cada torneo). */
 function MatchTab() {
   const { prefs, update } = usePrefs();
   return (
     <div className="settings-grid">
       <div className="card">
-        <div className="label">Condición por defecto</div>
+        <div className="label origin-row">Cómo se gana <Origin keys={['defaultEndCondition']} /></div>
         <div className="segmented" style={{ marginTop: 6 }}>
           {(['goals', 'time', 'both'] as EndCondition[]).map((c) => (
             <button key={c} className="seg" aria-pressed={prefs.defaultEndCondition === c} onClick={() => update({ defaultEndCondition: c })}>
@@ -126,7 +135,7 @@ function MatchTab() {
         </div>
       </div>
       <div className="card">
-        <div className="label">Goles para ganar (por defecto)</div>
+        <div className="label origin-row">Goles para ganar <Origin keys={['defaultGoalsPerPeriod']} /></div>
         <Stepper
           label="goles por defecto"
           value={prefs.defaultGoalsPerPeriod}
@@ -136,7 +145,7 @@ function MatchTab() {
         />
       </div>
       <div className="card">
-        <div className="label">Minutos por parte (por defecto)</div>
+        <div className="label origin-row">Minutos por parte <Origin keys={['defaultMinutesPerPeriod']} /></div>
         <Stepper
           label="minutos por defecto"
           value={prefs.defaultMinutesPerPeriod}
@@ -146,7 +155,7 @@ function MatchTab() {
         />
       </div>
       <div className="card">
-        <div className="label">Primer lanzador en penaltis</div>
+        <div className="label origin-row">Primer lanzador en penaltis <Origin keys={['penaltyFirstTeam']} /></div>
         <div className="segmented" style={{ marginTop: 6 }}>
           <button className="seg" aria-pressed={prefs.penaltyFirstTeam === 'white'} onClick={() => update({ penaltyFirstTeam: 'white' })}>
             BLANCO
@@ -312,106 +321,6 @@ function PlayerList() {
     </>
   );
 }
-
-/** Sonido, locutor, efectos y lo de la pantalla (encendida, completa y reposo). */
-function SoundTab() {
-  const { prefs, update } = usePrefs();
-  const levels: { id: EffectsLevel; label: string }[] = [
-    { id: 'full', label: 'COMPLETOS' },
-    { id: 'reduced', label: 'REDUCIDOS' },
-    { id: 'off', label: 'DESACTIVADOS' },
-  ];
-  return (
-    <div className="settings-grid">
-      <div className="card">
-        <Toggle checked={prefs.muted} onChange={(v) => update({ muted: v })} label="Silencio" />
-        <div className="label" style={{ marginTop: 10 }}>Volumen {Math.round(prefs.volume * 100)} %</div>
-        <input
-          className="range"
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(prefs.volume * 100)}
-          onChange={(e) => update({ volume: Number(e.target.value) / 100 })}
-          aria-label="Volumen"
-        />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button className="btn btn-sm" onClick={() => { sound.unlock(); sound.play('periodEnd'); }}>Final parte</button>
-          <button className="btn btn-sm" onClick={() => { sound.unlock(); sound.play('matchEnd'); }}>Final partido</button>
-        </div>
-      </div>
-      <div className="card">
-        <div className="label">Sonido de gol</div>
-        <div className="chip-wrap" style={{ margin: '6px 0 10px' }}>
-          {(Object.keys(GOAL_SOUNDS) as GoalSoundId[]).map((id) => (
-            <button
-              key={id}
-              className={`pick-chip ${prefs.goalSound === id ? 'pick-blue' : ''}`}
-              onClick={() => {
-                sound.unlock();
-                sound.playGoalVariant(id);
-                void update({ goalSound: id });
-              }}
-            >
-              ♪ {GOAL_SOUNDS[id].label}
-            </button>
-          ))}
-        </div>
-        <Toggle
-          checked={prefs.voice}
-          onChange={(v) => update({ voice: v })}
-          label="Locutor"
-          help={voice.available ? 'Voz del navegador: goles, bola de partido, finales.' : 'Este navegador no tiene síntesis de voz.'}
-        />
-        <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => voice.test('¡Gol del equipo blanco! Dos a uno.')}>
-          Probar locutor
-        </button>
-        <div className="label cr-field-label" style={{ marginTop: 10 }}>
-          Efectos visuales de gol
-          <HelpButton
-            title="Efectos visuales de gol"
-            text="Completos: destello, explosión, ondas y partículas. Reducidos: lo mismo sin destellos. Desactivados: solo el marcador."
-            className="head-help"
-          />
-        </div>
-        <div className="segmented" style={{ marginTop: 6 }}>
-          {levels.map((l) => (
-            <button key={l.id} className="seg" aria-pressed={prefs.effects === l.id} onClick={() => update({ effects: l.id })}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="card">
-        <div className="label">Pantalla</div>
-        <Toggle
-          checked={prefs.keepAwake}
-          onChange={(v) => update({ keepAwake: v })}
-          label="Mantener pantalla encendida"
-          help={wakeLock.available ? 'Evita que el móvil o la tablet se apague con la app abierta.' : 'Este navegador no lo permite.'}
-        />
-        {fullscreenAvailable() && (
-          <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => void toggleFullscreen()}>
-            ⛶ Pantalla completa
-          </button>
-        )}
-      </div>
-      <div className="card">
-        <div className="label">Reposo tras inactividad</div>
-        <Stepper
-          label="minutos de reposo"
-          value={prefs.sleepMinutes}
-          min={0}
-          max={60}
-          unit={prefs.sleepMinutes === 0 ? 'desactivado' : 'min'}
-          onChange={(v) => update({ sleepMinutes: v })}
-        />
-      </div>
-    </div>
-  );
-}
-
-
 
 /** Panel de administración: junto a la app si se abre desde la web; si no (placa, instalada…), el de la web publicada. */
 function adminUrl(): string {

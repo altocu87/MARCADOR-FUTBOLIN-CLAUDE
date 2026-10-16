@@ -32,7 +32,10 @@ const show = (v: Value, f: RuleField) =>
       : `${num(v)}${f.unit ? ` ${f.unit}` : ''}`;
 const fecha = (ms: number) => new Date(ms).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-export function Reglas() {
+type Section = 'rules' | 'app';
+const TITLE: Record<Section, string> = { rules: 'Reglas del juego', app: 'Comportamiento de la app' };
+
+export function Reglas({ section = 'rules' }: { section?: Section }) {
   const { backend, can, saveRules, session, toast } = useAdmin();
   const editable = can('editar_reglas');
   const [stored, setStored] = useState<StoredRules | null>(null);
@@ -56,31 +59,38 @@ export function Reglas() {
     };
   }, [backend]);
 
+  const groups = useMemo(() => RULE_GROUPS.filter((g) => (g.section ?? 'rules') === section), [section]);
+  const fields = useMemo(() => groups.flatMap((g) => g.fields), [groups]);
+  const title = TITLE[section];
   const published = stored?.rules ?? DEFAULT_RULES;
-  const changes = useMemo(() => rulesDiff(published, r), [published, r]);
+  // Las dos secciones se publican en la misma fila, pero cada pantalla solo cuenta, descarta y recomienda lo suyo.
+  const changes = useMemo(() => rulesDiff(published, r, fields), [published, r, fields]);
   const problems = useMemo(() => rulesProblems(r), [r]);
-  const offDefault = useMemo(() => rulesDiff(DEFAULT_RULES, r).length, [r]);
+  const offDefault = useMemo(() => rulesDiff(DEFAULT_RULES, r, fields).length, [r, fields]);
+  const resetTo = (src: GameRules) => setR((cur) => ({ ...cur, ...Object.fromEntries(fields.map((f) => [f.key, src[f.key]])) }));
 
   const set = (key: keyof GameRules, value: Value) => setR((cur) => ({ ...cur, [key]: value }));
 
   const publish = async () => {
-    const next: StoredRules = { rules: sanitizeRules(r), updatedAt: Date.now(), updatedBy: session.email };
+    // Lo de la otra sección se publica tal cual estaba publicado: aquí solo se tocan los campos de esta.
+    const merged = { ...published, ...Object.fromEntries(fields.map((f) => [f.key, r[f.key]])) } as GameRules;
+    const next: StoredRules = { rules: sanitizeRules(merged), updatedAt: Date.now(), updatedBy: session.email };
     try {
-      await saveRules(next, changes.join(' · ') || 'sin cambios');
+      await saveRules(next, `${title}: ${changes.join(' · ') || 'sin cambios'}`);
       setStored(next);
       setR(next.rules);
-      toast('Reglas publicadas: las mesas las aplicarán al abrir la app con internet');
+      toast(`${title} publicado: las mesas lo aplicarán al abrir la app con internet`);
     } catch (e) {
       toast(`No se pudo publicar: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
-  if (loading) return <Header title="Reglas del juego" subtitle="Cargando…" />;
+  if (loading) return <Header title={title} subtitle="Cargando…" />;
 
   return (
     <>
       <Header
-        title="Reglas del juego"
+        title={title}
         subtitle={
           stored
             ? `Publicadas el ${fecha(stored.updatedAt)}${stored.updatedBy ? ` por ${stored.updatedBy}` : ''}`
@@ -89,10 +99,10 @@ export function Reglas() {
         actions={
           editable && (
             <>
-              <button className="a-btn ghost" disabled={offDefault === 0} onClick={() => setR(DEFAULT_RULES)}>
+              <button className="a-btn ghost" disabled={offDefault === 0} onClick={() => resetTo(DEFAULT_RULES)}>
                 Poner todo lo recomendado
               </button>
-              <button className="a-btn ghost" disabled={changes.length === 0} onClick={() => setR(published)}>
+              <button className="a-btn ghost" disabled={changes.length === 0} onClick={() => resetTo(published)}>
                 Descartar cambios
               </button>
               <ConfirmButton tone="primary" disabled={(!!stored && changes.length === 0) || problems.length > 0} onConfirm={() => void publish()}>
@@ -112,25 +122,41 @@ export function Reglas() {
 
       <section className="a-card rg-intro">
         <h2>Cómo funciona</h2>
-        <ul>
-          <li>
-            Al <b>publicar</b>, todas las mesas descargan estas reglas la próxima vez que abren la app con internet. Sin internet
-            siguen con las últimas que descargaron.
-          </li>
-          <li>
-            La app <b>recalcula todo desde el historial</b>: el ELO, la experiencia y los niveles de todos los jugadores cambian
-            también para los partidos ya jugados. No se pierde nada: si vuelves a publicar los valores de antes, todo queda como
-            estaba.
-          </li>
-          <li>
-            Mejor cambiar <b>pocas cosas cada vez</b> y dejar pasar unas semanas de partidos para ver el efecto. Cada publicación
-            queda apuntada en Actividad.
-          </li>
-          <li>
-            Al lado de cada valor está el <b>recomendado</b>. Si lo cambias, se marca en amarillo y con «Usar» vuelve al
-            recomendado.
-          </li>
-        </ul>
+        {section === 'rules' ? (
+          <ul>
+            <li>
+              Al <b>publicar</b>, todas las mesas descargan estas reglas la próxima vez que abren la app con internet. Sin
+              internet siguen con las últimas que descargaron.
+            </li>
+            <li>
+              La app <b>recalcula todo desde el historial</b>: el ELO, la experiencia y los niveles de todos los jugadores
+              cambian también para los partidos ya jugados. No se pierde nada: si vuelves a publicar los valores de antes, todo
+              queda como estaba.
+            </li>
+            <li>
+              Mejor cambiar <b>pocas cosas cada vez</b> y dejar pasar unas semanas de partidos para ver el efecto. Cada
+              publicación queda apuntada en Actividad.
+            </li>
+            <li>
+              Al lado de cada valor está el <b>recomendado</b>. Si lo cambias, se marca en amarillo y con «Usar» vuelve al
+              recomendado.
+            </li>
+          </ul>
+        ) : (
+          <ul>
+            <li>
+              Esto es cómo se comporta la app en <b>todas las mesas</b>. Las mesas lo descargan al abrir la app con internet.
+            </li>
+            <li>
+              <b>Partido suelto y sonido</b> son valores por defecto: cada mesa puede cambiarlos (Ajustes → Partido y el panel
+              rápido de arriba) y lo suyo manda. En la mesa, «Volver al del panel» recupera lo de aquí.
+            </li>
+            <li>
+              <b>Pantalla y placa</b> las fija siempre el panel: las mesas no las pueden cambiar.
+            </li>
+            <li>Las reglas de los torneos son iguales en todas las mesas y no se tocan aquí.</li>
+          </ul>
+        )}
       </section>
 
       {problems.length > 0 && (
@@ -144,7 +170,7 @@ export function Reglas() {
         </section>
       )}
 
-      {RULE_GROUPS.map((g) => (
+      {groups.map((g) => (
         <section key={g.id} className="a-card rg-group">
           <h2>{g.title}</h2>
           <p className="rg-group-intro">{g.intro}</p>

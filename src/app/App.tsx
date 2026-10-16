@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { attachKeyboardAdapter, exposeDevInputs } from '../inputs/inputBus';
 import { SleepOverlay } from '../ui/components/SleepOverlay';
+import { QuickPanel } from '../ui/components/QuickPanel';
 import { EventNotice, RewardPop } from '../ui/components/EventBits';
 import { Stage } from '../ui/layout/Stage';
 import { wakeLock } from '../services/system/device';
@@ -160,6 +161,7 @@ function Router() {
       {/* Eventos: aviso arriba en la portada y «premio conseguido» cuando toca. */}
       {route.name === 'home' && <EventNotice lower={demoMode} />}
       {route.name !== 'match' && <RewardPop />}
+      <QuickPanel />
       {toastMessage && (
         <div className="toast" role="status">
           {toastMessage}

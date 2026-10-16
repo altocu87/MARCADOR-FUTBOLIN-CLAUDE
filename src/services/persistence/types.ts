@@ -271,7 +271,21 @@ export interface Preferences {
   tournamentTemplates: TournamentTemplate[];
   /** Equipos fijos guardados con nombre y logo. */
   clubs: Club[];
+  /** Campos que esta mesa ha cambiado respecto a lo del panel de administración (lo demás lo pone el panel). */
+  overrides?: OverridableKey[];
+  /** Brillo de la pantalla (10–100) desde el panel rápido: a la placa si sabe cambiarlo, si no, capa oscura. */
+  brightness?: number;
 }
+
+export type OverridableKey =
+  | 'defaultEndCondition'
+  | 'defaultGoalsPerPeriod'
+  | 'defaultMinutesPerPeriod'
+  | 'penaltyFirstTeam'
+  | 'volume'
+  | 'goalSound'
+  | 'voice'
+  | 'effects';
 
 export interface HardwarePrefs {
   /** Dirección WebSocket de la placa (p. ej. ws://192.168.4.1:81/). Vacío = automática. */

@@ -6801,3 +6801,30 @@ div > .name-clash:first-child {
   font-size: 16px;
 }
 
+
+/* De dónde sale cada valor de Ajustes → Partido: del panel o cambiado en esta mesa. */
+.origin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.origin-tag {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: transparent;
+}
+.origin-tag.own {
+  color: var(--ranked);
+  border-color: var(--ranked);
+  background: var(--ranked-soft);
+  cursor: pointer;
+  min-height: 32px;
+}

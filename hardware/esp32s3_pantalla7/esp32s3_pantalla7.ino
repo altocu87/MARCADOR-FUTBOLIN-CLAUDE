@@ -38,16 +38,16 @@ using ui::Btn;
 static const char* FW_VERSION = "1.0";
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
 #define S3_BOARD_ID "waveshare-7c"
-#define S3_CAPS "goles,anular,pausa,pantalla,radio,sensores,salidas"
+#define S3_CAPS "goles,anular,pausa,pantalla,radio,sensores,salidas,brillo"
 #elif MFV3_BOARD == BOARD_ELECROW_7
 #define S3_BOARD_ID "elecrow-7"
-#define S3_CAPS "goles,anular,pausa,pantalla,radio,uart"
+#define S3_CAPS "goles,anular,pausa,pantalla,radio,uart,brillo"
 #elif MFV3_BOARD == BOARD_WAVESHARE_7
 #define S3_BOARD_ID "waveshare-7"
-#define S3_CAPS "goles,anular,pausa,pantalla,radio,uart"
+#define S3_CAPS "goles,anular,pausa,pantalla,radio,uart,brillo"
 #else
 #define S3_BOARD_ID "s3-pantalla"
-#define S3_CAPS "goles,anular,pausa,pantalla,radio"
+#define S3_CAPS "goles,anular,pausa,pantalla,radio,brillo"
 #endif
 static const uint8_t GRUPO_MESA = 1;  // MISMO número que en el mando (cámbialo si hay dos mesas cerca)
 static const uint32_t SLEEP_AFTER_MS = 5UL * 60UL * 1000UL;  // atenuar pantalla tras 5 min sin uso fuera de partido
@@ -84,6 +84,10 @@ static LastResult history[8];
 static uint8_t historyCount = 0;
 static uint32_t matchesPlayed = 0;
 
+// Brillo elegido desde la app (orden «BRILLO 0–100»); se guarda y se recupera al despertar del reposo.
+static uint8_t userBrightness = 100;
+static uint8_t backlightLevel() { return (uint8_t)(10 + (uint16_t)userBrightness * 245 / 100); }
+
 static void loadPrefs() {
   prefs.begin("mfv3", false);
   cfg.endCondition = (mfv3::EndCondition)prefs.getUChar("cond", 0);
@@ -92,6 +96,8 @@ static void loadPrefs() {
   if (!cfg.valid()) cfg = mfv3::Config();
   matchesPlayed = prefs.getULong("played", 0);
   historyCount = prefs.getBytes("hist", history, sizeof(history)) / sizeof(LastResult);
+  userBrightness = prefs.getUChar("bri", 100);
+  if (userBrightness > 100) userBrightness = 100;
 }
 
 static void saveConfig() {
@@ -166,7 +172,7 @@ static void wakeScreen() {
   lastActivity = millis();
   if (dimmed) {
     dimmed = false;
-    lcd.backlight(255);
+    lcd.backlight(backlightLevel());
   }
 }
 
@@ -311,6 +317,12 @@ static void handleBoardLine(const char* line) {
   else if (!strcmp(word, "SALTAR") && inMatch && eng.phase() == Phase::Countdown) {
     eng.skipCountdown(millis());
     afterChange(false, Team::White);
+  } else if (!strcmp(word, "BRILLO")) {
+    // Brillo de la pantalla que manda la app (panel rápido): 0–100 %.
+    int v = atoi(line + i);
+    userBrightness = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
+    prefs.putUChar("bri", userBrightness);
+    if (!dimmed) lcd.backlight(backlightLevel());
   } else if (!strcmp(word, "PING")) sendLine("PONG");
   else if (!strcmp(word, "HELLO")) {
     sendHello();
@@ -828,7 +840,7 @@ static void pollTouch() {
     if (dimmed) {
       // El toque que despierta se consume.
       dimmed = false;
-      lcd.backlight(255);
+      lcd.backlight(backlightLevel());
     } else {
       onTap((int16_t)x, (int16_t)y);
     }
@@ -848,10 +860,11 @@ void setup() {
   lcd.detectTouchAddress();
   lcd.init();
   lcd.setRotation(0);
-  lcd.backlight(255);
+  lcd.backlight(backlightLevel());
   initColors();
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
   loadPrefs();
+  lcd.backlight(backlightLevel());  // el brillo guardado
   radioBegin();
   lastActivity = millis();
   sendHello();

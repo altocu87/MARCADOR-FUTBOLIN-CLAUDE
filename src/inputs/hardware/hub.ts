@@ -32,6 +32,8 @@ class HardwareHub {
   private states = new Map<LinkKind, LinkState>();
   private listeners = new Set<Listener>();
   private lastState: MatchState | null = null;
+  /** Brillo pedido desde el panel rápido (0–100); se manda a las placas que saben cambiarlo. */
+  private brightness: number | null = null;
   log: LogEntry[] = [];
 
   subscribe(l: Listener): () => void {
@@ -105,6 +107,7 @@ class HardwareHub {
         boardId: known?.id ?? msg.name,
         caps: msg.caps,
       });
+      if (this.brightness !== null && msg.caps.includes('brillo')) link.send(`BRILLO ${this.brightness}`);
     }
     else if (msg.kind === 'ping') link.send('PONG');
     else if (msg.kind === 'command') inputBus.emit({ command: msg.command, source: msg.source });
@@ -121,6 +124,22 @@ class HardwareHub {
     for (const line of outgoingLines(prev, next, events)) {
       link.send(line);
       this.addLog({ dir: 'out', kind: link.kind, text: line });
+    }
+  }
+
+  /** ¿Hay conectada una placa que sabe cambiar el brillo de su pantalla? */
+  get controlsBrightness(): boolean {
+    return [...this.states.values()].some((s) => s.status === 'connected' && !!s.caps?.includes('brillo'));
+  }
+
+  /** Brillo de la pantalla (0–100): a las placas que lo saben cambiar; se repite al conectar una. */
+  setBrightness(percent: number): void {
+    this.brightness = Math.max(0, Math.min(100, Math.round(percent)));
+    for (const [kind, link] of this.links) {
+      if (!this.state(kind).caps?.includes('brillo')) continue;
+      const line = `BRILLO ${this.brightness}`;
+      link.send(line);
+      this.addLog({ dir: 'out', kind, text: line });
     }
   }
 

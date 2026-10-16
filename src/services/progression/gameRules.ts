@@ -45,6 +45,21 @@ export interface GameRules {
   levelBase: number;
   levelExponent: number;
   maxLevel: number;
+  // ---- Comportamiento de la app (sección aparte en el panel) ----
+  // Partido suelto por defecto (cada mesa puede cambiarlo en Ajustes → Partido)
+  matchEndCondition: 'goals' | 'time' | 'both';
+  matchGoals: number;
+  matchMinutes: number;
+  penaltyFirstTeam: 'white' | 'blue';
+  // Sonido y efectos de una mesa nueva (cada mesa los cambia en el panel rápido)
+  volume: number;
+  goalSound: 'arcade' | 'laser' | 'stadium' | 'retro';
+  voice: boolean;
+  effects: 'full' | 'reduced' | 'off';
+  // Pantalla y placa (iguales en todas las mesas)
+  keepAwake: boolean;
+  sleepMinutes: number;
+  autoConnect: boolean;
 }
 
 /** Valores recomendados (y los que usa la app mientras no haya nada publicado). */
@@ -78,6 +93,17 @@ export const DEFAULT_RULES: GameRules = {
   levelBase: 100,
   levelExponent: 1.35,
   maxLevel: 100,
+  matchEndCondition: 'goals',
+  matchGoals: 5,
+  matchMinutes: 5,
+  penaltyFirstTeam: 'white',
+  volume: 70,
+  goalSound: 'arcade',
+  voice: false,
+  effects: 'full',
+  keepAwake: true,
+  sleepMinutes: 5,
+  autoConnect: true,
 };
 
 export type RuleKey = keyof GameRules;
@@ -102,6 +128,8 @@ export interface RuleField {
 
 export interface RuleGroup {
   id: string;
+  /** En qué sección del panel sale: «Reglas del juego» o «Comportamiento de la app». */
+  section?: 'rules' | 'app';
   title: string;
   intro: string;
   fields: RuleField[];
@@ -422,6 +450,134 @@ export const RULE_GROUPS: RuleGroup[] = [
       },
     ],
   },
+  {
+    id: 'match',
+    section: 'app',
+    title: 'Partido suelto por defecto',
+    intro:
+      'Cómo empieza un partido Rápido, Loco o Clasificatorio cuando nadie toca nada. Cada mesa puede cambiarlo para ella en Ajustes → Partido (por ejemplo, un bar que juega a 7 goles); lo de aquí es lo que tiene una mesa nueva o la que no lo ha cambiado. Los torneos llevan sus propias reglas.',
+    fields: [
+      {
+        key: 'matchEndCondition',
+        label: 'Cómo se gana',
+        options: [
+          { value: 'goals', label: 'A goles' },
+          { value: 'time', label: 'A tiempo' },
+          { value: 'both', label: 'Lo primero que llegue' },
+        ],
+        meaning: 'A goles: gana el primero que llega a los goles. A tiempo: gana quien va por delante al acabar el tiempo. Lo primero que llegue: lo que pase antes.',
+        why: 'A goles es como se juega en casi todos los bares: el partido acaba claro y no hay que mirar el reloj.',
+      },
+      {
+        key: 'matchGoals',
+        label: 'Goles para ganar',
+        unit: 'goles',
+        min: 1,
+        max: 20,
+        step: 1,
+        meaning: 'Los goles que hay que marcar para ganar un partido a goles.',
+        why: 'A 5 goles un partido dura unos 4 o 5 minutos: da tiempo a remontar y la cola de la mesa avanza.',
+      },
+      {
+        key: 'matchMinutes',
+        label: 'Minutos por parte',
+        unit: 'min',
+        min: 1,
+        max: 30,
+        step: 1,
+        meaning: 'Lo que dura cada parte en los partidos a tiempo.',
+        why: 'Con 5 minutos el partido dura lo mismo que uno a 5 goles.',
+      },
+      {
+        key: 'penaltyFirstTeam',
+        label: 'Quién tira primero en los penaltis',
+        options: [
+          { value: 'white', label: 'Blanco' },
+          { value: 'blue', label: 'Azul' },
+        ],
+        meaning: 'El equipo que empieza la tanda de penaltis cuando un partido acaba empatado.',
+        why: 'Da igual quién empiece; lo importante es que sea siempre el mismo para que nadie discuta.',
+      },
+    ],
+  },
+  {
+    id: 'sound',
+    section: 'app',
+    title: 'Sonido y efectos de una mesa nueva',
+    intro:
+      'Cómo suena y se ve una mesa la primera vez. Después, cada mesa lo cambia a su gusto en el panel rápido (deslizando el dedo desde arriba) y se queda con lo suyo.',
+    fields: [
+      {
+        key: 'volume',
+        label: 'Volumen',
+        unit: '%',
+        min: 0,
+        max: 100,
+        step: 5,
+        meaning: 'El volumen de los sonidos de la app (goles, finales, locutor).',
+        why: 'Con 70 % se oye en un bar con ruido sin molestar a las mesas de al lado.',
+      },
+      {
+        key: 'goalSound',
+        label: 'Sonido de gol',
+        options: [
+          { value: 'arcade', label: 'Arcade' },
+          { value: 'laser', label: 'Láser' },
+          { value: 'stadium', label: 'Estadio' },
+          { value: 'retro', label: 'Retro 8 bits' },
+        ],
+        meaning: 'El sonido que suena con cada gol.',
+        why: 'Arcade va con el estilo de la app y se distingue bien del ruido del bar.',
+      },
+      {
+        key: 'voice',
+        label: 'Locutor',
+        meaning: 'Una voz que canta los goles, la bola de partido y el final.',
+        why: 'Apagado: no todas las mesas tienen buen altavoz, y una voz mal oída molesta más que ayuda. Cada mesa lo enciende si quiere.',
+      },
+      {
+        key: 'effects',
+        label: 'Efectos visuales de gol',
+        options: [
+          { value: 'full', label: 'Completos' },
+          { value: 'reduced', label: 'Reducidos' },
+          { value: 'off', label: 'Desactivados' },
+        ],
+        meaning: 'Completos: destello, explosión, ondas y partículas. Reducidos: lo mismo sin destellos. Desactivados: solo el marcador.',
+        why: 'Completos es lo que hace vistoso el marcador. «Reducidos» es para quien se moleste con los destellos.',
+      },
+    ],
+  },
+  {
+    id: 'device',
+    section: 'app',
+    title: 'Pantalla y placa',
+    intro: 'Cómo se comporta el aparato. Esto es igual en todas las mesas y no se cambia desde ellas.',
+    fields: [
+      {
+        key: 'keepAwake',
+        label: 'Mantener la pantalla encendida',
+        meaning: 'Que la tablet o el móvil no se apague solo mientras la app está abierta.',
+        why: 'Encendido: un marcador que se apaga a mitad de partido no sirve. Para ahorrar está el reposo de abajo.',
+      },
+      {
+        key: 'sleepMinutes',
+        label: 'Reposo tras no tocar nada',
+        unit: 'min',
+        min: 0,
+        max: 60,
+        step: 1,
+        meaning: 'Minutos sin tocar la pantalla (y fuera de un partido) tras los que se oscurece y enseña la hora y el líder. 0 = nunca.',
+        why: 'Con 5 minutos no se queda la pantalla a tope toda la noche, y se despierta con un toque.',
+      },
+      {
+        key: 'autoConnect',
+        label: 'Reconectar la placa al abrir',
+        meaning: 'Al abrir la app, vuelve a conectar sola la placa por Wi‑Fi o por un USB ya autorizado (Bluetooth siempre pide un toque).',
+        why: 'Encendido: así nadie tiene que entrar en Ajustes cada vez que se enciende la mesa.',
+      },
+    ],
+  },
 ];
 
 export const RULE_FIELDS: RuleField[] = RULE_GROUPS.flatMap((g) => g.fields);
@@ -481,8 +637,8 @@ export function rulesProblems(r: GameRules): string[] {
 }
 
 /** Cambios respecto a otras reglas, en texto («Por ganar: 100 → 120»), para el registro de actividad. */
-export function rulesDiff(before: GameRules, after: GameRules): string[] {
-  return RULE_FIELDS.filter((f) => before[f.key] !== after[f.key]).map((f) => `${f.label}: ${fmt(before[f.key])} → ${fmt(after[f.key])}`);
+export function rulesDiff(before: GameRules, after: GameRules, fields: RuleField[] = RULE_FIELDS): string[] {
+  return fields.filter((f) => before[f.key] !== after[f.key]).map((f) => `${f.label}: ${fmt(before[f.key])} → ${fmt(after[f.key])}`);
 }
 
 const fmt = (v: Value) => (typeof v === 'boolean' ? (v ? 'sí' : 'no') : typeof v === 'string' ? (RULE_FIELDS.flatMap((f) => f.options ?? []).find((o) => o.value === v)?.label ?? v) : String(v).replace('.', ','));

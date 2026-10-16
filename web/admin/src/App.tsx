@@ -26,6 +26,7 @@ const SECTIONS: { id: string; label: string; perm?: Permission }[] = [
   { id: 'tienda', label: 'Tienda y cupones' },
   { id: 'catalogo', label: 'Catálogo', perm: 'editar_catalogo' },
   { id: 'reglas', label: 'Reglas del juego', perm: 'editar_reglas' },
+  { id: 'comportamiento', label: 'Comportamiento de la app', perm: 'editar_reglas' },
   { id: 'avisos', label: 'Avisos' },
   { id: 'actividad', label: 'Actividad' },
   { id: 'ajustes', label: 'Ajustes' },
@@ -311,7 +312,8 @@ function Shell({ onOut }: { onOut: () => void }) {
           {current === 'licencias' && <Licencias />}
           {current === 'tienda' && <Tienda />}
           {current === 'catalogo' && <Catalogo />}
-          {current === 'reglas' && <Reglas />}
+          {current === 'reglas' && <Reglas key="rules" section="rules" />}
+          {current === 'comportamiento' && <Reglas key="app" section="app" />}
           {current === 'avisos' && <Avisos />}
           {current === 'actividad' && <Actividad />}
           {current === 'ajustes' && <Ajustes />}

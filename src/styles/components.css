@@ -1293,3 +1293,124 @@ button.row:active {
   width: 40px;
   height: 40px;
 }
+
+/* ---------- Panel rápido (deslizar desde arriba) ---------- */
+.qp-dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 900;
+}
+.qp-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  z-index: 60;
+  cursor: pointer;
+}
+.qp-handle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 18px;
+  right: 18px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--text-3);
+  opacity: 0.55;
+}
+.qp-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 950;
+  background: rgba(3, 7, 14, 0.55);
+}
+.qp-panel {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(640px, 100%);
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 12px 18px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  animation: qp-down 0.18s ease-out;
+}
+@keyframes qp-down {
+  from {
+    transform: translate(-50%, -100%);
+  }
+}
+.qp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qp-icon {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.qp-icon.off {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+span.qp-icon {
+  border-color: transparent;
+  background: transparent;
+}
+.qp-range {
+  flex: 1;
+  height: 40px;
+}
+.qp-value {
+  width: 52px;
+  text-align: right;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.qp-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.qp-seg .seg,
+.qp-buttons .seg {
+  min-height: 46px;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+.qp-buttons {
+  margin-top: 4px;
+}
+.qp-close {
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 20px;
+  width: 120px;
+  height: 28px;
+  cursor: pointer;
+}

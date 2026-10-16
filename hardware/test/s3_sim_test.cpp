@@ -65,6 +65,13 @@ int main() {
   assert(!test.active);
   loop();
 
+  // Brillo desde el panel rápido de la app: se aplica, se guarda y no pasa de 0–100.
+  assert(sent(",brillo"));
+  usb("BRILLO 40");
+  assert(userBrightness == 40 && sim::nvs.count("bri") && backlightLevel() == 108);
+  usb("BRILLO 250");
+  assert(userBrightness == 100);
+
   // Configuración: POR GOLES, a 2 goles (desde 5). Sin partes: el primero que llega gana.
   for (int i = 0; i < 3; i++) tap(76, 306);
   assert(cfg.goalsPerPeriod == 2 && shows("GOLES PARA GANAR"));

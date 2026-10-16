@@ -102,6 +102,7 @@ export const CAP_LABEL: Record<string, string> = {
   radio: 'Mando por radio',
   salidas: 'Salidas aisladas',
   uart: 'Puerto UART',
+  brillo: 'Brillo de pantalla',
 };
 
 // Nombres que usaban las placas antes de presentarse con su modelo.

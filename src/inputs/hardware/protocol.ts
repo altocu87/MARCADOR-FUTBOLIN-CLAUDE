@@ -20,6 +20,7 @@
  *   GOAL <BLANCO|AZUL>           gol ACEPTADO por el motor (para LED/zumbador)
  *   LOCK <ms>                    bloqueo de 3 s activo
  *   WIN <BLANCO|AZUL>
+ *   BRILLO <0–100>               brillo de la pantalla (solo a placas que anuncian «brillo» en caps)
  *   PONG
  *
  * La placa solo envía pulsaciones: TODAS las reglas (bloqueo de 3 s, turnos de

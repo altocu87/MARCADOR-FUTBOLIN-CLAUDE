@@ -1262,7 +1262,7 @@ textarea.a-input {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  width: 190px;
+  min-width: 190px;
 }
 .rg-input {
   width: 110px;
@@ -1311,5 +1311,6 @@ textarea.a-input {
 }
 .rg-options {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 6px;
 }

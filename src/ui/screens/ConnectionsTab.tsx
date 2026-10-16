@@ -7,7 +7,6 @@ import { linkSupport, type LinkKind, type LinkStatus } from '../../inputs/hardwa
 import { useHardware } from '../../inputs/hardware/useHardware';
 import { sendExternalInput } from '../../inputs/inputBus';
 import { WEB_URL } from '../../services/profiles';
-import { Toggle } from '../components/common';
 
 const STATUS_LABEL: Record<LinkStatus, string> = {
   disconnected: 'Desconectado',
@@ -101,13 +100,7 @@ export function ConnectionsTab() {
       <div className="conn-grid">{(['serial', 'websocket', 'bluetooth'] as LinkKind[]).map(card)}</div>
       <div className="conn-bottom">
         <div className="card" style={{ flex: 1 }}>
-          <Toggle
-            checked={prefs.hardware.autoConnect}
-            onChange={(v) => void savePrefs({ ...prefs, hardware: { ...prefs.hardware, autoConnect: v, wsUrl: url } })}
-            label="Reconectar al abrir"
-            help="Wi-Fi y puertos USB ya autorizados (Bluetooth siempre pide un toque)."
-          />
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-sm" onClick={() => openWeb('#/monta')}>
               Guía para montar tu placa ↗
             </button>
