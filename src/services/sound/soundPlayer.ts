@@ -32,10 +32,10 @@ export const DEFAULT_SOUNDS: Record<SoundEventId, SoundName | 'anthem'> = {
 
 /** La placa: toca un sonido guardado en ella. Devuelve false si no puede (no conectada, no lo tiene…). */
 export interface BoardSoundTarget {
-  play(sound: StoredSound): boolean;
+  play(sound: StoredSound, queue: boolean): boolean;
 }
 
-/** Sin placa con altavoz todavía (fase 3): nunca puede, así que suena el de siempre. */
+/** Sin placa con altavoz: nunca puede, así que suena el de siempre. */
 export const NO_BOARD: BoardSoundTarget = { play: () => false };
 
 export type SoundPlan =
@@ -93,7 +93,7 @@ export class SoundPlayer {
     if (p.kind === 'none') return;
     if (!opts.queue) sound.stopClip();
     if (p.kind === 'device') return this.playLocal(p.sound.id, opts);
-    if (p.kind === 'board' && this.board.play(p.sound)) return;
+    if (p.kind === 'board' && this.board.play(p.sound, !!opts.queue)) return;
     this.playDefault(id, opts);
   }
 

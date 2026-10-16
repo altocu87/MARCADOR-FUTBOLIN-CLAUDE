@@ -113,6 +113,9 @@ class Engine {
 
   uint8_t kickCount() const { return kickCount_; }
   const Kick& kick(uint8_t i) const { return kicks_[i]; }
+  // Goles apuntados en orden (también los anulados, marcados con `annulled`), para los avisos y sonidos.
+  uint8_t goalCount() const { return goalCount_; }
+  const Goal& goalAt(uint8_t i) const { return goals_[i]; }
 
   // 0 si el tiempo no termina el periodo (POR GOLES).
   uint32_t periodLimitMs() const {

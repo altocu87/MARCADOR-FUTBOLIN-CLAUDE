@@ -434,6 +434,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 - Marcador completo en la propia pantalla táctil, sin móvil.
 - Pulsadores: con el mando inalámbrico. Sensores: entradas aisladas DI0/DI1 (más su común).
 - Las salidas DO0/DO1 se activan 1 s con cada gol (luz o relé).
+- Sonidos propios: dos altavoces de 8 Ω y 2 W a sus conectores de altavoz (PH 1,25 de 2 pines), sin amplificador aparte. Los sonidos van a la memoria del chip o a una tarjeta micro SD.
 
 | Qué | Pin de la placa | El otro cable |
 |---|---|---|
@@ -447,7 +448,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 1. Instala el IDE de Arduino (arduino.cc/en/software) en tu PC.
 2. Prepara el IDE: esp32 de Espressif + biblioteca LovyanGFX.
 3. Abre el programa hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino de este proyecto (la carpeta entera, con sus archivos .h).
-4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · «Huge APP» · «USB CDC On Boot: Enabled»». Herramientas → Puerto: el de tu placa.
+4. Herramientas → Placa: «ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · Partition Scheme «16M Flash (3MB APP/9.9MB FATFS)» · «USB CDC On Boot: Enabled»». Herramientas → Puerto: el de tu placa.
 5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
 6. La pantalla arranca directamente en el marcador. Toca JUGAR.
 

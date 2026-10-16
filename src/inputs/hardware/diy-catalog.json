@@ -451,7 +451,7 @@
         "radio"
       ],
       "sketch": "esp32s3_pantalla7",
-      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · «Huge APP» · «USB CDC On Boot: Enabled»",
+      "ideBoard": "ESP32S3 Dev Module · PSRAM «OPI PSRAM» · Flash 16 MB · Partition Scheme «16M Flash (3MB APP/9.9MB FATFS)» · «USB CDC On Boot: Enabled»",
       "core": "esp32 de Espressif + biblioteca LovyanGFX",
       "price": "≈ 50–70 €",
       "status": "simulada",
@@ -464,10 +464,11 @@
       "notes": [
         "Marcador completo en la propia pantalla táctil, sin móvil.",
         "Pulsadores: con el mando inalámbrico. Sensores: entradas aisladas DI0/DI1 (más su común).",
-        "Las salidas DO0/DO1 se activan 1 s con cada gol (luz o relé)."
+        "Las salidas DO0/DO1 se activan 1 s con cada gol (luz o relé).",
+        "Sonidos propios: dos altavoces de 8 Ω y 2 W a sus conectores de altavoz (PH 1,25 de 2 pines), sin amplificador aparte. Los sonidos van a la memoria del chip o a una tarjeta micro SD."
       ],
       "build": {
-        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=16M,PartitionScheme=huge_app,CDCOnBoot=cdc",
+        "fqbn": "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,CDCOnBoot=cdc",
         "chipFamily": "ESP32-S3",
         "defines": "-DMFV3_BOARD=4"
       }

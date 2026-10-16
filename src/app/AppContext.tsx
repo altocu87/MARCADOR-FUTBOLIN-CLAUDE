@@ -19,6 +19,11 @@ import {
 } from '../services/persistence';
 import { browserSoundRepository, memorySoundRepository, type SoundRepository } from '../services/sound/library';
 import { soundPlayer } from '../services/sound/soundPlayer';
+import { hardwareHub } from '../inputs/hardware/hub';
+import { momentLines } from '../inputs/hardware/boardSounds';
+
+// Los sonidos guardados en la placa se le piden a ella (si no puede, suena el de siempre en la app).
+soundPlayer.board = { play: (s, queue) => hardwareHub.playBoardSound(s.id, queue) };
 import { generateDemoData } from '../services/demo';
 import { mergePlayers } from '../services/players';
 import {
@@ -277,6 +282,11 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   // Los sonidos propios se dejan cargados en memoria: al marcar no se lee nada.
   useEffect(() => soundPlayer.setLibrary(sounds), [sounds]);
   useEffect(() => soundPlayer.setChoices(ep.soundEvents), [ep.soundEvents]);
+  // La placa con altavoz juega también sola: se le dice qué suena en cada momento y a qué volumen.
+  useEffect(
+    () => hardwareHub.setSoundSetup([...momentLines(ep.soundEvents, sounds), `VOLUMEN ${ep.muted ? 0 : Math.round(ep.volume * 100)}`]),
+    [ep.soundEvents, sounds, ep.volume, ep.muted],
+  );
 
   const savePlayer = useCallback(
     async (player: Player) => {

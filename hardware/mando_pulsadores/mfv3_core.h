@@ -136,20 +136,23 @@ class PressClassifier {
 };
 
 // Junta caracteres en líneas terminadas en '\n' (ignora '\r'). Tamaño fijo, sin memoria dinámica.
-class LineBuffer {
+// N = longitud máxima de una línea (64 en las placas pequeñas; la pantalla de 7" usa más para los sonidos).
+template <uint16_t N>
+class LineBufferN {
  public:
   // Devuelve true cuando hay una línea completa disponible en line().
   bool push(char c) {
     if (c == '\r') return false;
     if (c == '\n') {
+      bool has = len_ > 0 && !overflow_;
       buf_[len_] = '\0';
-      bool has = len_ > 0;
       ready_ = has;
       len_ = 0;
+      overflow_ = false;
       return has;
     }
-    if (len_ < sizeof(buf_) - 1) buf_[len_++] = c;
-    else len_ = 0;  // línea demasiado larga: se descarta
+    if (len_ < N - 1) buf_[len_++] = c;
+    else overflow_ = true;  // línea demasiado larga: se descarta entera
     ready_ = false;
     return false;
   }
@@ -157,10 +160,13 @@ class LineBuffer {
   const char* line() const { return buf_; }
 
  private:
-  char buf_[64] = {0};
-  uint8_t len_ = 0;
+  char buf_[N] = {0};
+  uint16_t len_ = 0;
   bool ready_ = false;
+  bool overflow_ = false;
 };
+
+typedef LineBufferN<64> LineBuffer;
 
 enum class AppCmd : uint8_t { None, Hello, State, Score, Goal, Lock, Win, Pong };
 enum class TeamId : uint8_t { None, White, Blue };

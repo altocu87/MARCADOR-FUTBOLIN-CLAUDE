@@ -11,7 +11,8 @@
 //   BOARD_CUSTOM       Otra placa: edita los valores marcados con «RELLENAR»
 //
 // Biblioteca: LovyanGFX (Gestor de bibliotecas). Placa: «ESP32S3 Dev Module» con PSRAM «OPI PSRAM»,
-// Flash 16 MB y particiones «Huge APP» (o las que indique el fabricante).
+// Flash 16 MB y particiones «16M Flash (3MB APP/9.9MB FATFS)» en la 7C (la memoria FAT guarda los sonidos;
+// en las demás, «Huge APP» o las que indique el fabricante).
 
 #ifndef MFV3_BOARD_CONFIG_H
 #define MFV3_BOARD_CONFIG_H
