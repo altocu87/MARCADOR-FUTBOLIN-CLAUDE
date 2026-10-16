@@ -2294,10 +2294,6 @@
   font-weight: 900;
   color: var(--ranked);
 }
-.duel-faces {
-  display: flex;
-  justify-content: space-around;
-}
 .duel-table {
   display: flex;
   flex-direction: column;
@@ -3648,13 +3644,18 @@
 /* ---------- Conexiones ---------- */
 .conn-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .conn-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+/* Cabecera de cada tarjeta: el nombre y el estado caben aunque la tarjeta sea estrecha. */
+.conn-card > div:first-child {
+  flex-wrap: wrap;
 }
 .conn-card.on {
   border-color: var(--ok);
@@ -3690,187 +3691,6 @@
 }
 .brand-logo {
   filter: drop-shadow(0 0 8px rgba(98, 214, 255, 0.5));
-}
-
-/* ---------- Ajustes → Hazlo tú mismo ---------- */
-.diy {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
-  min-height: 0;
-}
-.diy-levels,
-.diy-detect,
-.diy-safety,
-.diy-board-list,
-.diy-board-detail {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-.diy-sections {
-  flex: none;
-}
-.diy-levels {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  align-items: start;
-  gap: 8px;
-}
-.diy-level {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.diy-level-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.diy-level-n {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-}
-.diy-level-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-}
-.diy-list {
-  margin: 0;
-  padding-left: 16px;
-  font-size: 13px;
-  color: var(--text-2);
-}
-.diy-list.pros li::marker {
-  content: '✓  ';
-  color: var(--ok);
-}
-.diy-list.cons li::marker {
-  content: '✗  ';
-  color: var(--danger);
-}
-.diy-diff {
-  display: inline-flex;
-  gap: 3px;
-}
-.diy-diff i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid var(--text-3);
-}
-.diy-diff i.on {
-  background: var(--ranked);
-  border-color: var(--ranked);
-}
-.diy-boards {
-  display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 10px;
-  min-height: 0;
-  flex: 1;
-}
-.diy-board-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.diy-board-item {
-  text-align: left;
-  min-height: 40px;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  width: 100%;
-  margin-bottom: 4px;
-}
-.diy-board-item.on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: var(--glow);
-}
-.diy-board-detail {
-  padding-right: 4px;
-}
-.diy-pins {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.diy-pins th {
-  text-align: left;
-  color: var(--text-3);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 4px 6px;
-}
-.diy-pins td {
-  padding: 5px 6px;
-  border-top: 1px solid var(--line);
-  vertical-align: top;
-}
-.diy-pins .dim {
-  font-size: 13px;
-}
-.diy-pin {
-  font-family: Consolas, monospace;
-  font-weight: 800;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.diy-steps {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.diy-detect,
-.diy-safety {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.diy-detect-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.diy-detect-card.off {
-  opacity: 0.6;
-}
-.diy-two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-@media (max-width: 700px) {
-  .diy-levels {
-    grid-template-columns: 1fr 1fr;
-  }
-  .diy-boards,
-  .diy-two {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ---------- Configuración del partido ---------- */
@@ -6980,21 +6800,4 @@ div > .name-clash:first-child {
   height: 32px;
   font-size: 16px;
 }
-/* Ajustes → Progresión: las reglas en uso, solo para mirar. */
-.rules-view {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 8px;
-  align-items: start;
-}
-.rules-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 14px;
-}
-.rules-row b {
-  white-space: nowrap;
-}
+

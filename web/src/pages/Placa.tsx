@@ -9,7 +9,7 @@ import {
   webInstallable,
   type BoardInfo,
 } from '../../../src/inputs/hardware/catalog';
-import { WiringDiagram } from '../../../src/ui/screens/DiyTab';
+import { WiringDiagram } from '../../../src/ui/components/WiringDiagram';
 import { APP_URL, href } from '../router';
 
 declare module 'react' {

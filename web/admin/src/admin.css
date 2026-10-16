@@ -1309,3 +1309,7 @@ textarea.a-input {
   padding: 3px 0;
   color: var(--text-2);
 }
+.rg-options {
+  display: inline-flex;
+  gap: 6px;
+}

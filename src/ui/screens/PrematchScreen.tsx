@@ -91,7 +91,7 @@ export function PrematchScreen({
             </span>
           </div>
           {!prediction ? (
-            <div className="notice warn">Clasificación pendiente: la progresión está desactivada en Ajustes.</div>
+            <div className="notice warn">Clasificación pendiente.</div>
           ) : !prediction.available ? (
             <div className="notice">{prediction.reason ?? 'Datos insuficientes.'} Puedes jugar igualmente.</div>
           ) : null}

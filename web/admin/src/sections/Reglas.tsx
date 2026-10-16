@@ -21,7 +21,15 @@ import { useAdmin } from '../store';
 import { Badge, ConfirmButton, Header } from '../ui';
 
 const num = (v: number) => String(v).replace('.', ',');
-const show = (v: number | boolean, f: RuleField) => (typeof v === 'boolean' ? (v ? 'Encendido' : 'Apagado') : `${num(v)}${f.unit ? ` ${f.unit}` : ''}`);
+type Value = GameRules[keyof GameRules];
+const show = (v: Value, f: RuleField) =>
+  typeof v === 'boolean'
+    ? v
+      ? 'Encendido'
+      : 'Apagado'
+    : typeof v === 'string'
+      ? (f.options?.find((o) => o.value === v)?.label ?? v)
+      : `${num(v)}${f.unit ? ` ${f.unit}` : ''}`;
 const fecha = (ms: number) => new Date(ms).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export function Reglas() {
@@ -53,7 +61,7 @@ export function Reglas() {
   const problems = useMemo(() => rulesProblems(r), [r]);
   const offDefault = useMemo(() => rulesDiff(DEFAULT_RULES, r).length, [r]);
 
-  const set = (key: keyof GameRules, value: number | boolean) => setR((cur) => ({ ...cur, [key]: value }));
+  const set = (key: keyof GameRules, value: Value) => setR((cur) => ({ ...cur, [key]: value }));
 
   const publish = async () => {
     const next: StoredRules = { rules: sanitizeRules(r), updatedAt: Date.now(), updatedBy: session.email };
@@ -153,7 +161,22 @@ export function Reglas() {
                       {f.label}
                     </label>
                     <span className="rg-control">
-                      {typeof rec === 'boolean' ? (
+                      {f.options ? (
+                        <span className="rg-options" role="group" aria-label={f.label}>
+                          {f.options.map((o) => (
+                            <button
+                              key={o.value}
+                              id={o.value === f.options![0].value ? `rg-${f.key}` : undefined}
+                              className={`a-btn sm${v === o.value ? ' primary' : ' ghost'}`}
+                              aria-pressed={v === o.value}
+                              disabled={!editable}
+                              onClick={() => set(f.key, o.value as Value)}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </span>
+                      ) : typeof rec === 'boolean' ? (
                         <label className="a-check">
                           <input id={`rg-${f.key}`} type="checkbox" checked={v as boolean} disabled={!editable} onChange={(e) => set(f.key, e.target.checked)} />
                           {v ? 'Encendido' : 'Apagado'}

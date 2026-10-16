@@ -35,7 +35,7 @@ No aparece en el menú de la web y pide a los buscadores que no lo indexen.
 | **Licencias Pro** | Generar códigos (se descargan en CSV), comprobar un código (detecta errores de tecleo), asignar a un cliente, revocar, reactivar, reiniciar activaciones |
 | **Tienda y cupones** | Productos (precio, a la venta u oculto, stock de kits) y cupones (porcentaje o importe, usos máximos, caducidad) |
 | **Catálogo** | Copas, escudos, avatares, marcos, fondos, podios, títulos, colores y sonidos, en colecciones con rareza, cómo se consiguen (gratis, entrando en la app, jugando o ganando un partido —rápido, loco, clasificatorio, de liga, copa o pool—, ganando una liga, copa o pool, nivel, rango, logro, torneos, partidos, evento, monedas, dinero, código o regalo; la colección entera o pieza a pieza), cuándo (siempre, entre fechas o cada año: Navidad, Halloween…) y, en copas, escudos y banners, para qué torneos (todos o solo liga, copa o pool). Se suben varios archivos a la vez y se ajustan solos al formato. Solo administradores |
-| **Reglas del juego** | ELO (inicial, puntos en juego, partidos de colocación, premiar goleadas), ELO mínimo de cada rango, experiencia por partido, logros y retos, y la curva de niveles. Cada dato con qué significa, el valor recomendado y por qué, y debajo de cada grupo un ejemplo de cómo queda. Al publicar, todas las mesas lo descargan y recalculan la progresión desde el historial. Solo administradores |
+| **Reglas del juego** | ELO (inicial, puntos en juego, partidos de colocación, premiar goleadas), ELO mínimo de cada rango, duración de la temporada y retos sí/no, experiencia por partido, logros y retos, y la curva de niveles. Cada dato con qué significa, el valor recomendado y por qué, y debajo de cada grupo un ejemplo de cómo queda. Al publicar, todas las mesas lo descargan y recalculan la progresión desde el historial. Solo administradores |
 | **Avisos** | Mensajes para los usuarios de la app (novedades, mantenimiento) con fechas y vista previa |
 | **Actividad** | Registro de todo lo que se cambia en el panel: quién, cuándo y qué. No se puede editar. Exportar CSV |
 | **Ajustes** | Nombre y correo de soporte, precios, IVA incluido, modo mantenimiento, plataforma de pagos, equipo, conexión con la base de datos, exportar todo |
@@ -138,4 +138,4 @@ modificara la página, sin el rol adecuado la base de datos no le devuelve nada.
   fichero que tiene los textos de cada dato).
 - Como todo se recalcula desde el historial, cambiar una regla cambia también los partidos ya jugados, y volver a
   publicar los valores de antes lo deja todo como estaba.
-- En la app, Ajustes → Progresión solo enseña las reglas en uso y de cuándo son; allí solo se puede apagar la progresión.
+- En la app ya no hay nada de esto en Ajustes: la progresión está siempre activa y en Ajustes → Datos solo se ve de cuándo son las reglas en uso.

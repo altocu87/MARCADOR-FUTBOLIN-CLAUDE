@@ -178,10 +178,6 @@
   color: var(--text-2);
   white-space: nowrap;
 }
-.badge-accent {
-  border-color: var(--accent);
-  color: var(--accent);
-}
 .badge-ranked {
   border-color: var(--ranked);
   color: var(--ranked);
@@ -195,10 +191,6 @@
 .badge-ok {
   border-color: var(--ok);
   color: var(--ok);
-}
-.badge-pending {
-  border-style: dashed;
-  color: var(--text-2);
 }
 
 .dot {
@@ -508,11 +500,6 @@ button.row:active {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-}
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
 }
 .grid-4 {
   display: grid;

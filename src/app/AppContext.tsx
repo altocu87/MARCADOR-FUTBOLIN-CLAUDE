@@ -197,7 +197,16 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   const rules = published?.rules ?? DEFAULT_RULES;
   // Se aplican antes de calcular nada: tablas de XP, rangos y niveles. Lo del ELO va en los ajustes de progresión.
   useMemo(() => applyGameRules(rules), [rules]);
-  const effectivePrefs = useMemo<Preferences>(() => ({ ...prefs, progression: { ...prefs.progression, ...eloSettings(rules) } }), [prefs, rules]);
+  // Lo que deciden las reglas del panel manda sobre lo guardado aquí: ELO, temporadas y retos. La progresión, siempre activa.
+  const effectivePrefs = useMemo<Preferences>(
+    () => ({
+      ...prefs,
+      progression: { ...prefs.progression, ...eloSettings(rules), enabled: true },
+      seasonLength: rules.seasonLength,
+      challenges: rules.challenges,
+    }),
+    [prefs, rules],
+  );
 
   // Apunta el día de hoy (una vez por día) entre los días en que se ha abierto la app.
   const [visitDays] = useState<string[]>(() => {
@@ -324,10 +333,10 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
             players.map((p) => p.id),
             matches,
             effectivePrefs.progression,
-            { tournaments, challenges: prefs.challenges },
+            { tournaments, challenges: effectivePrefs.challenges },
           )
         : null,
-    [players, matches, tournaments, effectivePrefs.progression, prefs.challenges],
+    [players, matches, tournaments, effectivePrefs.progression, effectivePrefs.challenges],
   );
 
   const rewards = useMemo(

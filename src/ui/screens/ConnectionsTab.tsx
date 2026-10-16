@@ -1,4 +1,4 @@
-/** Ajustes → Conexiones: placas Arduino / ESP32 por USB, Wi-Fi o Bluetooth. */
+/** Ajustes → Mesa: placas Arduino / ESP32 por USB, Wi-Fi o Bluetooth. Las herramientas de prueba, plegadas. */
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { CAP_LABEL, findBoard } from '../../inputs/hardware/catalog';
@@ -6,6 +6,7 @@ import { defaultWsUrl } from '../../inputs/hardware/hub';
 import { linkSupport, type LinkKind, type LinkStatus } from '../../inputs/hardware/links';
 import { useHardware } from '../../inputs/hardware/useHardware';
 import { sendExternalInput } from '../../inputs/inputBus';
+import { WEB_URL } from '../../services/profiles';
 import { Toggle } from '../components/common';
 
 const STATUS_LABEL: Record<LinkStatus, string> = {
@@ -36,10 +37,14 @@ const INFO: Record<LinkKind, { title: string; icon: string; text: string; needs:
   },
 };
 
-export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: string) => void }) {
+/** Abre una página de la web (la guía para montar la placa, o el esquema de una placa). */
+const openWeb = (path: string) => window.open(`${WEB_URL}${path}`, '_blank', 'noopener,noreferrer');
+
+export function ConnectionsTab() {
   const hub = useHardware();
   const { prefs, savePrefs } = useApp();
   const [url, setUrl] = useState(prefs.hardware.wsUrl || defaultWsUrl());
+  const [tech, setTech] = useState(false);
 
   const card = (kind: LinkKind) => {
     const st = hub.state(kind);
@@ -69,8 +74,8 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
             ))}
           </div>
         )}
-        {on && st.boardId && findBoard(st.boardId) && onShowGuide && (
-          <button className="btn btn-sm" onClick={() => onShowGuide(st.boardId)}>Ver esquema de conexión</button>
+        {on && st.boardId && findBoard(st.boardId) && (
+          <button className="btn btn-sm" onClick={() => openWeb(`#/placa/${st.boardId}`)}>Ver esquema de conexión ↗</button>
         )}
         {!supported ? (
           <div className="notice warn" style={{ fontSize: 13 }}>No disponible aquí. {INFO[kind].needs}</div>
@@ -102,38 +107,42 @@ export function ConnectionsTab({ onShowGuide }: { onShowGuide?: (boardId?: strin
             label="Reconectar al abrir"
             help="Wi-Fi y puertos USB ya autorizados (Bluetooth siempre pide un toque)."
           />
-          <div className="label" style={{ marginTop: 8 }}>Probar sin placa</div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-            <button className="btn btn-sm" onClick={() => sendExternalInput('GOL_BLANCO', 'button')}>GOL_BLANCO</button>
-            <button className="btn btn-sm" onClick={() => sendExternalInput('GOL_AZUL', 'sensor')}>GOL_AZUL</button>
-            <button className="btn btn-sm" onClick={() => sendExternalInput('ANULAR_BLANCO', 'button')}>ANULAR_BLANCO</button>
-            <button className="btn btn-sm" onClick={() => sendExternalInput('PAUSA', 'button')}>PAUSA</button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <button className="btn btn-sm" onClick={() => openWeb('#/monta')}>
+              Guía para montar tu placa ↗
+            </button>
+            <button className="btn btn-sm" aria-expanded={tech} onClick={() => setTech((x) => !x)}>
+              {tech ? '▾' : '▸'} Detalles técnicos
+            </button>
           </div>
-          <div className="dim" style={{ fontSize: 13, marginTop: 6 }}>
-            ¿Quieres montar tu propia placa con pulsadores o sensores?{' '}
-            {onShowGuide ? (
-              <button className="btn btn-sm" style={{ marginTop: 4 }} onClick={() => onShowGuide()}>
-                Guía «Hazlo tú mismo»
-              </button>
-            ) : (
-              'Mira Ajustes → Hazlo tú mismo.'
-            )}
-          </div>
+          {tech && (
+            <>
+              <div className="label" style={{ marginTop: 10 }}>Probar sin placa</div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                <button className="btn btn-sm" onClick={() => sendExternalInput('GOL_BLANCO', 'button')}>GOL_BLANCO</button>
+                <button className="btn btn-sm" onClick={() => sendExternalInput('GOL_AZUL', 'sensor')}>GOL_AZUL</button>
+                <button className="btn btn-sm" onClick={() => sendExternalInput('ANULAR_BLANCO', 'button')}>ANULAR_BLANCO</button>
+                <button className="btn btn-sm" onClick={() => sendExternalInput('PAUSA', 'button')}>PAUSA</button>
+              </div>
+            </>
+          )}
         </div>
-        <div className="card conn-log">
-          <div className="label">Registro</div>
-          <div className="scroll" style={{ flex: 1, minHeight: 0, fontFamily: 'Consolas, monospace', fontSize: 13 }}>
-            {hub.log.length === 0 ? (
-              <span className="dim">Sin mensajes.</span>
-            ) : (
-              [...hub.log].reverse().map((l, i) => (
-                <div key={i} className={`log-${l.dir}`}>
-                  {l.dir === 'in' ? '←' : l.dir === 'out' ? '→' : '·'} {l.text}
-                </div>
-              ))
-            )}
+        {tech && (
+          <div className="card conn-log">
+            <div className="label">Registro</div>
+            <div className="scroll" style={{ flex: 1, minHeight: 0, fontFamily: 'Consolas, monospace', fontSize: 13 }}>
+              {hub.log.length === 0 ? (
+                <span className="dim">Sin mensajes.</span>
+              ) : (
+                [...hub.log].reverse().map((l, i) => (
+                  <div key={i} className={`log-${l.dir}`}>
+                    {l.dir === 'in' ? '←' : l.dir === 'out' ? '→' : '·'} {l.text}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

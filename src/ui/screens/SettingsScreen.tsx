@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import type { SettingsTab } from '../../app/routes';
-import { CONFIG_LIMITS, ENGINE_VERSION, RULES_VERSION, type EndCondition } from '../../match-engine';
-import { RULE_GROUPS } from '../../services/progression';
+import { CONFIG_LIMITS, type EndCondition } from '../../match-engine';
 import {
-  STORAGE_FORMAT_VERSION,
   applyImport,
   buildBackup,
   parseBackup,
@@ -20,8 +18,7 @@ import { sortPlayers } from '../../services/players';
 import { GOAL_SOUNDS, sound } from '../../services/sound/sound';
 import { voice } from '../../services/sound/voice';
 import { fullscreenAvailable, toggleFullscreen, wakeLock } from '../../services/system/device';
-import { STATS_DEFINITIONS_VERSION } from '../../services/statistics';
-import { Avatar, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
+import { Avatar, HelpButton, Modal, ScreenFrame, Stepper, Tabs, Toggle } from '../components/common';
 import { downloadJson } from '../components/download';
 import { PlayerOptions } from '../components/PlayerQr';
 import { PlayerEditor } from '../components/PlayerEditor';
@@ -30,14 +27,12 @@ import { Crest } from '../components/Crest';
 import { saveClub, type Club } from '../../services/clubs';
 import { ConnectionsTab } from './ConnectionsTab';
 import { WEB_URL } from '../../services/profiles';
-import { DiyTab } from './DiyTab';
 
 export const APP_VERSION = '0.3.0';
 
 export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
   const { navigate } = useApp();
-  const [tab, setTab] = useState<SettingsTab>(initialTab ?? 'general');
-  const [diyBoard, setDiyBoard] = useState<string | undefined>();
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? 'match');
   return (
     <ScreenFrame title="Ajustes" onBack={() => navigate({ name: 'home' })}>
       <Tabs
@@ -45,32 +40,19 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: 'general', label: 'General' },
+          { id: 'match', label: 'Partido' },
           { id: 'players', label: 'Jugadores' },
-          { id: 'audio', label: 'Audio/Efectos' },
-          { id: 'progression', label: 'Progresión' },
-          { id: 'connections', label: 'Conexiones' },
-          { id: 'diy', label: 'Hazlo tú mismo' },
-          { id: 'system', label: 'Sistema' },
-          { id: 'info', label: 'Información' },
+          { id: 'sound', label: 'Sonido y pantalla' },
+          { id: 'table', label: 'Mesa' },
+          { id: 'data', label: 'Datos' },
         ]}
       />
       <div className="scroll settings-body">
-        {tab === 'general' && <General />}
+        {tab === 'match' && <MatchTab />}
         {tab === 'players' && <Players />}
-        {tab === 'audio' && <Audio />}
-        {tab === 'progression' && <Progression />}
-        {tab === 'connections' && (
-          <ConnectionsTab
-            onShowGuide={(boardId) => {
-              setDiyBoard(boardId);
-              setTab('diy');
-            }}
-          />
-        )}
-        {tab === 'diy' && <DiyTab key={diyBoard ?? 'diy'} initialBoard={diyBoard} />}
-        {tab === 'system' && <SystemTab />}
-        {tab === 'info' && <Info />}
+        {tab === 'sound' && <SoundTab />}
+        {tab === 'table' && <ConnectionsTab />}
+        {tab === 'data' && <DataTab />}
       </div>
     </ScreenFrame>
   );
@@ -128,11 +110,11 @@ function TestModeCard() {
   );
 }
 
-function General() {
+/** Cómo empieza un partido nuevo. */
+function MatchTab() {
   const { prefs, update } = usePrefs();
   return (
     <div className="settings-grid">
-      <TestModeCard />
       <div className="card">
         <div className="label">Condición por defecto</div>
         <div className="segmented" style={{ marginTop: 6 }}>
@@ -173,48 +155,6 @@ function General() {
             AZUL
           </button>
         </div>
-      </div>
-      <div className="card">
-        <div className="label">Temporadas y retos</div>
-        <div className="segmented" style={{ margin: '6px 0' }}>
-          <button className="seg seg-compact" aria-pressed={prefs.seasonLength === 'month'} onClick={() => update({ seasonLength: 'month' })}>
-            MENSUAL
-          </button>
-          <button className="seg seg-compact" aria-pressed={prefs.seasonLength === 'quarter'} onClick={() => update({ seasonLength: 'quarter' })}>
-            TRIMESTRAL
-          </button>
-        </div>
-        <Toggle
-          checked={prefs.challenges}
-          onChange={(v) => update({ challenges: v })}
-          label="Retos diarios y semanales"
-          help="Conceden XP extra (recalculado desde el historial)."
-        />
-      </div>
-      <div className="card">
-        <div className="label">Pantalla</div>
-        <Toggle
-          checked={prefs.keepAwake}
-          onChange={(v) => update({ keepAwake: v })}
-          label="Mantener pantalla encendida"
-          help={wakeLock.available ? 'Evita que el móvil o la tablet se apague con la app abierta.' : 'Este navegador no lo permite.'}
-        />
-        {fullscreenAvailable() && (
-          <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => void toggleFullscreen()}>
-            ⛶ Pantalla completa
-          </button>
-        )}
-      </div>
-      <div className="card">
-        <div className="label">Reposo tras inactividad</div>
-        <Stepper
-          label="minutos de reposo"
-          value={prefs.sleepMinutes}
-          min={0}
-          max={60}
-          unit={prefs.sleepMinutes === 0 ? 'desactivado' : 'min'}
-          onChange={(v) => update({ sleepMinutes: v })}
-        />
       </div>
     </div>
   );
@@ -373,7 +313,8 @@ function PlayerList() {
   );
 }
 
-function Audio() {
+/** Sonido, locutor, efectos y lo de la pantalla (encendida, completa y reposo). */
+function SoundTab() {
   const { prefs, update } = usePrefs();
   const levels: { id: EffectsLevel; label: string }[] = [
     { id: 'full', label: 'COMPLETOS' },
@@ -425,7 +366,14 @@ function Audio() {
         <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => voice.test('¡Gol del equipo blanco! Dos a uno.')}>
           Probar locutor
         </button>
-        <div className="label" style={{ marginTop: 10 }}>Efectos visuales de gol</div>
+        <div className="label cr-field-label" style={{ marginTop: 10 }}>
+          Efectos visuales de gol
+          <HelpButton
+            title="Efectos visuales de gol"
+            text="Completos: destello, explosión, ondas y partículas. Reducidos: lo mismo sin destellos. Desactivados: solo el marcador."
+            className="head-help"
+          />
+        </div>
         <div className="segmented" style={{ marginTop: 6 }}>
           {levels.map((l) => (
             <button key={l.id} className="seg" aria-pressed={prefs.effects === l.id} onClick={() => update({ effects: l.id })}>
@@ -433,59 +381,36 @@ function Audio() {
             </button>
           ))}
         </div>
-        <p className="dim" style={{ fontSize: 13 }}>
-          Base: flash, explosión, ondas, partículas y líneas de velocidad. «Reducidos» evita destellos. Los sonidos se
-          sintetizan en local (sin archivos externos).
-        </p>
+      </div>
+      <div className="card">
+        <div className="label">Pantalla</div>
+        <Toggle
+          checked={prefs.keepAwake}
+          onChange={(v) => update({ keepAwake: v })}
+          label="Mantener pantalla encendida"
+          help={wakeLock.available ? 'Evita que el móvil o la tablet se apague con la app abierta.' : 'Este navegador no lo permite.'}
+        />
+        {fullscreenAvailable() && (
+          <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => void toggleFullscreen()}>
+            ⛶ Pantalla completa
+          </button>
+        )}
+      </div>
+      <div className="card">
+        <div className="label">Reposo tras inactividad</div>
+        <Stepper
+          label="minutos de reposo"
+          value={prefs.sleepMinutes}
+          min={0}
+          max={60}
+          unit={prefs.sleepMinutes === 0 ? 'desactivado' : 'min'}
+          onChange={(v) => update({ sleepMinutes: v })}
+        />
       </div>
     </div>
   );
 }
 
-/** Reglas del juego en uso (solo se miran aquí: se cambian en el panel de administración). */
-function Progression() {
-  const { prefs, update } = usePrefs();
-  const { rules, rulesUpdatedAt } = useApp();
-  const p = prefs.progression;
-  const shown = RULE_GROUPS.map((g) => ({
-    ...g,
-    fields: g.fields.map((f) => {
-      const v = rules[f.key];
-      return { label: f.label, value: typeof v === 'boolean' ? (v ? 'Sí' : 'No') : `${String(v).replace('.', ',')}${f.unit ? ` ${f.unit}` : ''}` };
-    }),
-  }));
-  return (
-    <>
-      <div className="card">
-        <Toggle
-          checked={p.enabled}
-          onChange={(v) => update({ progression: { ...p, enabled: v } })}
-          label="Activar progresión"
-          help="Apagada, no hay ELO, experiencia, niveles ni logros: la clasificación sale como «pendiente»."
-        />
-      </div>
-      <div className="notice" style={{ margin: '8px 0' }}>
-        {rulesUpdatedAt
-          ? `Reglas publicadas en el panel de administración el ${new Date(rulesUpdatedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}.`
-          : 'Reglas recomendadas (aún no se ha publicado ninguna en el panel de administración).'}{' '}
-        Se cambian allí, con la explicación de cada valor.
-      </div>
-      <div className="rules-view">
-        {shown.map((g) => (
-          <div key={g.id} className="card">
-            <div className="label">{g.title}</div>
-            {g.fields.map((f) => (
-              <div key={f.label} className="rules-row">
-                <span>{f.label}</span>
-                <b>{f.value}</b>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
 
 
 /** Panel de administración: junto a la app si se abre desde la web; si no (placa, instalada…), el de la web publicada. */
@@ -494,8 +419,9 @@ function adminUrl(): string {
   return /\/app\/(index\.html)?$/.test(pathname) ? new URL('../admin/', href).href : `${WEB_URL}admin/`;
 }
 
-function SystemTab() {
-  const { repos, refresh, persistent, players, matches, toast } = useApp();
+/** Datos de esta mesa: copia de seguridad, modo prueba, borrar todo, versión, reglas en uso y el panel. */
+function DataTab() {
+  const { repos, refresh, persistent, players, matches, toast, rulesUpdatedAt } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<{ backup: BackupFile; preview: ImportPreview } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -551,51 +477,34 @@ function SystemTab() {
   return (
     <div className="settings-grid">
       <div className="card">
-        <div className="label">Estado</div>
-        <div style={{ fontWeight: 800, margin: '4px 0' }}>{persistent ? 'SISTEMA LOCAL' : 'SIN ALMACENAMIENTO PERSISTENTE'}</div>
-        <div className="muted" style={{ fontSize: 13 }}>
-          {players.length} jugadores · {matches.length} partidos · {usage} usados
-        </div>
-        <p className="dim" style={{ fontSize: 13 }}>
-          Sin backend ni conexión online: base de datos y funciones online son la última fase. Una copia dentro del
-          navegador no es un backup externo: exporta un archivo de vez en cuando.
-        </p>
-      </div>
-      <div className="card">
         <div className="label">Copia de seguridad</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-primary btn-sm" onClick={doExport}>Exportar archivo</button>
           <button className="btn btn-sm" onClick={() => fileRef.current?.click()}>Importar archivo</button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
-        <p className="dim" style={{ fontSize: 13 }}>Incluye jugadores, preferencias e historial (formato v{STORAGE_FORMAT_VERSION}). La progresión se recalcula.</p>
+        <p className="muted" style={{ fontSize: 13 }}>
+          {players.length} jugadores · {matches.length} partidos · {usage} usados{persistent ? '' : ' · ¡este navegador no guarda los datos!'}
+        </p>
         {errors.length > 0 && <div className="notice error">{errors.join(' ')}</div>}
       </div>
+      <TestModeCard />
       <div className="card">
-        <div className="label">Entradas</div>
-        <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>
-          Teclado de desarrollo: Q/A gol Blanco · P/L gol Azul · Espacio pausa · Intro salta la cuenta atrás.
-        </p>
-        <p className="dim" style={{ fontSize: 13, margin: 0 }}>
-          Simulador de pulsadores/sensores: en la consola, <code>marcador.enviar('GOL_BLANCO', 'button')</code>.
-          Todas las entradas pasan por el mismo motor y respetan el bloqueo de 3 s.
-        </p>
-      </div>
-      <div className="card">
-        <div className="label">Mantenimiento</div>
+        <div className="label">Borrar</div>
         <button className="btn btn-danger btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirmWipe(true)}>
-          Borrar todos los datos locales
+          Borrar todos los datos de esta mesa
         </button>
-        <p className="dim" style={{ fontSize: 13 }}>Firmware, OTA, Wi-Fi y reinicio remoto: pendientes del bloque de hardware/conectividad.</p>
       </div>
       <div className="card">
-        <div className="label">Administración</div>
+        <div className="label">Aplicación</div>
         <p className="muted" style={{ fontSize: 13, margin: '6px 0' }}>
-          Panel de control de la aplicación. Solo personal autorizado: pide correo, contraseña y el código de una app de
-          verificación.
+          Versión {APP_VERSION} ·{' '}
+          {rulesUpdatedAt
+            ? `reglas del juego del ${new Date(rulesUpdatedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`
+            : 'reglas del juego recomendadas'}
         </p>
         <button className="btn btn-sm" onClick={() => window.open(adminUrl(), '_blank', 'noopener,noreferrer')}>
-          🔒 Abrir panel de administración ↗
+          🔒 Panel de administración ↗
         </button>
       </div>
 
@@ -641,14 +550,3 @@ function SystemTab() {
 }
 
 
-function Info() {
-  return (
-    <>
-      <div className="grid-3" style={{ marginBottom: 8 }}>
-        <div className="stat"><div className="v" style={{ fontSize: 16 }}>{APP_VERSION}</div><div className="k">Aplicación</div></div>
-        <div className="stat"><div className="v" style={{ fontSize: 16 }}>{ENGINE_VERSION}</div><div className="k">Motor · {RULES_VERSION}</div></div>
-        <div className="stat"><div className="v" style={{ fontSize: 16 }}>{STATS_DEFINITIONS_VERSION}</div><div className="k">Definiciones</div></div>
-      </div>
-    </>
-  );
-}

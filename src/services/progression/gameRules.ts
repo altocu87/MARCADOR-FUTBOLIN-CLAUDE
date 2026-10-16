@@ -16,6 +16,9 @@ export interface GameRules {
   provisionalMatches: number;
   kEstablished: number;
   goalDiffMultiplier: boolean;
+  // Temporadas y retos
+  seasonLength: 'month' | 'quarter';
+  challenges: boolean;
   // Rangos: ELO mínimo de cada uno (Chatarra es todo lo de debajo de Madera)
   rankWood: number;
   rankBronze: number;
@@ -51,6 +54,8 @@ export const DEFAULT_RULES: GameRules = {
   provisionalMatches: 10,
   kEstablished: 20,
   goalDiffMultiplier: false,
+  seasonLength: 'month',
+  challenges: true,
   rankWood: 1225,
   rankBronze: 1275,
   rankSilver: 1350,
@@ -77,6 +82,7 @@ export const DEFAULT_RULES: GameRules = {
 
 export type RuleKey = keyof GameRules;
 type NumberKey = { [K in RuleKey]: GameRules[K] extends number ? K : never }[RuleKey];
+type Value = GameRules[RuleKey];
 
 export interface RuleField {
   key: RuleKey;
@@ -90,6 +96,8 @@ export interface RuleField {
   meaning: string;
   /** Por qué se recomienda ese valor. */
   why: string;
+  /** Si se elige entre varias opciones (en vez de un número o un sí/no). */
+  options?: { value: string; label: string }[];
 }
 
 export interface RuleGroup {
@@ -207,6 +215,30 @@ export const RULE_GROUPS: RuleGroup[] = [
         step: 5,
         meaning: 'ELO para pasar a Diamante.',
         why: 'Casi inalcanzable en un grupo pequeño: es la meta, y tiene que costar.',
+      },
+    ],
+  },
+  {
+    id: 'seasons',
+    title: 'Temporadas y retos',
+    intro:
+      'La clasificación tiene dos vistas: la de la temporada en curso (todos empiezan cada temporada en el ELO inicial) y la histórica, que no se reinicia nunca. Al acabar cada temporada, su primero queda como campeón de temporada en el Salón de la fama. Los retos son objetivos del día y de la semana que dan experiencia extra.',
+    fields: [
+      {
+        key: 'seasonLength',
+        label: 'Duración de la temporada',
+        options: [
+          { value: 'month', label: 'Un mes' },
+          { value: 'quarter', label: 'Tres meses' },
+        ],
+        meaning: 'Cada cuánto se reinicia la clasificación de temporada y se nombra un campeón de temporada.',
+        why: 'Con un mes hay campeón nuevo cada poco y el que va último sabe que pronto vuelve a empezar de cero. Tres meses solo compensan si se juega poco: si no, la temporada se hace larga y el primero se escapa.',
+      },
+      {
+        key: 'challenges',
+        label: 'Retos diarios y semanales',
+        meaning: 'Encendido, cada día hay un reto y cada semana tres (por ejemplo, «Gana 3 partidos encajando 3 goles o menos»). Al cumplirlos se gana la experiencia de «Logros y retos».',
+        why: 'Dan un motivo para jugar cada día y para probar cosas distintas (modo Loco, jugar en pareja…). Solo cuentan los partidos guardados.',
       },
     ],
   },
@@ -406,6 +438,10 @@ export function sanitizeRules(raw: unknown): GameRules {
   for (const f of RULE_FIELDS) {
     const v = src[f.key];
     const def = DEFAULT_RULES[f.key];
+    if (f.options) {
+      if (typeof v === 'string' && f.options.some((o) => o.value === v)) (out as unknown as Record<string, string>)[f.key] = v;
+      continue;
+    }
     if (typeof def === 'boolean') {
       if (typeof v === 'boolean') (out as unknown as Record<string, boolean>)[f.key] = v;
       continue;
@@ -449,7 +485,7 @@ export function rulesDiff(before: GameRules, after: GameRules): string[] {
   return RULE_FIELDS.filter((f) => before[f.key] !== after[f.key]).map((f) => `${f.label}: ${fmt(before[f.key])} → ${fmt(after[f.key])}`);
 }
 
-const fmt = (v: number | boolean) => (typeof v === 'boolean' ? (v ? 'sí' : 'no') : String(v).replace('.', ','));
+const fmt = (v: Value) => (typeof v === 'boolean' ? (v ? 'sí' : 'no') : typeof v === 'string' ? (RULE_FIELDS.flatMap((f) => f.options ?? []).find((o) => o.value === v)?.label ?? v) : String(v).replace('.', ','));
 
 /**
  * Pone estas reglas en marcha en la app: tablas de XP, rangos y curva de niveles (los ajustes de ELO van aparte,

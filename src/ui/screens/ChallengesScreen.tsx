@@ -25,7 +25,7 @@ export function ChallengesScreen() {
       onBack={() => navigate({ name: 'home' })}
       right={<HelpButton title="Retos" text="1 reto diario (+40 XP) y 3 semanales (+100 XP). Solo cuentan los partidos guardados." className="head-help" />}
     >
-      {!prefs.challenges && <div className="notice warn">Los retos están desactivados en Ajustes → General: no conceden XP.</div>}
+      {!prefs.challenges && <div className="notice warn">Los retos están desactivados en las reglas del juego: no dan experiencia.</div>}
       <div className="challenge-cards">
         {challenges.map((c) => (
           <div key={c.key} className={`challenge-card scope-${c.scope}`}>

@@ -142,7 +142,7 @@ export function ProfileScreen({ playerId }: { playerId: string }) {
               </div>
             </>
           ) : (
-            <div className="muted" style={{ fontSize: 13 }}>Progresión pendiente (desactivada en Ajustes)</div>
+            <div className="muted" style={{ fontSize: 13 }}>Progresión pendiente</div>
           )}
         </div>
         {prog && (
