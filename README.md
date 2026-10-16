@@ -18,7 +18,8 @@ npm run build:esp32    # compila y copia la app comprimida a hardware/esp32_marc
 npm run docs:diy       # regenera docs/MANUAL_DIY.md desde el catálogo de placas
 npm run build:web      # web pública + app juntas en dist-web/ (la app en dist-web/app/)
 npm run preview:web    # sirve dist-web/ → http://localhost:4180
-npm run test:hardware  # pruebas en PC del firmware (núcleo, motor C++ y simulación de Arduino/ESP32/S3 7")
+npm run test:hardware  # pruebas en PC del firmware (núcleo, motor C++, sonido y simulación de Arduino/ESP32/S3 7")
+sh hardware/test/capturas.sh  # capturas PNG de la pantalla de 7" sin la placa (docs/capturas-placa/)
 ```
 
 La interfaz es un lienzo de **800 × 480** en horizontal: se centra en pantallas grandes y se escala

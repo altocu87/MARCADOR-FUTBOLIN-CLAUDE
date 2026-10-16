@@ -143,6 +143,8 @@ Texto UTF-8, **una orden por línea** terminada en `\n`, igual por USB (115200 b
 | `GOAL BLANCO\|AZUL` | Gol **aceptado** (para LED/zumbador) |
 | `LOCK 3000` | Bloqueo de gol activo (ms) |
 | `WIN BLANCO\|AZUL` | Fin del partido |
+| `VOLUMEN <0–100>` | Volumen del altavoz de la placa (solo placas con `altavoz`; 0 = sin sonido). Se guarda |
+| `SONIDO <momento>` | Toca un momento en la placa (`gol`, `remontada`… o el id de la app: `goal`, `comeback`…), para probar |
 
 **Sonidos propios (previsto, fase 3).** Cada sonido de la mesa sabe dónde está guardado: en el aparato, en la memoria
 del chip o en la tarjeta SD de la placa. La app ya reconoce dos capacidades reservadas para cuando la placa tenga
@@ -184,9 +186,29 @@ fabricante (github.com/waveshareteam/ESP32-S3-Touch-LCD-7C). El sketch
 - **Mismas reglas que la app:** usa `mfv3_engine.h`, el motor portado a C++ y probado en PC con los criterios A01–A13.
 - **Memoria:** guarda la configuración y los 8 últimos resultados aunque se apague.
 - **Ahorro:** fuera de partido baja el brillo a los 5 min; el primer toque solo la despierta.
+- **Sonido (7C):** por el altavoz de la placa suenan los mismos momentos que en la app: empieza el partido, gol,
+  gol anulado, empate, 3 seguidos, remontada, bola de partido, gol de oro, penalti marcado/fallado, fin de la parte,
+  victoria y goleada. Sin tarjeta SD suenan los tonos de siempre de la app. El sonido va aparte: la pantalla nunca
+  espera al altavoz, y un momento nuevo corta el que suena. Volumen con la orden `VOLUMEN` (se guarda).
+- **Tarjeta SD (7C), sonidos propios:** microSD en FAT32 con una carpeta por momento dentro de `/sonidos/`:
+
+  | Carpeta | Momento | Carpeta | Momento |
+  |---|---|---|---|
+  | `gol` | Gol | `penalti-marcado` | Penalti marcado |
+  | `gol-anulado` | Gol anulado | `penalti-fallado` | Penalti fallado |
+  | `3-seguidos` | 3 seguidos | `empieza` | Empieza el partido |
+  | `remontada` | Remontada | `fin-de-parte` | Fin de la parte |
+  | `empate` | Empate | `victoria` | Victoria |
+  | `bola-de-partido` | Bola de partido | `goleada` | Goleada |
+  | `gol-de-oro` | Gol de oro | | |
+
+  Dentro, uno o varios `.wav` (hasta 8; si hay varios, uno al azar). Un archivo llamado `ninguno` deja ese momento
+  en silencio; una carpeta vacía o que no existe, el de siempre. Formato: WAV PCM de 8 o 16 bits, mono o estéreo,
+  8–48 kHz (los que prepara la app en Ajustes → Sonidos, 22 050 Hz, valen tal cual). Se leen al encender la placa.
 - **Pantalla de prueba:** el primer arranque abre «PRUEBA DE LA PLACA»: toca las 4 esquinas, pulsa los dos botones
   del mando y (opcional) pasa la bola por los sensores. Muestra también si la radio funciona y el último toque.
-  Se repite cuando quieras con el botón PRUEBA de la pantalla de inicio.
+  Se repite cuando quieras con el botón PRUEBA de la pantalla de inicio. En la 7C, cada esquina tocada suena (si se
+  oye, el altavoz va) y abajo se ve si hay tarjeta SD, su tamaño y cuántos momentos traen sonido propio.
 - **Mando inalámbrico de 2 pulsadores** (ver §7.1): toque corto = gol, toque largo = anular gol. En la pantalla
   de inicio aparece «MANDO CONECTADO» cuando lo oye.
 - **Sensores de gol (Waveshare 7C):** van directamente a las **entradas aisladas** de la placa, sin Arduino:
@@ -231,13 +253,21 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
 
 ### Limitaciones conocidas
 - Compila en GitHub (núcleo esp32 3.3 + LovyanGFX 1.2), pero no se ha probado en la placa real: la lógica
-  (motor, botones, protocolo, memoria) se prueba en PC (`npm run test:hardware`); el dibujo en pantalla no.
+  (motor, botones, protocolo, memoria, sonido) se prueba en PC (`npm run test:hardware`) y el dibujo se ve en las
+  capturas del PC (abajo), pero falta comprobarlo en una pantalla de verdad.
 - Los pines de pantalla y táctil **cambian según el fabricante**: si la pantalla sale en negro o desplazada, revisa
   el perfil en `board_config.h`.
 - Los textos de la placa van sin tildes (las fuentes integradas no las incluyen).
 - En la 7C no queda un UART libre (el audio usa GPIO43/44): los sensores van a DI0/DI1 y el PC por USB.
-- Aún no usa el altavoz/micrófono de las placas «AI Voice» (códec ES8389) ni el Bluetooth. La radio Wi-Fi se usa
-  para el mando (ESP-NOW); sincronizar con la app o anunciar los goles por voz queda para una versión futura.
+- El altavoz y la SD (códec ES8389, pines y secuencia del ejemplo del fabricante) solo se han probado en el PC: el
+  primer encendido real se comprueba con la pantalla de prueba. Aún no usa el micrófono ni el Bluetooth, y la app
+  todavía no le pasa sus sonidos (de momento se copian a la SD desde el ordenador). La radio Wi-Fi se usa para el
+  mando (ESP-NOW); sincronizar con la app queda para una versión futura.
+
+### Ver las pantallas sin la placa
+`sh hardware/test/capturas.sh` compila el sketch en el PC con la **misma LovyanGFX** que usa la placa, dibujando en
+un lienzo de 800×480, recorre las pantallas (prueba, inicio, cuenta atrás, partido, pausa, victoria) y guarda un
+PNG de cada una en `docs/capturas-placa/`. Necesita g++, zlib y git (la primera vez descarga LovyanGFX).
 
 ---
 

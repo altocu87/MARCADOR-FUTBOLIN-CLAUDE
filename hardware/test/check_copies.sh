@@ -9,16 +9,17 @@ check mfv3_engine.h esp32s3_pantalla7
 for d in esp32s3_pantalla7 mando_pulsadores; do check mfv3_radio.h "$d"; done
 g++ -std=c++11 -Wall -Wextra -Icommon test/core_test.cpp -o /tmp/mfv3_core_test && /tmp/mfv3_core_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/engine_test.cpp -o /tmp/mfv3_engine_test && /tmp/mfv3_engine_test
+g++ -std=c++11 -Wall -Wextra -Icommon -Iesp32s3_pantalla7 test/sound_test.cpp -o /tmp/mfv3_sound_test && /tmp/mfv3_sound_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/radio_test.cpp -o /tmp/mfv3_radio_test && /tmp/mfv3_radio_test
 g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO -Itest/mock -Iarduino_usb -x c++ test/arduino_sim_test.cpp -o /tmp/mfv3_ard_sim && /tmp/mfv3_ard_sim
 # ESP32 clásico, C3, S3 y S2 (este último sin Bluetooth)
 for t in CONFIG_IDF_TARGET_ESP32 CONFIG_IDF_TARGET_ESP32C3 CONFIG_IDF_TARGET_ESP32S3 CONFIG_IDF_TARGET_ESP32S2; do
-  g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_ESP32 -D$t=1 -Itest/mock_esp32 -Iesp32_marcador -x c++ test/esp32_sim_test.cpp -o /tmp/mfv3_esp_sim && /tmp/mfv3_esp_sim
+  g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_ESP32 -D$t=1 -Itest/mock_esp32 -Iesp32_marcador -x c++ test/esp32_sim_test.cpp -o /tmp/mfv3_esp_sim && /tmp/mfv3_esp_sim || exit 1
 done
 g++ -std=c++17 -Wall -Wno-unused-variable -Itest/mock_s3 -Imando_pulsadores -x c++ test/mando_sim_test.cpp -o /tmp/mfv3_mando_sim && /tmp/mfv3_mando_sim
 # Pantalla de 7": Waveshare 7C (4, por defecto), Elecrow (1) y Waveshare 7 (2)
 for b in 4 1 2; do
-  g++ -std=c++17 -Wall -Wno-unused-variable -DMFV3_BOARD=$b -Itest/mock_s3 -Iesp32s3_pantalla7 -x c++ test/s3_sim_test.cpp -o /tmp/mfv3_s3_sim && /tmp/mfv3_s3_sim
+  g++ -std=c++17 -Wall -Wno-unused-variable -DMFV3_BOARD=$b -Itest/mock_s3 -Iesp32s3_pantalla7 -x c++ test/s3_sim_test.cpp -o /tmp/mfv3_s3_sim && /tmp/mfv3_s3_sim || exit 1
 done
 
 # Igual que el IDE de Arduino: declarar todas las funciones del .ino al principio y volver a compilar

@@ -5,6 +5,24 @@
 #include <cstring>
 #define SERIAL_8N1 0x800001c
 inline uint32_t esp_random() { return 0xBEEF; }
+// String de Arduino (solo lo que usan los sketches de la pantalla).
+struct String {
+  std::string s;
+  String() {}
+  String(const char* c) : s(c ? c : "") {}
+  String(const std::string& x) : s(x) {}
+  const char* c_str() const { return s.c_str(); }
+  size_t length() const { return s.size(); }
+  void toLowerCase() { for (auto& c : s) c = (char)tolower((unsigned char)c); }
+  bool startsWith(const char* p) const { return s.rfind(p, 0) == 0; }
+  bool endsWith(const char* p) const {
+    size_t n = strlen(p);
+    return s.size() >= n && s.compare(s.size() - n, n, p) == 0;
+  }
+  bool operator==(const char* o) const { return s == o; }
+  String operator+(const String& o) const { return String(s + o.s); }
+  String operator+(const char* o) const { return String(s + o); }
+};
 namespace sim {
 inline std::deque<char> auxIn;
 inline std::string auxOut;

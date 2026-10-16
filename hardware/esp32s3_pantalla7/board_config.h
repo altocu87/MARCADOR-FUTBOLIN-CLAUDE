@@ -199,6 +199,14 @@ class LGFX : public lgfx::LGFX_Device {
     lgfx::i2c::transactionWrite(exio::I2C_PORT, exio::ADDR, d, 3);
   }
 
+  // Otros chips del mismo bus I2C (códec de audio ES8389).
+  bool i2cWrite(uint8_t addr, const uint8_t* data, uint8_t len) {
+    return !lgfx::i2c::transactionWrite(exio::I2C_PORT, addr, data, len).has_error();
+  }
+  bool i2cReadReg(uint8_t addr, uint8_t reg, uint8_t& value) {
+    return !lgfx::i2c::transactionWriteRead(exio::I2C_PORT, addr, &reg, 1, &value, 1).has_error();
+  }
+
   // Lee las 16 patas del expansor (bit n = EXIOn). Devuelve false si el expansor no responde.
   bool exioRead(uint16_t& value) {
     uint8_t reg = exio::REG_IN, buf[2] = {0, 0};

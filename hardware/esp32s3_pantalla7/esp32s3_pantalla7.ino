@@ -11,6 +11,8 @@
 //     las salidas DO0/DO1 se activan 1 s con cada gol (luces, relé). En otras placas, por UART desde un
 //     Arduino o ESP32-C3 con el sketch `arduino_usb`. Siempre también por el USB (protocolo MFV3).
 //   - Guarda la configuración y los últimos resultados en la memoria interna (NVS).
+//   - Sonido (Waveshare 7C): los mismos momentos que la app (gol, remontada, victoria…) por el altavoz de la
+//     placa; sonidos propios en la tarjeta SD (/sonidos/<momento>/*.wav) o, si no hay, los de siempre.
 //
 // Antes de compilar: elige tu placa en board_config.h. Bibliotecas: LovyanGFX.
 // NOTA: compila en GitHub Actions (núcleo esp32 3.x + LovyanGFX) y la lógica (motor, protocolo, botones)
@@ -23,11 +25,13 @@
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
 #include "board_config.h"
+#include "s3_audio.h"
 #include "mfv3_core.h"
 #include "mfv3_engine.h"
 #include "mfv3_radio.h"
 #include "ui_layout.h"
 #include "s3_types.h"
+#include "s3_sound.h"
 
 using mfv3::Engine;
 using mfv3::Phase;
@@ -54,6 +58,7 @@ static const uint32_t SLEEP_AFTER_MS = 5UL * 60UL * 1000UL;  // atenuar pantalla
 
 LGFX lcd;
 Engine eng;
+s3snd::Tracker sounds;  // qué momento suena tras cada cambio
 mfv3::Config cfg;
 Preferences prefs;
 HardwareSerial AuxSerial(1);
@@ -98,6 +103,8 @@ static void loadPrefs() {
   historyCount = prefs.getBytes("hist", history, sizeof(history)) / sizeof(LastResult);
   userBrightness = prefs.getUChar("bri", 100);
   if (userBrightness > 100) userBrightness = 100;
+  s3audio::volume = prefs.getUChar("vol", 80);
+  if (s3audio::volume > 100) s3audio::volume = 100;
 }
 
 static void saveConfig() {
@@ -231,12 +238,15 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     beep(400);
   }
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
+  s3snd::Ev evs[s3snd::Tracker::MAX_OUT];
+  s3audio::play(evs, sounds.observe(eng, goalAccepted, goalTeam, evs));
   snap = now;
 }
 
 // ---------------------------------------------------------------- acciones
 static void startMatch() {
   if (!eng.start(cfg, millis())) return;
+  sounds.reset(eng);
   inMatch = true;
   confirmAbandon = false;
   snap = takeSnapshot();
@@ -294,9 +304,21 @@ static void inputPause() {
 }
 
 static void sendHello() {
-  char buf[96];
-  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s", S3_BOARD_ID, FW_VERSION, S3_CAPS);
+  char buf[112];
+  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s%s", S3_BOARD_ID, FW_VERSION, S3_CAPS, s3audio::status.codec ? ",altavoz,volumen" : "");
   sendLine(buf);
+}
+
+// «SONIDO gol» o «SONIDO goal»: toca ese momento (para probar el altavoz y los sonidos de la SD).
+static void playNamed(const char* name) {
+  while (*name == ' ') name++;
+  for (uint8_t i = 0; i < s3snd::EV_COUNT; i++) {
+    const s3snd::EvInfo& in = s3snd::info((s3snd::Ev)i);
+    if (!strcasecmp(name, in.folder) || !strcasecmp(name, in.webId)) {
+      s3audio::play((s3snd::Ev)i);
+      return;
+    }
+  }
 }
 
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
@@ -323,7 +345,13 @@ static void handleBoardLine(const char* line) {
     userBrightness = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
     prefs.putUChar("bri", userBrightness);
     if (!dimmed) lcd.backlight(backlightLevel());
-  } else if (!strcmp(word, "PING")) sendLine("PONG");
+  } else if (!strcmp(word, "VOLUMEN")) {
+    // Volumen del altavoz de la placa: 0–100 % (0 = sin sonido).
+    int v = atoi(line + i);
+    s3audio::volume = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
+    prefs.putUChar("vol", s3audio::volume);
+  } else if (!strcmp(word, "SONIDO")) playNamed(line + i);
+  else if (!strcmp(word, "PING")) sendLine("PONG");
   else if (!strcmp(word, "HELLO")) {
     sendHello();
   }
@@ -473,13 +501,22 @@ static void drawTest() {
   testLine(255, "Sensor BLANCO (DI0)", test.sensorWhite, true);
   testLine(300, "Sensor AZUL (DI1)", test.sensorBlue, true);
 #endif
-  char buf[64];
+  char buf[96];
   snprintf(buf, sizeof(buf), "Radio %s  |  Mando %s  |  USB %s", radioOk ? "OK" : "ERROR", remoteLinked() ? "oido" : "sin senal",
            test.usbSeen ? "con datos" : "-");
-  text(buf, ui::W / 2, 342, &lgfx::fonts::FreeSans9pt7b, radioOk ? C_TEXT2 : C_DANGER);
+  text(buf, ui::W / 2, 328, &lgfx::fonts::FreeSans9pt7b, radioOk ? C_TEXT2 : C_DANGER);
+#if HAS_AUDIO
+  // Cada esquina tocada suena: si se oye, el altavoz funciona.
+  const s3audio::Status& au = s3audio::status;
+  char sd[32];
+  if (au.sd) snprintf(sd, sizeof(sd), "%lu GB, %u sonidos propios", (unsigned long)((au.sdMB + 512) / 1024), au.custom);
+  else snprintf(sd, sizeof(sd), "sin tarjeta");
+  snprintf(buf, sizeof(buf), "Altavoz %s  |  SD %s", au.codec ? "OK (suena al tocar)" : "ERROR", sd);
+  text(buf, ui::W / 2, 351, &lgfx::fonts::FreeSans9pt7b, au.codec ? C_TEXT2 : C_DANGER);
+#endif
   if (test.lastX >= 0) {
     snprintf(buf, sizeof(buf), "Ultimo toque: %d, %d", test.lastX, test.lastY);
-    text(buf, ui::W / 2, 366, &lgfx::fonts::FreeSans9pt7b, C_TEXT2);
+    text(buf, ui::W / 2, 374, &lgfx::fonts::FreeSans9pt7b, C_TEXT2);
     lcd.drawLine(test.lastX - 12, test.lastY, test.lastX + 12, test.lastY, C_GOLD);
     lcd.drawLine(test.lastX, test.lastY - 12, test.lastX, test.lastY + 12, C_GOLD);
   }
@@ -729,7 +766,10 @@ static void onTap(int16_t x, int16_t y) {
       return;
     }
     for (int i = 0; i < 4; i++)
-      if (ui::TEST_CORNERS[i].contains(x, y)) test.corner[i] = true;
+      if (ui::TEST_CORNERS[i].contains(x, y)) {
+        test.corner[i] = true;
+        s3audio::play(s3snd::Ev::Goal);
+      }
     test.lastX = x;
     test.lastY = y;
     test.touches++;
@@ -865,6 +905,7 @@ void setup() {
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
   loadPrefs();
   lcd.backlight(backlightLevel());  // el brillo guardado
+  s3audio::begin(lcd);              // tarjeta SD y altavoz (Waveshare 7C)
   radioBegin();
   lastActivity = millis();
   sendHello();

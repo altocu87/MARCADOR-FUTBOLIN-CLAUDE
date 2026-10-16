@@ -64,6 +64,22 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   propio y el empate con el de siempre. Sin errores de consola.
 - Pendiente: fase 2 (copia opcional en la nube, a decidir) y fase 3 (altavoz en la placa).
 
+## Placa de 7" (Waveshare ESP32-S3-Touch-LCD-7C / 7C-BOX): sonido y tarjeta SD (16/10/2026)
+
+- **Altavoz:** códec ES8389 + I2S con los pines y la secuencia del ejemplo oficial de Waveshare
+  (`hardware/esp32s3_pantalla7/s3_audio.h`). Suenan los mismos momentos que en la app (13 de los 16; torneo, nivel y
+  reto no existen en la placa), decididos con las mismas reglas que `soundsForCommit()` (`s3_sound.h`). Sin SD, los
+  tonos de siempre de la app. Tarea aparte: la pantalla no espera al altavoz. Órdenes nuevas `VOLUMEN` y `SONIDO`;
+  la placa anuncia `altavoz,volumen` en el HELLO (todavía no `sonido`/`sd`: la app aún no sabe pasarle archivos).
+- **Tarjeta SD:** SDMMC de 1 bit; sonidos propios en `/sonidos/<momento>/*.wav` (varios = uno al azar, `ninguno` =
+  silencio). La pantalla de prueba muestra la SD y suena al tocar cada esquina.
+- **Capturas sin la placa:** `sh hardware/test/capturas.sh` dibuja las pantallas con la LovyanGFX real en el PC y
+  guarda PNG en `docs/capturas-placa/`. Se ve que los números grandes salen pixelados (fuente de mapa de bits
+  ampliada) y sin tildes: lo siguiente es usar fuentes suaves con tildes.
+- Comprobado en PC: `npm run test:hardware` (nuevas: `sound_test.cpp` y la parte de sonido de `s3_sim_test.cpp`). En
+  la placa real: pendiente (aún no la tenemos). Falta la compilación de verdad en GitHub Actions.
+- Pendiente: jugadores con foto en la placa, fuentes con tildes, pasar los sonidos de la app a la SD, sincronizar.
+
 ## Web y compilación
 
 - Web pública (`web/`) con asistente «Monta tu marcador» e instalador desde el navegador (ESP Web Tools). Los
