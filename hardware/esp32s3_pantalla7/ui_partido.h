@@ -13,6 +13,7 @@
 
 #include "ui_base.h"
 #include "ui_sevenseg.h"
+#include "s3_jugadores.h"
 
 namespace partido {
 
@@ -39,6 +40,12 @@ struct View {
   char endTitle[48], endNote[96], endCta[32], endPartial[64];
   uint8_t endWhite, endBlue;
   bool confirmAbandon;
+  // Fichas de jugadores bajo cada marcador (0 = sin jugadores: la tarjeta ocupa todo el alto)
+  uint8_t nPlayers[2];
+  struct Card {
+    uint32_t code;
+    char name[28], meta[40], title[32], photo[72];  // photo: ruta «A:…» de la foto o vacía (iniciales)
+  } cards[2][4];
 };
 
 struct Hooks {
@@ -61,8 +68,11 @@ static lv_obj_t* streakBadge = nullptr;
 static uint8_t streakShown = 0, streakTeamShown = 0;
 static const capas::Capa* RACHA[7] = {&capas::RACHA_3, &capas::RACHA_4, &capas::RACHA_5, &capas::RACHA_6,
                                       &capas::RACHA_7, &capas::RACHA_8, &capas::RACHA_9};
-static lv_obj_t *annulOff[2], *pulAnnul[2], *pulPause, *pulPanel[2], *mp[3], *clockFrame[3];
+static lv_obj_t *annulOff[2], *pulAnnul[2], *pulPause, *mp[3], *clockFrame[3];
+static lv_obj_t *panel[2], *panelDim[2], *teamLabel[2], *cardsBox[2];
 static lv_obj_t *score[2], *clock, *info, *cond, *lockMsg, *lockTrack[2], *lockFill[2];
+static float panelH[2] = {356, 356};
+static uint32_t lineupKey[2] = {0xFFFFFFFF, 0xFFFFFFFF};
 static lv_obj_t *overlay, *cdLayer, *cdSub, *cdRing, *cdNum, *cdHint;
 static lv_obj_t *pauseLayer, *pausePulCont, *pausePulAband, *confirmLayer;
 static lv_obj_t *endLayer, *endTitle, *endWhite, *endSep, *endBlue, *endPartial, *endNote, *endCta;
@@ -71,7 +81,7 @@ static bool fresh = true;
 static lv_anim_t mpAnim;
 
 // Medidas de la app (docs/capturas-app/partido-*.json).
-const float PANEL_X[2] = {12, 555.2f}, PANEL_W = 232.8f, PANEL_Y = 8, PANEL_H = 356;
+const float PANEL_X[2] = {12, 555.2f}, PANEL_W = 232.8f, PANEL_Y = 8;
 const uint32_t INK[2] = {0x0b1626, 0xf3f7ff};
 
 static void vis(lv_obj_t* o, bool v) { ui::setVisible(o, v); }
@@ -82,22 +92,164 @@ static void setScore(int t, uint8_t v) {
   char b[4];
   snprintf(b, sizeof(b), "%u", v);
   bool two = v >= 10;
-  float size = two ? 134 : 250;
-  lv_obj_set_style_text_font(score[t], assets::font(900, two ? 134 : 250), 0);
+  // Fórmulas de match.css: una cifra = min((ancho − 40)/0,7, (alto − 80)/0,8) → 250 px, o 242 con dos jugadores
+  // por equipo (la tarjeta queda más baja); dos cifras = 134 px.
+  float inner = panelH[t] - 8;  // sin bordes (3 + 3) ni relleno (1 + 1)
+  uint16_t size = two ? 134 : (uint16_t)((inner - 80) / 0.8f < 249 ? 242 : 250);
+  lv_obj_set_style_text_font(score[t], assets::font(900, size), 0);
   lv_obj_set_style_text_letter_space(score[t], (int32_t)lroundf(-0.04f * size), 0);
   lv_label_set_text(score[t], b);
   float lh = 0.82f * size;
-  float top = 12 + (348 - (18 + lh)) / 2 + 18;  // centrado en la tarjeta con su margen de 18 px arriba
-  ui::place(score[t], PANEL_X[t] + PANEL_W / 2 + 0.02f * size, top, lh);
+  // Coordenadas dentro del borde de 3 px (así cuenta LVGL las de los hijos).
+  float top = 1 + (inner - (18 + lh)) / 2 + 18;  // centrado en la tarjeta con su margen de 18 px arriba
+  ui::place(score[t], PANEL_W / 2 - 3 + 0.02f * size, top, lh);
 }
 
 static void onPanel(lv_event_t* e) {
   int t = (int)(intptr_t)lv_event_get_user_data(e);
   lv_event_code_t c = lv_event_get_code(e);
   bool playing = shown.phase == P_PLAYING;
-  if (c == LV_EVENT_PRESSED) vis(pulPanel[t], playing);
-  else if (c == LV_EVENT_RELEASED || c == LV_EVENT_PRESS_LOST) vis(pulPanel[t], false);
-  else if (c == LV_EVENT_CLICKED && playing && hooks.goal) hooks.goal((uint8_t)t);
+  if (c == LV_EVENT_CLICKED && playing && hooks.goal) hooks.goal((uint8_t)t);  // se encoge sola al pulsarla
+}
+
+// ---------------------------------------------------------------- tarjetas del marcador (.score-btn)
+// Dibujadas con LVGL para que cambien de alto con las fichas de debajo: degradado de 3 tonos, esquinas de 22 px,
+// borde de 3 px (claro en la azul) y halo; con bola de partido, aro rojo que late.
+static void stylePanel(int t) {
+  lv_obj_t* p = panel[t];
+  static lv_grad_dsc_t g[2];
+  const uint32_t stops[2][3] = {{0xffffff, 0xeef6ff, 0xcfe0f4}, {0x2a86dc, 0x176dbc, 0x0f4f8c}};
+  const uint8_t frac[3] = {0, 140, 255};
+  memset(&g[t], 0, sizeof(g[t]));
+  for (int i = 0; i < 3; i++) {
+    g[t].stops[i].color = lv_color_hex(stops[t][i]);
+    g[t].stops[i].opa = LV_OPA_COVER;
+    g[t].stops[i].frac = frac[i];
+  }
+  g[t].stops_count = 3;
+  g[t].dir = LV_GRAD_DIR_VER;
+  lv_obj_set_style_bg_grad(p, &g[t], 0);
+  lv_obj_set_style_bg_opa(p, LV_OPA_COVER, 0);
+  lv_obj_set_style_radius(p, 22, 0);
+  lv_obj_set_style_border_width(p, 3, 0);
+  lv_obj_set_style_border_color(p, ui::hex(t ? ui::color::ACCENT : 0xffffff), 0);
+  lv_obj_set_style_border_opa(p, t ? 102 : 0, 0);
+  lv_obj_set_style_shadow_width(p, 28, 0);
+  lv_obj_set_style_shadow_color(p, ui::hex(t ? ui::color::BLUE_TEAM : ui::color::WHITE_TEAM), 0);
+  lv_obj_set_style_shadow_opa(p, t ? 115 : 56, 0);
+  lv_obj_set_style_outline_color(p, ui::hex(ui::color::DANGER), 0);
+  lv_obj_set_style_outline_pad(p, 0, 0);
+  lv_obj_set_style_transform_pivot_x(p, (int32_t)(PANEL_W / 2), 0);
+  lv_obj_set_style_transform_scale(p, 252, LV_STATE_PRESSED);  // :active → scale(0.985)
+}
+
+static void layoutSide(int t, uint8_t n) {
+  // Alto de las fichas: 1 jugador = 100; 2 = 84 + 6 + 84; 3 o 4 = dos filas de 66 (+ 6); sin jugadores, nada.
+  float cardsH = n == 0 ? 0 : n == 1 ? 100 : n == 2 ? 174 : 138;
+  panelH[t] = n == 0 ? 462 : 462 - 6 - cardsH;
+  lv_obj_set_height(panel[t], (int32_t)lroundf(panelH[t]));
+  lv_obj_set_style_transform_pivot_y(panel[t], (int32_t)(panelH[t] / 2), 0);
+  lv_obj_set_y(cardsBox[t], (int32_t)lroundf(PANEL_Y + panelH[t] + 6));
+  lv_obj_set_height(cardsBox[t], cardsH > 0 ? (int32_t)lroundf(cardsH) : 1);
+  lv_obj_set_y(lockTrack[t], (int32_t)lroundf(panelH[t] - 6 - 12 - 5));
+  lv_obj_set_size(panelDim[t], (int32_t)lroundf(PANEL_W), (int32_t)lroundf(panelH[t]));
+}
+
+// Ficha de un jugador como las de la app (.match-card): foto o iniciales, nombre en mayúsculas, detalle y título.
+// Tocarla también es gol de su equipo.
+static void playerCard(lv_obj_t* parent, int t, const View::Card& c, int x, int y, int w, int h, uint8_t n) {
+  bool one = n == 1, many = n >= 3;
+  int pad = one ? 7 : many ? 4 : 5, ph = one ? 84 : many ? 34 : 70, pr = one ? 14 : many ? 8 : 10;
+  int gap = one ? 12 : many ? 4 : 10;
+  uint16_t nameSz = one ? 23 : many ? 13 : 20, metaSz = one ? 14 : many ? 11 : 13, titleSz = many ? 11 : 13;
+  uint32_t col = t ? 0x4fb0ff : ui::color::WHITE_TEAM;
+  lv_obj_t* card = ui::box(parent, x, y, w, h);
+  lv_obj_set_style_radius(card, ui::RADIUS_SM, 0);
+  lv_obj_set_style_border_width(card, 2, 0);
+  lv_obj_set_style_border_color(card, ui::hex(col), 0);
+  lv_obj_set_style_shadow_width(card, 10, 0);
+  lv_obj_set_style_shadow_color(card, ui::hex(col), 0);
+  lv_obj_set_style_shadow_opa(card, t ? 115 : 89, 0);
+  lv_obj_set_style_bg_color(card, ui::hex(0x0a1628), 0);
+  lv_obj_set_style_bg_opa(card, 235, 0);
+  lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(card, onPanel, LV_EVENT_ALL, (void*)(intptr_t)t);
+  int phx = pad, phy = (h - 4 - ph) / 2;
+  lv_obj_t* box = ui::box(card, phx, phy, ph, ph);
+  lv_obj_set_style_radius(box, pr, 0);
+  lv_obj_set_style_clip_corner(box, true, 0);
+  lv_obj_set_style_bg_color(box, ui::hex(0x1d3a63), 0);
+  lv_obj_set_style_bg_grad_color(box, ui::hex(0x0f2140), 0);
+  lv_obj_set_style_bg_grad_dir(box, LV_GRAD_DIR_VER, 0);
+  lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
+  if (c.photo[0]) {
+    lv_obj_t* img = lv_image_create(box);
+    lv_image_set_src(img, c.photo);
+    lv_image_set_antialias(img, true);
+    lv_image_set_pivot(img, 0, 0);
+    lv_image_set_scale(img, (uint32_t)(256 * ph / 120));
+    lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
+  } else {
+    char ini[8];
+    jug::initials(c.name, ini, sizeof(ini));
+    lv_obj_t* l = ui::text(box, ini, 900, one ? 38 : many ? 14 : 26, ui::color::TEXT2);
+    lv_obj_center(l);
+  }
+  int tx = phx + ph + gap, tw = w - 4 - tx - (many ? 2 : 8);
+  // Nombre en mayúsculas (también las vocales con tilde y la ñ), salvo con 3 o 4 por equipo, como la app.
+  char upper[40];
+  size_t k = 0;
+  for (const char* q = c.name; *q && k < sizeof(upper) - 2; q++) {
+    char ch = *q;
+    if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 32);
+    else if ((uint8_t)ch == 0xC3 && (uint8_t)q[1] >= 0xA0 && (uint8_t)q[1] <= 0xBE) {
+      upper[k++] = ch;
+      q++;
+      ch = (char)((uint8_t)*q - 0x20);
+    }
+    upper[k++] = ch;
+  }
+  upper[k] = 0;
+  auto oneLine = [&](const char* txt, uint16_t wt, uint16_t sz, uint32_t color, float ls) {
+    lv_obj_t* l = ui::text(card, txt, wt, sz, color, ls);
+    lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_DOTS);
+    lv_obj_set_size(l, tw, lv_font_get_line_height(assets::font(wt, sz)));
+    return l;
+  };
+  lv_obj_t* nm = oneLine(many ? c.name : upper, 800, nameSz, ui::color::TEXT, many ? 0 : nameSz * 0.04f);
+  lv_obj_t* mt = c.meta[0] ? oneLine(c.meta, 400, metaSz, ui::color::TEXT2, 0) : nullptr;
+  lv_obj_t* ti = c.title[0] ? oneLine(c.title, 900, titleSz, ui::color::RANKED, 0) : nullptr;
+  int lhN = lv_font_get_line_height(assets::font(800, nameSz)), lhM = lv_font_get_line_height(assets::font(400, metaSz)),
+      lhT = lv_font_get_line_height(assets::font(900, titleSz));
+  int total = lhN + (mt ? 1 + lhM : 0) + (ti ? 1 + lhT : 0);
+  int yy = (h - 4 - total) / 2;
+  lv_obj_set_pos(nm, tx, yy);
+  yy += lhN + 1;
+  if (mt) {
+    lv_obj_set_pos(mt, tx, yy);
+    yy += lhM + 1;
+  }
+  if (ti) lv_obj_set_pos(ti, tx, yy);
+}
+
+static void lineup(int t, const View& v) {
+  uint8_t n = v.nPlayers[t] > 4 ? 4 : v.nPlayers[t];
+  uint32_t key = n;
+  for (uint8_t i = 0; i < n; i++) key = key * 31u + v.cards[t][i].code;
+  if (key == lineupKey[t]) return;
+  lineupKey[t] = key;
+  layoutSide(t, n);
+  lv_obj_clean(cardsBox[t]);
+  int W = (int)lroundf(PANEL_W);
+  for (uint8_t i = 0; i < n; i++) {
+    if (n <= 2) playerCard(cardsBox[t], t, v.cards[t][i], 0, i * 90, W, n == 1 ? 100 : 84, n);
+    else {
+      int half = (W - 6) / 2;
+      bool full = n == 3 && i == 2;  // con 3, el tercero ocupa el ancho entero
+      playerCard(cardsBox[t], t, v.cards[t][i], full ? 0 : (i % 2) * (half + 6), (i / 2) * 72, full ? W : half, 66, n);
+    }
+  }
+  setScore(t, t ? v.blue : v.white);
 }
 
 static void onAnnul(lv_event_t* e) {
@@ -264,17 +416,39 @@ static void banner(uint8_t which) {
   lv_anim_start(&a);
 }
 
+// Bola de partido (mp-pulse): aro de 3 px y halo rojo de 32 px que baja a 12 px y vuelve cada 1,1 s; el cartel late.
+static uint8_t mpMask = 0;
 static void mpPulse(void*, int32_t v) {
   for (int i = 0; i < 3; i++)
-    if (mp[i]) lv_obj_set_style_image_opa(mp[i], (lv_opa_t)v, 0);
+    if (mp[i]) lv_obj_set_style_image_opa(mp[i], (lv_opa_t)(110 + (v * 145) / 255), 0);
+  for (int t = 0; t < 2; t++) {
+    if (!panel[t] || !(mpMask >> t & 1)) continue;
+    lv_obj_set_style_shadow_width(panel[t], 12 + (20 * v) / 255, 0);
+    lv_obj_set_style_shadow_opa(panel[t], (lv_opa_t)(64 + (76 * v) / 255), 0);
+  }
+}
+static void setMatchPoint(uint8_t mask) {
+  if (mask == mpMask) return;
+  mpMask = mask;
+  for (int t = 0; t < 2; t++) {
+    bool on = mask >> t & 1;
+    lv_obj_set_style_outline_width(panel[t], on ? 3 : 0, 0);
+    lv_obj_set_style_shadow_color(panel[t], ui::hex(on ? ui::color::DANGER : t ? ui::color::BLUE_TEAM : ui::color::WHITE_TEAM), 0);
+    lv_obj_set_style_shadow_width(panel[t], 28, 0);
+    lv_obj_set_style_shadow_opa(panel[t], on ? 140 : t ? 115 : 56, 0);
+  }
 }
 
 static void onDelete(lv_event_t*) {
   lv_anim_delete(nullptr, mpPulse);
   scr = nullptr;
+  panel[0] = panel[1] = nullptr;  // ya no existen: que nadie las toque
+  mpMask = 0;
 }
 
 static void build() {
+  panel[0] = panel[1] = nullptr;
+  mpMask = 0;
   scr = ui::screen();
   lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, nullptr);
   ui::layer(scr, capas::PARTIDO);
@@ -289,29 +463,37 @@ static void build() {
   mp[0] = ui::layer(scr, capas::PARTIDO_MP_BLANCO, false);
   mp[1] = ui::layer(scr, capas::PARTIDO_MP_AZUL, false);
   mp[2] = ui::layer(scr, capas::PARTIDO_MP_AMBOS, false);
-  pulPanel[0] = ui::layer(scr, capas::PARTIDO_PUL_BLANCO, false);
-  pulPanel[1] = ui::layer(scr, capas::PARTIDO_PUL_AZUL, false);
   pulAnnul[0] = ui::layer(scr, capas::PARTIDO_PUL_ANULAR_BLANCO, false);
   pulAnnul[1] = ui::layer(scr, capas::PARTIDO_PUL_ANULAR_AZUL, false);
   pulPause = ui::layer(scr, capas::PARTIDO_PUL_PAUSA, false);
-  streakBadge = lv_image_create(scr);
-  lv_obj_remove_flag(streakBadge, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_flag(streakBadge, LV_OBJ_FLAG_HIDDEN);
-  streakShown = 0;
   // El aro rojo de la bola de partido late (1,1 s), como mp-pulse.
   lv_anim_init(&mpAnim);
   lv_anim_set_exec_cb(&mpAnim, mpPulse);
-  lv_anim_set_values(&mpAnim, 255, 110);
+  lv_anim_set_values(&mpAnim, 255, 0);
   lv_anim_set_duration(&mpAnim, 550);
   lv_anim_set_reverse_duration(&mpAnim, 550);
   lv_anim_set_repeat_count(&mpAnim, LV_ANIM_REPEAT_INFINITE);
   lv_anim_set_path_cb(&mpAnim, lv_anim_path_ease_in_out);
   lv_anim_start(&mpAnim);
   for (int t = 0; t < 2; t++) {
-    score[t] = ui::text(scr, "0", 900, 250, INK[t]);
+    panel[t] = ui::box(scr, (int)lroundf(PANEL_X[t]), (int)PANEL_Y, (int)lroundf(PANEL_W), 356);
+    stylePanel(t);
+    lv_obj_add_flag(panel[t], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(panel[t], onPanel, LV_EVENT_ALL, (void*)(intptr_t)t);
+    // Bloqueo (filter: saturate(0.75) brightness(0.92) en la app): un velo oscuro del 8 %.
+    panelDim[t] = ui::box(panel[t], -3, -3, 10, 10);
+    lv_obj_set_style_radius(panelDim[t], 22, 0);
+    lv_obj_set_style_bg_color(panelDim[t], lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(panelDim[t], 20, 0);
+    lv_obj_add_flag(panelDim[t], LV_OBJ_FLAG_HIDDEN);
+    teamLabel[t] = ui::text(panel[t], t ? "AZUL" : "BLANCO", 900, 15, INK[t], 3.6f);
+    lv_obj_set_style_text_opa(teamLabel[t], 191, 0);
+    ui::place(teamLabel[t], PANEL_W / 2 - 3 + 1.8f, 10, 0);
+    cardsBox[t] = ui::box(scr, (int)lroundf(PANEL_X[t]), 370, (int)lroundf(PANEL_W), 100);
+    score[t] = ui::text(panel[t], "0", 900, 250, INK[t]);
     // Barra del bloqueo: abajo en la tarjeta (left/right 18, bottom 12, 5 px).
-    int x = (int)lroundf(PANEL_X[t] + 3 + 18), w = (int)lroundf(PANEL_W - 6 - 36);
-    lockTrack[t] = ui::box(scr, x, 344, w, 5);
+    int x = 18, w = (int)lroundf(PANEL_W - 6 - 36);
+    lockTrack[t] = ui::box(panel[t], x, 336, w, 5);
     lv_obj_set_style_radius(lockTrack[t], 3, 0);
     lv_obj_set_style_bg_color(lockTrack[t], lv_color_black(), 0);
     lv_obj_set_style_bg_opa(lockTrack[t], 46, 0);
@@ -321,6 +503,11 @@ static void build() {
     lv_obj_set_style_bg_opa(lockFill[t], 153, 0);
     vis(lockTrack[t], false);
   }
+  // Racha «🔥 xN» encima de las tarjetas.
+  streakBadge = lv_image_create(scr);
+  lv_obj_remove_flag(streakBadge, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(streakBadge, LV_OBJ_FLAG_HIDDEN);
+  streakShown = 0;
   // Reloj: el SVG de la app (viewBox de 286 × 100) encajado en 278 × 94 → 268 × 94 centrado.
   clock = sevenseg::create(scr, 266, 124, 94, "00:00", 0x3dff7a, 160);
   ((sevenseg::Data*)lv_obj_get_user_data(clock))->ghost = false;
@@ -328,10 +515,7 @@ static void build() {
   cond = ui::text(scr, "", 700, 15, ui::color::TEXT);
   lv_obj_set_style_text_opa(cond, 230, 0);
   lockMsg = ui::text(scr, "", 800, 12, ui::color::RANKED, 1);
-  for (int t = 0; t < 2; t++) {
-    zone(scr, PANEL_X[t], PANEL_Y, PANEL_W, PANEL_H, onPanel, t);
-    zone(scr, t ? 474.8f : 254.8f, 237, 70.4f, 154.3f, onAnnul, t);
-  }
+  for (int t = 0; t < 2; t++) zone(scr, t ? 474.8f : 254.8f, 237, 70.4f, 154.3f, onAnnul, t);
   zone(scr, 333.2f, 237, 133.7f, 154.3f, onPause, 0);
 
   // ---- Capas de encima (fondo oscuro rgba(4, 8, 15, 0.86), como .overlay)
@@ -385,6 +569,8 @@ static void build() {
   endCta = ui::button(endLayer, 250, 296, 300, 68, "CONTINUAR", 20, ui::BtnKind::Primary, onNext);
   fresh = true;
   goalShow = nullptr;
+  mpMask = 0;
+  lineupKey[0] = lineupKey[1] = 0xFFFFFFFF;
   lv_timer_t* t = lv_timer_create(preloadNext, 1500, nullptr);
   lv_timer_set_repeat_count(t, 1);
 }
@@ -436,6 +622,8 @@ static void update(const View& v) {
   fresh = false;
   vis(modeBg[1], v.mode == 1);
   vis(modeBg[2], v.mode == 2);
+  lineup(0, v);
+  lineup(1, v);
   if (first || v.white != shown.white) setScore(0, v.white);
   if (first || v.blue != shown.blue) setScore(1, v.blue);
   vis(annulOff[0], !v.annulWhite);
@@ -449,6 +637,7 @@ static void update(const View& v) {
   vis(mp[0], v.matchPoint == 1);
   vis(mp[1], v.matchPoint == 2);
   vis(mp[2], v.matchPoint == 3);
+  setMatchPoint(v.matchPoint);
   if (first || strcmp(v.info, shown.info)) {
     lv_label_set_text(info, v.info);
     ui::place(info, 400, 58.8f, 20.4f);
@@ -459,6 +648,8 @@ static void update(const View& v) {
   }
   // Bloqueo: barra que se vacía en las dos tarjetas y el aviso con décimas.
   for (int t = 0; t < 2; t++) {
+    vis(panelDim[t], v.lockMs > 0);
+    lv_obj_set_style_opa(cardsBox[t], v.lockMs > 0 ? 178 : LV_OPA_COVER, 0);  // .match-card.locked
     vis(lockTrack[t], v.lockMs > 0);
     if (v.lockMs) lv_obj_set_width(lockFill[t], (int32_t)(lv_obj_get_width(lockTrack[t]) * v.lockMs / LOCK_MS));
   }

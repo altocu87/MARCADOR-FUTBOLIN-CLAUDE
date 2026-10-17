@@ -49,6 +49,7 @@
 #include "ui_reposo.h"
 #include "ui_victoria.h"
 #include "s3_jugadores.h"
+#include "ui_jugadores.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -244,6 +245,8 @@ static const char* phaseName(Phase p) {
 // ---------------------------------------------------------------- estado de la interfaz
 static bool inMatch = false;       // false = pantalla de inicio
 static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
+static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
+static bool haveTeams = false;        // equipos del partido anterior (se proponen otra vez)
 static uint8_t chosenMode = 0;     // inicio::QUICK, CHAOS o RANKED
 static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
 static uint32_t lastKey = 0xFFFFFFFF;
@@ -369,6 +372,7 @@ static void startMatch() {
 static void goHome() {
   inMatch = false;
   homeCards = true;
+  choosingPlayers = false;
   screen = Screen::Home;
   confirmAbandon = false;
   sendLine("STATE idle");
@@ -1009,8 +1013,25 @@ static void onConfigChanged(const config::State& s) {
                                             : mfv3::EndCondition::Goals;
 }
 static void onConfigBack() { homeCards = true; }
+static elegir::Teams chosenTeams;
+static const char* const MODE_LABEL[3] = {"PARTIDO RÁPIDO", "PARTIDO LOCO", "CLASIFICATORIO"};
+
+// CONTINUAR: con jugadores pasados por la app, a elegirlos; sin ellos, directo al partido (Blanco contra Azul).
 static void onConfigNext() {
   saveConfig();
+  if (jugadores.count >= 2) {
+    choosingPlayers = true;
+    elegir::show(&jugadores, MODE_LABEL[chosenMode % 3], haveTeams ? &chosenTeams : nullptr);
+  } else {
+    haveTeams = false;
+    startMatch();
+  }
+}
+static void onPlayersBack() { choosingPlayers = false; }
+static void onPlayersDone(const elegir::Teams& t) {
+  chosenTeams = t;
+  haveTeams = true;
+  choosingPlayers = false;
   startMatch();
 }
 // ---------------------------------------------------------------- partido (ui_partido.h)
@@ -1092,6 +1113,19 @@ static void matchView(partido::View& v, uint32_t now) {
     v.endBlue = s.blue;
   }
   v.confirmAbandon = confirmAbandon;
+  // Fichas de los jugadores elegidos (con su foto si la app la pasó).
+  for (int t = 0; haveTeams && t < 2; t++) {
+    for (uint8_t i = 0; i < chosenTeams.n[t] && v.nPlayers[t] < 4; i++) {
+      const jug::Player* p = jugadores.find(chosenTeams.code[t][i]);
+      if (!p) continue;
+      partido::View::Card& c = v.cards[t][v.nPlayers[t]++];
+      c.code = p->code;
+      snprintf(c.name, sizeof(c.name), "%s", p->name);
+      snprintf(c.meta, sizeof(c.meta), "%s", p->meta);
+      snprintf(c.title, sizeof(c.title), "%s", p->title);
+      if (!jugadores.photoPath(p->code, c.photo, sizeof(c.photo), assets::ROOT)) c.photo[0] = 0;
+    }
+  }
 }
 
 static void onMatchGoal(uint8_t t) { inputGoal(t ? Team::Blue : Team::White); }
@@ -1201,6 +1235,13 @@ static void render() {
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (!test.active && !inMatch && screen == Screen::Home && choosingPlayers && !sleepClock()) {
+    if (!elegir::active()) elegir::show(&jugadores, MODE_LABEL[chosenMode % 3], &elegir::teams);
+    else if (jugadores.changed) elegir::refresh();  // la app acaba de pasar jugadores o fotos
+    jugadores.changed = false;
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -1441,6 +1482,8 @@ void setup() {
   penaltis::hooks.kick = onPenaltyKick;
   penaltis::hooks.undo = onPenaltyUndo;
   victoria::hooks.home = goHome;
+  elegir::hooks.back = onPlayersBack;
+  elegir::hooks.done = onPlayersDone;
   victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());
   initColors();

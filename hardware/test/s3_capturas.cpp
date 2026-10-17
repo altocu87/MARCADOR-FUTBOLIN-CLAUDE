@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <filesystem>
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
 
@@ -32,6 +33,15 @@ static void shot(const char* name, uint32_t settle = 400) {
   std::printf("ok  %s\n", name);
 }
 
+// Elegir jugadores (si los hay): Alex en el Blanco y el primero libre en el Azul.
+static void pickPlayers() {
+  if (!elegir::active()) return;
+  tap(267, 154);   // primera ficha de la lista (Alex)
+  tap(670, 438);   // SIGUIENTE: AZUL
+  tap(267, 154);   // primera libre
+  tap(695, 438);   // CONTINUAR
+}
+
 // Inicio → RÁPIDO → Configuración (por goles a 5, o por tiempo con 5 min) → CONTINUAR.
 static void toMatch(bool time) {
   if (!inicio::active()) {
@@ -48,6 +58,8 @@ static void toMatch(bool time) {
   tap(140, 280); tap(140, 280);
   run(300);
   tap(400, 443);  // CONTINUAR
+  run(200);
+  pickPlayers();
 }
 static void goal(bool white, uint32_t after = 3300) {
   tap(white ? 128 : 671, 186);
@@ -73,6 +85,43 @@ int main(int argc, char** argv) {
   tap(204, 220);  // solo por tiempo
   for (int i = 0; i < 10; i++) tap(595, 104);
   shot("configuracion-tiempo-15");
+
+  // Jugadores del modo prueba de la app, con sus fotos (scripts/jugadores-demo-placa.mjs).
+  if (FILE* jf = fopen("../build/placa/jugadores-demo.txt", "rb")) {
+    char ln[600];
+    while (fgets(ln, sizeof(ln), jf)) {
+      ln[strcspn(ln, "\r\n")] = 0;
+      usb(ln);
+    }
+    fclose(jf);
+    // Las fotos quedaron en la FAT simulada: se copian al disco del PC para que LVGL las lea como en la placa.
+    std::filesystem::create_directories("../build/placa/fat/jugadores");
+    for (auto& f : FFat.disk.files)
+      if (f.first.rfind("/jugadores/", 0) == 0) {
+        std::string path = std::string("../build/placa/fat") + f.first;
+        if (FILE* o = fopen(path.c_str(), "wb")) {
+          fwrite(f.second.data(), 1, f.second.size(), o);
+          fclose(o);
+        }
+      }
+    goHome();
+    run(300);
+    tap(140, 280); tap(140, 280);
+    run(300);
+    tap(204, 220);  // vuelve a solo goles (la escena anterior lo dejó por tiempo)
+    tap(595, 220);
+    tap(400, 443);  // CONTINUAR → elegir jugadores
+    shot("jugadores-demo");
+    tap(267, 154);  // Alex al Blanco
+    tap(670, 438);  // SIGUIENTE: AZUL
+    shot("jugadores-azul");
+    tap(60, 28);    // volver al Blanco
+    run(200);
+    tap(60, 28);    // y a la configuración
+    run(300);
+    goHome();
+    run(300);
+  }
 
   // Partido por goles: las mismas jugadas que scripts/capturas-app.mjs.
   toMatch(false);

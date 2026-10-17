@@ -48,6 +48,7 @@ const partidoProrroga = async (p) => {
   await SCENES.prorroga(p);
   await wait(p, 3000);
 };
+const JUG_OCULTAR = ['.select-layout', '.screen-footer > *', '.screen-header .badge', '.screen-header .btn-sm', '.screen-title small'];
 const VIC_OCULTAR = ['.vic-score', '.vic-facts', '.vic-body', '.confetti', '.match-main', '.goal-show', '.banner'];
 const VIC_CSS = '.victory-rays { animation: none !important; }';
 const victoriaEsc = (t) => async (p) => {
@@ -158,6 +159,11 @@ export const CAPAS = [
   { nombre: 'config-der-pul-mas', base: 'config-tiempo', pasos: [mantener(`${COND(2)} .cond-btn.up`)] },
   { nombre: 'config-der-pul-menos', base: 'config-tiempo', pasos: [mantener(`${COND(2)} .cond-btn.down`)] },
   { nombre: 'config-pul-continuar', base: 'config', pasos: [mantener('.continue-btn')] },
+  // ---------------------------------------------------------------- Elegir jugadores (SelectPlayersScreen.tsx)
+  // Fondo de cada turno (Equipo BLANCO / Equipo AZUL); columnas, fichas, avisos y botones los dibuja la placa.
+  { nombre: 'jugadores-blanco', escena: 'jugadores-demo', ocultar: JUG_OCULTAR },
+  { nombre: 'jugadores-azul', escena: 'jugadores-azul', ocultar: JUG_OCULTAR },
+
   // ---------------------------------------------------------------- Partido (MatchScreen.tsx)
   // Fondo: 1–1 por goles (los dos «Anular» activos), sin números, reloj, textos que cambian ni fichas (fase 2).
   {
@@ -165,7 +171,7 @@ export const CAPAS = [
     demo: true,
     escena: partidoEsc(['white', 'blue']),
     ocultar: ['.score-num', '.clock-panel .clock', '.period-goals', '.center-cond', '.lock-msg', '.center-test', '.team-cards',
-      '.center-badges .badge', '.banner', '.goal-show', '.annul-show', '.streak-badge'],
+      '.center-badges .badge', '.banner', '.goal-show', '.annul-show', '.streak-badge', '.score-wrap'],
     css: `${QUIETO} .score-sheen, .score-btn::after { display: none !important; }`,
   },
   // Fondo y cartel de cada modo (LOCO: morado; CLASIFICATORIO: dorado). El LOCO de la app saca hándicaps cada
@@ -187,8 +193,6 @@ export const CAPAS = [
   { nombre: 'partido-pul-anular-blanco', base: 'partido', pasos: [mantener('.annul-white')] },
   { nombre: 'partido-pul-anular-azul', base: 'partido', pasos: [mantener('.annul-blue')] },
   { nombre: 'partido-pul-pausa', base: 'partido', pasos: [mantener('.pause-btn')] },
-  { nombre: 'partido-pul-blanco', base: 'partido', pasos: [mantener('.score-white')] },
-  { nombre: 'partido-pul-azul', base: 'partido', pasos: [mantener('.score-blue')] },
   // Bola de partido (el aro rojo late; aquí, quieto en su punto más fuerte) con su cartel.
   { nombre: 'partido-mp-blanco', base: 'partido', escena: partidoEsc(['white', 'blue', 'white', 'white', 'white']), mostrar: ['.center-badges .badge'] },
   { nombre: 'partido-mp-azul', base: 'partido', escena: partidoEsc(['white', 'blue', 'blue', 'blue', 'blue']), mostrar: ['.center-badges .badge'] },

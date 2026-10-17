@@ -176,6 +176,8 @@ def imagen_fat():
 def main():
     if os.path.exists(FAT):
         shutil.rmtree(os.path.join(FAT, "capas"), ignore_errors=True)
+        # Los jugadores los pasa la app; los de las capturas del PC no van a la placa.
+        shutil.rmtree(os.path.join(FAT, "jugadores"), ignore_errors=True)
     os.makedirs(FAT, exist_ok=True)
     manifest = capas()
     letras = fuentes()

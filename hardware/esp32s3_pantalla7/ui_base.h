@@ -101,7 +101,8 @@ static lv_obj_t* label(lv_obj_t* parent, const char* txt, uint16_t weight, uint1
 enum class Align : uint8_t { Left, Center, Right };
 static void place(lv_obj_t* l, float x, float top, float lineH, Align align = Align::Center) {
   const lv_font_t* f = lv_obj_get_style_text_font(l, LV_PART_MAIN);
-  float size = (float)(f->line_height - f->base_line) / 0.96875f;  // tamaño de letra (de su ascendente)
+  float size = assets::fontSize(f);
+  if (size <= 0) size = (float)(f->line_height - f->base_line) / 0.96875f;  // letra que no es nuestra
   if (lineH <= 0) lineH = size * 1.21f;
   float baseline = top + (lineH - size * 1.2099f) / 2 + size * 0.96875f;
   lv_obj_update_layout(l);

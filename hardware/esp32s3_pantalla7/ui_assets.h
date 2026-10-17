@@ -316,6 +316,14 @@ static const lv_font_t* font(uint16_t weight, uint16_t size, bool italic = false
   return f;
 }
 
+// Tamaño (en px) con el que se pidió una letra; 0 si no es de las nuestras. Hace falta para colocar el texto en
+// la línea base del navegador: las letras de solo cifras no traen ascendente y descendente de la letra entera.
+static uint16_t fontSize(const lv_font_t* f) {
+  for (int i = 0; i < fontCount; i++)
+    if (fonts[i].font == f) return fonts[i].size;
+  return 0;
+}
+
 }  // namespace assets
 
 #endif  // MFV3_UI_ASSETS_H

@@ -7,6 +7,8 @@
   python scripts/placa.py serie [segundos]       -> enseña lo que dice la placa por el USB
   python scripts/placa.py orden "PING"           -> manda una orden y enseña la respuesta
   python scripts/placa.py captura <nombre>       -> guarda lo que enseña la pantalla en docs/capturas-placa/<nombre>.png
+  python scripts/placa.py jugadores [archivo]    -> pasa jugadores y fotos (build/placa/jugadores-demo.txt, de
+                                                    node scripts/jugadores-demo-placa.mjs), como hace la app
 
 Usa arduino-cli con su propia carpeta de bibliotecas (LVGL 9.5, LovyanGFX, WebSockets) y copia lv_conf.h junto a lvgl.
 """
@@ -169,6 +171,26 @@ def captura(name):
     print(f"{out} ({time.time() - t:.1f} s)")
 
 
+def jugadores(path):
+    """Manda las órdenes de jugadores esperando cada respuesta, igual que syncPlayers() de la app."""
+    lines = [l.rstrip("\r\n") for l in open(path, encoding="utf-8") if l.strip()]
+    t = time.time()
+    with open_serial(timeout=3) as s:
+        s.reset_input_buffer()
+        for i, l in enumerate(lines):
+            s.write((l + "\n").encode("utf-8"))
+            if l.startswith("JUGADOR "):
+                continue
+            reply = s.readline().decode("utf-8", "replace").strip()
+            while reply and not reply.startswith(("JUGADORES", "FOTO")):
+                reply = s.readline().decode("utf-8", "replace").strip()
+            if "ERROR" in reply or not reply:
+                sys.exit(f"Línea {i + 1}: {l[:40]}… → {reply or 'sin respuesta'}")
+            if l.startswith("JUGADORES_FIN") or l.startswith("FOTO_FIN"):
+                print(reply)
+    print(f"{len(lines)} órdenes en {time.time() - t:.1f} s")
+
+
 def main(argv):
     if not argv:
         print(__doc__)
@@ -186,6 +208,8 @@ def main(argv):
         serie(float(rest[0]) if rest else 8.0)
     elif cmd == "orden":
         orden(" ".join(rest))
+    elif cmd == "jugadores":
+        jugadores(rest[0] if rest else os.path.join(ROOT, "build", "placa", "jugadores-demo.txt"))
     elif cmd == "captura":
         captura(rest[0] if rest else "captura")
     else:
