@@ -3,7 +3,7 @@
 // Guarda un PNG por escena en docs/capturas-app/. Hora fija (sábado 17/10/2026, 18:30) para que las capturas
 // salgan siempre iguales y la placa se pueda poner a la misma hora.
 import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,15 +12,18 @@ const OUT = join(ROOT, 'docs', 'capturas-app');
 const URL = process.env.APP_URL ?? 'http://localhost:5173/';
 export const FIXED_TIME = new Date('2026-10-17T18:30:00+02:00');
 
-const wait = (page, ms) => page.clock.runFor(ms);
+export const wait = (page, ms) => page.clock.runFor(ms);
+// La app deja 14 px arriba para la barra del móvil (Stage.tsx): con la ventana 14 px más alta, el lienzo queda a
+// 800 × 480 exactos y sin escalar, como en la placa. Se recorta esa franja en capturas y medidas.
+export const TOP = 14;
 
 /** Toca el elemento que contiene ese texto (el primero visible). */
-async function tap(page, text, opts = {}) {
+export async function tap(page, text, opts = {}) {
   const loc = page.getByText(text, { exact: opts.exact ?? false }).filter({ visible: true }).first();
   await loc.click({ timeout: 4000 });
   await wait(page, opts.after ?? 400);
 }
-async function tapSel(page, sel, after = 400) {
+export async function tapSel(page, sel, after = 400) {
   await page.locator(sel).filter({ visible: true }).first().click({ timeout: 4000 });
   await wait(page, after);
 }
@@ -52,7 +55,7 @@ async function partidoRapido(p, { tiempo = false, start = true } = {}) {
 }
 
 // Cada escena parte de la app recién abierta (datos vacíos, salvo `demo`) y llega a su pantalla.
-const SCENES = {
+export const SCENES = {
   inicio: async () => {},
   'inicio-elegida': async (p) => {
     await tapSel(p, '.mode-card.mode-quick', 1200);
@@ -136,8 +139,8 @@ const SCENES = {
   }),
 };
 
-async function openApp(browser, { demo = false } = {}) {
-  const ctx = await browser.newContext({ viewport: { width: 800, height: 480 }, deviceScaleFactor: 1, locale: 'es-ES', timezoneId: 'Europe/Madrid' });
+export async function openApp(browser, { demo = false } = {}) {
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 480 + TOP }, deviceScaleFactor: 1, locale: 'es-ES', timezoneId: 'Europe/Madrid' });
   const page = await ctx.newPage();
   await page.clock.install({ time: FIXED_TIME });
   await page.goto(URL);
@@ -156,9 +159,39 @@ async function openApp(browser, { demo = false } = {}) {
   return { ctx, page };
 }
 
+// --medir: además del PNG, guarda <escena>.json con cada elemento visible (caja, letra, colores, bordes, sombras,
+// textos e imágenes) para reproducir la pantalla en la placa con las mismas medidas.
+const MEDIR = process.argv.includes('--medir');
+
+async function medir(page) {
+  return page.evaluate((top) => {
+    const out = [];
+    const skip = new Set(['transparent', 'rgba(0, 0, 0, 0)', 'none', '0px', 'normal']);
+    const walk = (el, depth) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || r.width < 1 || r.height < 1) return;
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
+      const e = { d: depth, tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class') || '').slice(0, 80),
+        x: Math.round(r.x * 10) / 10, y: Math.round((r.y - top) * 10) / 10, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10 };
+      if (own) Object.assign(e, { text: own, font: `${cs.fontStyle === 'italic' ? 'i' : ''}${cs.fontWeight} ${cs.fontSize}`,
+        lh: cs.lineHeight, ls: cs.letterSpacing, color: cs.color, align: cs.textAlign, tt: cs.textTransform, ts: cs.textShadow });
+      for (const [k, v] of [['bg', cs.backgroundColor], ['bgi', cs.backgroundImage], ['border', cs.borderTopWidth !== '0px' ? `${cs.borderTopWidth} ${cs.borderTopColor}` : 'none'],
+        ['radius', cs.borderTopLeftRadius], ['shadow', cs.boxShadow], ['opacity', cs.opacity === '1' ? 'none' : cs.opacity],
+        ['transform', cs.transform], ['filter', cs.filter], ['clip', cs.clipPath]]) if (!skip.has(v)) e[k] = v.length > 300 ? v.slice(0, 300) + '…' : v;
+      if (el.tagName === 'IMG') e.src = el.currentSrc.split('/').pop().split('?')[0];
+      if (el.tagName === 'svg') { e.svg = el.outerHTML.slice(0, 400); out.push(e); return; }
+      out.push(e);
+      for (const c of el.children) walk(c, depth + 1);
+    };
+    walk(document.querySelector('.stage') || document.body, 0);
+    return out;
+  }, TOP);
+}
+
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const wanted = process.argv.slice(2);
+  const wanted = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   const names = wanted.length ? wanted : Object.keys(SCENES);
   const browser = await chromium.launch();
   for (const name of names) {
@@ -167,10 +200,11 @@ async function main() {
     const { ctx, page } = await openApp(browser, { demo: scene.demo });
     try {
       await scene(page);
-      await page.screenshot({ path: join(OUT, `${name}.png`) });
+      await page.screenshot({ path: join(OUT, `${name}.png`), clip: { x: 0, y: TOP, width: 800, height: 480 } });
+      if (MEDIR) writeFileSync(join(OUT, `${name}.json`), JSON.stringify(await medir(page), null, 1));
       console.log(`ok  ${name}`);
     } catch (err) {
-      await page.screenshot({ path: join(OUT, `${name}-ERROR.png`) });
+      await page.screenshot({ path: join(OUT, `${name}-ERROR.png`), clip: { x: 0, y: TOP, width: 800, height: 480 } });
       console.log(`MAL ${name}: ${err.message.split('\n')[0]}`);
     }
     await ctx.close();
@@ -178,4 +212,4 @@ async function main() {
   await browser.close();
 }
 
-main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main();

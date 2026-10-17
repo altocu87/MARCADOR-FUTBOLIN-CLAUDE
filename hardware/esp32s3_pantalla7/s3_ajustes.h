@@ -222,30 +222,30 @@ static void installPoll(uint32_t now) {
 
 // ---------------------------------------------------------------- dibujo
 static void textLeft(const char* s, int x, int y, const lgfx::IFont* font, uint16_t color) {
-  lcd.setFont(font);
-  lcd.setTextSize(1);
-  lcd.setTextColor(color);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_left);
-  lcd.drawString(s, x, y);
+  gfx.setFont(font);
+  gfx.setTextSize(1);
+  gfx.setTextColor(color);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_left);
+  gfx.drawString(s, x, y);
 }
 static void textRight(const char* s, int x, int y, const lgfx::IFont* font, uint16_t color) {
-  lcd.setFont(font);
-  lcd.setTextSize(1);
-  lcd.setTextColor(color);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_right);
-  lcd.drawString(s, x, y);
+  gfx.setFont(font);
+  gfx.setTextSize(1);
+  gfx.setTextColor(color);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_right);
+  gfx.drawString(s, x, y);
 }
 
 static void titleBar(const char* title, uint16_t color) {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   textLeft(title, 40, 36, &lgfx::fonts::FreeSansBold18pt7b, color);
   button(ui::BACK, "VOLVER", C_CARD, C_TEXT, C_LINE);
 }
 
 // Fila de ajustes: nombre a la izquierda y su valor a la derecha.
 static void settingRow(const ui::Rect& r, const char* label, const char* value, uint16_t valueColor) {
-  lcd.fillRoundRect(r.x, r.y, r.w, r.h, 14, C_CARD);
-  lcd.drawRoundRect(r.x, r.y, r.w, r.h, 14, C_LINE);
+  gfx.fillRoundRect(r.x, r.y, r.w, r.h, 14, C_CARD);
+  gfx.drawRoundRect(r.x, r.y, r.w, r.h, 14, C_LINE);
   textLeft(label, r.x + 24, r.y + r.h / 2, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT);
   if (value) textRight(value, r.x + r.w - 24, r.y + r.h / 2, &lgfx::fonts::FreeSans12pt7b, valueColor);
 }
@@ -284,7 +284,7 @@ static void signalBars(int x, int y, int8_t rssi) {
   uint8_t bars = rssi > -55 ? 4 : rssi > -67 ? 3 : rssi > -78 ? 2 : 1;
   for (uint8_t i = 0; i < 4; i++) {
     int h = 8 + i * 7;
-    lcd.fillRect(x + i * 9, y + 14 - h, 6, h, i < bars ? C_TEXT2 : C_LINE);
+    gfx.fillRect(x + i * 9, y + 14 - h, 6, h, i < bars ? C_TEXT2 : C_LINE);
   }
 }
 
@@ -298,8 +298,8 @@ static void drawWifi() {
   for (uint8_t i = 0; i < netCount; i++) {
     const ui::Rect& r = ui::WIFI[1 + i].r;
     bool saved = wifiSsid[0] && !strcmp(nets[i].ssid, wifiSsid);
-    lcd.fillRoundRect(r.x, r.y, r.w, r.h, 12, saved ? lcd.color565(20, 60, 85) : C_CARD);
-    lcd.drawRoundRect(r.x, r.y, r.w, r.h, 12, saved ? C_ACCENT : C_LINE);
+    gfx.fillRoundRect(r.x, r.y, r.w, r.h, 12, saved ? gfx.color565(20, 60, 85) : C_CARD);
+    gfx.drawRoundRect(r.x, r.y, r.w, r.h, 12, saved ? C_ACCENT : C_LINE);
     textLeft(nets[i].ssid, r.x + 20, r.y + r.h / 2, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT);
     if (nets[i].open) textRight("abierta", r.x + r.w - 70, r.y + r.h / 2, &lgfx::fonts::FreeSans9pt7b, C_TEXT2);
     signalBars(r.x + r.w - 56, r.y + r.h / 2 - 8, nets[i].rssi);
@@ -309,7 +309,7 @@ static void drawWifi() {
 }
 
 static void drawKeyboard() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   char t[64];
   if (kbError) {
     textLeft(kbError, 40, 36, &lgfx::fonts::FreeSansBold12pt7b, C_DANGER);
@@ -319,16 +319,16 @@ static void drawKeyboard() {
   }
   button(ui::BACK, "VOLVER", C_CARD, C_TEXT, C_LINE);
   const ui::Rect& f = ui::KEY_FIELD;
-  lcd.fillRoundRect(f.x, f.y, f.w, f.h, 10, C_SURFACE);
-  lcd.drawRoundRect(f.x, f.y, f.w, f.h, 10, C_ACCENT);
+  gfx.fillRoundRect(f.x, f.y, f.w, f.h, 10, C_SURFACE);
+  gfx.drawRoundRect(f.x, f.y, f.w, f.h, 10, C_ACCENT);
   char shown[65];
   size_t n = strlen(kbText);
   for (size_t i = 0; i < n; i++) shown[i] = kbShow ? kbText[i] : '*';
   shown[n] = 0;
   // Si no cabe, se ve el final (lo último que se ha escrito).
   const char* vis = shown;
-  lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
-  while (*vis && lcd.textWidth(vis) > f.w - 30) vis++;
+  gfx.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  while (*vis && gfx.textWidth(vis) > f.w - 30) vis++;
   textLeft(vis, f.x + 16, f.y + f.h / 2, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT);
   button(ui::KEYBOARD[1].r, kbShow ? "OCULTAR" : "VER", C_CARD, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold9pt7b);
   const char* const* rows = kbMode == 2 ? ui::KEYS_SYMBOLS : kbMode == 1 ? ui::KEYS_UPPER : ui::KEYS_LOWER;
@@ -342,22 +342,22 @@ static void drawKeyboard() {
   }
   button(ui::KEYBOARD[2].r, "BORRAR", C_SURFACE, C_TEXT, C_LINE);
   bool caps = kbMode == 1;
-  button(ui::KEYBOARD[3].r, "MAYUS", caps ? lcd.color565(20, 60, 85) : C_SURFACE, C_TEXT, caps ? C_ACCENT : C_LINE);
+  button(ui::KEYBOARD[3].r, "MAYUS", caps ? gfx.color565(20, 60, 85) : C_SURFACE, C_TEXT, caps ? C_ACCENT : C_LINE);
   button(ui::KEYBOARD[4].r, kbMode == 2 ? "ABC" : "#+=", C_SURFACE, C_TEXT, C_LINE);
   button(ui::KEYBOARD[5].r, "ESPACIO", C_SURFACE, C_TEXT, C_LINE);
   button(ui::KEYBOARD[6].r, "CONECTAR", C_ACCENT, C_BG, C_ACCENT);
 }
 
 static void drawConnecting() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   char t[64];
   snprintf(t, sizeof(t), "Conectando a %s...", kbSsid);
   text(t, ui::W / 2, 220, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
 }
 
 static void versionCard(int y, const char* name, const char* now, const char* status, uint16_t statusColor) {
-  lcd.fillRoundRect(40, y, 720, 104, 16, C_CARD);
-  lcd.drawRoundRect(40, y, 720, 104, 16, C_LINE);
+  gfx.fillRoundRect(40, y, 720, 104, 16, C_CARD);
+  gfx.drawRoundRect(40, y, 720, 104, 16, C_LINE);
   textLeft(name, 64, y + 34, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
   textLeft(now, 64, y + 74, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
   textRight(status, 736, y + 52, &lgfx::fonts::FreeSansBold18pt7b, statusColor);
@@ -416,18 +416,18 @@ static void drawUpdate() {
 
 static const ui::Rect PROGRESS = {60, 250, 680, 40};
 static void drawProgressBar(uint8_t pct) {
-  lcd.fillRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_SURFACE);
-  lcd.drawRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_LINE);
+  gfx.fillRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_SURFACE);
+  gfx.drawRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_LINE);
   int w = (int)(PROGRESS.w - 8) * pct / 100;
-  if (w > 0) lcd.fillRoundRect(PROGRESS.x + 4, PROGRESS.y + 4, w, PROGRESS.h - 8, 9, C_ACCENT);
+  if (w > 0) gfx.fillRoundRect(PROGRESS.x + 4, PROGRESS.y + 4, w, PROGRESS.h - 8, 9, C_ACCENT);
   char t[8];
   snprintf(t, sizeof(t), "%u%%", pct);
-  lcd.fillRect(PROGRESS.x, PROGRESS.y + PROGRESS.h + 6, PROGRESS.w, 30, C_BG);
+  gfx.fillRect(PROGRESS.x, PROGRESS.y + PROGRESS.h + 6, PROGRESS.w, 30, C_BG);
   text(t, ui::W / 2, PROGRESS.y + PROGRESS.h + 22, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
 }
 
 static void drawInstall() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   uint8_t steps = (instMando ? 1 : 0) + (instScreen ? 1 : 0);
   bool mandoStep = inst <= Inst::MandoConfirm;
   char t[48];

@@ -9,3 +9,4 @@ dist-web/
 hardware/*/build/
 hardware/test/.lgfx/
 hardware/test/.lvgl/
+build/

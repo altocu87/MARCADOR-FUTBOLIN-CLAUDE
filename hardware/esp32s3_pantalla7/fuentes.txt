@@ -1,0 +1,8 @@
+# Letras Inter de la pantalla de 7" (las mismas de la app). Una por línea: peso tamaño [i = itálica] [texto|cifras]
+# «cifras» solo lleva números y signos (para los números grandes, que ocupan mucho). Se convierten con
+# scripts/placa_recursos.py y van a la memoria FAT de la placa (fuentes/inter-<peso>[i]-<tamaño>.bin).
+400 14
+700 14
+900 15
+900 20
+800 13

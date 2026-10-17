@@ -8,10 +8,14 @@
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
 
-static void run(uint32_t ms) { for (uint32_t t = 0; t < ms; t += 10) loop(); }
+static void run(uint32_t ms) {
+  uint32_t end = sim::now + ms;
+  while ((int32_t)(end - sim::now) > 0) loop();
+}
+// Un toque: dedo abajo 60 ms y arriba 60 ms (LVGL lee el táctil cada 15 ms).
 static void tap(int x, int y) {
-  sim::touchX = x; sim::touchY = y; sim::touchDown = true; loop();
-  sim::touchDown = false; loop();
+  sim::touchX = x; sim::touchY = y; sim::touchDown = true; run(60);
+  sim::touchDown = false; run(60);
 }
 static void usb(const char* s) { for (const char* c = s; *c; c++) sim::in.push_back(*c); sim::in.push_back('\n'); loop(); }
 // Placas sin UART auxiliar (Waveshare 7C): las mismas líneas llegan por el USB.
@@ -21,7 +25,26 @@ static void aux(const char* s) {
   sim::auxIn.push_back('\n');
   loop();
 }
-static bool shows(const char* s) { return sim::screen.find(s) != std::string::npos; }
+// Textos que se ven ahora (etiquetas de LVGL de la pantalla activa y de la capa de arriba, separadas por «|»).
+static void collectText(lv_obj_t* o, std::string& out) {
+  if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) return;
+  if (lv_obj_check_type(o, &lv_label_class)) { out += lv_label_get_text(o); out += '|'; }
+  for (uint32_t i = 0; i < lv_obj_get_child_count(o); i++) collectText(lv_obj_get_child(o, i), out);
+}
+static std::string screenText() {
+  std::string t;
+  collectText(lv_screen_active(), t);
+  collectText(lv_layer_top(), t);
+  return t;
+}
+static bool shows(const char* s) { return screenText().find(s) != std::string::npos; }
+// Inicio (tarjetas): dos toques en RÁPIDO llevan a la configuración del partido.
+static void toConfig() {
+  assert(inicio::active());
+  tap(140, 280); tap(140, 280);
+  run(300);
+  assert(!homeCards);
+}
 static bool sent(const char* s) { return sim::out.find(s) != std::string::npos; }
 static size_t count(const std::string& h, const char* s) {
   size_t n = 0;
@@ -68,6 +91,7 @@ static void mandoInfo(uint32_t build) {
 
 int main() {
   sim::now = 1000;
+  assets::setRoot("../build/placa/fat");  // capas y letras (si no están, se ve sin ellas)
   setup();
   loop();
   assert(sent("HELLO " S3_BOARD_ID " 1.0 caps=goles,anular,pausa,pantalla") && sent("STATE idle"));
@@ -98,8 +122,8 @@ int main() {
   tap(400, 430);                   // TERMINAR
   assert(!test.active && sim::nvs.count("tested") && sent("STATE idle"));
   loop();
-  assert(shows("MARCADOR FUTBOLIN V3") && shows("JUGAR") && shows("AJUSTES") && !shows("ACTUALIZAR"));
-  tap(100, 428);                   // AJUSTES → PRUEBA DE LA PLACA: vuelve a la prueba
+  assert(inicio::active());        // Inicio con las tarjetas de la app
+  tap(750, 46);                    // engranaje → AJUSTES → PRUEBA DE LA PLACA: vuelve a la prueba
   assert(screen == Screen::Settings && shows("WI-FI") && shows("Sin configurar") && shows("PRUEBA DE LA PLACA"));
   tap(400, 368);
   assert(test.active);
@@ -115,6 +139,7 @@ int main() {
   assert(userBrightness == 100);
 
   // Configuración: POR GOLES, a 2 goles (desde 5). Sin partes: el primero que llega gana.
+  toConfig();
   for (int i = 0; i < 3; i++) tap(76, 306);
   assert(cfg.goalsPerPeriod == 2 && shows("GOLES PARA GANAR"));
   tap(400, 420);  // JUGAR
@@ -174,6 +199,7 @@ int main() {
 #if HAS_ISOLATED_IO
   // Waveshare 7C: luz encendida por el expansor y sensores en las entradas aisladas DI0/DI1.
   assert(sim::exioMode == exio::OUTPUT_MASK && (sim::exioOut & (1u << exio::BACKLIGHT)) && sim::exioPwm == 255);
+  toConfig();
   for (int i = 0; i < 4; i++) tap(326, 306);  // 5 goles por parte
   tap(400, 420);  // JUGAR
   tap(400, 240);  // saltar cuenta atrás
@@ -211,7 +237,8 @@ int main() {
     assert(sim::radioCb != nullptr && sim::wifiChannel == mfv3::RADIO_CHANNEL);
     radio(mfv3::RadioCmd::Hello, 100);
     run(50);
-    assert(shows("MANDO CONECTADO"));
+    assert(inicio::dotShown());           // punto del engranaje: mando conectado
+    toConfig();
     while (cfg.goalsPerPeriod < 5) tap(326, 306);
     tap(400, 420);                        // JUGAR
     radio(mfv3::RadioCmd::GoalWhite, 101);  // en la cuenta atrás: solo la salta
@@ -292,6 +319,7 @@ int main() {
     // Partido: «empieza el partido» con el de siempre; el gol con el propio (0,1 s a 16 kHz ≈ 1600 muestras de 8000).
     sim::i2sRoom = 1000000;
     run(2000);  // termina de sonar lo que quedaba de antes
+    toConfig();
     sim::heard.clear();
     tap(400, 420);  // JUGAR
     tap(400, 240);  // saltar la cuenta atrás
@@ -372,24 +400,21 @@ int main() {
     assert(sim::rtcRegs[4] == 0x05 && sim::rtcRegs[5] == 0x42 && sim::rtcRegs[6] == 0x18 && sim::rtcRegs[7] == 0x17 &&
            sim::rtcRegs[8] == 6 && sim::rtcRegs[9] == 0x10 && sim::rtcRegs[10] == 0x26);
     run(1100);
-    assert(rtc.clockOk && rtc.now.hour == 18 && rtc.now.minute == 42 && shows("18:42"));
-    // Batería al 12 % sin cargar: «BATERIA BAJA» en Inicio (se relee cada 10 s).
+    assert(rtc.clockOk && rtc.now.hour == 18 && rtc.now.minute == 42);  // Inicio no enseña la hora (como la app)
+    // Batería al 12 % sin cargar: aviso «BATERÍA BAJA» en Inicio (se relee cada 10 s).
     assert(!rtc.bat.present);
     sim::gaugeRegs[0x0A] = 0x0008; sim::gaugeRegs[0x2C] = 12; sim::gaugeRegs[0x08] = 3550; sim::gaugeRegs[0x0C] = (uint16_t)-300;
     run(10100);
-    assert(rtc.bat.present && rtc.bat.percent == 12 && rtc.lowBattery() && shows("BATERIA BAJA 12%"));
+    assert(rtc.bat.present && rtc.bat.percent == 12 && rtc.lowBattery() && shows("BATERÍA BAJA 12 %"));
     // Cargando: deja de avisar.
     sim::gaugeRegs[0x0C] = 800;
     run(10100);
-    assert(rtc.bat.charging && !rtc.lowBattery() && shows("CARGANDO 12%"));
-    // El partido de antes se guardó sin hora; uno nuevo lleva su fecha, y Inicio la enseña.
+    assert(rtc.bat.charging && !rtc.lowBattery() && !shows("BATERÍA BAJA"));
+    // El partido de antes se guardó sin hora; uno nuevo lleva su fecha.
     assert(historyCount == 1 && history[0].at == 0);
     LastResult before = history[0];
     saveResult();
     assert(history[0].at == reloj::stamp(rtc.now) && sim::nvs.count("hist2"));
-    lastKey = 0xFFFFFFFF;
-    loop();
-    assert(shows("17/10 18:42"));
     history[0] = before;  // se deja el historial como estaba para lo que sigue
     historyCount = 1;
     matchesPlayed = 1;
@@ -400,7 +425,7 @@ int main() {
     run(SLEEP_AFTER_MS + 11000);
     assert(dimmed && shows("18:42|") && shows("SABADO 17 DE OCTUBRE") && shows("BATERIA BAJA: CONECTA EL CARGADOR"));
     tap(400, 240);
-    assert(!dimmed && !inMatch && shows("MARCADOR FUTBOLIN V3"));
+    assert(!dimmed && !inMatch && inicio::active());
     // Hora de Internet al conectarse al Wi-Fi (zona horaria de España).
     sim::ntpOk = true;
     sim::ntpTime = {};
@@ -429,7 +454,7 @@ int main() {
     sim::web[base + "mando-c3/mando-c3-ota.bin"] = mandoBin;
     sim::networks = {{"CasaPepe", "Clave#1", -50}, {"Vecino", "x", -82}, {"Bar abierto", "", -70}};
     assert(!inMatch && screen == Screen::Home);
-    tap(100, 428);  // AJUSTES
+    tap(750, 46);  // engranaje → AJUSTES
     tapBtn(ui::SETTINGS[1].r);  // WI-FI: se dibuja «buscando» y, en la vuelta siguiente, busca y enseña la lista
     assert(sim::scans == 1 && netCount == 3 && shows("CasaPepe") && shows("abierta") && sim::wifiChannel == mfv3::RADIO_CHANNEL);
     tapBtn(ui::WIFI[1].r);  // CasaPepe → teclado
@@ -462,8 +487,9 @@ int main() {
     assert(mandoBuild == 10 && mandoUpd() == MandoUpd::Outdated && shows("Nueva: 61"));
     tapBtn(ui::BACK);
     tapBtn(ui::BACK);
-    assert(screen == Screen::Home && shows("ACTUALIZAR"));
-    tap(690, 428);  // ACTUALIZAR → pantalla de versiones
+    assert(screen == Screen::Home && inicio::dotShown());  // punto dorado en el engranaje
+    tap(750, 46);                                         // AJUSTES → ACTUALIZAR
+    tapBtn(ui::SETTINGS[2].r);
     assert(screen == Screen::Update);
     tapBtn(ui::UPDATE[2].r);  // INSTALAR
     assert(screen == Screen::Install && inst == Inst::MandoConnect && shows("Conectando al Wi-Fi"));
@@ -517,6 +543,8 @@ int main() {
     run(500);
     assert(checkState == CheckState::Ok && pubScreen.build == 60 && !sim::wifiUp);
     checkState = CheckState::Never;
+    loop();
+    toConfig();
     startCheck();
     tap(400, 420);  // JUGAR antes de que conecte
     run(500);
@@ -526,7 +554,8 @@ int main() {
     // Sin internet: lo dice y no inventa versiones.
     sim::webDown = true;
     checkState = CheckState::Never;
-    tap(100, 428);
+    loop();
+    tap(750, 46);               // engranaje → AJUSTES
     tapBtn(ui::SETTINGS[2].r);  // ACTUALIZAR (busca solo)
     run(500);
     assert(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar la web"));

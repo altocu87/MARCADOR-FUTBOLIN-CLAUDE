@@ -24,6 +24,7 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <FFat.h>
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
@@ -38,6 +39,10 @@
 #include "mfv3_audio.h"
 #include "s3_reloj.h"
 #include "ui_layout.h"
+#include "ui_port.h"
+#include "ui_base.h"
+#include "ui_legacy.h"
+#include "ui_inicio.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -68,7 +73,8 @@ static const char* FW_VERSION = "1.0";
 static const uint8_t GRUPO_MESA = 1;  // MISMO número que en el mando (cámbialo si hay dos mesas cerca)
 static const uint32_t SLEEP_AFTER_MS = 5UL * 60UL * 1000UL;  // atenuar pantalla tras 5 min sin uso fuera de partido
 
-LGFX lcd;
+LGFX lcd;        // expansor, brillo y bus I2C de la placa (el panel lo lleva ui_port.h con LVGL)
+static LegacyGfx gfx;  // pantallas aún sin rehacer: su dibujo antiguo pasa a objetos LVGL (ui_legacy.h)
 Engine eng;
 mfv3::Config cfg;
 Preferences prefs;
@@ -91,19 +97,19 @@ static uint16_t C_BG, C_SURFACE, C_CARD, C_LINE, C_TEXT, C_TEXT2, C_ACCENT, C_WH
     C_GOLD, C_DANGER, C_OK;
 
 static void initColors() {
-  C_BG = lcd.color565(7, 11, 18);
-  C_SURFACE = lcd.color565(9, 19, 36);
-  C_CARD = lcd.color565(17, 34, 59);
-  C_LINE = lcd.color565(34, 56, 90);
-  C_TEXT = lcd.color565(243, 247, 255);
-  C_TEXT2 = lcd.color565(166, 183, 207);
-  C_ACCENT = lcd.color565(98, 214, 255);
-  C_WHITE_TEAM = lcd.color565(238, 246, 255);
-  C_WHITE_INK = lcd.color565(11, 22, 38);
-  C_BLUE_TEAM = lcd.color565(23, 109, 188);
-  C_GOLD = lcd.color565(242, 201, 76);
-  C_DANGER = lcd.color565(255, 90, 110);
-  C_OK = lcd.color565(61, 220, 151);
+  C_BG = gfx.color565(7, 11, 18);
+  C_SURFACE = gfx.color565(9, 19, 36);
+  C_CARD = gfx.color565(17, 34, 59);
+  C_LINE = gfx.color565(34, 56, 90);
+  C_TEXT = gfx.color565(243, 247, 255);
+  C_TEXT2 = gfx.color565(166, 183, 207);
+  C_ACCENT = gfx.color565(98, 214, 255);
+  C_WHITE_TEAM = gfx.color565(238, 246, 255);
+  C_WHITE_INK = gfx.color565(11, 22, 38);
+  C_BLUE_TEAM = gfx.color565(23, 109, 188);
+  C_GOLD = gfx.color565(242, 201, 76);
+  C_DANGER = gfx.color565(255, 90, 110);
+  C_OK = gfx.color565(61, 220, 151);
 }
 
 // ---------------------------------------------------------------- historial breve (NVS)
@@ -219,6 +225,8 @@ static const char* phaseName(Phase p) {
 
 // ---------------------------------------------------------------- estado de la interfaz
 static bool inMatch = false;       // false = pantalla de inicio
+static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
+static uint8_t chosenMode = 0;     // inicio::QUICK, CHAOS o RANKED
 static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
 static uint32_t lastKey = 0xFFFFFFFF;
 static uint32_t flashUntil = 0;
@@ -329,6 +337,7 @@ static void startMatch() {
 
 static void goHome() {
   inMatch = false;
+  homeCards = true;
   screen = Screen::Home;
   confirmAbandon = false;
   sendLine("STATE idle");
@@ -412,50 +421,16 @@ static bool handleSoundLine(const char* line) {
 
 static void onTap(int16_t x, int16_t y);
 
-// «CAPTURA» por el USB: manda lo que enseña la pantalla (para compararla con la app desde el PC, ver
-// scripts/placa.py). Responde «CAPTURA <ancho> <alto> <bytes> <crc32>» y la imagen en RGB565, fila a fila.
-static uint32_t crc32Update(uint32_t crc, const uint8_t* d, size_t n) {
-  crc = ~crc;
-  while (n--) {
-    crc ^= *d++;
-    for (int k = 0; k < 8; k++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
-  }
-  return ~crc;
-}
-// LovyanGFX lee la fila con los bytes al revés (RGB565 de byte alto primero): se envía como RGB565 normal.
-static void readCaptureRow(int y, uint16_t* row) {
-  lcd.readRect(0, y, ui::W, 1, row);
-  for (int x = 0; x < ui::W; x++) row[x] = (uint16_t)((row[x] >> 8) | (row[x] << 8));
-}
-static void sendCapture() {
-  static uint16_t row[ui::W];
-  uint32_t crc = 0;
-  for (int y = 0; y < ui::H; y++) {
-    readCaptureRow(y, row);
-    crc = crc32Update(crc, (const uint8_t*)row, sizeof(row));
-  }
-  char head[64];
-  snprintf(head, sizeof(head), "CAPTURA %d %d %u %08lx", ui::W, ui::H, (unsigned)(ui::W * ui::H * 2), (unsigned long)crc);
-  Serial.println(head);
-  for (int y = 0; y < ui::H; y++) {
-    readCaptureRow(y, row);
-    Serial.write((const uint8_t*)row, sizeof(row));
-  }
-  Serial.flush();
-}
-
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
-  if (!strcmp(line, "CAPTURA")) { sendCapture(); return; }
+  if (!strcmp(line, "CAPTURA")) { uiport::sendCapture(); return; }  // lo que se ve, por el USB (scripts/placa.py)
   // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
   if (!strncmp(line, "TOQUE ", 6)) {
     int x = 0, y = 0;
     if (sscanf(line + 6, "%d %d", &x, &y) == 2) {
-      lastActivity = millis();
-      if (dimmed) { dimmed = false; lcd.backlight(backlightLevel()); }
-      else onTap((int16_t)x, (int16_t)y);
+      uiport::injectTouch((int16_t)x, (int16_t)y);
       sendLine("TOQUE_OK");
     }
     return;
@@ -584,31 +559,31 @@ static bool remoteLinked() { return lastRadioAt != 0 && millis() - lastRadioAt <
 
 // ---------------------------------------------------------------- dibujo
 static void text(const char* s, int x, int y, const lgfx::IFont* font, uint16_t color, float size = 1.0f) {
-  lcd.setFont(font);
-  lcd.setTextSize(size);
-  lcd.setTextColor(color);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_center);
-  lcd.drawString(s, x, y);
+  gfx.setFont(font);
+  gfx.setTextSize(size);
+  gfx.setTextColor(color);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_center);
+  gfx.drawString(s, x, y);
 }
 
 static void button(const ui::Rect& r, const char* label, uint16_t fill, uint16_t ink, uint16_t border,
                    const lgfx::IFont* font = &lgfx::fonts::FreeSansBold12pt7b) {
-  lcd.fillRoundRect(r.x, r.y, r.w, r.h, 12, fill);
-  lcd.drawRoundRect(r.x, r.y, r.w, r.h, 12, border);
+  gfx.fillRoundRect(r.x, r.y, r.w, r.h, 12, fill);
+  gfx.drawRoundRect(r.x, r.y, r.w, r.h, 12, border);
   text(label, r.x + r.w / 2, r.y + r.h / 2, font, ink);
 }
 
 static void drawHeader(const char* left, const char* right, uint16_t rightColor) {
-  lcd.fillRect(0, 0, ui::W, 44, C_BG);
-  lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
-  lcd.setTextSize(1);
-  lcd.setTextColor(C_TEXT);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_left);
-  lcd.drawString(left, 14, 24);
-  lcd.setTextColor(rightColor);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_right);
-  lcd.drawString(right, ui::W - 14, 24);
-  lcd.drawFastHLine(0, 44, ui::W, C_LINE);
+  gfx.fillRect(0, 0, ui::W, 44, C_BG);
+  gfx.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  gfx.setTextSize(1);
+  gfx.setTextColor(C_TEXT);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_left);
+  gfx.drawString(left, 14, 24);
+  gfx.setTextColor(rightColor);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_right);
+  gfx.drawString(right, ui::W - 14, 24);
+  gfx.drawFastHLine(0, 44, ui::W, C_LINE);
 }
 
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
@@ -629,25 +604,25 @@ static uint32_t statusKey() {
 
 // Pila dibujada: contorno, borne y relleno según la carga (verde, azul cargando, rojo si queda poca).
 static void drawBatteryIcon(int x, int y, uint8_t pct, uint16_t color) {
-  lcd.drawRoundRect(x, y, 34, 18, 3, color);
-  lcd.fillRect(x + 34, y + 5, 3, 8, color);
+  gfx.drawRoundRect(x, y, 34, 18, 3, color);
+  gfx.fillRect(x + 34, y + 5, 3, 8, color);
   int w = (int)pct * 28 / 100;
   if (w < 2) w = 2;
-  lcd.fillRect(x + 3, y + 3, w, 12, color);
+  gfx.fillRect(x + 3, y + 3, w, 12, color);
 }
 
 // Franja de arriba de Inicio: la hora a la izquierda y la batería a la derecha (solo lo que la placa sabe).
 static void drawStatus() {
   lastStatusKey = statusKey();
-  lcd.fillRect(0, 0, ui::W, 26, C_BG);
+  gfx.fillRect(0, 0, ui::W, 26, C_BG);
   char buf[32];
   if (rtc.clockOk) {
     snprintf(buf, sizeof(buf), "%02u:%02u", rtc.now.hour, rtc.now.minute);
-    lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
-    lcd.setTextSize(1);
-    lcd.setTextColor(C_TEXT2);
-    lcd.setTextDatum(lgfx::textdatum_t::middle_left);
-    lcd.drawString(buf, 14, 14);
+    gfx.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+    gfx.setTextSize(1);
+    gfx.setTextColor(C_TEXT2);
+    gfx.setTextDatum(lgfx::textdatum_t::middle_left);
+    gfx.drawString(buf, 14, 14);
   }
   if (rtc.bat.present) {
     uint16_t color = rtc.lowBattery() ? C_DANGER : rtc.bat.charging ? C_ACCENT : C_OK;
@@ -655,11 +630,11 @@ static void drawStatus() {
     if (rtc.lowBattery()) snprintf(buf, sizeof(buf), "BATERIA BAJA %u%%", rtc.bat.percent);
     else if (rtc.bat.charging) snprintf(buf, sizeof(buf), "CARGANDO %u%%", rtc.bat.percent);
     else snprintf(buf, sizeof(buf), "%u%%", rtc.bat.percent);
-    lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
-    lcd.setTextSize(1);
-    lcd.setTextColor(color);
-    lcd.setTextDatum(lgfx::textdatum_t::middle_right);
-    lcd.drawString(buf, ui::W - 14 - 37 - 10, 14);
+    gfx.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+    gfx.setTextSize(1);
+    gfx.setTextColor(color);
+    gfx.setTextDatum(lgfx::textdatum_t::middle_right);
+    gfx.drawString(buf, ui::W - 14 - 37 - 10, 14);
   }
 }
 
@@ -668,7 +643,7 @@ static bool sleepClock() { return dimmed && !inMatch && !test.active && rtc.cloc
 
 static void drawSleep() {
   lastSleepKey = (uint32_t)rtc.now.hour * 60 + rtc.now.minute;
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   char buf[40];
   snprintf(buf, sizeof(buf), "%02u:%02u", rtc.now.hour, rtc.now.minute);
   text(buf, ui::W / 2, 200, &lgfx::fonts::Font7, C_TEXT, 3.0f);
@@ -678,7 +653,7 @@ static void drawSleep() {
 }
 
 static void drawHome() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   drawStatus();
   text("MARCADOR FUTBOLIN V3", ui::W / 2, 54, &lgfx::fonts::FreeSansBold24pt7b, C_ACCENT);
   char sub[96];
@@ -701,7 +676,7 @@ static void drawHome() {
   const char* conds[3] = {"POR GOLES", "POR TIEMPO", "AMBAS"};
   for (int i = 0; i < 3; i++) {
     bool on = (int)cfg.endCondition == i;
-    button(ui::HOME[i].r, conds[i], on ? lcd.color565(20, 60, 85) : C_CARD, C_TEXT, on ? C_ACCENT : C_LINE);
+    button(ui::HOME[i].r, conds[i], on ? gfx.color565(20, 60, 85) : C_CARD, C_TEXT, on ? C_ACCENT : C_LINE);
   }
   bool useGoals = cfg.endCondition != mfv3::EndCondition::Time;
   bool useTime = cfg.endCondition != mfv3::EndCondition::Goals;
@@ -718,28 +693,28 @@ static void drawHome() {
   text(v, 599, 306, &lgfx::fonts::FreeSansBold24pt7b, useTime ? C_TEXT : C_LINE);
   button(ui::HOME[7].r, "JUGAR", C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold24pt7b);
   button(ui::HOME[8].r, "AJUSTES", C_SURFACE, C_TEXT2, C_LINE, &lgfx::fonts::FreeSansBold12pt7b);
-  if (updateAvailable()) button(ui::HOME[9].r, "ACTUALIZAR", lcd.color565(60, 50, 12), C_GOLD, C_GOLD, &lgfx::fonts::FreeSansBold12pt7b);
+  if (updateAvailable()) button(ui::HOME[9].r, "ACTUALIZAR", gfx.color565(60, 50, 12), C_GOLD, C_GOLD, &lgfx::fonts::FreeSansBold12pt7b);
 }
 
 static void testLine(int y, const char* label, bool ok, bool optional) {
-  lcd.fillRoundRect(130, y - 18, 540, 36, 10, C_SURFACE);
-  lcd.fillCircle(156, y, 11, ok ? C_OK : (optional ? C_LINE : C_DANGER));
-  lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
-  lcd.setTextSize(1);
-  lcd.setTextColor(ok ? C_TEXT : C_TEXT2);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_left);
-  lcd.drawString(label, 180, y);
-  lcd.setTextDatum(lgfx::textdatum_t::middle_right);
-  lcd.setTextColor(ok ? C_OK : C_TEXT2);
-  lcd.drawString(ok ? "OK" : (optional ? "opcional" : "pendiente"), 655, y);
+  gfx.fillRoundRect(130, y - 18, 540, 36, 10, C_SURFACE);
+  gfx.fillCircle(156, y, 11, ok ? C_OK : (optional ? C_LINE : C_DANGER));
+  gfx.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  gfx.setTextSize(1);
+  gfx.setTextColor(ok ? C_TEXT : C_TEXT2);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_left);
+  gfx.drawString(label, 180, y);
+  gfx.setTextDatum(lgfx::textdatum_t::middle_right);
+  gfx.setTextColor(ok ? C_OK : C_TEXT2);
+  gfx.drawString(ok ? "OK" : (optional ? "opcional" : "pendiente"), 655, y);
 }
 
 static void drawTest() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   for (int i = 0; i < 4; i++) {
     const ui::Rect& r = ui::TEST_CORNERS[i];
-    lcd.fillRoundRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 14, test.corner[i] ? C_OK : C_CARD);
-    lcd.drawRoundRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 14, test.corner[i] ? C_OK : C_ACCENT);
+    gfx.fillRoundRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 14, test.corner[i] ? C_OK : C_CARD);
+    gfx.drawRoundRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 14, test.corner[i] ? C_OK : C_ACCENT);
     text(test.corner[i] ? "OK" : "TOCA", r.x + r.w / 2, r.y + r.h / 2, &lgfx::fonts::FreeSansBold9pt7b, test.corner[i] ? C_BG : C_ACCENT);
   }
   text("PRUEBA DE LA PLACA", ui::W / 2, 34, &lgfx::fonts::FreeSansBold18pt7b, C_ACCENT);
@@ -764,8 +739,8 @@ static void drawTest() {
   if (test.lastX >= 0) {
     snprintf(buf, sizeof(buf), "Ultimo toque: %d, %d", test.lastX, test.lastY);
     text(buf, ui::W / 2, 374, &lgfx::fonts::FreeSans9pt7b, C_TEXT2);
-    lcd.drawLine(test.lastX - 12, test.lastY, test.lastX + 12, test.lastY, C_GOLD);
-    lcd.drawLine(test.lastX, test.lastY - 12, test.lastX, test.lastY + 12, C_GOLD);
+    gfx.drawLine(test.lastX - 12, test.lastY, test.lastX + 12, test.lastY, C_GOLD);
+    gfx.drawLine(test.lastX, test.lastY - 12, test.lastX, test.lastY + 12, C_GOLD);
   }
   bool ready = testCornersOk();
   button(ui::TEST[0].r, "TERMINAR", ready ? C_ACCENT : C_CARD, ready ? C_BG : C_TEXT, ready ? C_ACCENT : C_LINE,
@@ -787,11 +762,11 @@ static void drawScorePanel(Team t, bool highlight) {
   const ui::Rect& r = t == Team::White ? ui::PANEL_WHITE : ui::PANEL_BLUE;
   uint16_t fill = t == Team::White ? C_WHITE_TEAM : C_BLUE_TEAM;
   uint16_t ink = t == Team::White ? C_WHITE_INK : C_TEXT;
-  lcd.fillRoundRect(r.x, r.y, r.w, r.h, 22, fill);
+  gfx.fillRoundRect(r.x, r.y, r.w, r.h, 22, fill);
   uint8_t mp = eng.matchPoint();
   bool matchPoint = eng.period() != Period::Overtime && (mp & (t == Team::White ? 1 : 2));
   uint16_t border = highlight ? C_GOLD : matchPoint ? C_DANGER : (t == Team::White ? C_TEXT2 : C_ACCENT);
-  for (int i = 0; i < (highlight || matchPoint ? 5 : 2); i++) lcd.drawRoundRect(r.x - i, r.y - i, r.w + 2 * i, r.h + 2 * i, 22 + i, border);
+  for (int i = 0; i < (highlight || matchPoint ? 5 : 2); i++) gfx.drawRoundRect(r.x - i, r.y - i, r.w + 2 * i, r.h + 2 * i, 22 + i, border);
   text(t == Team::White ? "BLANCO" : "AZUL", r.x + r.w / 2, r.y + 26, &lgfx::fonts::FreeSansBold12pt7b, ink);
   char n[4];
   uint8_t v = eng.score().of(t);
@@ -806,7 +781,7 @@ static void drawClock(uint32_t now) {
   uint32_t sec = (ms + (eng.clockCountsDown() ? 999 : 0)) / 1000;
   char buf[16];
   snprintf(buf, sizeof(buf), "%02lu:%02lu", (unsigned long)(sec / 60), (unsigned long)(sec % 60));
-  lcd.fillRect(ui::CLOCK.x, ui::CLOCK.y, ui::CLOCK.w, ui::CLOCK.h, C_BG);
+  gfx.fillRect(ui::CLOCK.x, ui::CLOCK.y, ui::CLOCK.w, ui::CLOCK.h, C_BG);
   bool warn = eng.clockCountsDown() && ms <= 10000 && eng.phase() == Phase::Playing;
   text(buf, ui::CLOCK.x + ui::CLOCK.w / 2, ui::CLOCK.y + ui::CLOCK.h / 2, &lgfx::fonts::Font7, warn ? C_DANGER : C_ACCENT, 0.7f);
   lastClockSecond = sec;
@@ -814,7 +789,7 @@ static void drawClock(uint32_t now) {
 
 static void drawLock(uint32_t now) {
   uint32_t lock = eng.lockRemaining(now);
-  lcd.fillRect(ui::LOCK_MSG.x, ui::LOCK_MSG.y, ui::LOCK_MSG.w, ui::LOCK_MSG.h, C_BG);
+  gfx.fillRect(ui::LOCK_MSG.x, ui::LOCK_MSG.y, ui::LOCK_MSG.w, ui::LOCK_MSG.h, C_BG);
   if (lock > 0) {
     char buf[24];
     snprintf(buf, sizeof(buf), "BLOQUEO %.1f s", lock / 1000.0f);
@@ -824,7 +799,7 @@ static void drawLock(uint32_t now) {
 }
 
 static void drawMatch(uint32_t now) {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   char right[32];
   snprintf(right, sizeof(right), cfg.endCondition == mfv3::EndCondition::Time ? "%u min" : "%u goles", cfg.endCondition == mfv3::EndCondition::Time ? cfg.minutesPerPeriod : cfg.goalsPerPeriod);
   drawHeader(periodLabel(eng.period()), right, C_TEXT2);
@@ -839,15 +814,15 @@ static void drawMatch(uint32_t now) {
     snprintf(buf, sizeof(buf), "A %u goles", cfg.goalsPerPeriod);
     text(buf, 400, 190, &lgfx::fonts::FreeSans9pt7b, C_TEXT2);
   }
-  button(ui::MATCH[2].r, "-1", lcd.color565(40, 18, 26), C_DANGER, C_DANGER, &lgfx::fonts::FreeSansBold18pt7b);
-  button(ui::MATCH[3].r, "-1", lcd.color565(40, 18, 26), C_DANGER, C_DANGER, &lgfx::fonts::FreeSansBold18pt7b);
+  button(ui::MATCH[2].r, "-1", gfx.color565(40, 18, 26), C_DANGER, C_DANGER, &lgfx::fonts::FreeSansBold18pt7b);
+  button(ui::MATCH[3].r, "-1", gfx.color565(40, 18, 26), C_DANGER, C_DANGER, &lgfx::fonts::FreeSansBold18pt7b);
   button(ui::MATCH[4].r, "DESHACER", C_CARD, eng.canUndo() ? C_TEXT : C_LINE, C_LINE);
   button(ui::MATCH[5].r, eng.phase() == Phase::Paused ? "CONTINUAR" : "PAUSA", C_CARD, C_TEXT, C_LINE);
 }
 
 static void drawOverlayBox(const char* title, uint16_t color) {
-  lcd.fillRoundRect(150, 70, 500, 340, 20, C_SURFACE);
-  lcd.drawRoundRect(150, 70, 500, 340, 20, color);
+  gfx.fillRoundRect(150, 70, 500, 340, 20, C_SURFACE);
+  gfx.drawRoundRect(150, 70, 500, 340, 20, color);
   text(title, 400, 120, &lgfx::fonts::FreeSansBold24pt7b, color);
 }
 
@@ -860,11 +835,11 @@ static void drawPaused() {
     text("El reloj esta detenido", 400, 180, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
   }
   button(ui::PAUSED[0].r, "CONTINUAR", C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold18pt7b);
-  button(ui::PAUSED[1].r, "ABANDONAR", lcd.color565(40, 18, 26), C_DANGER, C_DANGER);
+  button(ui::PAUSED[1].r, "ABANDONAR", gfx.color565(40, 18, 26), C_DANGER, C_DANGER);
 }
 
 static void drawPeriodEnd() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   const char* title = eng.period() == Period::First ? "FINAL 1a PARTE" : eng.period() == Period::Second ? "EMPATE - FINAL 2a PARTE" : "FIN DE LA PRORROGA";
   const char* cta = eng.period() == Period::First ? "CONTINUAR 2a PARTE" : eng.period() == Period::Second ? "IR A PRORROGA" : "IR A PENALTIS";
   text(title, 400, 70, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
@@ -874,19 +849,19 @@ static void drawPeriodEnd() {
   text(buf, 270, 200, &lgfx::fonts::Font8, C_WHITE_TEAM, 1.8f);
   text("-", 400, 200, &lgfx::fonts::FreeSansBold24pt7b, C_TEXT2);
   snprintf(buf, sizeof(buf), "%u", s.blue);
-  text(buf, 530, 200, &lgfx::fonts::Font8, lcd.color565(79, 163, 240), 1.8f);
+  text(buf, 530, 200, &lgfx::fonts::Font8, gfx.color565(79, 163, 240), 1.8f);
   button(ui::PERIOD_END[0].r, cta, C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold18pt7b);
 }
 
 static void drawCountdown(uint32_t now) {
   uint32_t rem = eng.countdownRemaining(now);
   int digit = rem == 0 ? 1 : (int)((rem + 999) / 1000);
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   text(periodLabel(eng.period()), 400, 70, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
   char buf[12];
   snprintf(buf, sizeof(buf), "%d", digit);
-  lcd.drawCircle(400, 250, 130, C_ACCENT);
-  lcd.drawCircle(400, 250, 129, C_ACCENT);
+  gfx.drawCircle(400, 250, 130, C_ACCENT);
+  gfx.drawCircle(400, 250, 129, C_ACCENT);
   text(buf, 400, 250, &lgfx::fonts::Font7, C_ACCENT, 3.0f);
   text("TOCA PARA SALTAR", 400, 440, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
   lastCountdownDigit = digit;
@@ -894,7 +869,7 @@ static void drawCountdown(uint32_t now) {
 }
 
 static void drawPenalties() {
-  lcd.fillScreen(C_BG);
+  gfx.fillScreen(C_BG);
   mfv3::Score s = eng.score();
   char right[32];
   snprintf(right, sizeof(right), "Marcador %u-%u", s.white, s.blue);
@@ -905,26 +880,26 @@ static void drawPenalties() {
     Team t = side == 0 ? Team::White : Team::Blue;
     int x0 = side == 0 ? 12 : 482;
     bool isTurn = eng.phase() == Phase::Penalties && turn == t;
-    lcd.fillRoundRect(x0, 56, 306, 300, 20, C_CARD);
-    lcd.drawRoundRect(x0, 56, 306, 300, 20, isTurn ? (t == Team::White ? C_WHITE_TEAM : C_ACCENT) : C_LINE);
+    gfx.fillRoundRect(x0, 56, 306, 300, 20, C_CARD);
+    gfx.drawRoundRect(x0, 56, 306, 300, 20, isTurn ? (t == Team::White ? C_WHITE_TEAM : C_ACCENT) : C_LINE);
     text(t == Team::White ? "BLANCO" : "AZUL", x0 + 153, 84, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT);
     char buf[4];
     snprintf(buf, sizeof(buf), "%u", pen.of(t));
-    text(buf, x0 + 153, 170, &lgfx::fonts::Font8, t == Team::White ? C_WHITE_TEAM : lcd.color565(79, 163, 240), 1.6f);
+    text(buf, x0 + 153, 170, &lgfx::fonts::Font8, t == Team::White ? C_WHITE_TEAM : gfx.color565(79, 163, 240), 1.6f);
     // Puntos de lanzamientos
     int idx = 0;
     for (uint8_t k = 0; k < eng.kickCount() && idx < 10; k++) {
       const mfv3::Kick& kk = eng.kick(k);
       if (kk.team != t) continue;
       int cx = x0 + 40 + (idx % 5) * 56, cy = 270 + (idx / 5) * 40;
-      lcd.fillCircle(cx, cy, 14, kk.scored ? C_OK : C_DANGER);
+      gfx.fillCircle(cx, cy, 14, kk.scored ? C_OK : C_DANGER);
       idx++;
     }
-    for (; idx < cfg.penaltyRounds; idx++) lcd.drawCircle(x0 + 40 + idx * 56, 270, 14, C_LINE);
+    for (; idx < cfg.penaltyRounds; idx++) gfx.drawCircle(x0 + 40 + idx * 56, 270, 14, C_LINE);
     const ui::Rect& g = ui::PENALTIES[side * 2].r;
     const ui::Rect& m = ui::PENALTIES[side * 2 + 1].r;
-    button(g, "GOL", isTurn ? lcd.color565(18, 60, 45) : C_SURFACE, isTurn ? C_OK : C_LINE, isTurn ? C_OK : C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
-    button(m, "FALLO", isTurn ? lcd.color565(60, 18, 28) : C_SURFACE, isTurn ? C_DANGER : C_LINE, isTurn ? C_DANGER : C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
+    button(g, "GOL", isTurn ? gfx.color565(18, 60, 45) : C_SURFACE, isTurn ? C_OK : C_LINE, isTurn ? C_OK : C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
+    button(m, "FALLO", isTurn ? gfx.color565(60, 18, 28) : C_SURFACE, isTurn ? C_DANGER : C_LINE, isTurn ? C_DANGER : C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
   }
   text("LANZA", 400, 120, &lgfx::fonts::FreeSansBold9pt7b, C_TEXT2);
   text(turn == Team::White ? "BLANCO" : "AZUL", 400, 160, &lgfx::fonts::FreeSansBold18pt7b, turn == Team::White ? C_WHITE_TEAM : C_ACCENT);
@@ -932,8 +907,8 @@ static void drawPenalties() {
 }
 
 static void drawFinished() {
-  lcd.fillScreen(C_BG);
-  for (int r = 0; r < 6; r++) lcd.drawCircle(400, 200, 180 + r * 18, lcd.color565(30 + r * 6, 26 + r * 4, 10));
+  gfx.fillScreen(C_BG);
+  for (int r = 0; r < 6; r++) gfx.drawCircle(400, 200, 180 + r * 18, gfx.color565(30 + r * 6, 26 + r * 4, 10));
   Team w = eng.winner();
   text("FINAL DEL PARTIDO", 400, 60, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
   text(w == Team::White ? "VICTORIA BLANCO" : "VICTORIA AZUL", 400, 140, &lgfx::fonts::FreeSansBold24pt7b,
@@ -972,8 +947,25 @@ static uint32_t screenKey(uint32_t now) {
   return k;
 }
 
+static void onModeChosen(uint8_t mode) {
+  chosenMode = mode;
+  homeCards = false;
+  lastKey = 0xFFFFFFFF;
+}
+
 static void render() {
   uint32_t now = millis();
+  if (!test.active && !inMatch && screen == Screen::Home && homeCards && !sleepClock()) {
+    inicio::show();
+    char warn[32];
+    bool low = rtc.lowBattery();
+    if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  // Pantallas antiguas: si se viene de una nueva, se dibujan enteras otra vez.
+  if (!gfx.active()) lastKey = lastSleepKey = 0xFFFFFFFF;
   if (sleepClock()) {
     if ((uint32_t)rtc.now.hour * 60 + rtc.now.minute != lastSleepKey) drawSleep();
     lastKey = 0xFFFFFFFF;  // al despertar se redibuja lo que hubiera
@@ -1133,22 +1125,13 @@ static void pollIsolatedInputs(uint32_t now) {
 }
 #endif
 
-static bool touching = false;
-
-static void pollTouch() {
-  int32_t x = 0, y = 0;
-  bool now = lcd.getTouch(&x, &y) > 0;
-  if (now && !touching) {
-    lastActivity = millis();
-    if (dimmed) {
-      // El toque que despierta se consume.
-      dimmed = false;
-      lcd.backlight(backlightLevel());
-    } else {
-      onTap((int16_t)x, (int16_t)y);
-    }
-  }
-  touching = now;
+// El primer toque con la pantalla atenuada solo la despierta (LVGL no lo ve).
+static bool onTouchDown() {
+  lastActivity = millis();
+  if (!dimmed) return false;
+  dimmed = false;
+  lcd.backlight(backlightLevel());
+  return true;
 }
 
 // ---------------------------------------------------------------- arranque y bucle
@@ -1160,9 +1143,13 @@ void setup() {
 #elif MFV3_BOARD == BOARD_WAVESHARE_7
   lcd.waveshareExpanderInit();
 #endif
-  lcd.detectTouchAddress();
-  lcd.init();
-  lcd.setRotation(0);
+  lcd.detectTouchAddress();  // GT911 en 0x5D o 0x14 (la 7C ya lo fija al arrancar el expansor)
+  FFat.begin(true);  // capas de la app y letras (scripts/placa_recursos.py); también la usa el sonido
+  uiport::begin(lcd);
+  uiport::touchDownHook = onTouchDown;
+  gfx.tapCb = onTap;
+  inicio::hooks.mode = onModeChosen;
+  inicio::hooks.settings = openSettings;
   lcd.backlight(backlightLevel());
   initColors();
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
@@ -1196,7 +1183,6 @@ void loop() {
   sndCmd.tick(now, sendLine);
   player.pump(now);
 #endif
-  pollTouch();
 #if HAS_ISOLATED_IO
   pollIsolatedInputs(now);
 #endif
@@ -1217,5 +1203,6 @@ void loop() {
   }
 
   render();
-  delay(10);
+  uiport::step();
+  delay(2);
 }

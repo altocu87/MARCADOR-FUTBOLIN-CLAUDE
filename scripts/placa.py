@@ -20,11 +20,11 @@ import time
 import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SKETCH = os.path.join(ROOT, "hardware", "esp32s3_pantalla7")
+SKETCH = os.environ.get("PLACA_SKETCH") or os.path.join(ROOT, "hardware", "esp32s3_pantalla7")
 FQBN = os.environ.get(
     "PLACA_FQBN", "esp32:esp32:esp32s3:PSRAM=opi,FlashSize=32M,PartitionScheme=custom,CDCOnBoot=cdc"
 )
-BUILD = os.path.join(os.environ.get("TEMP", "/tmp"), "mfv3_placa_build")
+BUILD = os.path.join(os.environ.get("TEMP", "/tmp"), "mfv3_build_" + os.path.basename(SKETCH))
 FAT_OFFSET = 0xC10000
 W, H = 800, 480
 
@@ -58,7 +58,8 @@ def need_port():
 
 
 def compilar():
-    shutil.copy(os.path.join(SKETCH, "lv_conf.h"), os.path.join(libraries_dir(), "lv_conf.h"))
+    conf = os.path.join(ROOT, "hardware", "esp32s3_pantalla7", "lv_conf.h")
+    shutil.copy(conf, os.path.join(libraries_dir(), "lv_conf.h"))
     os.makedirs(BUILD, exist_ok=True)
     t = time.time()
     r = subprocess.run(
