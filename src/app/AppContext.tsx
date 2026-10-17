@@ -21,15 +21,17 @@ import { browserSoundRepository, memorySoundRepository, type SoundRepository } f
 import { soundPlayer } from '../services/sound/soundPlayer';
 import { hardwareHub } from '../inputs/hardware/hub';
 import { momentLines } from '../inputs/hardware/boardSounds';
+import { boardPlayer, photoForBoard } from '../inputs/hardware/boardPlayers';
 
 // Los sonidos guardados en la placa se le piden a ella (si no puede, suena el de siempre en la app).
 soundPlayer.board = { play: (s, queue) => hardwareHub.playBoardSound(s.id, queue) };
 import { generateDemoData } from '../services/demo';
-import { mergePlayers } from '../services/players';
+import { mergePlayers, sortPlayers } from '../services/players';
 import {
   DEFAULT_RULES,
   applyGameRules,
   computeProgression,
+  displayTitle,
   eloSettings,
   fetchRemoteRules,
   readCachedRules,
@@ -385,6 +387,33 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
         : null,
     [players, matches, tournaments, effectivePrefs.progression, effectivePrefs.challenges],
   );
+
+  // Pantalla de 7": la lista de jugadores activos con su «Nv · ELO», su título y su foto ya preparada para la placa.
+  // Las fotos se convierten una vez (por jugador y versión) y se guardan aquí mientras la app esté abierta.
+  const [boardPhotos] = useState(() => new Map<string, Promise<Uint8Array | null>>());
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const active = sortPlayers(players.filter((p) => p.active));  // en el mismo orden que la lista de la app
+      const list = await Promise.all(
+        active.map(async (p) => {
+          const prog = progression?.players.get(p.id);
+          const meta = prog ? `Nv ${prog.level}${prog.rankedPlayed ? ` · ELO ${prog.elo}` : ''}` : '';
+          let photo: Promise<Uint8Array | null> = Promise.resolve(null);
+          if (p.photo) {
+            const key = `${p.id}:${p.updatedAt}`;
+            if (!boardPhotos.has(key)) boardPhotos.set(key, photoForBoard(p.photo));
+            photo = boardPhotos.get(key)!;
+          }
+          return boardPlayer(p, meta, displayTitle(prog, p.titleId), await photo);
+        }),
+      );
+      if (!cancelled) hardwareHub.setPlayers(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [players, progression, boardPhotos]);
 
   const rewards = useMemo(
     () =>

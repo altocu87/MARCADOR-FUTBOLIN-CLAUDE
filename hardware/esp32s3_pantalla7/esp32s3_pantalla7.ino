@@ -48,6 +48,7 @@
 #include "ui_penaltis.h"
 #include "ui_reposo.h"
 #include "ui_victoria.h"
+#include "s3_jugadores.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -403,15 +404,18 @@ static void inputPause() {
   afterChange(false, Team::White);
 }
 
+static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
+
 static void sendHello() {
-  char buf[128];
+  char buf[160];
   // «sonido»: tiene altavoz y guarda sonidos; «sd»: además, en la tarjeta SD.
 #if HAS_AUDIO
   const char* extra = player.ok ? (sndStore.sdOk ? ",sonido,sd" : ",sonido") : "";
 #else
   const char* extra = "";
 #endif
-  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s%s", S3_BOARD_ID, FW_VERSION, S3_CAPS, extra);
+  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s%s%s", S3_BOARD_ID, FW_VERSION, S3_CAPS, extra,
+           jugadores.ok ? ",jugadores" : "");
   sendLine(buf);
 }
 
@@ -443,6 +447,7 @@ static void onTap(int16_t x, int16_t y);
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
+  if (jugadores.handle(line, sendLine)) return;  // ni al pasar jugadores y fotos
   if (!strcmp(line, "CAPTURA")) { uiport::sendCapture(); return; }  // lo que se ve, por el USB (scripts/placa.py)
   // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
   if (!strncmp(line, "TOQUE ", 6)) {
@@ -1396,7 +1401,8 @@ void setup() {
   lcd.waveshareExpanderInit();
 #endif
   lcd.detectTouchAddress();  // GT911 en 0x5D o 0x14 (la 7C ya lo fija al arrancar el expansor)
-  FFat.begin(true);  // capas de la app y letras (scripts/placa_recursos.py); también la usa el sonido
+  // Capas de la app y letras (scripts/placa_recursos.py), jugadores y fotos; también la usa el sonido.
+  if (FFat.begin(true)) jugadores.begin(&FFat);
   uiport::begin(lcd);
   uiport::touchDownHook = onTouchDown;
   gfx.tapCb = onTap;

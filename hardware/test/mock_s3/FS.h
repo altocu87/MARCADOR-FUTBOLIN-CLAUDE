@@ -39,6 +39,12 @@ class File {
     st_->pos += k;
     return k;
   }
+  int available() { return *this ? (int)(st_->disk->files[st_->path].size() - std::min(st_->pos, st_->disk->files[st_->path].size())) : 0; }
+  int read() {
+    uint8_t c;
+    return read(&c, 1) == 1 ? c : -1;
+  }
+  size_t print(const char* s) { return write((const uint8_t*)s, strlen(s)); }
   bool seek(uint32_t p) { if (!*this) return false; st_->pos = p; return true; }
   size_t size() { return *this ? st_->disk->files[st_->path].size() : 0; }
   void close() { if (st_) st_->open = false; }

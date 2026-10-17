@@ -17,6 +17,7 @@ import {
   type BoardPlace,
   type BoardTransport,
 } from './boardSounds';
+import { syncPlayers, type BoardPlayer } from './boardPlayers';
 
 export interface LinkState {
   kind: LinkKind;
@@ -52,6 +53,12 @@ class HardwareHub {
   private soundSetup: string[] = [];
   private soundSetupSent: string[] = [];
   private uploading = false;
+  /** Jugadores (con foto) que se le pasan a la pantalla de 7" para que juegue sola con ellos. */
+  private boardPlayers: BoardPlayer[] = [];
+  private playersTimer: ReturnType<typeof setTimeout> | undefined;
+  private playersBusy = false;
+  /** Cómo va el paso de jugadores a la placa (para Ajustes → Mesa). */
+  playersSync: { status: 'idle' | 'syncing' | 'ok' | 'error'; progress: number; detail?: string } = { status: 'idle', progress: 0 };
   log: LogEntry[] = [];
 
   subscribe(l: Listener): () => void {
@@ -147,6 +154,8 @@ class HardwareHub {
         this.soundSetup.forEach((l) => this.sendLog(link, l));
         this.soundSetupSent = [...this.soundSetup];
       }
+      // Pantalla de 7": se le pasan los jugadores y sus fotos (solo lo que haya cambiado).
+      if (msg.caps.includes('jugadores')) this.schedulePlayersSync(500);
     }
     else if (msg.kind === 'ping') link.send('PONG');
     else if (msg.kind === 'command') inputBus.emit({ command: msg.command, source: msg.source });
@@ -278,6 +287,49 @@ class HardwareHub {
     const link = this.links.get(kind)!;
     lines.filter((l) => !this.soundSetupSent.includes(l)).forEach((l) => this.sendLog(link, l));
     this.soundSetupSent = [...lines];
+  }
+
+  private playersKind(): LinkKind | null {
+    for (const [kind] of this.links) {
+      const st = this.state(kind);
+      if (st.status === 'connected' && st.caps?.includes('jugadores')) return kind;
+    }
+    return null;
+  }
+
+  /** Lista de jugadores para la placa (la app la rehace al cambiar jugadores, fotos o niveles). */
+  setPlayers(list: BoardPlayer[]): void {
+    this.boardPlayers = list;
+    this.schedulePlayersSync(1500);
+  }
+
+  private schedulePlayersSync(ms: number): void {
+    clearTimeout(this.playersTimer);
+    this.playersTimer = setTimeout(() => void this.syncPlayersNow(), ms);
+  }
+
+  private async syncPlayersNow(): Promise<void> {
+    const kind = this.playersKind();
+    if (!kind || !this.boardPlayers.length) return;
+    if (this.playersBusy || this.uploading || this.lastState) {
+      this.schedulePlayersSync(3000);  // ni a la vez que un sonido ni en pleno partido
+      return;
+    }
+    this.playersBusy = true;
+    this.playersSync = { status: 'syncing', progress: 0 };
+    this.changed();
+    try {
+      await syncPlayers(this.transport(kind), this.boardPlayers, (f) => {
+        this.playersSync = { status: 'syncing', progress: f };
+        this.changed();
+      });
+      this.playersSync = { status: 'ok', progress: 1 };
+    } catch (err) {
+      this.playersSync = { status: 'error', progress: 0, detail: err instanceof Error ? err.message : String(err) };
+    } finally {
+      this.playersBusy = false;
+      this.changed();
+    }
   }
 
   /** Fuera de partido (inicio, ajustes…). */
