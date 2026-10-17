@@ -6,7 +6,7 @@ import type { MatchEvent, MatchState } from '../../match-engine';
 import { inputBus } from '../inputBus';
 import { BluetoothLink, SerialLink, WebSocketLink, type HardwareLink, type LinkKind, type LinkStatus } from './links';
 import { findBoard } from './catalog';
-import { PROTOCOL_VERSION, outgoingLines, parseBoardLine } from './protocol';
+import { PROTOCOL_VERSION, clockLine, outgoingLines, parseBoardLine } from './protocol';
 import type { StoredSound } from '../../services/persistence';
 import {
   BoardSoundError,
@@ -139,6 +139,8 @@ class HardwareHub {
         caps: msg.caps,
       });
       if (this.brightness !== null && msg.caps.includes('brillo')) link.send(`BRILLO ${this.brightness}`);
+      // Placa con reloj con pila: se pone en hora con la de este aparato.
+      if (msg.caps.includes('reloj')) this.sendLog(link, clockLine(new Date()));
       // Placa con altavoz: se le pregunta qué sonidos tiene y se le dice qué suena en cada momento.
       if (msg.caps.includes('sonido')) {
         this.sendLog(link, 'SONIDOS?');

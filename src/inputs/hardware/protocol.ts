@@ -53,6 +53,12 @@ const COMMANDS: Record<string, InputCommand> = {
   SKIP: 'SALTAR',
 };
 
+/** «HORA 2026-10-17 18:42:05»: pone en hora (local) el reloj con pila de la placa (capacidad «reloj»). */
+export function clockLine(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `HORA ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 export function parseBoardLine(line: string): BoardMessage | null {
   const raw = line.trim();
   if (!raw) return null;

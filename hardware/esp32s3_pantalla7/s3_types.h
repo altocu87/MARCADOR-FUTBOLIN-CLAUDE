@@ -14,6 +14,7 @@ using mfv3::Phase;
 // Resultado guardado en la memoria interna (NVS).
 struct LastResult {
   uint8_t white, blue, penW, penB, winner, reason;  // winner 0 = Blanco, 1 = Azul
+  uint32_t at;  // cuándo terminó (reloj::stamp); 0 = la placa no tenía hora
 };
 
 // Estado del partido justo antes de un cambio (para avisar a las placas y sonar).

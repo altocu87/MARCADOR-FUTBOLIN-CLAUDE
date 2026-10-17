@@ -5,7 +5,19 @@
 #include <cstring>
 #define SERIAL_8N1 0x800001c
 inline uint32_t esp_random() { return 0xBEEF; }
-namespace sim { inline int restarts = 0; }
+#include <ctime>
+namespace sim {
+inline int restarts = 0;
+inline bool ntpOk = false;     // ¿contesta el servidor de hora?
+inline struct tm ntpTime = {};  // la hora que da
+inline std::string ntpTz;
+}  // namespace sim
+inline void configTzTime(const char* tz, const char*, const char* = nullptr, const char* = nullptr) { sim::ntpTz = tz; }
+inline bool getLocalTime(struct tm* t, uint32_t = 5000) {
+  if (!sim::ntpOk) return false;
+  *t = sim::ntpTime;
+  return true;
+}
 struct EspSim { void restart() { sim::restarts++; } };
 inline EspSim ESP;
 // String de Arduino (solo lo que usan los sketches de la pantalla).

@@ -36,6 +36,7 @@
 #include "s3_net.h"
 #include "mfv3_sound.h"
 #include "mfv3_audio.h"
+#include "s3_reloj.h"
 #include "ui_layout.h"
 #include "s3_types.h"
 
@@ -53,7 +54,7 @@ static const char* FW_VERSION = "1.0";
 #endif
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
 #define S3_BOARD_ID "waveshare-7c"
-#define S3_CAPS "goles,anular,pausa,pantalla,radio,sensores,salidas,brillo"
+#define S3_CAPS "goles,anular,pausa,pantalla,radio,sensores,salidas,reloj,brillo"
 #elif MFV3_BOARD == BOARD_ELECROW_7
 #define S3_BOARD_ID "elecrow-7"
 #define S3_CAPS "goles,anular,pausa,pantalla,radio,uart,brillo"
@@ -107,6 +108,7 @@ static void initColors() {
 
 // ---------------------------------------------------------------- historial breve (NVS)
 static LastResult history[8];
+static reloj::State rtc;  // hora (RTC con pila) y batería
 static uint8_t historyCount = 0;
 static uint32_t matchesPlayed = 0;
 
@@ -124,7 +126,7 @@ static void loadPrefs() {
   cfg.minutesPerPeriod = prefs.getUChar("mins", 5);
   if (!cfg.valid()) cfg = mfv3::Config();
   matchesPlayed = prefs.getULong("played", 0);
-  historyCount = prefs.getBytes("hist", history, sizeof(history)) / sizeof(LastResult);
+  historyCount = prefs.getBytes("hist2", history, sizeof(history)) / sizeof(LastResult);  // «hist2»: con fecha
   userBrightness = prefs.getUChar("bri", 100);
   if (userBrightness > 100) userBrightness = 100;
   sndVolume = prefs.getUChar("vol", 80);
@@ -183,12 +185,13 @@ static void saveConfig() {
 
 static void saveResult() {
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
-  LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason()};
+  LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
+                  rtc.clockOk ? reloj::stamp(rtc.now) : 0};
   for (int i = 7; i > 0; i--) history[i] = history[i - 1];
   history[0] = r;
   if (historyCount < 8) historyCount++;
   matchesPlayed++;
-  prefs.putBytes("hist", history, historyCount * sizeof(LastResult));
+  prefs.putBytes("hist2", history, historyCount * sizeof(LastResult));
   prefs.putULong("played", matchesPlayed);
 }
 
@@ -432,6 +435,11 @@ static void handleBoardLine(const char* line) {
     userBrightness = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
     prefs.putUChar("bri", userBrightness);
     if (!dimmed) lcd.backlight(backlightLevel());
+  } else if (!strcmp(word, "HORA")) {
+    // La app pone en hora la placa al conectarse: «HORA 2026-10-17 18:42:05» (hora local).
+    reloj::Clock c;
+    bool ok = reloj::parseClock(line + i + (line[i] == ' ' ? 1 : 0), c) && rtc.set(c);
+    sendLine(ok ? "HORA_OK" : "HORA_ERROR");
   } else if (!strcmp(word, "PING")) sendLine("PONG");
   else if (!strcmp(word, "HELLO")) {
     sendHello();
@@ -559,18 +567,88 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
 
+// ---------------------------------------------------------------- hora y batería (Inicio y reposo)
+static const char* const DIAS[7] = {"DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"};
+static const char* const MESES[12] = {"ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+                                      "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"};
+static uint32_t lastStatusKey = 0xFFFFFFFF;
+static uint32_t lastSleepKey = 0xFFFFFFFF;
+
+// Qué enseña la franja de arriba de Inicio: si cambia, se redibuja solo esa franja.
+static uint32_t statusKey() {
+  uint32_t k = rtc.clockOk ? (uint32_t)rtc.now.hour * 60 + rtc.now.minute : 0xFFFF;
+  if (rtc.bat.present) k |= (uint32_t)(rtc.bat.percent + 1) << 16 | (uint32_t)rtc.bat.charging << 24;
+  return k;
+}
+
+// Pila dibujada: contorno, borne y relleno según la carga (verde, azul cargando, rojo si queda poca).
+static void drawBatteryIcon(int x, int y, uint8_t pct, uint16_t color) {
+  lcd.drawRoundRect(x, y, 34, 18, 3, color);
+  lcd.fillRect(x + 34, y + 5, 3, 8, color);
+  int w = (int)pct * 28 / 100;
+  if (w < 2) w = 2;
+  lcd.fillRect(x + 3, y + 3, w, 12, color);
+}
+
+// Franja de arriba de Inicio: la hora a la izquierda y la batería a la derecha (solo lo que la placa sabe).
+static void drawStatus() {
+  lastStatusKey = statusKey();
+  lcd.fillRect(0, 0, ui::W, 26, C_BG);
+  char buf[32];
+  if (rtc.clockOk) {
+    snprintf(buf, sizeof(buf), "%02u:%02u", rtc.now.hour, rtc.now.minute);
+    lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+    lcd.setTextSize(1);
+    lcd.setTextColor(C_TEXT2);
+    lcd.setTextDatum(lgfx::textdatum_t::middle_left);
+    lcd.drawString(buf, 14, 14);
+  }
+  if (rtc.bat.present) {
+    uint16_t color = rtc.lowBattery() ? C_DANGER : rtc.bat.charging ? C_ACCENT : C_OK;
+    drawBatteryIcon(ui::W - 14 - 37, 5, rtc.bat.percent, color);
+    if (rtc.lowBattery()) snprintf(buf, sizeof(buf), "BATERIA BAJA %u%%", rtc.bat.percent);
+    else if (rtc.bat.charging) snprintf(buf, sizeof(buf), "CARGANDO %u%%", rtc.bat.percent);
+    else snprintf(buf, sizeof(buf), "%u%%", rtc.bat.percent);
+    lcd.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+    lcd.setTextSize(1);
+    lcd.setTextColor(color);
+    lcd.setTextDatum(lgfx::textdatum_t::middle_right);
+    lcd.drawString(buf, ui::W - 14 - 37 - 10, 14);
+  }
+}
+
+// Reposo con hora: reloj grande y fecha (la pantalla está atenuada; el primer toque la despierta).
+static bool sleepClock() { return dimmed && !inMatch && !test.active && rtc.clockOk; }
+
+static void drawSleep() {
+  lastSleepKey = (uint32_t)rtc.now.hour * 60 + rtc.now.minute;
+  lcd.fillScreen(C_BG);
+  char buf[40];
+  snprintf(buf, sizeof(buf), "%02u:%02u", rtc.now.hour, rtc.now.minute);
+  text(buf, ui::W / 2, 200, &lgfx::fonts::Font7, C_TEXT, 3.0f);
+  snprintf(buf, sizeof(buf), "%s %u DE %s", DIAS[reloj::weekday(rtc.now)], rtc.now.day, MESES[rtc.now.month - 1]);
+  text(buf, ui::W / 2, 350, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT2);
+  if (rtc.lowBattery()) text("BATERIA BAJA: CONECTA EL CARGADOR", ui::W / 2, 420, &lgfx::fonts::FreeSansBold12pt7b, C_DANGER);
+}
+
 static void drawHome() {
   lcd.fillScreen(C_BG);
-  text("MARCADOR FUTBOLIN V3", ui::W / 2, 46, &lgfx::fonts::FreeSansBold24pt7b, C_ACCENT);
-  char sub[64];
+  drawStatus();
+  text("MARCADOR FUTBOLIN V3", ui::W / 2, 54, &lgfx::fonts::FreeSansBold24pt7b, C_ACCENT);
+  char sub[96];
   if (historyCount > 0) {
     const LastResult& r = history[0];
-    snprintf(sub, sizeof(sub), "Ultimo: %u-%u  gana %s   |   %lu partidos", r.white, r.blue, r.winner ? "AZUL" : "BLANCO",
-             (unsigned long)matchesPlayed);
+    char when[24] = "";
+    if (r.at) {
+      reloj::Clock c = reloj::fromStamp(r.at);
+      snprintf(when, sizeof(when), "  %02u/%02u %02u:%02u", c.day, c.month, c.hour, c.minute);
+    }
+    snprintf(sub, sizeof(sub), "Ultimo: %u-%u  gana %s%s   |   %lu partidos", r.white, r.blue, r.winner ? "AZUL" : "BLANCO",
+             when, (unsigned long)matchesPlayed);
   } else {
     snprintf(sub, sizeof(sub), "Partido rapido en la mesa  |  v%s", FW_VERSION);
   }
-  text(sub, ui::W / 2, 100, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
+  text(sub, ui::W / 2, 102, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
   text(remoteLinked() ? "MANDO CONECTADO" : "MANDO: SIN SENAL", ui::W / 2, 128, &lgfx::fonts::FreeSansBold9pt7b,
        remoteLinked() ? C_OK : C_LINE);
 
@@ -850,6 +928,12 @@ static uint32_t screenKey(uint32_t now) {
 
 static void render() {
   uint32_t now = millis();
+  if (sleepClock()) {
+    if ((uint32_t)rtc.now.hour * 60 + rtc.now.minute != lastSleepKey) drawSleep();
+    lastKey = 0xFFFFFFFF;  // al despertar se redibuja lo que hubiera
+    return;
+  }
+  lastSleepKey = 0xFFFFFFFF;
   uint32_t key = screenKey(now);
   if (key != lastKey) {
     lastKey = key;
@@ -869,7 +953,10 @@ static void render() {
     return;
   }
   // Actualizaciones parciales (sin parpadeo).
-  if (!inMatch) return;
+  if (!inMatch) {
+    if (!test.active && screen == Screen::Home && statusKey() != lastStatusKey) drawStatus();
+    return;
+  }
   if (eng.phase() == Phase::Countdown) {
     uint32_t rem = eng.countdownRemaining(now);
     int digit = rem == 0 ? 1 : (int)((rem + 999) / 1000);
@@ -1058,6 +1145,7 @@ void loop() {
       if (auxRx.push((char)AuxSerial.read())) handleBoardLine(auxRx.line());
 
   radioPoll();
+  rtc.poll(now);
 #if HAS_AUDIO
   sndCmd.tick(now, sendLine);
   player.pump(now);

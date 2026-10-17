@@ -352,6 +352,68 @@ int main() {
   }
 #endif
 
+#if HAS_RTC
+  // ---- Reloj con pila y batería (Waveshare 7C).
+  {
+    // Fechas guardadas como minutos desde 2000: ida y vuelta, también en años bisiestos.
+    for (reloj::Clock c : {reloj::Clock{2026, 10, 17, 18, 42, 0}, reloj::Clock{2028, 2, 29, 23, 59, 0},
+                           reloj::Clock{2100 - 1, 12, 31, 0, 0, 0}, reloj::Clock{2024, 1, 1, 0, 0, 0}}) {
+      reloj::Clock b = reloj::fromStamp(reloj::stamp(c));
+      assert(b.year == c.year && b.month == c.month && b.day == c.day && b.hour == c.hour && b.minute == c.minute);
+    }
+    assert(reloj::weekday(reloj::Clock{2026, 10, 17, 0, 0, 0}) == 6);  // sábado
+    // De fábrica el reloj está parado: Inicio no enseña hora y los resultados se guardan sin fecha.
+    assert(!inMatch && screen == Screen::Home && !rtc.clockOk && sent("salidas,reloj,brillo"));
+    // La app la pone por el USB (las fechas imposibles no valen).
+    usb("HORA 2026-02-30 10:00:00");
+    assert(sent("HORA_ERROR") && !rtc.clockOk);
+    usb("HORA 2026-10-17 18:42:05");
+    assert(sent("HORA_OK") && rtc.clockOk);
+    assert(sim::rtcRegs[4] == 0x05 && sim::rtcRegs[5] == 0x42 && sim::rtcRegs[6] == 0x18 && sim::rtcRegs[7] == 0x17 &&
+           sim::rtcRegs[8] == 6 && sim::rtcRegs[9] == 0x10 && sim::rtcRegs[10] == 0x26);
+    run(1100);
+    assert(rtc.clockOk && rtc.now.hour == 18 && rtc.now.minute == 42 && shows("18:42"));
+    // Batería al 12 % sin cargar: «BATERIA BAJA» en Inicio (se relee cada 10 s).
+    assert(!rtc.bat.present);
+    sim::gaugeRegs[0x0A] = 0x0008; sim::gaugeRegs[0x2C] = 12; sim::gaugeRegs[0x08] = 3550; sim::gaugeRegs[0x0C] = (uint16_t)-300;
+    run(10100);
+    assert(rtc.bat.present && rtc.bat.percent == 12 && rtc.lowBattery() && shows("BATERIA BAJA 12%"));
+    // Cargando: deja de avisar.
+    sim::gaugeRegs[0x0C] = 800;
+    run(10100);
+    assert(rtc.bat.charging && !rtc.lowBattery() && shows("CARGANDO 12%"));
+    // El partido de antes se guardó sin hora; uno nuevo lleva su fecha, y Inicio la enseña.
+    assert(historyCount == 1 && history[0].at == 0);
+    LastResult before = history[0];
+    saveResult();
+    assert(history[0].at == reloj::stamp(rtc.now) && sim::nvs.count("hist2"));
+    lastKey = 0xFFFFFFFF;
+    loop();
+    assert(shows("17/10 18:42"));
+    history[0] = before;  // se deja el historial como estaba para lo que sigue
+    historyCount = 1;
+    matchesPlayed = 1;
+    prefs.putBytes("hist2", history, sizeof(LastResult));
+    prefs.putULong("played", 1);
+    // Reposo: reloj grande y fecha; el primer toque despierta y vuelve a Inicio.
+    sim::gaugeRegs[0x0C] = (uint16_t)-300;
+    run(SLEEP_AFTER_MS + 11000);
+    assert(dimmed && shows("18:42|") && shows("SABADO 17 DE OCTUBRE") && shows("BATERIA BAJA: CONECTA EL CARGADOR"));
+    tap(400, 240);
+    assert(!dimmed && !inMatch && shows("MARCADOR FUTBOLIN V3"));
+    // Hora de Internet al conectarse al Wi-Fi (zona horaria de España).
+    sim::ntpOk = true;
+    sim::ntpTime = {};
+    sim::ntpTime.tm_year = 2027 - 1900; sim::ntpTime.tm_mon = 0; sim::ntpTime.tm_mday = 2;
+    sim::ntpTime.tm_hour = 9; sim::ntpTime.tm_min = 5; sim::ntpTime.tm_sec = 30;
+    assert(rtc.syncInternet() && sim::ntpTz == reloj::TZ_SPAIN && sim::rtcRegs[10] == 0x27 && sim::rtcRegs[6] == 0x09);
+    sim::ntpOk = false;
+    sim::gaugeRegs[0x0A] = 0;  // batería quitada
+    run(10100);
+    assert(!rtc.bat.present && !rtc.lowBattery());
+  }
+#endif
+
   // ---- AJUSTES → WI-FI con teclado, versiones publicadas y actualización (pantalla y mando por radio).
   {
     const std::string base = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/firmware/";

@@ -84,6 +84,7 @@ static void checkPoll() {
   s3net::Link l = s3net::poll();
   if (l == s3net::Link::Up) {
     fetchVersions();
+    rtc.syncInternet();  // de paso, la hora de Internet al reloj con pila
     s3net::stop();
   } else if (l == s3net::Link::Failed) {
     s3net::stop();
@@ -547,6 +548,7 @@ static void connectingPoll() {
   if (l == s3net::Link::Up) {
     saveWifi(kbSsid, kbText);
     fetchVersions();
+    rtc.syncInternet();
     s3net::stop();
     screen = Screen::Update;
   } else if (l == s3net::Link::Failed) {

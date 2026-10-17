@@ -129,5 +129,24 @@ int main(int argc, char** argv) {
   screen = Screen::Home;
   lastKey = 0xFFFFFFFF;
   shot("14-inicio-con-aviso");
+
+  // Hora y batería (en el PC no hay reloj ni medidor: se ponen a mano justo antes de cada captura).
+  auto clockAndBattery = [](uint8_t pct, bool charging) {
+    rtc.clockOk = true;
+    rtc.now = reloj::Clock{2026, 10, 17, 18, 42, 0};
+    rtc.bat = reloj::Battery{true, charging, pct, 3900};
+    rtc.clockAt = rtc.batAt = millis();
+  };
+  pubScreen.build = 0;
+  pubMando.build = 0;
+  clockAndBattery(85, false);
+  lastKey = 0xFFFFFFFF;
+  shot("15-inicio-hora-bateria");
+  clockAndBattery(12, false);
+  shot("16-inicio-bateria-baja");
+  clockAndBattery(12, false);
+  dimmed = true;
+  lastSleepKey = 0xFFFFFFFF;
+  shot("17-reposo-reloj");
   return 0;
 }

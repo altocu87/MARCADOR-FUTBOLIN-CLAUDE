@@ -127,7 +127,7 @@ Texto UTF-8, **una orden por línea** terminada en `\n`, igual por USB (115200 b
 
 | Placa → app | Significado |
 |---|---|
-| `HELLO <modelo> <versión> caps=a,b,…` | Saludo con el modelo de placa (id del catálogo, p. ej. `arduino-uno`, `esp32c3`, `waveshare-7c`) y lo que sabe hacer (`goles,anular,pausa,sensores,leds,zumbador,wifi,bluetooth,servidor,pantalla,radio`). La app muestra el nombre, las capacidades y el esquema de esa placa. Se repite cada 2 s por USB hasta recibir respuesta |
+| `HELLO <modelo> <versión> caps=a,b,…` | Saludo con el modelo de placa (id del catálogo, p. ej. `arduino-uno`, `esp32c3`, `waveshare-7c`) y lo que sabe hacer (`goles,anular,pausa,sensores,leds,zumbador,wifi,bluetooth,servidor,pantalla,radio,reloj`). La app muestra el nombre, las capacidades y el esquema de esa placa. Se repite cada 2 s por USB hasta recibir respuesta |
 | `GOL_BLANCO [button\|sensor]` / `GB` | Gol de Blanco |
 | `GOL_AZUL [button\|sensor]` / `GA` | Gol de Azul |
 | `ANULAR_BLANCO` / `AB` | Anular el último gol del Blanco (−1). En penaltis deshace el último lanzamiento |
@@ -139,6 +139,7 @@ Texto UTF-8, **una orden por línea** terminada en `\n`, igual por USB (115200 b
 | App → placa | Significado |
 |---|---|
 | `HELLO MARCADOR_V3 1` | La app está conectada |
+| `HORA AAAA-MM-DD HH:MM:SS` | Hora local para el reloj con pila (placas con `reloj`; la app la manda al conectar). Respuesta `HORA_OK` o `HORA_ERROR` |
 | `STATE <fase>` | `idle`, `countdown`, `playing`, `paused`, `periodEnd`, `penalties`, `finished` |
 | `SCORE <blanco> <azul>` | Marcador ordinario |
 | `GOAL BLANCO\|AZUL` | Gol **aceptado** (para LED/zumbador) |
@@ -200,6 +201,13 @@ fabricante (github.com/waveshareteam/ESP32-S3-Touch-LCD-7C). El sketch
 - **Mismas reglas que la app:** usa `mfv3_engine.h`, el motor portado a C++ y probado en PC con los criterios A01–A13.
 - **Memoria:** guarda la configuración y los 8 últimos resultados aunque se apague.
 - **Ahorro:** fuera de partido baja el brillo a los 5 min; el primer toque solo la despierta.
+- **Reloj con pila (Waveshare 7C):** la hora sale arriba a la izquierda en Inicio y, en reposo, en grande con la
+  fecha; cada resultado guarda su fecha y hora. Chip PCF85063A con pila **CR927** en su soporte (sin pila, la hora
+  se pierde al apagar). Se pone en hora sola: la app se la manda al conectarla por USB, y por Internet cada vez que
+  la placa se conecta al Wi-Fi a mirar si hay versión nueva (hora de España, con el cambio de verano/invierno).
+- **Batería (Waveshare 7C):** con una LiPo de 3,7 V en su conector PH2.0, Inicio enseña la carga arriba a la derecha
+  («CARGANDO» si está enchufada) y «BATERIA BAJA» en rojo por debajo del 15 % (también en reposo). Medidor BQ27220:
+  el porcentaje es orientativo las primeras cargas, hasta que aprende la capacidad de la batería.
 - **Pantalla de prueba:** el primer arranque abre «PRUEBA DE LA PLACA»: toca las 4 esquinas, pulsa los dos botones
   del mando y (opcional) pasa la bola por los sensores. Muestra también si la radio funciona y el último toque.
   Se repite cuando quieras en AJUSTES → PRUEBA DE LA PLACA. En la 7C, cada esquina tocada suena (si se
@@ -312,8 +320,9 @@ I2C 0x10 (mismo bus que el táctil, GPIO47/48); amplificadores con la pata EXIO3
   el perfil en `board_config.h`.
 - Los textos de la placa van sin tildes (las fuentes integradas no las incluyen).
 - En la 7C no queda un UART libre (el audio usa GPIO43/44): los sensores van a DI0/DI1 y el PC por USB.
-- Los altavoces (§7.2) solo en la 7C: la Elecrow y la Waveshare 7 sin «C» no tienen chip de sonido. El micrófono y
-  el Bluetooth no se usan. La radio Wi-Fi es para el mando (ESP-NOW): los sonidos se pasan por el **cable USB**.
+- Los altavoces (§7.2), el reloj y la batería solo en la 7C: la Elecrow y la Waveshare 7 sin «C» no los tienen. El
+  micrófono, el Bluetooth y el LED «STA» no se usan (el esquema de la 7C no dice a qué pata va ese LED, y la que
+  apuntan los ejemplos, GPIO6, es el reloj del sonido). La radio Wi-Fi es para el mando (ESP-NOW): los sonidos se pasan por el **cable USB**.
 - El sonido (chip ES8389, registros copiados del ejemplo oficial) está probado en PC con la placa simulada, no en la
   real: si no suena, mira §8.
 

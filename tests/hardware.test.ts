@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LineSplitter, outgoingLines, parseBoardLine } from '../src/inputs/hardware/protocol';
+import { LineSplitter, clockLine, outgoingLines, parseBoardLine } from '../src/inputs/hardware/protocol';
 import { DEFAULT_CONFIG, createMatch, dispatch } from '../src/match-engine';
 import { computeStage } from '../src/ui/layout/Stage';
 
@@ -22,6 +22,10 @@ describe('Protocolo MFV3', () => {
     expect(parseBoardLine('   ')).toBeNull();
     expect(parseBoardLine('XYZ')).toEqual({ kind: 'unknown', raw: 'XYZ' });
   });
+  it('pone en hora la placa con la hora local', () => {
+    expect(clockLine(new Date(2026, 9, 7, 8, 5, 3))).toBe('HORA 2026-10-07 08:05:03');
+  });
+
   it('junta datos troceados en líneas', () => {
     const s = new LineSplitter();
     expect(s.push('GOL_BL')).toEqual([]);

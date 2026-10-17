@@ -98,6 +98,18 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   versiones, instalación completa mando + pantalla, comprobación al encender, sin internet). Capturas 09–14.
   Pendiente: probarlo en las placas reales.
 
+## Reloj y batería en la pantalla de 7" (17/10/2026)
+
+- `s3_reloj.h`: reloj PCF85063A (0x51) y medidor BQ27220 (0x55), en el bus del táctil. Hora en Inicio y reloj grande
+  con fecha en reposo; fecha y hora en cada resultado (NVS `hist2`). Batería con su carga, «CARGANDO» y
+  «BATERIA BAJA» (≤ 15 % sin cargar). Puesta en hora: orden `HORA` por USB (la app la manda a las placas con
+  `reloj`) y hora de Internet al conectarse al Wi-Fi.
+- Esquema oficial de la 7C: la pata EXIO6 es `LCD_VDD_EN` (alimentación del panel); ahora se deja alta, como en los
+  ejemplos del fabricante (antes quedaba a 0). El módulo es un ESP32-S3-WROOM-2-N32R16V.
+- El LED «STA» no se usa: no aparece en el esquema de la 7C.
+- Comprobado en PC: simulación de la pantalla (puesta en hora, fechas imposibles, batería baja/cargando/quitada,
+  reposo, hora de Internet) y capturas 15–17. Pendiente: probarlo en la placa real.
+
 ## Web y compilación
 
 - Web pública (`web/`) con asistente «Monta tu marcador» e instalador desde el navegador (ESP Web Tools). Los

@@ -62,10 +62,10 @@
 // io_extension.h del fabricante: 0x02 modo (1 = salida), 0x03 salidas, 0x04 entradas, 0x05 brillo (PWM).
 namespace exio {
 const uint8_t ADDR = 0x24, REG_MODE = 0x02, REG_OUT = 0x03, REG_IN = 0x04, REG_PWM = 0x05;
-const uint8_t TOUCH_RST = 1, BACKLIGHT = 2, SPEAKER_AMP = 3, SD_CS = 4;
+const uint8_t TOUCH_RST = 1, BACKLIGHT = 2, SPEAKER_AMP = 3, SD_CS = 4, LCD_VDD_EN = 6;  // EXIO6: alimentación del panel
 const uint8_t DI0 = 7, DI1 = 8, DI2 = 9, DI3 = 10;      // entradas aisladas
 const uint8_t DO0 = 11, DO1 = 12, DO2 = 13, DO3 = 14;   // salidas aisladas
-const uint16_t OUTPUT_MASK = (1u << TOUCH_RST) | (1u << BACKLIGHT) | (1u << SPEAKER_AMP) | (1u << SD_CS) | (1u << 6) |
+const uint16_t OUTPUT_MASK = (1u << TOUCH_RST) | (1u << BACKLIGHT) | (1u << SPEAKER_AMP) | (1u << SD_CS) | (1u << LCD_VDD_EN) |
                              (1u << DO0) | (1u << DO1) | (1u << DO2) | (1u << DO3);
 const int I2C_PORT = 0, SDA = 47, SCL = 48, TOUCH_INT = 4;
 }  // namespace exio
@@ -191,7 +191,8 @@ class LGFX : public lgfx::LGFX_Device {
   }
 
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
-  uint16_t exioOut = (1u << exio::TOUCH_RST) | (1u << exio::BACKLIGHT) | (1u << exio::SD_CS);  // altavoz y DO apagados
+  // Panel alimentado (EXIO6 = LCD_VDD_EN en el esquema, alto como en los ejemplos del fabricante); altavoz y DO apagados.
+  uint16_t exioOut = (1u << exio::TOUCH_RST) | (1u << exio::BACKLIGHT) | (1u << exio::SD_CS) | (1u << exio::LCD_VDD_EN);
 
   void exioWrite(uint8_t pin, bool on) {
     if (on) exioOut |= (uint16_t)(1u << pin);
