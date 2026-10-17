@@ -26,12 +26,14 @@ done
 
 # Igual que el IDE de Arduino: declarar todas las funciones del .ino al principio y volver a compilar
 # (detecta en el PC los errores «X does not name a type» que solo salen al compilar de verdad).
+# Ruta de /tmp que entiende el compilador (en Windows, g++ no conoce las rutas /tmp de la consola).
+TMPN=$(cygpath -m /tmp 2>/dev/null || echo /tmp)
 proto() {  # proto <carpeta> <prueba> <mocks> [defines]
   rm -rf /tmp/mfv3_proto && mkdir -p "/tmp/mfv3_proto/$1"
   cp "$1"/*.h "/tmp/mfv3_proto/$1/"
   python3 test/arduino_prototypes.py "$1/$1.ino" "/tmp/mfv3_proto/$1/$1.ino" > /dev/null
-  sed "s#../$1/$1.ino#/tmp/mfv3_proto/$1/$1.ino#" "test/$2" > /tmp/mfv3_proto/prueba.cpp
-  g++ -std=c++17 -w $4 -I"$3" -I"/tmp/mfv3_proto/$1" -x c++ /tmp/mfv3_proto/prueba.cpp -o /tmp/mfv3_proto/prueba && /tmp/mfv3_proto/prueba > /dev/null
+  sed "s#../$1/$1.ino#$TMPN/mfv3_proto/$1/$1.ino#" "test/$2" > /tmp/mfv3_proto/prueba.cpp
+  g++ -std=c++17 -w $4 -I"$3" -I"/tmp/mfv3_proto/$1" -x c++ /tmp/mfv3_proto/prueba.cpp -o /tmp/mfv3_proto/prueba && /tmp/mfv3_proto/prueba > /dev/null || exit 1
   echo "$1: compila con las declaraciones del IDE de Arduino"
 }
 proto arduino_usb arduino_sim_test.cpp test/mock "-DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO"

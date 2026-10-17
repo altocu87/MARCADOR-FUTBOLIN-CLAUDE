@@ -6,3 +6,4 @@ hardware/esp32_marcador/data/*
 !hardware/esp32_marcador/data/LEEME.txt
 web/public/firmware/
 dist-web/
+hardware/*/build/
