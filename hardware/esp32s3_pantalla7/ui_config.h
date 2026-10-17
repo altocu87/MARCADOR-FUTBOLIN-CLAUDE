@@ -55,10 +55,7 @@ static uint8_t value(int side) { return side == 0 ? st.goals : st.minutes; }
 static bool atMax(int side) { return side == 0 ? st.goals >= GOALS_MAX : st.minutes >= MIN_MAX; }
 static bool atMin(int side) { return side == 0 ? st.goals <= GOALS_MIN : st.minutes <= MIN_MIN; }
 
-static void setVisible(lv_obj_t* o, bool v) {
-  if (v) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
-  else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-}
+static void setVisible(lv_obj_t* o, bool v) { ui::setVisible(o, v); }
 
 // Número de una tarjeta con las cifras de la app (una o dos, centradas igual que allí).
 static void drawNumber(int side) {

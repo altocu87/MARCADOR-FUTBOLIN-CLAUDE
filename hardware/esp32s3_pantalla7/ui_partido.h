@@ -74,11 +74,7 @@ static lv_anim_t mpAnim;
 const float PANEL_X[2] = {12, 555.2f}, PANEL_W = 232.8f, PANEL_Y = 8, PANEL_H = 356;
 const uint32_t INK[2] = {0x0b1626, 0xf3f7ff};
 
-static void vis(lv_obj_t* o, bool v) {
-  if (!o) return;
-  if (v) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
-  else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-}
+static void vis(lv_obj_t* o, bool v) { ui::setVisible(o, v); }
 
 // Número del marcador: una cifra a 250 px y dos a 134 px (las fórmulas de match.css para este tamaño de tarjeta),
 // centrado como en el navegador (su letter-spacing de −0,04 em desplaza media letra).
@@ -173,6 +169,11 @@ static void goalGone(lv_anim_t* a) {
   lv_obj_delete_async(o);
 }
 
+static void preloadNext(lv_timer_t*) {
+  assets::preload(*GOL[0][nextVariant]);
+  assets::preload(*GOL[1][nextVariant]);
+}
+
 static void celebrate(uint8_t team) {
   if (!scr || lv_screen_active() != scr) return;
   if (goalShow) lv_obj_delete(goalShow);
@@ -190,15 +191,15 @@ static void celebrate(uint8_t team) {
   lv_anim_set_completed_cb(&a, goalGone);
   lv_anim_start(&a);
   nextVariant = (uint8_t)((nextVariant + 1) % 6);
-  // La siguiente, ya descomprimida para el próximo gol (de cualquiera de los dos).
-  assets::preload(*GOL[0][nextVariant]);
-  assets::preload(*GOL[1][nextVariant]);
+  // La siguiente se prepara mientras se ve esta (la imagen está quieta entre 0,2 y 2,8 s): al marcar no hay espera.
+  lv_timer_t* t = lv_timer_create(preloadNext, 700, nullptr);
+  lv_timer_set_repeat_count(t, 1);
 }
 
 // «🔥 xN» arriba en la tarjeta de quien lleva la racha; aparece creciendo (pop-in de la app, 0,3 s).
 static void popCb(void* o, int32_t v) {
-  lv_obj_set_style_transform_scale((lv_obj_t*)o, v, 0);
-  lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)(v * 255 / 256 > 255 ? 255 : v * 255 / 256), 0);
+  lv_image_set_scale((lv_obj_t*)o, (uint32_t)v);
+  lv_obj_set_style_image_opa((lv_obj_t*)o, (lv_opa_t)(v >= 256 ? 255 : v), 0);
 }
 static void showStreak(uint8_t team, uint8_t n) {
   if (n < 3) {
@@ -212,7 +213,7 @@ static void showStreak(uint8_t team, uint8_t n) {
   lv_obj_set_pos(streakBadge, c.x + (team ? (int)lroundf(PANEL_X[1] - PANEL_X[0]) : 0), c.y);
   lv_obj_set_size(streakBadge, c.w, c.h);
   lv_image_set_pivot(streakBadge, c.w / 2, c.h / 2);
-  lv_obj_remove_flag(streakBadge, LV_OBJ_FLAG_HIDDEN);
+  ui::reveal(streakBadge);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, streakBadge);
@@ -236,7 +237,7 @@ static lv_obj_t* bannerObj = nullptr;
 static void bannerX(void* o, int32_t v) {
   lv_obj_set_x((lv_obj_t*)o, v);
   int32_t d = v < 0 ? -v : v;  // se ve del todo en el centro y se desvanece hacia los lados
-  lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)(d >= 880 ? 0 : 255 - d * 255 / 880), 0);
+  lv_obj_set_style_image_opa((lv_obj_t*)o, (lv_opa_t)(d >= 880 ? 0 : 255 - d * 255 / 880), 0);
 }
 static void bannerGone(lv_anim_t* a) {
   lv_obj_t* o = (lv_obj_t*)a->var;
@@ -265,7 +266,7 @@ static void banner(uint8_t which) {
 
 static void mpPulse(void*, int32_t v) {
   for (int i = 0; i < 3; i++)
-    if (mp[i]) lv_obj_set_style_opa(mp[i], (lv_opa_t)v, 0);
+    if (mp[i]) lv_obj_set_style_image_opa(mp[i], (lv_opa_t)v, 0);
 }
 
 static void onDelete(lv_event_t*) {
@@ -384,8 +385,8 @@ static void build() {
   endCta = ui::button(endLayer, 250, 296, 300, 68, "CONTINUAR", 20, ui::BtnKind::Primary, onNext);
   fresh = true;
   goalShow = nullptr;
-  assets::preload(*GOL[0][nextVariant]);
-  assets::preload(*GOL[1][nextVariant]);
+  lv_timer_t* t = lv_timer_create(preloadNext, 1500, nullptr);
+  lv_timer_set_repeat_count(t, 1);
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }

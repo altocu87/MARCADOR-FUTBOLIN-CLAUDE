@@ -46,6 +46,7 @@ static void logCb(lv_log_level_t, const char* buf) { Serial.print(buf); }
 namespace uiport {
 
 static esp_lcd_panel_handle_t panel = nullptr;
+static const uint32_t PCLK_HZ = 12500000;
 static SemaphoreHandle_t vsyncSem = nullptr;
 static uint16_t *fb0 = nullptr, *fb1 = nullptr;
 
@@ -105,13 +106,21 @@ static bool gt911Read(int16_t& x, int16_t& y) {
 
 static bool readTouch(int16_t& x, int16_t& y) { return gt911Read(x, y); }
 
+// Tras escribir en la memoria flash (ajustes, resultados, fotos) la imagen puede quedar descolocada: mientras se
+// escribe, el ESP32-S3 no puede rellenar los búferes de la pantalla. Se vuelve a alinear en el siguiente retorno.
+static void resyncPanel() {
+  if (panel) esp_lcd_rgb_panel_restart(panel);
+}
+
 // Pines y tiempos del panel: los de board_config.h (perfil de cada placa), leídos de la configuración LovyanGFX.
 static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
   vsyncSem = xSemaphoreCreateBinary();
   auto b = lcd.bus.config();
   esp_lcd_rgb_panel_config_t c = {};
   c.clk_src = LCD_CLK_SRC_DEFAULT;
-  c.timings.pclk_hz = b.freq_write;
+  // 12,5 MHz (≈ 30 imágenes por segundo): lo que usa el ejemplo de Waveshare (12 MHz) con un poco más. A 16 MHz la
+  // PSRAM no da abasto cuando además se dibuja mucho y la imagen se descoloca («interferencias»).
+  c.timings.pclk_hz = PCLK_HZ;
   c.timings.h_res = W;
   c.timings.v_res = H;
   c.timings.hsync_pulse_width = b.hsync_pulse_width;
@@ -126,7 +135,7 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
   c.data_width = 16;
   c.bits_per_pixel = 16;
   c.num_fbs = 2;
-  c.bounce_buffer_size_px = W * 10;
+  c.bounce_buffer_size_px = W * 20;  // 20 líneas de reserva en la RAM interna
   c.dma_burst_size = 64;
   c.hsync_gpio_num = (int)b.pin_hsync;
   c.vsync_gpio_num = (int)b.pin_vsync;
@@ -164,6 +173,7 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
 
 static uint16_t* pcFb = nullptr;
 static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t*) { lv_display_flush_ready(disp); }
+static void resyncPanel() {}
 static bool readTouch(int16_t& x, int16_t& y) {
   x = (int16_t)sim::touchX;
   y = (int16_t)sim::touchY;
@@ -217,8 +227,17 @@ static bool begin(LGFX& lcd) {
   return true;
 }
 
+// Algo escribió en la memoria flash: hay que realinear la imagen (ver resyncPanel).
+static volatile bool needResync = false;
+
 // Un paso de LVGL (animaciones, toques, dibujo). Se llama en cada vuelta de loop().
-static void step() { lv_timer_handler(); }
+static void step() {
+  if (needResync) {
+    needResync = false;
+    resyncPanel();
+  }
+  lv_timer_handler();
+}
 
 // CRC32 (el mismo que zlib) para que el PC compruebe la captura.
 static uint32_t crc32Update(uint32_t crc, const uint8_t* d, size_t n) {

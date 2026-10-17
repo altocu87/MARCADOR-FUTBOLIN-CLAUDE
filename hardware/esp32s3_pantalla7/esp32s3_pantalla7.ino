@@ -83,7 +83,19 @@ LGFX lcd;        // expansor, brillo y bus I2C de la placa (el panel lo lleva ui
 static LegacyGfx gfx;  // pantallas aún sin rehacer: su dibujo antiguo pasa a objetos LVGL (ui_legacy.h)
 Engine eng;
 mfv3::Config cfg;
-Preferences prefs;
+// Ajustes en la NVS. Cada escritura en la flash descoloca un momento la imagen (ui_port.h): se avisa para realinearla.
+class PrefsW : public Preferences {
+ public:
+  template <typename... A> void putBool(A... a) { Preferences::putBool(a...), mark(); }
+  template <typename... A> void putUChar(A... a) { Preferences::putUChar(a...), mark(); }
+  template <typename... A> void putULong(A... a) { Preferences::putULong(a...), mark(); }
+  template <typename... A> void putString(A... a) { Preferences::putString(a...), mark(); }
+  template <typename... A> void putBytes(A... a) { Preferences::putBytes(a...), mark(); }
+
+ private:
+  static void mark() { uiport::needResync = true; }
+};
+PrefsW prefs;
 HardwareSerial AuxSerial(1);
 mfv3::LineBufferN<384> usbRx;  // las líneas de datos de los sonidos son largas
 mfv3::LineBuffer auxRx;
@@ -447,7 +459,10 @@ static void onTap(int16_t x, int16_t y);
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
-  if (jugadores.handle(line, sendLine)) return;  // ni al pasar jugadores y fotos
+  if (jugadores.handle(line, sendLine)) {  // ni al pasar jugadores y fotos
+    uiport::needResync = true;
+    return;
+  }
   if (!strcmp(line, "CAPTURA")) { uiport::sendCapture(); return; }  // lo que se ve, por el USB (scripts/placa.py)
   // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
   if (!strncmp(line, "TOQUE ", 6)) {
@@ -1392,6 +1407,10 @@ static bool onTouchDown() {
 }
 
 // ---------------------------------------------------------------- arranque y bucle
+// Pila de la tarea principal: LVGL pinta capas anidadas (fundidos, transparencias) y con los 8 KB de serie se
+// desbordaba y la placa se reiniciaba. 32 KB, como el ejemplo de Waveshare (20 KB) con margen.
+// (Aquí y no arriba: la macro define una función y el IDE de Arduino pone sus declaraciones antes de la primera.)
+SET_LOOP_TASK_STACK_SIZE(32 * 1024);
 void setup() {
   Serial.begin(115200);
   if (BUZZER_PIN >= 0) pinMode(BUZZER_PIN, OUTPUT);
@@ -1435,6 +1454,10 @@ void setup() {
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
+  // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento (unos 2 s al encender).
+  for (const capas::Capa* c : {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::PAUSA, &capas::CARTEL_PARTIDO,
+                               &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL})
+    assets::preload(*c, true);
   sendHello();
   sendLine("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba

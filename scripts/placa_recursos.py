@@ -13,6 +13,8 @@ Salidas:
 """
 import json
 import os
+
+import lz4.block
 import shutil
 import struct
 import subprocess
@@ -62,6 +64,33 @@ def lvgl_bin_rgb565a8(im):
     return head + bytes(rgb565_dither(im)) + alpha
 
 
+def rgb565(im):
+    """RGB888 → RGB565 sin tramado (el tramado rompe las rachas iguales y LZ4 casi no comprime)."""
+    im = im.convert("RGB")
+    r, g, b = im.split()
+    r = r.point(lambda v: v >> 3)
+    g = g.point(lambda v: v >> 2)
+    b = b.point(lambda v: v >> 3)
+    rb, gb, bb = r.tobytes(), g.tobytes(), b.tobytes()
+    out = bytearray(len(rb) * 2)
+    for i in range(len(rb)):
+        v = (rb[i] << 11) | (gb[i] << 5) | bb[i]
+        out[2 * i] = v & 0xFF
+        out[2 * i + 1] = v >> 8
+    return bytes(out)
+
+
+def lz4_capa(im, alfa):
+    """Capa para la placa: cabecera de imagen de LVGL (12 bytes), tamaño sin comprimir (4) y bloque LZ4.
+    Se abre en milisegundos (un JPEG tardaba 0,3–0,5 s) y ocupa menos que el JPEG, sin perder calidad."""
+    w, h = im.size
+    data = rgb565(im)
+    if alfa:
+        data += bytes(im.convert("RGBA").getchannel("A").tobytes())
+    head = struct.pack("<BBHHHHH", 0x19, 0x14 if alfa else 0x12, 0, w, h, w * 2, 0)
+    return head + struct.pack("<I", len(data)) + lz4.block.compress(data, mode="high_compression", store_size=False)
+
+
 def capas():
     manifest_path = os.path.join(BUILD, "capas.json")
     if not os.path.exists(manifest_path):
@@ -76,12 +105,8 @@ def capas():
             continue
         src = os.path.join(BUILD, "capas", f"{name}.png")
         im = Image.open(src)
-        if m.get("alfa"):
-            open(os.path.join(out, f"{name}.bin"), "wb").write(lvgl_bin_rgb565a8(im))
-            m["archivo"] = f"capas/{name}.bin"
-        else:
-            im.convert("RGB").save(os.path.join(out, f"{name}.jpg"), quality=93, subsampling=0, optimize=True)
-            m["archivo"] = f"capas/{name}.jpg"
+        open(os.path.join(out, f"{name}.lz4"), "wb").write(lz4_capa(im, bool(m.get("alfa"))))
+        m["archivo"] = f"capas/{name}.lz4"
     return manifest
 
 

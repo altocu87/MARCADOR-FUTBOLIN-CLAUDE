@@ -36,7 +36,7 @@ static void onBtn(lv_event_t* e) {
   int which = (int)(intptr_t)lv_event_get_user_data(e);  // 0 = inicio, 1 = revancha
   lv_event_code_t c = lv_event_get_code(e);
   lv_obj_t* pul = which ? pulRematch : pulHome;
-  if (c == LV_EVENT_PRESSED) lv_obj_remove_flag(pul, LV_OBJ_FLAG_HIDDEN);
+  if (c == LV_EVENT_PRESSED) ui::reveal(pul);
   else if (c == LV_EVENT_RELEASED || c == LV_EVENT_PRESS_LOST) lv_obj_add_flag(pul, LV_OBJ_FLAG_HIDDEN);
   else if (c == LV_EVENT_CLICKED) {
     if (which == 0 && hooks.home) hooks.home();

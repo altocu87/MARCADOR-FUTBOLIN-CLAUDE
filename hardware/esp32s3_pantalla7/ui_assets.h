@@ -69,13 +69,14 @@ struct Cached {
   char path[48];
   lv_image_dsc_t dsc;
   uint32_t usedAt;
+  bool sticky;  // precargada al encender: se borra la última
 };
 static const int MAX_CACHED = 48;
 static Cached* cache[MAX_CACHED];  // cada una en su sitio fijo: LVGL guarda la dirección de su descriptor
 static int cachedCount = 0;
 static uint32_t useCounter = 0;
 static size_t cachedBytes = 0;
-static const size_t MAX_CACHED_BYTES = 8u * 1024u * 1024u;  // de 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla
+static const size_t MAX_CACHED_BYTES = 10u * 1024u * 1024u;  // de 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla
 
 // Las imágenes pedidas desde el último cambio de pantalla (`screenEpoch`) las está usando la pantalla actual:
 // esas no se borran nunca (LVGL las está pintando); se borra la más antigua de las demás.
@@ -84,8 +85,11 @@ static void newScreen() { screenEpoch = useCounter + 1; }
 
 static bool evictOne() {
   int victim = -1;
-  for (int i = 0; i < cachedCount; i++)
-    if (cache[i]->usedAt < screenEpoch && (victim < 0 || cache[i]->usedAt < cache[victim]->usedAt)) victim = i;
+  for (int pass = 0; pass < 2 && victim < 0; pass++)  // primero las no precargadas
+    for (int i = 0; i < cachedCount; i++)
+      if (cache[i]->usedAt < screenEpoch && (pass || !cache[i]->sticky) &&
+          (victim < 0 || cache[i]->usedAt < cache[victim]->usedAt))
+        victim = i;
   if (victim < 0) return false;
   lv_image_cache_drop(&cache[victim]->dsc);
   cachedBytes -= cache[victim]->dsc.data_size;
@@ -108,6 +112,7 @@ static const lv_image_dsc_t* loadJpeg(const char* rel) {
     LV_LOG_WARN("Falta %s", full);
     return nullptr;
   }
+  uint32_t t0 = lv_tick_get();
   const size_t POOL = 16 * 1024;
   void* pool = malloc(POOL);
   JpegCtx ctx = {f, nullptr, 0};
@@ -145,20 +150,148 @@ static const lv_image_dsc_t* loadJpeg(const char* rel) {
   }
   free(pool);
   fclose(f);
+  // Se apunta lo que tarda (por el USB, con LV_LOG_WARN) para ver qué capas conviene precargar.
+  if (lv_tick_elaps(t0) > 40) LV_LOG_WARN("JPEG %s: %lu ms", rel, (unsigned long)lv_tick_elaps(t0));
   return result;
 }
 
-// Fuente para lv_image_set_src: JPEG ya descomprimido o ruta «A:» de una imagen de LVGL (.bin).
+// Descompresor de bloques LZ4 propio, compilado para ir rápido (el de LVGL va optimizado para ocupar poco): copia
+// de 4 en 4 bytes cuando puede. Devuelve los bytes escritos o -1 si los datos no cuadran.
+__attribute__((optimize("O3"))) static int lz4Unpack(const uint8_t* src, size_t n, uint8_t* dst, size_t cap) {
+  const uint8_t *ip = src, *iend = src + n;
+  uint8_t *op = dst, *oend = dst + cap;
+  while (ip < iend) {
+    uint8_t token = *ip++;
+    size_t lit = token >> 4;
+    if (lit == 15) {
+      uint8_t b;
+      do {
+        if (ip >= iend) return -1;
+        b = *ip++;
+        lit += b;
+      } while (b == 255);
+    }
+    if (lit) {
+      if ((size_t)(iend - ip) < lit || (size_t)(oend - op) < lit) return -1;
+      memcpy(op, ip, lit);
+      ip += lit;
+      op += lit;
+    }
+    if (ip >= iend) break;  // el último trozo solo trae literales
+    if (iend - ip < 2) return -1;
+    size_t off = ip[0] | (ip[1] << 8);
+    ip += 2;
+    if (off == 0 || off > (size_t)(op - dst)) return -1;
+    size_t len = (token & 15) + 4;
+    if ((token & 15) == 15) {
+      uint8_t b;
+      do {
+        if (ip >= iend) return -1;
+        b = *ip++;
+        len += b;
+      } while (b == 255);
+    }
+    if ((size_t)(oend - op) < len) return -1;
+    const uint8_t* m = op - off;
+    if (off >= len) {
+      memcpy(op, m, len);
+      op += len;
+    } else if (off == 2 || off == 4) {  // repeticiones de un color (2 bytes) o de dos: el caso más común aquí
+      uint32_t pat = off == 2 ? (uint32_t)(m[0] | (m[1] << 8)) * 0x10001u : (uint32_t)(m[0] | (m[1] << 8) | (m[2] << 16) | (m[3] << 24));
+      while (len >= 4) {
+        memcpy(op, &pat, 4);
+        op += 4;
+        len -= 4;
+      }
+      for (size_t i = 0; i < len; i++, op++) *op = (uint8_t)(pat >> (8 * i));
+    } else {
+      for (size_t i = 0; i < len; i++) op[i] = m[i];
+      op += len;
+    }
+  }
+  return (int)(op - dst);
+}
+
+// Capa en LZ4 (scripts/placa_recursos.py): cabecera de imagen de LVGL, tamaño sin comprimir y el bloque LZ4.
+// Se lee y se descomprime en unos milisegundos a la PSRAM, donde se queda para las siguientes veces.
+static const lv_image_dsc_t* loadLz4(const char* rel) {
+  for (int i = 0; i < cachedCount; i++)
+    if (!strcmp(cache[i]->path, rel)) {
+      cache[i]->usedAt = ++useCounter;
+      return &cache[i]->dsc;
+    }
+  uint32_t t0 = lv_tick_get();
+  char full[320];
+  snprintf(full, sizeof(full), "%s/%s", ROOT, rel);
+  FILE* f = fopen(full, "rb");
+  if (!f) {
+    LV_LOG_WARN("Falta %s", full);
+    return nullptr;
+  }
+  uint8_t head[16];
+  fseek(f, 0, SEEK_END);
+  long fileSize = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  if (fileSize < 16 || fread(head, 1, 16, f) != 16 || head[0] != LV_IMAGE_HEADER_MAGIC) {
+    fclose(f);
+    return nullptr;
+  }
+  uint32_t raw = (uint32_t)head[12] | ((uint32_t)head[13] << 8) | ((uint32_t)head[14] << 16) | ((uint32_t)head[15] << 24);
+  size_t packed = (size_t)fileSize - 16;
+  while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
+    if (!evictOne()) break;
+  if (cachedCount >= MAX_CACHED) {
+    fclose(f);
+    return nullptr;
+  }
+  char* in = (char*)malloc(packed);
+  uint8_t* out = (uint8_t*)malloc(raw);
+  bool ok = in && out && fread(in, 1, packed, f) == packed;
+  uint32_t tRead = lv_tick_elaps(t0);
+  ok = ok && lz4Unpack((const uint8_t*)in, packed, out, raw) == (int)raw;
+  fclose(f);
+  free(in);
+  if (!ok) {
+    free(out);
+    LV_LOG_WARN("No se pudo abrir %s", full);
+    return nullptr;
+  }
+  cache[cachedCount] = new Cached();
+  Cached& c = *cache[cachedCount++];
+  snprintf(c.path, sizeof(c.path), "%s", rel);
+  memset(&c.dsc, 0, sizeof(c.dsc));
+  c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
+  c.dsc.header.cf = head[1];
+  c.dsc.header.w = (uint16_t)(head[4] | (head[5] << 8));
+  c.dsc.header.h = (uint16_t)(head[6] | (head[7] << 8));
+  c.dsc.header.stride = (uint16_t)(head[8] | (head[9] << 8));
+  c.dsc.data = out;
+  c.dsc.data_size = raw;
+  c.usedAt = ++useCounter;
+  cachedBytes += raw;
+  if (lv_tick_elaps(t0) > 40)
+    LV_LOG_WARN("LZ4 %s: %lu ms (leer %lu)", rel, (unsigned long)lv_tick_elaps(t0), (unsigned long)tRead);
+  return &c.dsc;
+}
+
+// Fuente para lv_image_set_src: capa ya descomprimida (LZ4 o JPEG) o ruta «A:» de una imagen de LVGL (.bin).
 static const void* src(const capas::Capa& c) {
   static char path[320];
   size_t n = strlen(c.archivo);
+  if (n > 4 && !strcmp(c.archivo + n - 4, ".lz4")) return loadLz4(c.archivo);
   if (n > 4 && !strcmp(c.archivo + n - 4, ".jpg")) return loadJpeg(c.archivo);
   snprintf(path, sizeof(path), "A:%s/%s", ROOT, c.archivo);
   return path;
 }
 
-// Precarga (al arrancar o antes de enseñar una pantalla) para que no haya espera al tocar.
-static void preload(const capas::Capa& c) { src(c); }
+// Precarga (al arrancar o antes de enseñar una pantalla) para que no haya espera al tocar. `sticky`: de las que se
+// quedan siempre (las pantallas de cada partido).
+static void preload(const capas::Capa& c, bool sticky = false) {
+  src(c);
+  if (!sticky) return;
+  for (int i = 0; i < cachedCount; i++)
+    if (!strcmp(cache[i]->path, c.archivo)) cache[i]->sticky = true;
+}
 
 // ---------------------------------------------------------------- letras
 struct Font {

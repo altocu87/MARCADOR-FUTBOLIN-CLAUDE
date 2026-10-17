@@ -87,7 +87,7 @@ static void onCard(lv_event_t* e) {
     lv_timer_set_repeat_count(selTimer, 1);
     return;
   }
-  lv_obj_remove_flag(pul[i], LV_OBJ_FLAG_HIDDEN);
+  ui::reveal(pul[i]);
   pressedMode = (int8_t)i;
   startPress();
 }
@@ -95,7 +95,7 @@ static void onCard(lv_event_t* e) {
 static void onMenu(lv_event_t* e) {
   if (pressing) return;
   int i = (int)(intptr_t)lv_event_get_user_data(e);
-  lv_obj_remove_flag(pulMenu[i], LV_OBJ_FLAG_HIDDEN);
+  ui::reveal(pulMenu[i]);
   pressedMenu = (int8_t)i;
   startPress();
 }
@@ -107,7 +107,7 @@ static void onSettings(lv_event_t*) {
 
 static void onHelp(lv_event_t* e) {
   int i = (int)(intptr_t)lv_event_get_user_data(e);
-  lv_obj_remove_flag(help[i], LV_OBJ_FLAG_HIDDEN);
+  ui::reveal(help[i]);
   lv_obj_remove_flag(helpCloser, LV_OBJ_FLAG_HIDDEN);
 }
 

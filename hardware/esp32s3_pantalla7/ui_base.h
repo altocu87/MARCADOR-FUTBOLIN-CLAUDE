@@ -44,14 +44,37 @@ static lv_obj_t* screen() {
 }
 
 // Capa de la app (fondo o recorte) en su sitio. Sin tocar: los toques pasan a lo que haya debajo.
+// Las que empiezan ocultas (botón pulsado, tarjeta elegida…) no se descomprimen hasta enseñarlas con reveal():
+// así cambiar de pantalla solo cuesta lo que se ve (antes se descomprimían todas y la placa se quedaba parada).
 static lv_obj_t* layer(lv_obj_t* parent, const capas::Capa& c, bool visible = true) {
   lv_obj_t* img = lv_image_create(parent);
-  lv_image_set_src(img, assets::src(c));
+  lv_obj_set_user_data(img, (void*)&c);
+  if (visible) lv_image_set_src(img, assets::src(c));
   lv_obj_set_pos(img, c.x, c.y);
   lv_obj_set_size(img, c.w, c.h);
   lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
   if (!visible) lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
   return img;
+}
+
+// Enseña un objeto; si es una capa aún sin imagen, la carga ahora.
+static void reveal(lv_obj_t* o) {
+  if (!o) return;
+  if (lv_obj_check_type(o, &lv_image_class) && !lv_image_get_src(o) && lv_obj_get_user_data(o))
+    lv_image_set_src(o, assets::src(*(const capas::Capa*)lv_obj_get_user_data(o)));
+  lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+}
+static void setVisible(lv_obj_t* o, bool v) {
+  if (!o) return;
+  if (v) reveal(o);
+  else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+}
+
+// Transparencia sin capas intermedias: en las imágenes, la de la propia imagen (más rápido y sin gastar memoria);
+// en lo demás, la del objeto entero.
+static void setOpa(lv_obj_t* o, lv_opa_t v) {
+  if (lv_obj_check_type(o, &lv_image_class)) lv_obj_set_style_image_opa(o, v, 0);
+  else lv_obj_set_style_opa(o, v, 0);
 }
 
 // Zona táctil invisible con su acción.
@@ -141,15 +164,15 @@ static lv_obj_t* button(lv_obj_t* parent, int x, int y, int w, int h, const char
 }
 
 // Aparece/desaparece fundiéndose (como las transiciones de opacidad de la app).
-static void fadeCb(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+static void fadeCb(void* o, int32_t v) { setOpa((lv_obj_t*)o, (lv_opa_t)v); }
 static void fadeIn(lv_obj_t* o, uint32_t ms) {
   lv_anim_delete(o, fadeCb);
-  lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+  reveal(o);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, o);
   lv_anim_set_exec_cb(&a, fadeCb);
-  lv_obj_set_style_opa(o, LV_OPA_TRANSP, 0);
+  setOpa(o, LV_OPA_TRANSP);
   lv_anim_set_values(&a, 0, 255);
   lv_anim_set_duration(&a, ms);
   lv_anim_start(&a);
@@ -157,7 +180,7 @@ static void fadeIn(lv_obj_t* o, uint32_t ms) {
 static void hide(lv_obj_t* o) {
   lv_anim_delete(o, fadeCb);
   lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_set_style_opa(o, LV_OPA_COVER, 0);
+  setOpa(o, LV_OPA_COVER);
 }
 
 // Aviso breve abajo en el centro, como el «toast» de la app (2,6 s, encima de todo).

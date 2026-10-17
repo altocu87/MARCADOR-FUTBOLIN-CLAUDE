@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstring>
 #define SERIAL_8N1 0x800001c
+#define SET_LOOP_TASK_STACK_SIZE(sz) inline size_t getArduinoLoopTaskStackSize() { return sz; }
 inline uint32_t esp_random() { return 0xBEEF; }
 #include <ctime>
 namespace sim {

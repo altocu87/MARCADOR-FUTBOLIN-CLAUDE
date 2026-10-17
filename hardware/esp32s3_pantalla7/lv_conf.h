@@ -1068,7 +1068,7 @@
 #define LV_USE_NANOVG 0
 
 /** Use lvgl built-in LZ4 lib */
-#define LV_USE_LZ4_INTERNAL  0
+#define LV_USE_LZ4_INTERNAL  1
 
 /** Use external LZ4 library */
 #define LV_USE_LZ4_EXTERNAL  0

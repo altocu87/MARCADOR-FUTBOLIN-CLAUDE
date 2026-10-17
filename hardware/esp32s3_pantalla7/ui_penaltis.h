@@ -52,7 +52,7 @@ static void onUndo(lv_event_t*) {
   if (shown.kicks && hooks.undo) hooks.undo();
 }
 
-static void spotCb(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+static void spotCb(void* o, int32_t v) { lv_obj_set_style_bg_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
 
 // Botón GOL / FALLO: verde o rojo cuando le toca a esa columna; apagado (gris al 40 %) si no.
 static lv_obj_t* kickButton(lv_obj_t* parent, int x, const char* txt, bool goal, intptr_t code) {
@@ -130,14 +130,17 @@ static void drawDots(int t, const View& v) {
 // Balón de la portería: entra (sube a la red) o se va fuera, como ball-goal / ball-miss.
 static void ballX(void* o, int32_t v) { lv_obj_set_x((lv_obj_t*)o, v); }
 static void ballY(void* o, int32_t v) { lv_obj_set_y((lv_obj_t*)o, v); }
-static void ballOpa(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+static void ballOpa(void* o, int32_t v) {
+  lv_obj_set_style_bg_opa((lv_obj_t*)o, (lv_opa_t)v, 0);
+  lv_obj_set_style_shadow_opa((lv_obj_t*)o, (lv_opa_t)v, 0);
+}
 static void shoot(bool goal) {
   // Portería: SVG de 200 × 120 unidades dibujado a 170 × 102 (escala 0,85) en (315, 58); balón r = 7 en (100, 104).
   const float k = 0.85f;
   int x0 = (int)(315 + (100 - 7) * k), y0 = (int)(58 + (104 - 7) * k);
   lv_anim_delete(ball, nullptr);
   lv_obj_set_pos(ball, x0, y0);
-  lv_obj_set_style_opa(ball, LV_OPA_COVER, 0);
+  ballOpa(ball, LV_OPA_COVER);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, ball);
@@ -297,14 +300,14 @@ static void update(const View& v) {
     else snprintf(b, sizeof(b), "Intento %u de %u", mine + 1, v.rounds);
     lv_label_set_text(attempt, b);
     ui::place(attempt, 400, 247, 0);
-    lv_obj_set_style_opa(undo, v.kicks ? LV_OPA_COVER : 102, 0);
+    lv_obj_set_style_image_opa(undo, v.kicks ? LV_OPA_COVER : 102, 0);
   }
   if (!first && v.kicks > lastKicks) shoot(v.scored[v.kicks - 1]);
   if (first || v.kicks < lastKicks) {
     const float k = 0.85f;
     lv_anim_delete(ball, nullptr);
     lv_obj_set_pos(ball, (int)(315 + 93 * k), (int)(58 + 97 * k));
-    lv_obj_set_style_opa(ball, LV_OPA_COVER, 0);
+    ballOpa(ball, LV_OPA_COVER);
   }
   lastKicks = v.kicks;
   shown = v;
