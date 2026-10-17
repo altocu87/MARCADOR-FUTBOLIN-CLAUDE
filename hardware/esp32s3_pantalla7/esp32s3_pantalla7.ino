@@ -410,10 +410,56 @@ static bool handleSoundLine(const char* line) {
 #endif
 }
 
+static void onTap(int16_t x, int16_t y);
+
+// «CAPTURA» por el USB: manda lo que enseña la pantalla (para compararla con la app desde el PC, ver
+// scripts/placa.py). Responde «CAPTURA <ancho> <alto> <bytes> <crc32>» y la imagen en RGB565, fila a fila.
+static uint32_t crc32Update(uint32_t crc, const uint8_t* d, size_t n) {
+  crc = ~crc;
+  while (n--) {
+    crc ^= *d++;
+    for (int k = 0; k < 8; k++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+  }
+  return ~crc;
+}
+// LovyanGFX lee la fila con los bytes al revés (RGB565 de byte alto primero): se envía como RGB565 normal.
+static void readCaptureRow(int y, uint16_t* row) {
+  lcd.readRect(0, y, ui::W, 1, row);
+  for (int x = 0; x < ui::W; x++) row[x] = (uint16_t)((row[x] >> 8) | (row[x] << 8));
+}
+static void sendCapture() {
+  static uint16_t row[ui::W];
+  uint32_t crc = 0;
+  for (int y = 0; y < ui::H; y++) {
+    readCaptureRow(y, row);
+    crc = crc32Update(crc, (const uint8_t*)row, sizeof(row));
+  }
+  char head[64];
+  snprintf(head, sizeof(head), "CAPTURA %d %d %u %08lx", ui::W, ui::H, (unsigned)(ui::W * ui::H * 2), (unsigned long)crc);
+  Serial.println(head);
+  for (int y = 0; y < ui::H; y++) {
+    readCaptureRow(y, row);
+    Serial.write((const uint8_t*)row, sizeof(row));
+  }
+  Serial.flush();
+}
+
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
+  if (!strcmp(line, "CAPTURA")) { sendCapture(); return; }
+  // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
+  if (!strncmp(line, "TOQUE ", 6)) {
+    int x = 0, y = 0;
+    if (sscanf(line + 6, "%d %d", &x, &y) == 2) {
+      lastActivity = millis();
+      if (dimmed) { dimmed = false; lcd.backlight(backlightLevel()); }
+      else onTap((int16_t)x, (int16_t)y);
+      sendLine("TOQUE_OK");
+    }
+    return;
+  }
   wakeScreen();
   char word[16] = {0};
   size_t i = 0;

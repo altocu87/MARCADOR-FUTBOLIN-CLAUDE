@@ -153,6 +153,7 @@ struct Panel_RGB {
   void setTouch(Touch_GT911*) {}
 };
 struct LGFX_Device {
+  void readRect(int32_t, int32_t, int32_t w, int32_t h, uint16_t* d) { for (int32_t k = 0; k < w * h; k++) d[k] = 0; }
   void setPanel(Panel_RGB*) {}
   bool init() { return true; }
   void setRotation(int) {}

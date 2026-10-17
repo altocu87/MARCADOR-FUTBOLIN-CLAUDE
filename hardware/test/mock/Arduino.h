@@ -33,6 +33,8 @@ struct SerialSim {
   void print(const char* s) { sim::out += s; }
   void print(char c) { sim::out += c; }
   void println(const char* s) { sim::out += s; sim::out += '\n'; }
+  size_t write(const uint8_t* d, size_t n) { sim::out.append((const char*)d, n); return n; }
+  void flush() {}
   int available() { return (int)sim::in.size(); }
   int read() {
     if (sim::in.empty()) return -1;

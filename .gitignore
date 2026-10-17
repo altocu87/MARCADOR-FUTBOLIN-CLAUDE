@@ -7,3 +7,5 @@ hardware/esp32_marcador/data/*
 web/public/firmware/
 dist-web/
 hardware/*/build/
+hardware/test/.lgfx/
+hardware/test/.lvgl/
