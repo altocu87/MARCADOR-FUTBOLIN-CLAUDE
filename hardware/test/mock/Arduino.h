@@ -30,6 +30,7 @@ inline void digitalWrite(uint8_t p, uint8_t v) { sim::pins[p] = v; }
 
 struct SerialSim {
   void begin(unsigned long) {}
+  size_t setRxBufferSize(size_t n) { return n; }
   void print(const char* s) { sim::out += s; }
   void print(char c) { sim::out += c; }
   void println(const char* s) { sim::out += s; sim::out += '\n'; }

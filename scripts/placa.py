@@ -180,6 +180,7 @@ def jugadores(path):
         for i, l in enumerate(lines):
             s.write((l + "\n").encode("utf-8"))
             if l.startswith("JUGADOR "):
+                time.sleep(0.08)  # sin agobiar a la placa
                 continue
             reply = s.readline().decode("utf-8", "replace").strip()
             while reply and not reply.startswith(("JUGADORES", "FOTO")):

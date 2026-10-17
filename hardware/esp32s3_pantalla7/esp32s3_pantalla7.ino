@@ -504,6 +504,16 @@ static void handleBoardLine(const char* line) {
     bool ok = reloj::parseClock(line + i + (line[i] == ' ' ? 1 : 0), c) && rtc.set(c);
     sendLine(ok ? "HORA_OK" : "HORA_ERROR");
   } else if (!strcmp(word, "PING")) sendLine("PONG");
+#ifdef ESP_PLATFORM
+  else if (!strcmp(word, "MEMORIA")) {
+    // Memoria libre: la interna (rápida, la que piden el USB, la red y los ficheros) y la grande (PSRAM).
+    char b[96];
+    snprintf(b, sizeof(b), "MEMORIA interna %u (mayor %u, minima %u) psram %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    sendLine(b);
+  }
+#endif
   else if (!strcmp(word, "HELLO")) {
     sendHello();
   }
@@ -1453,7 +1463,16 @@ static bool onTouchDown() {
 // (Aquí y no arriba: la macro define una función y el IDE de Arduino pone sus declaraciones antes de la primera.)
 SET_LOOP_TASK_STACK_SIZE(32 * 1024);
 void setup() {
+  // La app manda la lista de jugadores seguida (hasta 64 líneas de ~100 letras): con el buzón de 256 de serie se
+  // perdían letras mientras la pantalla pintaba. 8 KB caben de sobra.
+  Serial.setRxBufferSize(8192);
   Serial.begin(115200);
+#ifdef ESP_PLATFORM
+  // LVGL pide miles de trozos pequeños (cada objeto, estilo y letra) y por defecto van a la memoria interna del chip,
+  // que es poca: con las fichas de jugadores se acababa y la placa se reiniciaba al abrir un fichero. Todo lo que
+  // pase de 32 bytes va a la PSRAM (16 MB); la interna queda para el USB, la red, el sonido y la pantalla.
+  heap_caps_malloc_extmem_enable(32);
+#endif
   if (BUZZER_PIN >= 0) pinMode(BUZZER_PIN, OUTPUT);
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
   lcd.expanderInit();

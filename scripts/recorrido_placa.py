@@ -44,13 +44,28 @@ def main(argv):
     if want("inicio"):
         captura("inicio")
     a_config()
+    for _ in range(12):  # a 5 goles, como las capturas de la app (bajar al mínimo y subir)
+        toque(204, 405, 0.12)
+    for _ in range(4):
+        toque(204, 138, 0.12)
+    time.sleep(0.8)
     if want("configuracion"):
         captura("configuracion")
     # Partido por goles (5)
-    toque(400, 443, 1.4)  # CONTINUAR → cuenta atrás
+    toque(400, 443, 1.4)  # CONTINUAR → elegir jugadores (si la placa los tiene) o cuenta atrás
+    if want("jugadores"):
+        captura("jugadores")
+    toque(267, 154, 0.6)  # primera ficha de la lista
+    if want("jugadores-blanco-elegido"):
+        captura("jugadores-blanco-elegido")
+    toque(670, 438, 1.0)  # SIGUIENTE: AZUL
+    if want("jugadores-azul"):
+        captura("jugadores-azul")
+    toque(267, 154, 0.6)  # primera libre
+    toque(695, 438, 1.4)  # CONTINUAR → cuenta atrás
     if want("cuenta-atras"):
         captura("cuenta-atras")
-    toque(400, 240, 1.2)  # saltar
+    orden("SALTAR", 1.2)
     if want("partido"):
         captura("partido")
     orden("GB", 0.6)
@@ -68,7 +83,7 @@ def main(argv):
     if want("pausa"):
         captura("pausa")
     toque(400, 260, 0.8)  # CONTINUAR
-    orden("GB", 2.5)
+    orden("GB", 6.5)  # el cartel de gol y después la victoria
     if want("victoria"):
         captura("victoria")
     toque(44, 36, 1.0)  # inicio
