@@ -147,11 +147,24 @@ Texto UTF-8, **una orden por línea** terminada en `\n`, igual por USB (115200 b
 | `VOLUMEN <0–100>` | Volumen del altavoz de la placa (solo placas con `altavoz`; 0 = sin sonido). Se guarda |
 | `SONIDO <momento>` | Toca un momento en la placa (`gol`, `remontada`… o el id de la app: `goal`, `comeback`…), para probar |
 
-**Sonidos propios (previsto, fase 3).** Cada sonido de la mesa sabe dónde está guardado: en el aparato, en la memoria
-del chip o en la tarjeta SD de la placa. La app ya reconoce dos capacidades reservadas para cuando la placa tenga
-altavoz: `sonido` (guarda y toca sonidos en su memoria) y `sd` (además, en su tarjeta SD). Solo con ellas se pueden
-elegir «Chip de la placa» o «Tarjeta SD» al subir un sonido. La orden para tocarlo y la forma de pasarle los archivos
-se definirán en la fase 3. Mientras tanto, o si la placa no está conectada, suena el de siempre en la app.
+**Sonidos propios** (pantalla de 7" con altavoces; ver §7.2). La placa los anuncia en su saludo con `sonido`
+(tiene altavoz y guarda sonidos en la memoria del chip) y `sd` (además, en la tarjeta SD). Cada sonido se conoce en la
+placa por un **código** de 8 cifras hexadecimales: el FNV-1a de 32 bits del id del sonido en la app.
+
+| App → placa | Placa → app | Significado |
+|---|---|---|
+| `SONIDOS?` | `SONIDOS chip=<KB libres\|-> sd=<KB libres\|-> <código>@c,<código>@s,…` | Qué sonidos tiene y dónde (`c` chip, `s` SD). La app lo pide al conectar |
+| `SONIDO_SUBIR <chip\|sd> <código> <bytes>` | `SONIDO_LISTO <código>` o `SONIDO_ERROR <código> <motivo>` | Empieza a recibir un sonido (WAV PCM de 16 bits, 1 MB como mucho) |
+| `SONIDO_DATOS <base64>` | `SONIDO_OK <bytes recibidos>` | Un trozo de 192 bytes. La app espera la respuesta antes del siguiente |
+| `SONIDO_FIN <crc32>` | `SONIDO_GUARDADO <código>` o `SONIDO_ERROR <código> crc` | Termina: si el CRC32 cuadra, el sonido queda guardado (si no, se descarta) |
+| `SONIDO_BORRAR <código>` | `SONIDO_BORRADO <código>` | Lo borra (del chip y de la SD) |
+| `SONIDO <código> [cola]` | — | Lo toca ya (corta lo que suene) o, con `cola`, al acabar lo que suena |
+| `MOMENTO <momento> <def\|no\|código,código…>` | `MOMENTO_OK <momento>` | Qué suena en ese momento cuando la placa juega sola: el de siempre, nada o uno al azar de hasta 4 |
+| `VOLUMEN <0–100>` | — | Volumen de los altavoces (se guarda) |
+
+Motivos de error: `sin_sd`, `sin_memoria`, `sin_espacio`, `tamano`, `escritura`, `crc`, `tiempo` (8 s sin datos).
+Momentos: `goal`, `goalAnnulled`, `streak3`, `comeback`, `equalizer`, `matchPoint`, `goldenGoal`, `penaltyScored`,
+`penaltyMissed`, `matchStart`, `periodEnd`, `victory`, `rout` (los mismos nombres que en la app).
 
 Durante la cuenta atrás, un gol de pulsador **solo la salta** (no suma). En penaltis, un gol del equipo que
 lanza cuenta como acierto; si no es su turno, el motor lo rechaza.
@@ -187,29 +200,10 @@ fabricante (github.com/waveshareteam/ESP32-S3-Touch-LCD-7C). El sketch
 - **Mismas reglas que la app:** usa `mfv3_engine.h`, el motor portado a C++ y probado en PC con los criterios A01–A13.
 - **Memoria:** guarda la configuración y los 8 últimos resultados aunque se apague.
 - **Ahorro:** fuera de partido baja el brillo a los 5 min; el primer toque solo la despierta.
-- **Sonido (7C):** por el altavoz de la placa suenan los mismos momentos que en la app: empieza el partido, gol,
-  gol anulado, empate, 3 seguidos, remontada, bola de partido, gol de oro, penalti marcado/fallado, fin de la parte,
-  victoria y goleada. Sin tarjeta SD suenan los tonos de siempre de la app. El sonido va aparte: la pantalla nunca
-  espera al altavoz, y un momento nuevo corta el que suena. Volumen con la orden `VOLUMEN` (se guarda).
-- **Tarjeta SD (7C), sonidos propios:** microSD en FAT32 con una carpeta por momento dentro de `/sonidos/`:
-
-  | Carpeta | Momento | Carpeta | Momento |
-  |---|---|---|---|
-  | `gol` | Gol | `penalti-marcado` | Penalti marcado |
-  | `gol-anulado` | Gol anulado | `penalti-fallado` | Penalti fallado |
-  | `3-seguidos` | 3 seguidos | `empieza` | Empieza el partido |
-  | `remontada` | Remontada | `fin-de-parte` | Fin de la parte |
-  | `empate` | Empate | `victoria` | Victoria |
-  | `bola-de-partido` | Bola de partido | `goleada` | Goleada |
-  | `gol-de-oro` | Gol de oro | | |
-
-  Dentro, uno o varios `.wav` (hasta 8; si hay varios, uno al azar). Un archivo llamado `ninguno` deja ese momento
-  en silencio; una carpeta vacía o que no existe, el de siempre. Formato: WAV PCM de 8 o 16 bits, mono o estéreo,
-  8–48 kHz (los que prepara la app en Ajustes → Sonidos, 22 050 Hz, valen tal cual). Se leen al encender la placa.
 - **Pantalla de prueba:** el primer arranque abre «PRUEBA DE LA PLACA»: toca las 4 esquinas, pulsa los dos botones
   del mando y (opcional) pasa la bola por los sensores. Muestra también si la radio funciona y el último toque.
   Se repite cuando quieras en AJUSTES → PRUEBA DE LA PLACA. En la 7C, cada esquina tocada suena (si se
-  oye, el altavoz va) y abajo se ve si hay tarjeta SD, su tamaño y cuántos momentos traen sonido propio.
+  oye, el altavoz va) y abajo se ve si hay tarjeta SD.
 - **Mando inalámbrico de 2 pulsadores** (ver §7.1): toque corto = gol, toque largo = anular gol. En la pantalla
   de inicio aparece «MANDO CONECTADO» cuando lo oye.
 - **Sensores de gol (Waveshare 7C):** van directamente a las **entradas aisladas** de la placa, sin Arduino:
@@ -243,13 +237,62 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
 - **Cargar:** IDE de Arduino → placa **ESP32C3 Dev Module**, «USB CDC On Boot: Enabled» → Subir. En el monitor
   serie verás «Enviado: GOL_BLANCO button», etc.
 
+### 7.2 Altavoces y sonidos propios (Waveshare 7C)
+
+La 7C trae de serie el chip de sonido **ES8389** y **dos amplificadores NS4150B** (uno por altavoz), con sus
+conectores de altavoz. No hace falta ningún módulo más: los altavoces se enchufan directamente.
+
+**Altavoces de referencia:** 2 × «2030 cavity speaker» tipo B, **8 Ω y 2 W**, con conector **PH 1,25 de 2 pines**.
+Vale cualquier altavoz de **4–8 Ω y 2–3 W**. Con uno solo también funciona: la placa manda el mismo sonido a los dos.
+
+```
+                    Waveshare ESP32-S3-Touch-LCD-7C (por detrás)
+   ┌───────────────────────────────────────────────────────────────────────┐
+   │  [SPK L]  ◄── conector PH 1,25 (2 pines, + y −)                       │
+   │     ▲        amplificador NS4150B ◄─┐                                 │
+   │     │                               ├── chip de sonido ES8389 ◄── ESP32-S3 (I2S)
+   │     │        amplificador NS4150B ◄─┘                                 │
+   │  [SPK R]  ◄── conector PH 1,25 (2 pines, + y −)                       │
+   │                                                                       │
+   │  [ micro SD ]  ◄── tarjeta FAT32 (opcional)          [USB-C] ── app   │
+   └───────────────────────────────────────────────────────────────────────┘
+        │                                   │
+   ┌────┴─────┐                        ┌────┴─────┐
+   │ Altavoz 1│ 8 Ω · 2 W              │ Altavoz 2│ 8 Ω · 2 W
+   │  (2030)  │                        │  (2030)  │
+   └──────────┘                        └──────────┘
+```
+
+1. **Altavoces:** enchufa cada uno a un conector de altavoz de la placa (serigrafía `SPK`/`SPEAKER` o `L`/`R`; mira la
+   wiki de Waveshare si dudas). El conector solo entra en una posición. Si tu altavoz no trae conector, el cable rojo
+   es `+`. **No unas los dos altavoces al mismo conector** (bajaría la carga del amplificador).
+2. **Tarjeta micro SD (opcional):** formateada en **FAT32**, en la ranura de la placa **con la placa apagada**. La app
+   crea sola la carpeta `/sonidos`. Sin tarjeta, los sonidos van a la memoria del chip (unos 9 MB: más de 4 minutos
+   de sonido; cada sonido ocupa unos 32 KB por segundo).
+3. **Cargar el programa** con las particiones «16M Flash (3MB APP/9.9MB FATFS)» (ver «Cómo cargarlo»).
+4. **Pasar los sonidos:** conecta la placa a la app por el **cable USB** (Ajustes → Mesa → USB). En Ajustes → Sonidos,
+   al subir un sonido elige «Chip de la placa» o «Tarjeta SD»: la app lo prepara y se lo pasa (unos segundos, con
+   barra de progreso). Si un sonido de la placa le falta (placa nueva, tarjeta cambiada), sale «Pasar a la placa».
+5. **Qué suena en cada momento:** lo de Ajustes → Sonidos se le manda a la placa al conectarla y con cada cambio, y
+   lo recuerda. Así, **jugando sola** (sin la app), la placa toca tus sonidos en el gol, la remontada, la victoria…
+   Si un momento no tiene sonido en la placa (o era del aparato), suena el de siempre (unas notas).
+
+**Cómo suena:** todo a 16 kHz y 16 bits (la app ya los prepara así; los antiguos de 22 kHz se convierten al vuelo).
+Un sonido nuevo corta al anterior; la bola de partido espera a que acabe el gol. Los amplificadores se apagan
+solos en reposo para que no se oiga soplido. Volumen: el de la app (panel rápido), de −30 dB a 0 dB.
+
+**Pines (para quien adapte otra placa):** I2S MCLK GPIO6, BCLK GPIO44, LRCK GPIO16, DOUT GPIO15; chip de sonido en
+I2C 0x10 (mismo bus que el táctil, GPIO47/48); amplificadores con la pata EXIO3 del expansor; SD en modo SD_MMC de
+1 bit: CLK GPIO12, CMD GPIO11, D0 GPIO13. Todo en `hardware/esp32s3_pantalla7/mfv3_audio.h`.
+
 ### Cómo cargarlo
 1. IDE de Arduino con el paquete **esp32 de Espressif** y la biblioteca **LovyanGFX** (Gestor de bibliotecas).
 2. Abre `hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino`.
 3. `board_config.h` ya viene con **`BOARD_WAVESHARE_7C`**. Otras opciones: `BOARD_ELECROW_7` (CrowPanel 7.0"),
    `BOARD_WAVESHARE_7` (ESP32-S3-Touch-LCD-7, sin «C») o `BOARD_CUSTOM`.
 4. Herramientas → Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **16 MB** (la 7C trae 32 MB: 16 MB
-   basta), particiones **16M Flash (3MB APP/9.9MB FATFS)** (dos mitades: hace falta para actualizar por Wi-Fi),
+   basta), particiones **«16M Flash (3MB APP/9.9MB FATFS)»** (dos mitades para actualizar por Wi-Fi y la parte
+   FAT para los sonidos; en la Elecrow **Minimal SPIFFS** y en la Waveshare 7 sin «C» **8M with spiffs**),
    USB CDC On Boot **Enabled** (para ver los mensajes por el USB).
 5. **Subir.**
 
@@ -261,10 +304,10 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
   el perfil en `board_config.h`.
 - Los textos de la placa van sin tildes (las fuentes integradas no las incluyen).
 - En la 7C no queda un UART libre (el audio usa GPIO43/44): los sensores van a DI0/DI1 y el PC por USB.
-- El altavoz y la SD (códec ES8389, pines y secuencia del ejemplo del fabricante) solo se han probado en el PC: el
-  primer encendido real se comprueba con la pantalla de prueba. Aún no usa el micrófono ni el Bluetooth, y la app
-  todavía no le pasa sus sonidos (de momento se copian a la SD desde el ordenador). La radio Wi-Fi se usa para el
-  mando (ESP-NOW); sincronizar con la app queda para una versión futura.
+- Los altavoces (§7.2) solo en la 7C: la Elecrow y la Waveshare 7 sin «C» no tienen chip de sonido. El micrófono y
+  el Bluetooth no se usan. La radio Wi-Fi es para el mando (ESP-NOW): los sonidos se pasan por el **cable USB**.
+- El sonido (chip ES8389, registros copiados del ejemplo oficial) está probado en PC con la placa simulada, no en la
+  real: si no suena, mira §8.
 
 ### Actualizar por Wi-Fi (pantalla y mando)
 - **AJUSTES** (botón de Inicio): Wi-Fi (lista de redes y teclado en pantalla; se guarda en la NVS), ACTUALIZAR,
@@ -300,4 +343,7 @@ PNG de cada una en `docs/capturas-placa/`. Necesita g++, zlib y git (la primera 
 | El mando no hace nada | Mira que en la pantalla ponga «MANDO CONECTADO» (el mando saluda cada 20 s); revisa que `GRUPO_MESA` sea el mismo en los dos sketches. |
 | Un toque corto anula el gol | Sube `PULSACION_LARGA_MS` en el mando (por defecto 800 ms). |
 | Goles dobles por rebote | Sube el antirrebote o el `holdOff` en el sketch; el bloqueo de 3 s de la app ya evita dobles goles. |
+| La placa de 7" no suena | Mira que en Ajustes → Mesa la placa anuncie «sonido»; si no, el chip de sonido no respondió (apaga y enciende). Comprueba el volumen de la app (no en silencio) y que el altavoz esté en el conector de altavoz. |
+| «La memoria del chip no está preparada» | Carga el programa con las particiones «16M Flash (3MB APP/9.9MB FATFS)». |
+| «La placa no tiene tarjeta SD» | Tarjeta en FAT32, metida con la placa apagada. |
 | En http://192.168.4.1 no se instala como app | Los navegadores solo instalan/cachean en https o localhost; la placa ya la sirve sin Internet. |

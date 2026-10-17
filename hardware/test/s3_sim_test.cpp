@@ -29,32 +29,6 @@ static size_t count(const std::string& h, const char* s) {
   return n;
 }
 
-#if HAS_AUDIO
-// WAV PCM mínimo de 16 bits (para la tarjeta SD simulada).
-static std::vector<uint8_t> wav16(uint32_t rate, uint32_t frames) {
-  std::vector<uint8_t> v;
-  auto u32 = [&](uint32_t x) { for (int i = 0; i < 4; i++) v.push_back((uint8_t)(x >> (8 * i))); };
-  auto u16 = [&](uint16_t x) { v.push_back((uint8_t)x); v.push_back((uint8_t)(x >> 8)); };
-  auto tag = [&](const char* t) { v.insert(v.end(), t, t + 4); };
-  tag("RIFF"); u32(36 + frames * 2); tag("WAVE");
-  tag("fmt "); u32(16); u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16);
-  tag("data"); u32(frames * 2);
-  for (uint32_t i = 0; i < frames; i++) { v.push_back(0); v.push_back(i % 2 ? 0x40 : 0xC0); }
-  return v;
-}
-
-// Momentos enviados a la tarea de sonido desde la última llamada.
-static size_t queued = 0;
-static std::vector<s3snd::Ev> newSounds() {
-  std::vector<s3snd::Ev> v;
-  for (; queued < sim::queueLog.size(); queued++) {
-    s3audio::Req r;
-    std::memcpy(&r, sim::queueLog[queued].data(), sizeof(r));
-    v.push_back((s3snd::Ev)r.ev);
-  }
-  return v;
-}
-#endif
 
 // Toca la tecla de esa letra en el teclado (en el modo que esté puesto).
 static void tapChar(char c) {
@@ -94,12 +68,6 @@ static void mandoInfo(uint32_t build) {
 
 int main() {
   sim::now = 1000;
-  // Tarjeta SD: un gol propio, «ninguno» en la goleada y un archivo que no es WAV (se ignora).
-#if HAS_AUDIO
-  sim::sdFiles["/sonidos/gol/bocina.wav"] = wav16(16000, 1600);
-  sim::sdFiles["/sonidos/gol/notas.txt"] = {'h', 'o', 'l', 'a'};
-  sim::sdFiles["/sonidos/goleada/ninguno"] = {};
-#endif
   setup();
   loop();
   assert(sent("HELLO " S3_BOARD_ID " 1.0 caps=goles,anular,pausa,pantalla") && sent("STATE idle"));
@@ -268,52 +236,113 @@ int main() {
   }
 
 #if HAS_AUDIO
-  // Altavoz y SD (Waveshare 7C): el códec se configura como el ejemplo del fabricante y el amplificador se enciende.
+  // Sonidos propios (Waveshare 7C): altavoces, memoria del chip, órdenes de la app y momentos del partido.
   {
-    const s3audio::Status& au = s3audio::status;
-    assert(au.sd && au.codec && au.i2s && au.custom == 2 && au.sdMB == 32768);
-    assert(sim::codecRegs[0x46] == 0xBF && sim::codecRegs[0x03] == 0xC3 && (sim::codecRegs[0x69] & 0x20));
-    assert((sim::exioOut & (1u << exio::SPEAKER_AMP)) && sent(",altavoz,volumen"));
-    assert(s3audio::folders[(int)s3snd::Ev::Goal].count == 1 && s3audio::folders[(int)s3snd::Ev::Rout].silent);
-    newSounds();
-    sim::runTask();
-    while (cfg.goalsPerPeriod > 2) tap(76, 306);
+    assert(player.ok && sent(",brillo,sonido") && !sent(",sd"));  // sin tarjeta no ofrece «sd»
+    assert(sim::codecRegs[0x46] == audio::volumeReg(80) && sim::i2sRate == 16000 && sim::codecWrites > 60);
+    // WAV de 0,1 s a 22 050 Hz con un valor fijo (se reconoce al sonar).
+    std::vector<uint8_t> wav(44 + 2205 * 2);
+    auto u32 = [&](size_t at, uint32_t v) { for (int i = 0; i < 4; i++) wav[at + i] = (uint8_t)(v >> (8 * i)); };
+    memcpy(&wav[0], "RIFF", 4); u32(4, (uint32_t)wav.size() - 8); memcpy(&wav[8], "WAVEfmt ", 8);
+    u32(16, 16); u32(20, 1 | (1u << 16)); u32(24, 22050); u32(28, 44100); u32(32, 2 | (16u << 16));
+    memcpy(&wav[36], "data", 4); u32(40, 2205 * 2);
+    for (size_t i = 44; i < wav.size(); i += 2) { wav[i] = 0x40; wav[i + 1] = 0x1F; }  // 8000
+    static const char* A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    auto b64 = [&](const uint8_t* d, size_t n) {
+      std::string o;
+      for (size_t i = 0; i < n; i += 3) {
+        uint32_t v = (uint32_t)d[i] << 16 | (i + 1 < n ? d[i + 1] << 8 : 0) | (i + 2 < n ? d[i + 2] : 0);
+        o += A[(v >> 18) & 63]; o += A[(v >> 12) & 63];
+        o += i + 1 < n ? A[(v >> 6) & 63] : '='; o += i + 2 < n ? A[v & 63] : '=';
+      }
+      return o;
+    };
+    char l[64];
+    snprintf(l, sizeof(l), "SONIDO_SUBIR chip 0000abcd %zu", wav.size());
+    usb(l);
+    assert(sent("SONIDO_LISTO 0000abcd"));
+    for (size_t i = 0; i < wav.size(); i += 192) {
+      size_t n = std::min<size_t>(192, wav.size() - i);
+      usb(("SONIDO_DATOS " + b64(&wav[i], n)).c_str());
+      assert(sent(("SONIDO_OK " + std::to_string(i + n)).c_str()));
+    }
+    snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
+    usb(l);
+    assert(sent("SONIDO_GUARDADO 0000abcd") && FFat.disk.files["/sonidos/0000abcd.wav"] == wav);
+    usb("SONIDOS?");
+    assert(sent("SONIDOS chip=9216 sd=- 0000abcd@c"));
+    usb("SONIDO_SUBIR sd 0000abce 10");
+    assert(sent("SONIDO_ERROR 0000abce sin_sd"));
+
+    // Momentos: el gol con el sonido propio, el gol anulado sin nada. Se guardan en la NVS.
+    usb("MOMENTO goal 0000abcd");
+    usb("MOMENTO goalAnnulled no");
+    assert(sent("MOMENTO_OK goal") && sent("MOMENTO_OK goalAnnulled") && sim::nvs.count("snd"));
+
+    // Partido: «empieza el partido» con el de siempre; el gol con el propio (0,1 s a 16 kHz ≈ 1600 muestras de 8000).
+    sim::i2sRoom = 1000000;
+    run(2000);  // termina de sonar lo que quedaba de antes
+    sim::heard.clear();
     tap(400, 420);  // JUGAR
-    tap(400, 240);  // saltar la cuenta atrás: «empieza el partido», tono de siempre (sin carpeta en la SD)
-    auto v = newSounds();
-    assert(v.size() == 1 && v[0] == s3snd::Ev::MatchStart);
-    size_t before = sim::i2sBytes;
-    sim::runTask();
-    assert(sim::i2sBytes - before == 22050 * 300 / 1000 / 256 * 256 * 4 + (22050 * 300 / 1000) % 256 * 4 && sim::i2sRate == 22050);
-    usb("GB");  // gol: el WAV de la SD (16 kHz, 1600 muestras → 6400 bytes en estéreo)
-    v = newSounds();
-    assert(v.size() == 2 && v[0] == s3snd::Ev::Goal && v[1] == s3snd::Ev::MatchPoint);
-    before = sim::i2sBytes;
-    sim::runTask();
-    assert(sim::i2sRate == 22050);  // terminó con el tono de la bola de partido
-    assert(sim::i2sBytes - before > 6400);
-    run(3100);
-    usb("GB");  // gana 2-0, goleada: su carpeta tiene «ninguno» → no suena
-    v = newSounds();
-    assert(eng.phase() == Phase::Finished && v.size() == 1 && v[0] == s3snd::Ev::Rout);
-    before = sim::i2sBytes;
-    sim::runTask();
-    assert(sim::i2sBytes == before);
-    // Volumen desde la app, y «SONIDO» para probar un momento.
-    usb("VOLUMEN 150");
-    assert(s3audio::volume == 100 && sim::nvs.count("vol"));
-    usb("SONIDO remontada");
-    usb("SONIDO goldenGoal");
-    v = newSounds();
-    assert(v.size() == 2 && v[0] == s3snd::Ev::Comeback && v[1] == s3snd::Ev::GoldenGoal);
-    usb("VOLUMEN 0");
-    usb("SONIDO gol");
-    before = sim::i2sBytes;
-    sim::runTask();
-    assert(sim::i2sBytes == before);  // a volumen 0 no se toca nada
-    usb("VOLUMEN 80");
-    tap(260, 410);  // INICIO
+    tap(400, 240);  // saltar la cuenta atrás
+    run(500);
+    assert(sim::heard.size() >= 4700 && sim::heard.size() <= 4900);  // 300 ms de nota
+    run(3000);
+    sim::heard.clear();
+    usb("GB");
+    run(100);
+    assert(sim::heard.size() >= 1580 && sim::heard.size() <= 1610);
+    assert(sim::heard[800] == 8000);
+    assert(sim::exioOut & (1u << exio::SPEAKER_AMP));  // amplificadores encendidos al sonar
+    sim::heard.clear();
+    usb("AB");  // anulado: «ninguno»
+    run(100);
+    assert(sim::heard.empty() && eng.score().white == 0);
+    run(1000);
+    assert(!(sim::exioOut & (1u << exio::SPEAKER_AMP)));  // y apagados en reposo
+
+    // La app toca un sonido de la placa (en un partido de la app) y cambia el volumen.
+    sim::heard.clear();
+    usb("SONIDO 0000abcd");
+    run(50);
+    assert(sim::heard.size() >= 1580);
+    usb("VOLUMEN 50");
+    assert(sim::codecRegs[0x46] == audio::volumeReg(50) && sim::nvs.count("vol"));
+
+    // Borrado: el gol vuelve al de siempre (660 ms de notas).
+    usb("SONIDO_BORRAR 0000abcd");
+    assert(sent("SONIDO_BORRADO 0000abcd") && !FFat.disk.files.count("/sonidos/0000abcd.wav"));
+    run(3000);
+    sim::heard.clear();
+    usb("GA");
+    run(100);
+    assert(sim::heard.size() > 10000 && sim::heard.size() < 10700);
+    tap(400, 430); tap(400, 360); tap(400, 360);  // pausa y abandonar
     assert(!inMatch);
+
+    // Con tarjeta SD: se anuncia «sd» y los sonidos pueden ir a la tarjeta.
+    sim::sdCard = true;
+    sndStore.begin();
+    usb("HELLO");
+    assert(sent(",sonido,sd"));
+    snprintf(l, sizeof(l), "SONIDO_SUBIR sd 0000beef %zu", wav.size());
+    usb(l);
+    for (size_t i = 0; i < wav.size(); i += 192) usb(("SONIDO_DATOS " + b64(&wav[i], std::min<size_t>(192, wav.size() - i))).c_str());
+    snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
+    usb(l);
+    assert(sent("SONIDO_GUARDADO 0000beef") && SD_MMC.disk.files.count("/sonidos/0000beef.wav") && !SD_MMC.disk.files.count("/sonidos/subida.tmp"));
+    usb("SONIDOS?");
+    assert(sent(" 0000beef@s"));
+    sim::heard.clear();
+    usb("SONIDO 0000beef");
+    run(50);
+    assert(sim::heard.size() >= 1580 && sim::heard[800] == 8000);
+
+    // Al reiniciar se recuerdan los momentos y el volumen.
+    sndChoices = mfv3snd::Choices();
+    sndVolume = 0;
+    loadPrefs();
+    assert(sndChoices.c[(int)mfv3snd::Event::GoalAnnulled].kind == mfv3snd::Kind::None && sndVolume == 50);
   }
 #endif
 
@@ -449,7 +478,7 @@ int main() {
   // Reinicio: la configuración y el historial salen de la NVS.
   uint8_t savedGoals = cfg.goalsPerPeriod, savedHistory = historyCount;
   uint32_t savedPlayed = matchesPlayed;
-  assert(savedPlayed == (HAS_AUDIO ? 2 : 1) && savedHistory == savedPlayed);
+  assert(savedPlayed == 1 && savedHistory == savedPlayed);
   cfg = mfv3::Config(); cfg.goalsPerPeriod = 9; historyCount = 0; matchesPlayed = 0;
   loadPrefs();
   assert(cfg.goalsPerPeriod == savedGoals && historyCount == savedHistory && matchesPlayed == savedPlayed);

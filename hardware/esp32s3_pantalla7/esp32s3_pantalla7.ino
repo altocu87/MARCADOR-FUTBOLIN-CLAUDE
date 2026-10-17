@@ -14,8 +14,9 @@
 //   - AJUSTES: Wi-Fi de casa (se elige la red y se escribe la clave en la pantalla), volumen, prueba y
 //     ACTUALIZAR: al encender mira si hay versión nueva de la pantalla o del mando; se instala cuando se pulse
 //     (el mando, por radio desde la pantalla). Ver s3_ajustes.h y s3_net.h.
-//   - Sonido (Waveshare 7C): los mismos momentos que la app (gol, remontada, victoria…) por el altavoz de la
-//     placa; sonidos propios en la tarjeta SD (/sonidos/<momento>/*.wav) o, si no hay, los de siempre.
+//   - Sonidos propios (Waveshare 7C, con sus dos altavoces): cada momento del partido (gol, remontada, victoria…)
+//     suena con el sonido elegido en la app, guardado en la memoria del chip o en la tarjeta SD; si no hay ninguno,
+//     suena el de siempre. La app los pasa por el USB (ver mfv3_audio.h y mfv3_sound.h).
 //
 // Antes de compilar: elige tu placa en board_config.h. Bibliotecas: LovyanGFX.
 // NOTA: compila en GitHub Actions (núcleo esp32 3.x + LovyanGFX) y la lógica (motor, protocolo, botones)
@@ -28,15 +29,15 @@
 #include <esp_wifi.h>
 #include <esp_arduino_version.h>
 #include "board_config.h"
-#include "s3_audio.h"
 #include "mfv3_core.h"
 #include "mfv3_engine.h"
 #include "mfv3_ota.h"
 #include "mfv3_radio.h"
 #include "s3_net.h"
+#include "mfv3_sound.h"
+#include "mfv3_audio.h"
 #include "ui_layout.h"
 #include "s3_types.h"
-#include "s3_sound.h"
 
 using mfv3::Engine;
 using mfv3::Phase;
@@ -68,11 +69,21 @@ static const uint32_t SLEEP_AFTER_MS = 5UL * 60UL * 1000UL;  // atenuar pantalla
 
 LGFX lcd;
 Engine eng;
-s3snd::Tracker sounds;  // qué momento suena tras cada cambio
 mfv3::Config cfg;
 Preferences prefs;
 HardwareSerial AuxSerial(1);
-mfv3::LineBuffer usbRx, auxRx;
+mfv3::LineBufferN<384> usbRx;  // las líneas de datos de los sonidos son largas
+mfv3::LineBuffer auxRx;
+
+// ---------------------------------------------------------------- sonidos
+mfv3snd::Choices sndChoices;
+mfv3snd::Before sndBefore;
+static uint8_t sndVolume = 80;
+#if HAS_AUDIO
+audio::FsStore sndStore;
+audio::Player player;
+mfv3snd::Commands sndCmd(sndStore, sndChoices);
+#endif
 
 // ---------------------------------------------------------------- colores (RGB565)
 static uint16_t C_BG, C_SURFACE, C_CARD, C_LINE, C_TEXT, C_TEXT2, C_ACCENT, C_WHITE_TEAM, C_WHITE_INK, C_BLUE_TEAM,
@@ -116,10 +127,52 @@ static void loadPrefs() {
   historyCount = prefs.getBytes("hist", history, sizeof(history)) / sizeof(LastResult);
   userBrightness = prefs.getUChar("bri", 100);
   if (userBrightness > 100) userBrightness = 100;
-  s3audio::volume = prefs.getUChar("vol", 80);
-  if (s3audio::volume > 100) s3audio::volume = 100;
+  sndVolume = prefs.getUChar("vol", 80);
+  if (sndVolume > 100) sndVolume = 100;
+  char text[700] = {0};
+  size_t n = prefs.getBytes("snd", text, sizeof(text) - 1);
+  text[n] = 0;
+  sndChoices.parse(text);
   strncpy(wifiSsid, prefs.getString("wssid", "").c_str(), sizeof(wifiSsid) - 1);
   strncpy(wifiPass, prefs.getString("wpass", "").c_str(), sizeof(wifiPass) - 1);
+}
+
+#if HAS_AUDIO
+static void saveChoices() {
+  char text[700];
+  size_t n = sndChoices.serialize(text, sizeof(text));
+  prefs.putBytes("snd", text, n);
+}
+#endif
+
+// Toca los momentos de un cambio: el primero ya (corta lo que sonara) y los demás, en cola.
+static void playEvents(const mfv3snd::EventList& list) {
+#if HAS_AUDIO
+  for (uint8_t i = 0; i < list.n; i++) {
+    const mfv3snd::Choice& c = sndChoices.c[(uint8_t)list.ev[i]];
+    if (c.kind == mfv3snd::Kind::None) continue;
+    audio::Item it = {true, 0, mfv3snd::defaultTune(list.ev[i])};
+    if (c.kind == mfv3snd::Kind::Custom) {
+      // Uno al azar entre los que de verdad están en la placa; si no hay ninguno, el de siempre.
+      uint32_t have[4];
+      uint8_t k = 0;
+      mfv3snd::Place where;
+      for (uint8_t j = 0; j < c.n; j++)
+        if (sndStore.find(c.codes[j], where)) have[k++] = c.codes[j];
+      if (k) it = {false, have[esp_random() % k], mfv3snd::Tune{nullptr, 0}};
+    }
+    player.play(it, i > 0);
+  }
+#else
+  (void)list;
+#endif
+}
+
+// El gol de siempre: para probar el altavoz (pantalla de prueba) y oír el volumen elegido (AJUSTES).
+static void playTestTone() {
+#if HAS_AUDIO
+  player.play(audio::Item{true, 0, mfv3snd::defaultTune(mfv3snd::Event::Goal)}, false);
+#endif
 }
 
 static void saveConfig() {
@@ -254,18 +307,18 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     beep(400);
   }
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
-  s3snd::Ev evs[s3snd::Tracker::MAX_OUT];
-  s3audio::play(evs, sounds.observe(eng, goalAccepted, goalTeam, evs));
   snap = now;
+  playEvents(mfv3snd::detect(eng, sndBefore, goalAccepted));
+  sndBefore = mfv3snd::before(eng);
 }
 
 // ---------------------------------------------------------------- acciones
 static void startMatch() {
   if (!eng.start(cfg, millis())) return;
-  sounds.reset(eng);
   inMatch = true;
   confirmAbandon = false;
   snap = takeSnapshot();
+  sndBefore = mfv3snd::before(eng);
   sendLine("STATE countdown");
   sendLine("SCORE 0 0");
   lastKey = 0xFFFFFFFF;
@@ -321,27 +374,44 @@ static void inputPause() {
 }
 
 static void sendHello() {
-  char buf[112];
-  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s%s", S3_BOARD_ID, FW_VERSION, S3_CAPS, s3audio::status.codec ? ",altavoz,volumen" : "");
+  char buf[128];
+  // «sonido»: tiene altavoz y guarda sonidos; «sd»: además, en la tarjeta SD.
+#if HAS_AUDIO
+  const char* extra = player.ok ? (sndStore.sdOk ? ",sonido,sd" : ",sonido") : "";
+#else
+  const char* extra = "";
+#endif
+  snprintf(buf, sizeof(buf), "HELLO %s %s caps=%s%s", S3_BOARD_ID, FW_VERSION, S3_CAPS, extra);
   sendLine(buf);
 }
 
-// «SONIDO gol» o «SONIDO goal»: toca ese momento (para probar el altavoz y los sonidos de la SD).
-static void playNamed(const char* name) {
-  while (*name == ' ') name++;
-  for (uint8_t i = 0; i < s3snd::EV_COUNT; i++) {
-    const s3snd::EvInfo& in = s3snd::info((s3snd::Ev)i);
-    if (!strcasecmp(name, in.folder) || !strcasecmp(name, in.webId)) {
-      s3audio::play((s3snd::Ev)i);
-      return;
-    }
+// Órdenes de sonido de la app (subir, listar, borrar, tocar, momentos, volumen).
+static bool handleSoundLine(const char* line) {
+#if HAS_AUDIO
+  mfv3snd::Action act;
+  if (!sndCmd.handle(line, millis(), sendLine, act)) return false;
+  if (act.play) {
+    mfv3snd::Place where;
+    if (sndStore.find(act.code, where)) player.play(audio::Item{false, act.code, mfv3snd::Tune{nullptr, 0}}, act.queue);
   }
+  if (act.choicesChanged) saveChoices();
+  if (act.volumeChanged) {
+    sndVolume = act.volume;
+    prefs.putUChar("vol", sndVolume);
+    player.setVolume(sndVolume);
+  }
+  return true;
+#else
+  (void)line;
+  return false;
+#endif
 }
 
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
-  wakeScreen();
   if (test.active) test.usbSeen = true;
+  if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
+  wakeScreen();
   char word[16] = {0};
   size_t i = 0;
   while (line[i] && line[i] != ' ' && i < sizeof(word) - 1) {
@@ -362,13 +432,7 @@ static void handleBoardLine(const char* line) {
     userBrightness = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
     prefs.putUChar("bri", userBrightness);
     if (!dimmed) lcd.backlight(backlightLevel());
-  } else if (!strcmp(word, "VOLUMEN")) {
-    // Volumen del altavoz de la placa: 0–100 % (0 = sin sonido).
-    int v = atoi(line + i);
-    s3audio::volume = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
-    prefs.putUChar("vol", s3audio::volume);
-  } else if (!strcmp(word, "SONIDO")) playNamed(line + i);
-  else if (!strcmp(word, "PING")) sendLine("PONG");
+  } else if (!strcmp(word, "PING")) sendLine("PONG");
   else if (!strcmp(word, "HELLO")) {
     sendHello();
   }
@@ -569,12 +633,9 @@ static void drawTest() {
   text(buf, ui::W / 2, 328, &lgfx::fonts::FreeSans9pt7b, radioOk ? C_TEXT2 : C_DANGER);
 #if HAS_AUDIO
   // Cada esquina tocada suena: si se oye, el altavoz funciona.
-  const s3audio::Status& au = s3audio::status;
-  char sd[32];
-  if (au.sd) snprintf(sd, sizeof(sd), "%lu GB, %u sonidos propios", (unsigned long)((au.sdMB + 512) / 1024), au.custom);
-  else snprintf(sd, sizeof(sd), "sin tarjeta");
-  snprintf(buf, sizeof(buf), "Altavoz %s  |  SD %s", au.codec ? "OK (suena al tocar)" : "ERROR", sd);
-  text(buf, ui::W / 2, 351, &lgfx::fonts::FreeSans9pt7b, au.codec ? C_TEXT2 : C_DANGER);
+  snprintf(buf, sizeof(buf), "Altavoz %s  |  Tarjeta SD %s", player.ok ? "OK (suena al tocar)" : "ERROR",
+           sndStore.sdOk ? "OK" : "-");
+  text(buf, ui::W / 2, 351, &lgfx::fonts::FreeSans9pt7b, player.ok ? C_TEXT2 : C_DANGER);
 #endif
   if (test.lastX >= 0) {
     snprintf(buf, sizeof(buf), "Ultimo toque: %d, %d", test.lastX, test.lastY);
@@ -832,7 +893,7 @@ static void onTap(int16_t x, int16_t y) {
     for (int i = 0; i < 4; i++)
       if (ui::TEST_CORNERS[i].contains(x, y)) {
         test.corner[i] = true;
-        s3audio::play(s3snd::Ev::Goal);
+        playTestTone();
       }
     test.lastX = x;
     test.lastY = y;
@@ -974,7 +1035,10 @@ void setup() {
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
   loadPrefs();
   lcd.backlight(backlightLevel());  // el brillo guardado
-  s3audio::begin(lcd);              // tarjeta SD y altavoz (Waveshare 7C)
+#if HAS_AUDIO
+  sndStore.begin();
+  player.begin(lcd, sndStore, sndVolume);
+#endif
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
@@ -994,6 +1058,10 @@ void loop() {
       if (auxRx.push((char)AuxSerial.read())) handleBoardLine(auxRx.line());
 
   radioPoll();
+#if HAS_AUDIO
+  sndCmd.tick(now, sendLine);
+  player.pump(now);
+#endif
   pollTouch();
 #if HAS_ISOLATED_IO
   pollIsolatedInputs(now);

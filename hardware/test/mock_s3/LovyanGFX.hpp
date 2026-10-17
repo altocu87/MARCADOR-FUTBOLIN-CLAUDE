@@ -64,9 +64,9 @@ inline int fullRedraws = 0;
 // Expansor de E/S de la Waveshare 7C (dirección 0x24)
 inline uint16_t exioMode = 0, exioOut = 0, exioIn = 0;
 inline uint8_t exioPwm = 0;
-// Códec de audio ES8389 (dirección 0x10): registros escritos.
-inline bool codecPresent = true;
+// Chip de sonido ES8389 (dirección 0x10): registros escritos.
 inline uint8_t codecRegs[256] = {0};
+inline int codecWrites = 0;
 }  // namespace sim
 namespace lgfx {
 struct IFont {};
@@ -77,11 +77,7 @@ struct I2cResult {
 namespace i2c {
 inline I2cResult init(int, int, int) { return {false}; }
 inline I2cResult transactionWrite(int, int addr, const uint8_t* d, uint8_t len, uint32_t = 400000) {
-  if (addr == 0x10) {
-    if (!sim::codecPresent) return {true};
-    for (uint8_t i = 1; i < len; i++) sim::codecRegs[(uint8_t)(d[0] + i - 1)] = d[i];
-    return {false};
-  }
+  if (addr == 0x10 && len == 2) { sim::codecRegs[d[0]] = d[1]; sim::codecWrites++; return {false}; }
   if (addr != 0x24 || len < 2) return {false};
   if (d[0] == 0x02) sim::exioMode = (uint16_t)(d[1] | (d[2] << 8));
   if (d[0] == 0x03) sim::exioOut = (uint16_t)(d[1] | (d[2] << 8));
@@ -89,11 +85,7 @@ inline I2cResult transactionWrite(int, int addr, const uint8_t* d, uint8_t len, 
   return {false};
 }
 inline I2cResult transactionWriteRead(int, int addr, const uint8_t* w, uint8_t, uint8_t* r, size_t, uint32_t = 400000) {
-  if (addr == 0x10) {
-    if (!sim::codecPresent) return {true};
-    r[0] = sim::codecRegs[w[0]];
-    return {false};
-  }
+  if (addr == 0x10) { r[0] = sim::codecRegs[w[0]]; return {false}; }
   if (addr != 0x24 || w[0] != 0x04) return {true};
   r[0] = (uint8_t)(sim::exioIn & 0xFF);
   r[1] = (uint8_t)(sim::exioIn >> 8);

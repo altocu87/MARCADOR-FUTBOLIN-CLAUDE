@@ -18,7 +18,7 @@
 #include <LovyanGFX.hpp>
 #include <Wire.h>
 
-// Pines que nombra s3_audio.h (en el PC no hay ESP-IDF).
+// Pines que nombra mfv3_audio.h (en el PC no hay ESP-IDF).
 enum gpio_num_t { GPIO_NUM_NC = -1, GPIO_NUM_6 = 6, GPIO_NUM_15 = 15, GPIO_NUM_16 = 16, GPIO_NUM_44 = 44 };
 
 #define AUX_UART_RX -1
@@ -28,6 +28,7 @@ enum gpio_num_t { GPIO_NUM_NC = -1, GPIO_NUM_6 = 6, GPIO_NUM_15 = 15, GPIO_NUM_1
 
 namespace exio {
 const uint8_t TOUCH_RST = 1, BACKLIGHT = 2, SPEAKER_AMP = 3, SD_CS = 4;
+const int I2C_PORT = 0;
 const uint8_t DI0 = 7, DI1 = 8, DI2 = 9, DI3 = 10;
 const uint8_t DO0 = 11, DO1 = 12, DO2 = 13, DO3 = 14;
 }  // namespace exio

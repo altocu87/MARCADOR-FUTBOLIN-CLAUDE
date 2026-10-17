@@ -1,52 +1,81 @@
-// Sistema de archivos simulado (tarjeta SD de la pantalla de 7"): archivos en memoria en sim::sdFiles.
+// Simulación mínima del sistema de archivos de Arduino-ESP32 (FFat, SD_MMC) para las pruebas en PC.
 #pragma once
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include <cstring>
-#include "Arduino.h"
-namespace sim {
-inline bool sdPresent = true;
-inline std::map<std::string, std::vector<uint8_t>> sdFiles;  // ruta completa → contenido
-}  // namespace sim
+#define FILE_READ "r"
+#define FILE_WRITE "w"
+namespace fs {
+struct Disk {
+  std::map<std::string, std::vector<uint8_t>> files;
+  std::map<std::string, bool> dirs;
+};
 class File {
  public:
   File() {}
-  File(const std::string& path, bool dir) : path_(path), dir_(dir), ok_(true) {}
-  explicit operator bool() const { return ok_; }
-  bool isDirectory() const { return dir_; }
-  const char* name() const {
-    size_t p = path_.rfind('/');
-    return path_.c_str() + (p == std::string::npos ? 0 : p + 1);
-  }
-  size_t size() const { return dir_ ? 0 : sim::sdFiles[path_].size(); }
-  int read(uint8_t* buf, size_t n) {
-    auto& d = sim::sdFiles[path_];
-    size_t k = pos_ >= d.size() ? 0 : (d.size() - pos_ < n ? d.size() - pos_ : n);
-    memcpy(buf, d.data() + pos_, k);
-    pos_ += k;
-    return (int)k;
-  }
-  bool seek(uint32_t p) { pos_ = p; return true; }
-  void close() {}
-  // Siguiente entrada de una carpeta (archivos y subcarpetas de primer nivel).
-  File openNextFile() {
-    std::string pre = path_ + "/";
-    std::vector<std::string> names;
-    for (auto& kv : sim::sdFiles) {
-      if (kv.first.rfind(pre, 0) != 0) continue;
-      std::string rest = kv.first.substr(pre.size());
-      size_t slash = rest.find('/');
-      std::string n = slash == std::string::npos ? rest : rest.substr(0, slash);
-      if (names.empty() || names.back() != n) names.push_back(n);
+  File(Disk* d, const std::string& p, bool w, bool dir) : st_(std::make_shared<St>()) {
+    st_->disk = d; st_->path = p; st_->write = w; st_->dir = dir;
+    if (dir) {
+      for (auto& f : d->files)
+        if (f.first.rfind(p + "/", 0) == 0) st_->entries.push_back(f.first);
+    } else if (w) {
+      d->files[p].clear();
     }
-    if (next_ >= names.size()) return File();
-    std::string full = pre + names[next_++];
-    return File(full, !sim::sdFiles.count(full));
   }
-
+  explicit operator bool() const { return st_ && st_->open; }
+  size_t write(const uint8_t* b, size_t n) {
+    if (!*this || !st_->write) return 0;
+    auto& v = st_->disk->files[st_->path];
+    v.insert(v.end(), b, b + n);
+    return n;
+  }
+  size_t read(uint8_t* b, size_t n) {
+    if (!*this) return 0;
+    auto& v = st_->disk->files[st_->path];
+    size_t k = st_->pos >= v.size() ? 0 : std::min(n, v.size() - st_->pos);
+    if (k) memcpy(b, v.data() + st_->pos, k);
+    st_->pos += k;
+    return k;
+  }
+  bool seek(uint32_t p) { if (!*this) return false; st_->pos = p; return true; }
+  size_t size() { return *this ? st_->disk->files[st_->path].size() : 0; }
+  void close() { if (st_) st_->open = false; }
+  bool isDirectory() { return st_ && st_->dir; }
+  const char* name() { return st_->path.c_str() + st_->path.rfind('/') + 1; }
+  File openNextFile() {
+    if (!st_ || st_->next >= st_->entries.size()) return File();
+    return File(st_->disk, st_->entries[st_->next++], false, false);
+  }
  private:
-  std::string path_;
-  bool dir_ = false, ok_ = false;
-  size_t pos_ = 0, next_ = 0;
+  struct St {
+    Disk* disk = nullptr;
+    std::string path;
+    bool write = false, dir = false, open = true;
+    size_t pos = 0, next = 0;
+    std::vector<std::string> entries;
+  };
+  std::shared_ptr<St> st_;
 };
+class FS {
+ public:
+  Disk disk;
+  bool exists(const char* p) { return disk.files.count(p) || disk.dirs.count(p); }
+  bool remove(const char* p) { return disk.files.erase(p) > 0; }
+  bool mkdir(const char* p) { disk.dirs[p] = true; return true; }
+  bool rename(const char* a, const char* b) {
+    auto it = disk.files.find(a);
+    if (it == disk.files.end()) return false;
+    disk.files[b] = it->second;
+    disk.files.erase(a);
+    return true;
+  }
+  File open(const char* p, const char* mode = FILE_READ) {
+    if (disk.dirs.count(p)) return File(&disk, p, false, true);
+    bool w = mode[0] == 'w';
+    if (!w && !disk.files.count(p)) return File();
+    return File(&disk, p, w, false);
+  }
+};
+}  // namespace fs

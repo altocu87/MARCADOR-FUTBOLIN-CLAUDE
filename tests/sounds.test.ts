@@ -188,7 +188,7 @@ describe('Sonidos · preparar al subir', () => {
     expect(limitLength(wav(14), SOUND_RATE).length).toBe(SOUND_RATE * 10);
   });
 
-  it('mezcla en una pista y cambia a 22 050 Hz', () => {
+  it('mezcla en una pista y cambia a 16 000 Hz', () => {
     const l = new Float32Array(44_100).fill(0.3);
     const r = new Float32Array(44_100).fill(0.1);
     const out = prepareSamples([l, r], 44_100);

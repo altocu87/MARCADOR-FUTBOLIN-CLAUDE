@@ -434,6 +434,7 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 - Marcador completo en la propia pantalla táctil, sin móvil.
 - Pulsadores: con el mando inalámbrico. Sensores: entradas aisladas DI0/DI1 (más su común).
 - Las salidas DO0/DO1 se activan 1 s con cada gol (luz o relé).
+- Sonidos propios: dos altavoces de 8 Ω y 2 W a sus conectores de altavoz (PH 1,25 de 2 pines), sin amplificador aparte. Los sonidos van a la memoria del chip o a una tarjeta micro SD.
 
 | Qué | Pin de la placa | El otro cable |
 |---|---|---|

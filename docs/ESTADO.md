@@ -42,15 +42,15 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   1 en juego). Lo que se juegue o añada en modo prueba también se guarda ahí (`mfv3:v1:demo:`). Al desactivarlo se
   borra todo lo de prueba y vuelven los datos reales intactos. Las preferencias son comunes a ambos modos.
 
-## Sonidos propios (fase 1 hecha, 16/10/2026)
+## Sonidos propios (fases 1 y 3 hechas, 16/10/2026; la 2, en la nube, no se hace por ahora)
 
 - **Ajustes → Sonidos**: subir sonidos de la mesa (mp3, wav, ogg, m4a…), escucharlos con ▶ y borrarlos. Al subirlos la
   app los prepara sola: una pista, sin silencios al principio ni al final, volumen igualado, 10 s como mucho y en WAV
-  ligero (22 050 Hz, 16 bits, unos 40 KB por segundo), que también podrá tocar la placa.
+  ligero (16 000 Hz, 16 bits, 32 KB por segundo), la misma frecuencia a la que suena la placa.
 - **Dónde se guarda** cada sonido (se elige al subirlo): «Este aparato», «Chip de la placa» o «Tarjeta SD». La app lo
   apunta en cada sonido y lo toca desde ahí: del aparato, de la copia ya cargada en memoria (sin esperas al marcar);
-  del chip o la SD, pidiéndoselo a la placa. Si la placa no está o no puede, suena el de siempre. Chip y SD salen
-  apagados hasta que haya una placa con altavoz (fase 3, capacidades `sonido` y `sd`).
+  del chip o la SD, pidiéndoselo a la placa. Si la placa no está o no puede, suena el de siempre. Chip y SD solo se
+  pueden elegir con una placa con altavoz conectada (capacidades `sonido` y `sd`).
 - **16 momentos** con su sonido: «El de siempre», «Ninguno», uno propio o varios (uno al azar cada vez). Detección
   nueva de 3 seguidos, remontada, empate, goleada, gol de oro, ganar un torneo y reto conseguido
   (`src/services/sound/soundEvents.ts`). Un sonido propio nuevo corta al anterior; la bola de partido y el himno del
@@ -62,23 +62,27 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   dónde sale cada sonido y copia de seguridad), `tsc` sin errores, `npm run build:web` correcto y recorrido en
   Chromium a 800×480: subir dos sonidos, elegirlos, recargar (se conservan) y partido rápido donde el gol suena con el
   propio y el empate con el de siempre. Sin errores de consola.
-- Pendiente: fase 2 (copia opcional en la nube, a decidir) y fase 3 (altavoz en la placa).
+- **Fase 3, placa de 7" (Waveshare 7C) con dos altavoces de 8 Ω y 2 W** a sus conectores (chip de sonido ES8389 y
+  dos amplificadores NS4150B de la propia placa; esquema en `HARDWARE.md` §7.2):
+  - Los sonidos se guardan en la memoria del chip (partición FAT de 9,9 MB: hay que cargar el programa con
+    «16M Flash (3MB APP/9.9MB FATFS)») o en la tarjeta micro SD, como `/sonidos/<código>.wav`.
+  - La app se los pasa por el cable USB en trozos con CRC32 y barra de progreso; al conectar le pregunta cuáles tiene
+    («Pasar a la placa» si falta alguno) y le manda qué suena en cada momento y el volumen. Borrar en la app los borra
+    también de la placa. Órdenes nuevas del protocolo `SONIDO_*`, `MOMENTO`, `VOLUMEN` (tabla en `HARDWARE.md` §5).
+  - La placa detecta ella sola 13 momentos en sus partidos (los mismos que la app salvo torneo, nivel y reto) y toca el
+    sonido elegido; si no lo tiene, unas notas «de siempre». También cuando juega sin la app.
+  - Comprobado: `npm run test:hardware` (pruebas nuevas `sound_test.cpp` y la placa simulada con altavoces, memoria y
+    SD en `s3_sim_test.cpp`: subir por USB, listar, tocar en el gol, «ninguno», volumen, borrar, recordar tras
+    reiniciar) y `npx vitest run` 278 pruebas (6 nuevas del protocolo con una placa simulada). Compilado en GitHub.
+    **Sin probar en la placa real.**
+- Fase 2 (copia en la nube): no se hace por ahora.
 
-## Placa de 7" (Waveshare ESP32-S3-Touch-LCD-7C / 7C-BOX): sonido y tarjeta SD (16/10/2026)
+## Capturas de la pantalla de 7" sin la placa (16/10/2026)
 
-- **Altavoz:** códec ES8389 + I2S con los pines y la secuencia del ejemplo oficial de Waveshare
-  (`hardware/esp32s3_pantalla7/s3_audio.h`). Suenan los mismos momentos que en la app (13 de los 16; torneo, nivel y
-  reto no existen en la placa), decididos con las mismas reglas que `soundsForCommit()` (`s3_sound.h`). Sin SD, los
-  tonos de siempre de la app. Tarea aparte: la pantalla no espera al altavoz. Órdenes nuevas `VOLUMEN` y `SONIDO`;
-  la placa anuncia `altavoz,volumen` en el HELLO (todavía no `sonido`/`sd`: la app aún no sabe pasarle archivos).
-- **Tarjeta SD:** SDMMC de 1 bit; sonidos propios en `/sonidos/<momento>/*.wav` (varios = uno al azar, `ninguno` =
-  silencio). La pantalla de prueba muestra la SD y suena al tocar cada esquina.
-- **Capturas sin la placa:** `sh hardware/test/capturas.sh` dibuja las pantallas con la LovyanGFX real en el PC y
-  guarda PNG en `docs/capturas-placa/`. Se ve que los números grandes salen pixelados (fuente de mapa de bits
-  ampliada) y sin tildes: lo siguiente es usar fuentes suaves con tildes.
-- Comprobado en PC: `npm run test:hardware` (nuevas: `sound_test.cpp` y la parte de sonido de `s3_sim_test.cpp`). En
-  la placa real: pendiente (aún no la tenemos). Falta la compilación de verdad en GitHub Actions.
-- Pendiente: jugadores con foto en la placa, fuentes con tildes, pasar los sonidos de la app a la SD, sincronizar.
+- `sh hardware/test/capturas.sh` dibuja las pantallas con la LovyanGFX real en el PC y guarda PNG en
+  `docs/capturas-placa/` (en el PC no hay chip de sonido: la prueba de la placa sale con «Altavoz ERROR»).
+- Se ve que los números grandes salen pixelados (fuente de mapa de bits ampliada) y sin tildes: lo siguiente es
+  usar fuentes suaves con tildes. Pendiente también: jugadores con foto en la placa.
 
 ## Actualización por Wi-Fi de la pantalla de 7" y del mando (16/10/2026)
 

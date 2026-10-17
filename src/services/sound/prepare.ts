@@ -1,10 +1,10 @@
 /**
  * Preparar un sonido subido: una sola pista, sin silencios al principio ni al final, volumen igualado, como mucho
- * 10 s y en WAV ligero (22 050 Hz, 16 bits) que también puede tocar la placa. Todo son cálculos sobre las muestras,
+ * 10 s y en WAV ligero (16 000 Hz, 16 bits: 32 KB por segundo), la misma frecuencia a la que suena la placa. Todo son cálculos sobre las muestras,
  * sin depender del navegador; solo `decodeFile` usa Web Audio para leer el archivo subido.
  */
 
-export const SOUND_RATE = 22_050;
+export const SOUND_RATE = 16_000;
 export const MAX_SOUND_MS = 10_000;
 /** Por debajo de esto se considera silencio (−46 dB). */
 const SILENCE = 0.005;

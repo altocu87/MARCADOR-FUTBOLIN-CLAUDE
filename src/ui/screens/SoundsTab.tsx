@@ -5,6 +5,7 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { useHardware } from '../../inputs/hardware/useHardware';
+import type { BoardPlace } from '../../inputs/hardware/boardSounds';
 import { newId } from '../../services/ids';
 import type { SoundLocation, StoredSound } from '../../services/persistence';
 import { decodeFile } from '../../services/sound/prepare';
@@ -30,8 +31,27 @@ function summary(c: SoundChoice, sounds: StoredSound[]): string {
   return mine.length ? `${mine.length} al azar` : 'El de siempre';
 }
 
+const pct = (f: number) => `${Math.round(f * 100)} %`;
+
 export function SoundsTab() {
   const { sounds, soundRepo, reloadSounds, prefs, savePrefs, toast } = useApp();
+  const hub = useHardware();
+  // Sonido que se está pasando a la placa y cuánto lleva (0–1).
+  const [sending, setSending] = useState<{ id: string; fraction: number } | null>(null);
+
+  const sendToBoard = async (s: StoredSound): Promise<boolean> => {
+    if (s.location === 'device') return true;
+    setSending({ id: s.id, fraction: 0 });
+    try {
+      await hub.uploadSound(s, s.location as BoardPlace, (fraction) => setSending({ id: s.id, fraction }));
+      return true;
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'No se pudo pasar a la placa');
+      return false;
+    } finally {
+      setSending(null);
+    }
+  };
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<StoredSound | null>(null);
@@ -54,6 +74,8 @@ export function SoundsTab() {
   };
 
   const saveDraft = async (d: StoredSound) => {
+    // En el chip o la SD: primero se pasa a la placa (si falla, se puede elegir «Este aparato»).
+    if (!(await sendToBoard(d))) return;
     try {
       await soundRepo.save({ ...d, name: d.name.trim() || 'Sonido' });
       await reloadSounds();
@@ -71,6 +93,7 @@ export function SoundsTab() {
 
   const remove = async (s: StoredSound) => {
     try {
+      if (s.location !== 'device') hub.deleteBoardSound(s.id);
       await soundRepo.remove(s.id);
       await savePrefs({ ...prefs, soundEvents: withoutSound(prefs.soundEvents ?? {}, s.id) });
       await reloadSounds();
@@ -111,7 +134,12 @@ export function SoundsTab() {
                 <strong className="snd-name">{s.name}</strong>
                 <span className="snd-where">{LOCATION_LABEL[s.location]}</span>
                 <span className="muted snd-len">{seconds(s.durationMs)}</span>
-                <button className="btn btn-sm btn-danger" onClick={() => setRemoving(s)}>
+                {s.location !== 'device' && hub.inventory && !hub.boardHas(s.id) && (
+                  <button className="btn btn-sm btn-primary" disabled={!!sending} onClick={() => void sendToBoard(s)}>
+                    {sending?.id === s.id ? pct(sending.fraction) : 'Pasar a la placa'}
+                  </button>
+                )}
+                <button className="btn btn-sm btn-danger" disabled={sending?.id === s.id} onClick={() => setRemoving(s)}>
                   Borrar
                 </button>
               </div>
@@ -151,7 +179,15 @@ export function SoundsTab() {
         </div>
       </div>
 
-      {draft && <DraftModal draft={draft} onChange={setDraft} onSave={(d) => void saveDraft(d)} onClose={cancelDraft} />}
+      {draft && (
+        <DraftModal
+          draft={draft}
+          progress={sending?.id === draft.id ? sending.fraction : null}
+          onChange={setDraft}
+          onSave={(d) => void saveDraft(d)}
+          onClose={cancelDraft}
+        />
+      )}
       {editing && (
         <ChoiceModal
           event={editing}
@@ -182,26 +218,37 @@ export function SoundsTab() {
 /** Sonido recién subido: nombre y dónde se guarda. */
 function DraftModal({
   draft,
+  progress,
   onChange,
   onSave,
   onClose,
 }: {
   draft: StoredSound;
+  /** Pasándose a la placa (0–1); null si no. */
+  progress: number | null;
   onChange: (d: StoredSound) => void;
   onSave: (d: StoredSound) => void;
   onClose: () => void;
 }) {
   const hub = useHardware();
   const can: Record<SoundLocation, boolean> = { device: true, ...hub.soundTargets };
+  const busy = progress !== null;
   return (
     <Modal
       title="Nuevo sonido"
-      onClose={onClose}
+      onClose={busy ? undefined : onClose}
       actions={
-        <>
-          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={() => onSave(draft)}>Guardar</button>
-        </>
+        busy ? (
+          <div className="snd-progress" role="progressbar" aria-valuenow={Math.round(progress * 100)}>
+            <span style={{ width: pct(progress) }} />
+            <b>Pasando a la placa… {pct(progress)}</b>
+          </div>
+        ) : (
+          <>
+            <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-primary" onClick={() => onSave(draft)}>Guardar</button>
+          </>
+        )
       }
     >
       <div className="snd-draft">
@@ -220,13 +267,13 @@ function DraftModal({
           Dónde se guarda
           <HelpButton
             title="Dónde se guarda"
-            text="En este aparato suena por su altavoz. En el chip o en la tarjeta SD de la placa suena por el altavoz de la placa; se pueden elegir cuando hay una placa con altavoz conectada. Si la placa no está, suena el de siempre."
+            text={'En este aparato suena por su altavoz. En el chip o en la tarjeta SD de la placa suena por los altavoces de la placa, también cuando juega sola; para elegirlos, conecta la pantalla de 7" por el cable USB (Ajustes → Mesa). Si la placa no está, suena el de siempre.'}
             className="snd-help"
           />
         </div>
         <div className="segmented snd-where-pick">
           {(Object.keys(LOCATION_LABEL) as SoundLocation[]).map((l) => (
-            <button key={l} className="seg" aria-pressed={draft.location === l} disabled={!can[l]} onClick={() => onChange({ ...draft, location: l })}>
+            <button key={l} className="seg" aria-pressed={draft.location === l} disabled={!can[l] || busy} onClick={() => onChange({ ...draft, location: l })}>
               {LOCATION_LABEL[l]}
             </button>
           ))}

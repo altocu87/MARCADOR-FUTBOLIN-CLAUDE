@@ -283,7 +283,7 @@ export interface Preferences {
 /** Dónde está guardado un sonido propio: en este aparato, en la memoria del chip de la placa o en su tarjeta SD. */
 export type SoundLocation = 'device' | 'chip' | 'sd';
 
-/** Sonido subido a esta mesa, ya preparado (WAV de una pista, 22 050 Hz, 16 bits, 10 s como mucho). */
+/** Sonido subido a esta mesa, ya preparado (WAV de una pista, 16 000 Hz, 16 bits, 10 s como mucho). */
 export interface StoredSound {
   id: string;
   name: string;

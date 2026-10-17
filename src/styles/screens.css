@@ -6958,3 +6958,23 @@ div > .name-clash:first-child {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.snd-progress {
+  position: relative;
+  flex: 1;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.snd-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(98, 214, 255, 0.35);
+  transition: width 0.2s;
+}
+.snd-progress b {
+  position: relative;
+  font-size: 17px;
+}

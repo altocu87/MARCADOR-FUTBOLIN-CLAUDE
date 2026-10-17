@@ -273,8 +273,8 @@ static void drawSettings() {
   settingRow(vr, "VOLUMEN", nullptr, C_TEXT2);
   button(ui::SETTINGS[3].r, "-", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
   button(ui::SETTINGS[4].r, "+", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
-  snprintf(v, sizeof(v), "%u%%", (unsigned)s3audio::volume);
-  text(v, 610, 284, &lgfx::fonts::FreeSansBold18pt7b, s3audio::volume ? C_TEXT : C_LINE);
+  snprintf(v, sizeof(v), "%u%%", (unsigned)sndVolume);
+  text(v, 610, 284, &lgfx::fonts::FreeSansBold18pt7b, sndVolume ? C_TEXT : C_LINE);
 #endif
   settingRow(ui::SETTINGS[5].r, "PRUEBA DE LA PLACA", nullptr, C_TEXT2);
 }
@@ -491,7 +491,7 @@ static uint32_t ajustesKey() {
   mix((uint32_t)mandoUpd());
   mix(mandoBuild);
   switch (screen) {
-    case Screen::Settings: mix(s3audio::volume); break;
+    case Screen::Settings: mix(sndVolume); break;
     case Screen::Wifi: mix(netScanned); mix(netCount); break;
     case Screen::Keyboard:
       mix(kbMode); mix(kbShow); mix((uint32_t)(uintptr_t)kbError);
@@ -569,10 +569,11 @@ static void ajustesTap(int16_t x, int16_t y) {
       }
 #if HAS_AUDIO
       else if (b == ui::Btn::VolMinus || b == ui::Btn::VolPlus) {
-        int v = (int)s3audio::volume + (b == ui::Btn::VolPlus ? 10 : -10);
-        s3audio::volume = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
-        prefs.putUChar("vol", s3audio::volume);
-        s3audio::play(s3snd::Ev::Goal);  // para oír cómo queda
+        int v = (int)sndVolume + (b == ui::Btn::VolPlus ? 10 : -10);
+        sndVolume = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
+        prefs.putUChar("vol", sndVolume);
+        player.setVolume(sndVolume);
+        playTestTone();  // para oír cómo queda
       }
 #endif
       break;

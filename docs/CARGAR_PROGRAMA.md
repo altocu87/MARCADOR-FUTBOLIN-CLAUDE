@@ -54,14 +54,11 @@ También sirve para cualquier ESP32 si el camino A falla.
 4. Abre `hardware/<programa>/<programa>.ino` (la página de la placa te dice cuál) → elige placa y puerto →
    pulsa **Subir** (la flecha).
 
-## Tarjeta SD de la pantalla de 7" (sonidos propios, opcional)
+## Sonidos propios en la pantalla de 7" (opcional)
 
-1. Formatea la microSD en **FAT32** en el ordenador.
-2. Crea la carpeta `sonidos` y, dentro, una carpeta por momento: `gol`, `victoria`, `remontada`… (la lista
-   completa está en `docs/HARDWARE.md`, apartado 7).
-3. Mete dentro tus `.wav` (si hay varios, suena uno al azar). Un archivo llamado `ninguno` deja ese momento sin
-   sonido. Sin tarjeta, suenan los sonidos de siempre.
-4. Mete la tarjeta con la placa **apagada** y enciéndela: los sonidos se leen al arrancar.
+Se pasan desde la app con la placa conectada por el **cable USB**: Ajustes → **Sonidos**, y al subir cada sonido
+eliges si va a la **memoria del chip** o a la **tarjeta SD** (micro SD en FAT32, metida con la placa apagada).
+Detalles en `docs/HARDWARE.md`, apartado 7.2.
 
 ## Actualizar a una versión nueva: por Wi-Fi, sin cables (pantalla de 7" y mando)
 
@@ -78,7 +75,7 @@ en dos mitades para poder actualizarse sola). Después:
      alrededor de un minuto; deja el mando cerca y encendido. Si no lo tienes a mano: **SALTAR EL MANDO**.
    - Después, la pantalla se descarga la suya y se reinicia con ella. **No la apagues** mientras pone
      «Descargando».
-4. Se conservan la configuración, el historial, el Wi-Fi y los sonidos.
+4. Se conservan la configuración, el historial, el Wi-Fi y los sonidos guardados en la placa.
 
 Si algo falla a medias (se va la luz, se corta el Wi-Fi), cada placa **sigue con el programa que tenía**: el
 nuevo solo se usa si ha llegado entero y comprobado.

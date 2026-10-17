@@ -21,6 +21,7 @@
  *   LOCK <ms>                    bloqueo de 3 s activo
  *   WIN <BLANCO|AZUL>
  *   BRILLO <0–100>               brillo de la pantalla (solo a placas que anuncian «brillo» en caps)
+ *   SONIDO… / MOMENTO / VOLUMEN  sonidos propios (solo a placas con «sonido» en caps; ver boardSounds.ts)
  *   PONG
  *
  * La placa solo envía pulsaciones: TODAS las reglas (bloqueo de 3 s, turnos de
