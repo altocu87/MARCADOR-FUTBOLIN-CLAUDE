@@ -114,7 +114,7 @@ export interface BoardTransport {
 
 const REASONS: Record<string, string> = {
   sin_sd: 'La placa no tiene tarjeta SD',
-  sin_memoria: 'La memoria del chip no está preparada (revisa el esquema de particiones)',
+  sin_memoria: 'La placa no guarda sonidos en su memoria: elige «Tarjeta SD»',
   sin_espacio: 'No queda sitio en la placa',
   tamano: 'El sonido es demasiado grande',
   escritura: 'La placa no pudo guardarlo',

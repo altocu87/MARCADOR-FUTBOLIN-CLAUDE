@@ -5,7 +5,8 @@
 //     de altavoz (PH 1,25 de 2 pines). Se enciende por la pata EXIO3 del expansor. Audio I2S: MCLK GPIO6,
 //     BCLK GPIO44, LRCK GPIO16, DOUT GPIO15 (pines y registros del ejemplo oficial 09_SPEAKER_MICROPHONE).
 //   - Ranura micro SD en modo SD_MMC de 1 bit: CLK GPIO12, CMD GPIO11, D0 GPIO13 (ejemplo oficial 05_SD).
-//   - Memoria del chip: partición FAT («16M Flash (3MB APP/9.9MB FATFS)»), con la biblioteca FFat.
+//   - Memoria del chip: partición FAT de 19,9 MB (partitions.csv), con la biblioteca FFat. Queda para imágenes:
+//     los sonidos van solo a la tarjeta SD (SOUNDS_ON_CHIP).
 // Los sonidos se guardan como /sonidos/<código>.wav y suenan siempre a 16 kHz (se cambia la frecuencia al vuelo).
 // El audio se va entregando en cada vuelta de loop() (250 ms de colchón), sin tareas aparte.
 
@@ -35,15 +36,16 @@ static const uint32_t RATE = 16000;
 static const uint8_t CODEC_ADDR = 0x10;  // 0x20 en 8 bits, como lo escribe el fabricante
 static const char* DIR = "/sonidos";
 static const char* TMP = "/sonidos/subida.tmp";
+static const bool SOUNDS_ON_CHIP = false;  // la memoria del chip se reserva para imágenes
 
-// ---------------------------------------------------------------- almacén: memoria del chip (FFat) y SD
+// ---------------------------------------------------------------- almacén: tarjeta SD (y memoria del chip, FFat)
 class FsStore : public mfv3snd::Store {
  public:
   bool chipOk = false, sdOk = false;
 
   void begin() {
     chipOk = FFat.begin(true);
-    if (chipOk && !FFat.exists(DIR)) FFat.mkdir(DIR);
+    if (chipOk && SOUNDS_ON_CHIP && !FFat.exists(DIR)) FFat.mkdir(DIR);
     sdOk = SD_MMC.setPins(12, 11, 13) && SD_MMC.begin("/sdcard", true) && SD_MMC.cardType() != CARD_NONE;
     if (sdOk && !SD_MMC.exists(DIR)) SD_MMC.mkdir(DIR);
   }
@@ -52,7 +54,7 @@ class FsStore : public mfv3snd::Store {
 
   static void path(uint32_t code, char* buf, size_t cap) { snprintf(buf, cap, "%s/%08lx.wav", DIR, (unsigned long)code); }
 
-  bool available(Place p) override { return p == Place::Sd ? sdOk : chipOk; }
+  bool available(Place p) override { return p == Place::Sd ? sdOk : chipOk && SOUNDS_ON_CHIP; }
 
   uint32_t freeKB(Place p) override {
     if (!available(p)) return 0;
@@ -91,7 +93,7 @@ class FsStore : public mfv3snd::Store {
     path(code, p, sizeof(p));
     bool any = false;
     if (sdOk && SD_MMC.exists(p)) any = SD_MMC.remove(p) || any;
-    if (chipOk && FFat.exists(p)) any = FFat.remove(p) || any;
+    if (available(Place::Chip) && FFat.exists(p)) any = FFat.remove(p) || any;
     return any;
   }
 
@@ -102,7 +104,7 @@ class FsStore : public mfv3snd::Store {
       where = Place::Sd;
       return true;
     }
-    if (chipOk && FFat.exists(p)) {
+    if (available(Place::Chip) && FFat.exists(p)) {
       where = Place::Chip;
       return true;
     }
@@ -141,7 +143,7 @@ class FsStore : public mfv3snd::Store {
   }
 
   fs::File file_;
-  Place place_ = Place::Chip;
+  Place place_ = Place::Sd;
   uint32_t code_ = 0;
 };
 

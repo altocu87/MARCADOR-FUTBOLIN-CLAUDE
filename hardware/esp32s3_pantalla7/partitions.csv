@@ -1,0 +1,11 @@
+# Reparto de la memoria de 32 MB de la Waveshare ESP32-S3-Touch-LCD-7C / 7C-BOX (se usa al compilar).
+#   app0 / app1: dos huecos de 6 MB para el programa (el que funciona y el nuevo de la actualizacion por Wi-Fi).
+#   ffat: el resto (unos 19,9 MB) para imagenes (app y fotos de jugadores). Los sonidos van en la tarjeta SD.
+# Otras placas con este programa (Elecrow, Waveshare 7 sin C): BORRA este archivo antes de compilar.
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xe000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x600000,
+app1,     app,  ota_1,   0x610000, 0x600000,
+ffat,     data, fat,     0xc10000, 0x13e0000,
+coredump, data, coredump,0x1ff0000,0x10000,

@@ -64,8 +64,9 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   propio y el empate con el de siempre. Sin errores de consola.
 - **Fase 3, placa de 7" (Waveshare 7C) con dos altavoces de 8 Ω y 2 W** a sus conectores (chip de sonido ES8389 y
   dos amplificadores NS4150B de la propia placa; esquema en `HARDWARE.md` §7.2):
-  - Los sonidos se guardan en la memoria del chip (partición FAT de 9,9 MB: hay que cargar el programa con
-    «16M Flash (3MB APP/9.9MB FATFS)») o en la tarjeta micro SD, como `/sonidos/<código>.wav`.
+  - Los sonidos se guardan en la tarjeta micro SD, como `/sonidos/<código>.wav`. Memoria de 32 MB repartida con
+    `hardware/esp32s3_pantalla7/partitions.csv`: 2 × 6 MB de programa (actualización por Wi-Fi) y 19,9 MB FAT
+    reservados para imágenes (app y fotos de jugadores).
   - La app se los pasa por el cable USB en trozos con CRC32 y barra de progreso; al conectar le pregunta cuáles tiene
     («Pasar a la placa» si falta alguno) y le manda qué suena en cada momento y el volumen. Borrar en la app los borra
     también de la placa. Órdenes nuevas del protocolo `SONIDO_*`, `MOMENTO`, `VOLUMEN` (tabla en `HARDWARE.md` §5).

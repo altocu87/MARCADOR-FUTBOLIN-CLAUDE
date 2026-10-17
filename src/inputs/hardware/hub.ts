@@ -170,15 +170,15 @@ class HardwareHub {
   }
 
   /**
-   * ¿Dónde puede guardar sonidos la placa con altavoz conectada? `chip`: en su memoria (cap «sonido»); `sd`: en su
-   * tarjeta SD (cap «sd»). Con su lista de sonidos ya recibida, solo lo que de verdad tiene preparado.
+   * ¿Dónde puede guardar sonidos la placa con altavoz conectada? `sd`: en su tarjeta SD (cap «sd»); `chip`: en su
+   * memoria, solo si su lista de sonidos lo dice (la pantalla de 7" la reserva para imágenes y contesta «chip=-»).
    */
   get soundTargets(): { chip: boolean; sd: boolean } {
     const kind = this.soundKind();
     if (!kind) return { chip: false, sd: false };
     const inv = this.inventory;
     return {
-      chip: inv ? inv.chipFreeKB !== null : true,
+      chip: inv ? inv.chipFreeKB !== null : false,
       sd: !!this.state(kind).caps?.includes('sd') && (inv ? inv.sdFreeKB !== null : true),
     };
   }

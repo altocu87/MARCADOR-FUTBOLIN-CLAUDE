@@ -44,7 +44,7 @@ export interface BoardInfo {
   pins: Partial<Record<PinFunction, string>>;
   notes: string[];
   /** Compilación automática (GitHub Actions). Con chipFamily, se puede instalar desde el navegador. */
-  build: { fqbn: string; chipFamily?: string; defines?: string };
+  build: { fqbn: string; chipFamily?: string; defines?: string; sketchPartitions?: boolean };
 }
 
 /** Placas que se pueden instalar desde el navegador (familia ESP32, con Web Serial). */

@@ -64,7 +64,9 @@ export function SoundsTab() {
     try {
       const { wav, durationMs } = await decodeFile(file);
       const name = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, NAME_MAX) || 'Sonido';
-      const d: StoredSound = { id: newId('snd'), name, location: 'device', durationMs, createdAt: Date.now(), wav };
+      // Con la placa y su tarjeta SD a mano, el sonido va a la SD; si no, a este aparato.
+      const location: SoundLocation = hub.soundTargets.sd ? 'sd' : 'device';
+      const d: StoredSound = { id: newId('snd'), name, location, durationMs, createdAt: Date.now(), wav };
       soundPlayer.setLibrary([...sounds, d]);
       setDraft(d);
     } catch (err) {
@@ -267,12 +269,13 @@ function DraftModal({
           Dónde se guarda
           <HelpButton
             title="Dónde se guarda"
-            text={'En este aparato suena por su altavoz. En el chip o en la tarjeta SD de la placa suena por los altavoces de la placa, también cuando juega sola; para elegirlos, conecta la pantalla de 7" por el cable USB (Ajustes → Mesa). Si la placa no está, suena el de siempre.'}
+            text={'En este aparato suena por su altavoz. En la tarjeta SD de la placa suena por los altavoces de la placa, también cuando juega sola; para elegirla, conecta la pantalla de 7" por el cable USB (Ajustes → Mesa) con la tarjeta puesta. Si la placa no está, suena el de siempre.'}
             className="snd-help"
           />
         </div>
         <div className="segmented snd-where-pick">
-          {(Object.keys(LOCATION_LABEL) as SoundLocation[]).map((l) => (
+          {/* La pantalla de 7" guarda los sonidos en la SD: el chip solo sale si una placa lo ofrece. */}
+          {(Object.keys(LOCATION_LABEL) as SoundLocation[]).filter((l) => l !== 'chip' || can.chip).map((l) => (
             <button key={l} className="seg" aria-pressed={draft.location === l} disabled={!can[l] || busy} onClick={() => onChange({ ...draft, location: l })}>
               {LOCATION_LABEL[l]}
             </button>

@@ -266,12 +266,12 @@ Vale cualquier altavoz de **4–8 Ω y 2–3 W**. Con uno solo también funciona
 1. **Altavoces:** enchufa cada uno a un conector de altavoz de la placa (serigrafía `SPK`/`SPEAKER` o `L`/`R`; mira la
    wiki de Waveshare si dudas). El conector solo entra en una posición. Si tu altavoz no trae conector, el cable rojo
    es `+`. **No unas los dos altavoces al mismo conector** (bajaría la carga del amplificador).
-2. **Tarjeta micro SD (opcional):** formateada en **FAT32**, en la ranura de la placa **con la placa apagada**. La app
-   crea sola la carpeta `/sonidos`. Sin tarjeta, los sonidos van a la memoria del chip (unos 9 MB: más de 4 minutos
-   de sonido; cada sonido ocupa unos 32 KB por segundo).
-3. **Cargar el programa** con las particiones «16M Flash (3MB APP/9.9MB FATFS)» (ver «Cómo cargarlo»).
+2. **Tarjeta micro SD (para tus sonidos):** formateada en **FAT32**, en la ranura de la placa **con la placa
+   apagada**. La app crea sola la carpeta `/sonidos` (cada sonido ocupa unos 32 KB por segundo). Sin tarjeta, la
+   placa toca los sonidos de siempre: la memoria del chip se reserva para imágenes.
+3. **Cargar el programa** con el reparto de memoria propio de la 7C (`partitions.csv`, ver «Cómo cargarlo»).
 4. **Pasar los sonidos:** conecta la placa a la app por el **cable USB** (Ajustes → Mesa → USB). En Ajustes → Sonidos,
-   al subir un sonido elige «Chip de la placa» o «Tarjeta SD»: la app lo prepara y se lo pasa (unos segundos, con
+   al subir un sonido sale ya elegida «Tarjeta SD»: la app lo prepara y se lo pasa (unos segundos, con
    barra de progreso). Si un sonido de la placa le falta (placa nueva, tarjeta cambiada), sale «Pasar a la placa».
 5. **Qué suena en cada momento:** lo de Ajustes → Sonidos se le manda a la placa al conectarla y con cada cambio, y
    lo recuerda. Así, **jugando sola** (sin la app), la placa toca tus sonidos en el gol, la remontada, la victoria…
@@ -290,10 +290,18 @@ I2C 0x10 (mismo bus que el táctil, GPIO47/48); amplificadores con la pata EXIO3
 2. Abre `hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino`.
 3. `board_config.h` ya viene con **`BOARD_WAVESHARE_7C`**. Otras opciones: `BOARD_ELECROW_7` (CrowPanel 7.0"),
    `BOARD_WAVESHARE_7` (ESP32-S3-Touch-LCD-7, sin «C») o `BOARD_CUSTOM`.
-4. Herramientas → Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **16 MB** (la 7C trae 32 MB: 16 MB
-   basta), particiones **«16M Flash (3MB APP/9.9MB FATFS)»** (dos mitades para actualizar por Wi-Fi y la parte
-   FAT para los sonidos; en la Elecrow **Minimal SPIFFS** y en la Waveshare 7 sin «C» **8M with spiffs**),
-   USB CDC On Boot **Enabled** (para ver los mensajes por el USB).
+4. Herramientas → Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **32 MB**, Partition Scheme **«Custom»**
+   y USB CDC On Boot **Enabled** (para ver los mensajes por el USB). El reparto lo pone el archivo `partitions.csv`
+   de la carpeta del programa (el IDE lo usa solo):
+
+   | Parte | Tamaño | Para qué |
+   |---|---|---|
+   | `app0` / `app1` | 6 MB + 6 MB | El programa que funciona y el nuevo de la actualización por Wi-Fi |
+   | `ffat` | 19,9 MB | Imágenes (app y fotos de jugadores) |
+   | `nvs`, `otadata`, `coredump` | 92 KB | Ajustes, qué mitad arranca y registro de fallos |
+
+   Los sonidos van en la tarjeta SD. **Elecrow y Waveshare 7 sin «C»:** borra `partitions.csv` (es para 32 MB) y
+   elige **Minimal SPIFFS** (Elecrow) u **8M with spiffs** (Waveshare 7), Flash 4 MB / 8 MB.
 5. **Subir.**
 
 ### Limitaciones conocidas
@@ -320,9 +328,9 @@ I2C 0x10 (mismo bus que el táctil, GPIO47/48); amplificadores con la pata EXIO3
 - **Mando** (`mfv3_ota.h`): la pantalla descarga su programa a su mitad de memoria libre, comprueba el MD5 y se
   lo pasa por radio en trozos de 200 bytes con confirmación. El mando solo lo acepta si se mantienen sus dos
   botones 3 s (queda listo 2 minutos) y lo comprueba antes de arrancarlo. Anuncia su versión con cada saludo.
-- **Particiones con dos mitades** (hacen falta para esto): 7C `16M Flash (3MB APP/9.9MB FATFS)`, Waveshare 7
+- **Particiones con dos mitades** (hacen falta para esto): 7C `partitions.csv` (2 × 6 MB), Waveshare 7
   `8M with spiffs`, Elecrow `Minimal SPIFFS`; el mando, la de serie. Al pasar a ellas la primera vez hay que
-  instalar por USB borrando la placa.
+  instalar por USB borrando la placa: la actualización por Wi-Fi no cambia el reparto de la memoria.
 - Guía para el usuario: [`CARGAR_PROGRAMA.md`](CARGAR_PROGRAMA.md).
 
 ### Ver las pantallas sin la placa
@@ -344,6 +352,6 @@ PNG de cada una en `docs/capturas-placa/`. Necesita g++, zlib y git (la primera 
 | Un toque corto anula el gol | Sube `PULSACION_LARGA_MS` en el mando (por defecto 800 ms). |
 | Goles dobles por rebote | Sube el antirrebote o el `holdOff` en el sketch; el bloqueo de 3 s de la app ya evita dobles goles. |
 | La placa de 7" no suena | Mira que en Ajustes → Mesa la placa anuncie «sonido»; si no, el chip de sonido no respondió (apaga y enciende). Comprueba el volumen de la app (no en silencio) y que el altavoz esté en el conector de altavoz. |
-| «La memoria del chip no está preparada» | Carga el programa con las particiones «16M Flash (3MB APP/9.9MB FATFS)». |
+| «La memoria del chip no está preparada» | En la 7C los sonidos van a la tarjeta SD: elige «Tarjeta SD» al subirlos. |
 | «La placa no tiene tarjeta SD» | Tarjeta en FAT32, metida con la placa apagada. |
 | En http://192.168.4.1 no se instala como app | Los navegadores solo instalan/cachean en https o localhost; la placa ya la sirve sin Internet. |

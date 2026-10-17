@@ -56,8 +56,8 @@ También sirve para cualquier ESP32 si el camino A falla.
 
 ## Sonidos propios en la pantalla de 7" (opcional)
 
-Se pasan desde la app con la placa conectada por el **cable USB**: Ajustes → **Sonidos**, y al subir cada sonido
-eliges si va a la **memoria del chip** o a la **tarjeta SD** (micro SD en FAT32, metida con la placa apagada).
+Se pasan desde la app con la placa conectada por el **cable USB**: Ajustes → **Sonidos**. Van a la **tarjeta SD**
+(micro SD en FAT32, metida con la placa apagada); la memoria del chip se reserva para imágenes.
 Detalles en `docs/HARDWARE.md`, apartado 7.2.
 
 ## Actualizar a una versión nueva: por Wi-Fi, sin cables (pantalla de 7" y mando)

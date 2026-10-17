@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: lista
         run: |
-          echo "lista=$(jq -c '[.boards[] | {id, sketch, fqbn: .build.fqbn, chip: (.build.chipFamily // ""), defines: (.build.defines // "")}]' src/inputs/hardware/diy-catalog.json)" >> "$GITHUB_OUTPUT"
+          echo "lista=$(jq -c '[.boards[] | {id, sketch, fqbn: .build.fqbn, chip: (.build.chipFamily // ""), defines: (.build.defines // ""), particiones: (.build.sketchPartitions // false)}]' src/inputs/hardware/diy-catalog.json)" >> "$GITHUB_OUTPUT"
 
   compilar:
     needs: placas
@@ -51,6 +51,8 @@ jobs:
       - name: Compilar
         run: |
           mkdir -p salida
+          # El partitions.csv de la carpeta del programa solo vale para su placa (la 7C): las demás usan el de su menú.
+          [ "${{ matrix.placa.particiones }}" = "true" ] || rm -f "hardware/${{ matrix.placa.sketch }}/partitions.csv"
           arduino-cli compile --fqbn "${{ matrix.placa.fqbn }}" \
             --build-property "compiler.cpp.extra_flags=${{ matrix.placa.defines }} -DMFV3_BUILD=${{ github.run_number }}" \
             --output-dir salida --warnings default \

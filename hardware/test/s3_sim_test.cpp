@@ -236,9 +236,20 @@ int main() {
   }
 
 #if HAS_AUDIO
-  // Sonidos propios (Waveshare 7C): altavoces, memoria del chip, órdenes de la app y momentos del partido.
+  // Sonidos propios (Waveshare 7C): altavoces, tarjeta SD, órdenes de la app y momentos del partido.
   {
     assert(player.ok && sent(",brillo,sonido") && !sent(",sd"));  // sin tarjeta no ofrece «sd»
+    // La memoria del chip queda para imágenes: los sonidos solo van a la SD.
+    usb("SONIDO_SUBIR chip 0000abcd 100");
+    assert(sent("SONIDO_ERROR 0000abcd sin_memoria"));
+    usb("SONIDO_SUBIR sd 0000abce 10");
+    assert(sent("SONIDO_ERROR 0000abce sin_sd"));
+    usb("SONIDOS?");
+    assert(sent("SONIDOS chip=- sd=-"));
+    sim::sdCard = true;
+    sndStore.begin();
+    usb("HELLO");
+    assert(sent(",sonido,sd"));
     assert(sim::codecRegs[0x46] == audio::volumeReg(80) && sim::i2sRate == 16000 && sim::codecWrites > 60);
     // WAV de 0,1 s a 22 050 Hz con un valor fijo (se reconoce al sonar).
     std::vector<uint8_t> wav(44 + 2205 * 2);
@@ -258,7 +269,7 @@ int main() {
       return o;
     };
     char l[64];
-    snprintf(l, sizeof(l), "SONIDO_SUBIR chip 0000abcd %zu", wav.size());
+    snprintf(l, sizeof(l), "SONIDO_SUBIR sd 0000abcd %zu", wav.size());
     usb(l);
     assert(sent("SONIDO_LISTO 0000abcd"));
     for (size_t i = 0; i < wav.size(); i += 192) {
@@ -268,11 +279,10 @@ int main() {
     }
     snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
     usb(l);
-    assert(sent("SONIDO_GUARDADO 0000abcd") && FFat.disk.files["/sonidos/0000abcd.wav"] == wav);
+    assert(sent("SONIDO_GUARDADO 0000abcd") && SD_MMC.disk.files["/sonidos/0000abcd.wav"] == wav);
+    assert(!SD_MMC.disk.files.count("/sonidos/subida.tmp") && FFat.disk.files.empty());
     usb("SONIDOS?");
-    assert(sent("SONIDOS chip=9216 sd=- 0000abcd@c"));
-    usb("SONIDO_SUBIR sd 0000abce 10");
-    assert(sent("SONIDO_ERROR 0000abce sin_sd"));
+    assert(sent("SONIDOS chip=- sd=8387584 0000abcd@s"));
 
     // Momentos: el gol con el sonido propio, el gol anulado sin nada. Se guardan en la NVS.
     usb("MOMENTO goal 0000abcd");
@@ -311,7 +321,7 @@ int main() {
 
     // Borrado: el gol vuelve al de siempre (660 ms de notas).
     usb("SONIDO_BORRAR 0000abcd");
-    assert(sent("SONIDO_BORRADO 0000abcd") && !FFat.disk.files.count("/sonidos/0000abcd.wav"));
+    assert(sent("SONIDO_BORRADO 0000abcd") && !SD_MMC.disk.files.count("/sonidos/0000abcd.wav"));
     run(3000);
     sim::heard.clear();
     usb("GA");
@@ -320,17 +330,13 @@ int main() {
     tap(400, 430); tap(400, 360); tap(400, 360);  // pausa y abandonar
     assert(!inMatch);
 
-    // Con tarjeta SD: se anuncia «sd» y los sonidos pueden ir a la tarjeta.
-    sim::sdCard = true;
-    sndStore.begin();
-    usb("HELLO");
-    assert(sent(",sonido,sd"));
+    // Otro sonido a la tarjeta: se lista y suena desde allí.
     snprintf(l, sizeof(l), "SONIDO_SUBIR sd 0000beef %zu", wav.size());
     usb(l);
     for (size_t i = 0; i < wav.size(); i += 192) usb(("SONIDO_DATOS " + b64(&wav[i], std::min<size_t>(192, wav.size() - i))).c_str());
     snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
     usb(l);
-    assert(sent("SONIDO_GUARDADO 0000beef") && SD_MMC.disk.files.count("/sonidos/0000beef.wav") && !SD_MMC.disk.files.count("/sonidos/subida.tmp"));
+    assert(sent("SONIDO_GUARDADO 0000beef") && SD_MMC.disk.files.count("/sonidos/0000beef.wav"));
     usb("SONIDOS?");
     assert(sent(" 0000beef@s"));
     sim::heard.clear();
