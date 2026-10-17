@@ -110,6 +110,22 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
 - Comprobado en PC: simulación de la pantalla (puesta en hora, fechas imposibles, batería baja/cargando/quitada,
   reposo, hora de Internet) y capturas 15–17. Pendiente: probarlo en la placa real.
 
+## Pantalla de 7" igual que la app: LVGL 9 en la Waveshare 7C (17/10/2026, rama `pantalla-lvgl`)
+
+- **Motor gráfico nuevo** (`hardware/esp32s3_pantalla7/ui_port.h`): LVGL 9.5 sobre el panel RGB con dos imágenes de
+  pantalla en la PSRAM que se cambian en el retorno vertical (sin parpadeo ni cortes). **Comprobado en la placa real:
+  41 imágenes por segundo** (el máximo del panel a 16 MHz), imagen correcta y táctil GT911 (lo confirmó Alex).
+- **Igual que la app**: lo que no cambia de cada pantalla (fondos, marcos, brillos, títulos, botones pulsados) se
+  fotografía de la propia app a 800 × 480 (`scripts/placa-capas.mjs`) y va a la memoria FAT de la placa (19,9 MB;
+  `scripts/placa_recursos.py`). Lo que cambia (números, reloj, textos, cifras) lo dibuja LVGL con la misma letra
+  **Inter** de la app (ahora la app también la lleva dentro, para verse igual en cualquier aparato), colocada en la
+  misma línea base que el navegador con las medidas de `docs/capturas-app/*.json`.
+- **Ver la placa sin tocarla**: órdenes USB `CAPTURA` (la imagen que se ve, en 3 s) y `TOQUE x y`;
+  `scripts/placa.py` compila, graba, saca capturas y manda órdenes; `scripts/comparar.py` junta app | placa.
+  `scripts/capturas_placa_pc.py` saca las mismas capturas con la placa simulada en el PC (mismo código y LVGL).
+- **Pruebas en PC**: el sketch se compila con LVGL de verdad (`hardware/test/lvgl_lib.sh`, `s3_build.sh`) para las
+  tres placas; la prueba de partido completo lee los textos de los objetos LVGL.
+
 ## Web y compilación
 
 - Web pública (`web/`) con asistente «Monta tu marcador» e instalador desde el navegador (ESP Web Tools). Los

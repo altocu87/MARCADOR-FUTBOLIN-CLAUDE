@@ -294,23 +294,41 @@ I2C 0x10 (mismo bus que el táctil, GPIO47/48); amplificadores con la pata EXIO3
 1 bit: CLK GPIO12, CMD GPIO11, D0 GPIO13. Todo en `hardware/esp32s3_pantalla7/mfv3_audio.h`.
 
 ### Cómo cargarlo
-1. IDE de Arduino con el paquete **esp32 de Espressif** y la biblioteca **LovyanGFX** (Gestor de bibliotecas).
-2. Abre `hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino`.
-3. `board_config.h` ya viene con **`BOARD_WAVESHARE_7C`**. Otras opciones: `BOARD_ELECROW_7` (CrowPanel 7.0"),
-   `BOARD_WAVESHARE_7` (ESP32-S3-Touch-LCD-7, sin «C») o `BOARD_CUSTOM`.
-4. Herramientas → Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **32 MB**, Partition Scheme **«Custom»**
-   y USB CDC On Boot **Enabled** (para ver los mensajes por el USB). El reparto lo pone el archivo `partitions.csv`
-   de la carpeta del programa (el IDE lo usa solo):
+La pantalla usa **LVGL 9.5** (motor gráfico) y sus imágenes y letras van en la memoria FAT de la placa, así que se
+cargan **dos cosas**: el programa y los recursos.
 
-   | Parte | Tamaño | Para qué |
-   |---|---|---|
-   | `app0` / `app1` | 6 MB + 6 MB | El programa que funciona y el nuevo de la actualización por Wi-Fi |
-   | `ffat` | 19,9 MB | Imágenes (app y fotos de jugadores) |
-   | `nvs`, `otadata`, `coredump` | 92 KB | Ajustes, qué mitad arranca y registro de fallos |
+**Con el PC del proyecto (lo más fácil):**
+```
+npm run dev                                   # la app, para sacar sus «capas»
+node scripts/placa-capas.mjs                  # fotografía lo fijo de cada pantalla de la app
+python scripts/placa_recursos.py              # letras e imágenes → build/placa/ffat.bin (y ui_capas.h)
+python scripts/placa.py grabar --borrar       # programa (la primera vez, borrando la placa)
+python scripts/placa.py recursos              # memoria FAT con las imágenes y letras
+```
+`placa.py` usa arduino-cli con las bibliotecas **lvgl 9.5.0**, **LovyanGFX** y **WebSockets**, copia `lv_conf.h`
+junto a la carpeta de lvgl y compila con `esp32:esp32:esp32s3:PSRAM=opi,FlashSize=32M,PartitionScheme=custom,CDCOnBoot=cdc`
+(en la 7C no hace falta `FlashMode=opi`: arranca con el modo normal).
 
-   Los sonidos van en la tarjeta SD. **Elecrow y Waveshare 7 sin «C»:** borra `partitions.csv` (es para 32 MB) y
-   elige **Minimal SPIFFS** (Elecrow) u **8M with spiffs** (Waveshare 7), Flash 4 MB / 8 MB.
-5. **Subir.**
+**Con el IDE de Arduino:** paquete **esp32 de Espressif 3.3**, bibliotecas **lvgl 9.5.0** y **LovyanGFX**; copia
+`hardware/esp32s3_pantalla7/lv_conf.h` a la carpeta `libraries` (junto a la de `lvgl`), abre
+`esp32s3_pantalla7.ino`, Placa **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, Flash **32 MB**, Partition Scheme
+**«Custom»**, USB CDC On Boot **Enabled** y **Subir**. Los recursos se graban aparte (`placa.py recursos`, o con
+esptool en la dirección `0xC10000`).
+
+| Parte | Tamaño | Para qué |
+|---|---|---|
+| `app0` / `app1` | 6 MB + 6 MB | El programa que funciona y el nuevo de la actualización por Wi-Fi |
+| `ffat` | 19,9 MB | Capas de la app (JPEG y RGB565A8), letras Inter (`fuentes/`) y, más adelante, fotos de jugadores |
+| `nvs`, `otadata`, `coredump` | 92 KB | Ajustes, qué mitad arranca y registro de fallos |
+
+Los sonidos van en la tarjeta SD. **Elecrow y Waveshare 7 sin «C»:** borra `partitions.csv` y elige **Minimal
+SPIFFS** u **8M with spiffs**; el programa funciona, pero sin la FAT esas placas no tienen las imágenes de la app.
+
+**Ver lo que enseña la placa sin tocarla** (por el USB):
+- `python scripts/placa.py captura <nombre>` → `docs/capturas-placa/<nombre>.png` (orden `CAPTURA`, unos 3 s).
+- `python scripts/placa.py orden "TOQUE 400 240"` → un toque simulado; `orden "GB"` → gol del Blanco.
+- `python scripts/comparar.py <escena>` → app | placa lado a lado en `docs/comparar/`.
+- `python scripts/recorrido_placa.py` → recorre Inicio, configuración y un partido entero capturando cada pantalla.
 
 ### Limitaciones conocidas
 - Compila en GitHub (núcleo esp32 3.3 + LovyanGFX 1.2), pero no se ha probado en la placa real: la lógica

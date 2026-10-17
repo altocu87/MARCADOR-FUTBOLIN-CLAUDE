@@ -140,14 +140,16 @@ int main() {
 
   // Configuración: POR GOLES, a 2 goles (desde 5). Sin partes: el primero que llega gana.
   toConfig();
-  for (int i = 0; i < 3; i++) tap(76, 306);
-  assert(cfg.goalsPerPeriod == 2 && shows("GOLES PARA GANAR"));
-  tap(400, 420);  // JUGAR
+  for (int i = 0; i < 3; i++) tap(204, 372);  // ▼ de GOLES PARA GANAR
+  assert(cfg.goalsPerPeriod == 2 && config::active());
+  tap(204, 220);  // tocar el número: no se puede apagar la única tarjeta encendida
+  assert(cfg.endCondition == mfv3::EndCondition::Goals && shows("Deja activa al menos una"));
+  tap(400, 443);  // CONTINUAR
   assert(inMatch && eng.phase() == Phase::Countdown && shows("TOCA PARA SALTAR"));
   assert(sim::nvs.count("goals"));
 
   usb("SALTAR");
-  assert(eng.phase() == Phase::Playing && shows("BLANCO") && shows("AZUL") && shows("PARTIDO"));
+  assert(eng.phase() == Phase::Playing && partido::active() && shows("Gana quien llegue a 2 goles"));
 
   // Gol por USB y bloqueo: el segundo impulso inmediato se ignora.
   usb("GB");
@@ -162,24 +164,27 @@ int main() {
   run(3000);
   // Pausa por protocolo, continuar con toque.
   usb("PAUSA");
-  assert(eng.phase() == Phase::Paused && shows("CONTINUAR"));
+  assert(eng.phase() == Phase::Paused && partido::active());
   tap(400, 260);
   assert(eng.phase() == Phase::Playing);
   tap(160, 200);  // panel BLANCO: llega a 2 y gana
   assert(eng.phase() == Phase::Finished && sent("WIN BLANCO"));
   run(1000);
-  assert(shows("VICTORIA BLANCO"));
+  assert(victoria::active() && shows("Duración"));
   assert(matchesPlayed == 1 && historyCount == 1 && history[0].white == 2);
 
   // Revancha y abandono con doble confirmación.
-  tap(530, 410);
+  tap(720, 36);  // REVANCHA
   assert(eng.phase() == Phase::Countdown && eng.score().white == 0);
   tap(400, 240);
-  tap(400, 430);  // PAUSA
+  tap(400, 314);  // PAUSA
   assert(eng.phase() == Phase::Paused);
-  tap(400, 360);
-  assert(inMatch && shows("Toca otra vez ABANDONAR"));
-  tap(400, 360);
+  tap(400, 376);  // Abandonar partido → «¿Abandonar el partido?»
+  assert(inMatch && confirmAbandon);
+  tap(414, 284);  // Seguir jugando
+  assert(inMatch && !confirmAbandon && eng.phase() == Phase::Paused);
+  tap(400, 376);
+  tap(588, 284);  // Abandonar
   assert(!inMatch && sent("STATE idle") && matchesPlayed == 1);
 
   // PING/HELLO y atenuación por inactividad (el toque que despierta no pulsa nada).
@@ -200,8 +205,8 @@ int main() {
   // Waveshare 7C: luz encendida por el expansor y sensores en las entradas aisladas DI0/DI1.
   assert(sim::exioMode == exio::OUTPUT_MASK && (sim::exioOut & (1u << exio::BACKLIGHT)) && sim::exioPwm == 255);
   toConfig();
-  for (int i = 0; i < 4; i++) tap(326, 306);  // 5 goles por parte
-  tap(400, 420);  // JUGAR
+  for (int i = 0; i < 4; i++) tap(204, 104);  // ▲: 5 goles
+  tap(400, 443);  // CONTINUAR
   tap(400, 240);  // saltar cuenta atrás
   run(3000);
   sim::exioIn ^= (1u << exio::DI1);  // balón cortando el sensor del Azul
@@ -221,7 +226,7 @@ int main() {
   run(100);
   assert(eng.score().white == 1);
   sim::exioIn ^= (1u << exio::DI0);
-  tap(400, 430); tap(400, 360); tap(400, 360);  // pausa y abandonar
+  tap(400, 314); tap(400, 376); tap(588, 284);  // pausa y abandonar
   assert(!inMatch);
 #endif
 
@@ -239,8 +244,8 @@ int main() {
     run(50);
     assert(inicio::dotShown());           // punto del engranaje: mando conectado
     toConfig();
-    while (cfg.goalsPerPeriod < 5) tap(326, 306);
-    tap(400, 420);                        // JUGAR
+    while (cfg.goalsPerPeriod < 5) tap(204, 104);
+    tap(400, 443);                        // CONTINUAR
     radio(mfv3::RadioCmd::GoalWhite, 101);  // en la cuenta atrás: solo la salta
     assert(eng.phase() == Phase::Playing && eng.score().white == 0);
     radio(mfv3::RadioCmd::GoalWhite, 102);
@@ -258,7 +263,7 @@ int main() {
     assert(eng.score().blue == 1);
     usb("AA");                            // misma orden por USB
     assert(eng.score().blue == 0);
-    tap(400, 430); tap(400, 360); tap(400, 360);  // pausa y abandonar
+    tap(400, 314); tap(400, 376); tap(588, 284);  // pausa y abandonar
     assert(!inMatch);
   }
 
@@ -321,7 +326,7 @@ int main() {
     run(2000);  // termina de sonar lo que quedaba de antes
     toConfig();
     sim::heard.clear();
-    tap(400, 420);  // JUGAR
+    tap(400, 443);  // CONTINUAR
     tap(400, 240);  // saltar la cuenta atrás
     run(500);
     assert(sim::heard.size() >= 4700 && sim::heard.size() <= 4900);  // 300 ms de nota
@@ -355,7 +360,7 @@ int main() {
     usb("GA");
     run(100);
     assert(sim::heard.size() > 10000 && sim::heard.size() < 10700);
-    tap(400, 430); tap(400, 360); tap(400, 360);  // pausa y abandonar
+    tap(400, 314); tap(400, 376); tap(588, 284);  // pausa y abandonar
     assert(!inMatch);
 
     // Otro sonido a la tarjeta: se lista y suena desde allí.
@@ -423,7 +428,7 @@ int main() {
     // Reposo: reloj grande y fecha; el primer toque despierta y vuelve a Inicio.
     sim::gaugeRegs[0x0C] = (uint16_t)-300;
     run(SLEEP_AFTER_MS + 11000);
-    assert(dimmed && shows("18:42|") && shows("SABADO 17 DE OCTUBRE") && shows("BATERIA BAJA: CONECTA EL CARGADOR"));
+    assert(dimmed && reposo::active() && shows("Sábado, 17 de octubre") && shows("BATERÍA BAJA: CONECTA EL CARGADOR"));
     tap(400, 240);
     assert(!dimmed && !inMatch && inicio::active());
     // Hora de Internet al conectarse al Wi-Fi (zona horaria de España).
@@ -546,10 +551,10 @@ int main() {
     loop();
     toConfig();
     startCheck();
-    tap(400, 420);  // JUGAR antes de que conecte
+    tap(400, 443);  // CONTINUAR antes de que conecte
     run(500);
     assert(inMatch && checkState == CheckState::Never && !sim::wifiUp);
-    tap(400, 240); tap(400, 430); tap(400, 360); tap(400, 360);  // saltar cuenta atrás, pausa y abandonar
+    tap(400, 240); tap(400, 314); tap(400, 376); tap(588, 284);  // saltar cuenta atrás, pausa y abandonar
     assert(!inMatch);
     // Sin internet: lo dice y no inventa versiones.
     sim::webDown = true;

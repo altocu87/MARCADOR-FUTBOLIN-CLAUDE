@@ -43,6 +43,11 @@
 #include "ui_base.h"
 #include "ui_legacy.h"
 #include "ui_inicio.h"
+#include "ui_config.h"
+#include "ui_partido.h"
+#include "ui_penaltis.h"
+#include "ui_reposo.h"
+#include "ui_victoria.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -288,7 +293,7 @@ static Snapshot snap;
 
 static Snapshot takeSnapshot() {
   mfv3::Score s = eng.score();
-  return Snapshot{eng.phase(), eng.period(), s.white, s.blue, eng.kickCount()};
+  return Snapshot{eng.phase(), eng.period(), s.white, s.blue, eng.kickCount(), eng.suddenDeath()};
 }
 
 static void afterChange(bool goalAccepted, Team goalTeam) {
@@ -297,8 +302,21 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   if (now.phase != snap.phase) {
     snprintf(buf, sizeof(buf), "STATE %s", phaseName(now.phase));
     sendLine(buf);
+    // Carteles de la app al empezar cada parte y la tanda de penaltis.
+    if (now.phase == Phase::Playing && snap.phase == Phase::Countdown) {
+      bool single = eng.config().endCondition == mfv3::EndCondition::Goals;
+      partido::banner(now.period == Period::Overtime ? partido::B_PRORROGA
+                      : now.period == Period::Second ? partido::B_2_PARTE
+                      : !single                      ? partido::B_1_PARTE
+                      : chosenMode == inicio::CHAOS  ? partido::B_PARTIDO_LOCO
+                                                     : partido::B_PARTIDO);
+    }
+    if (now.phase == Phase::Penalties && snap.phase != Phase::Penalties) partido::banner(partido::B_PENALTIS);
   }
+  if (now.phase == Phase::Penalties && now.sudden && !snap.sudden) partido::banner(partido::B_MUERTE_SUBITA);
   if (goalAccepted) {
+    // ¡GOL! a pantalla completa (si el partido sigue: el gol que lo gana va directo a la victoria).
+    if (now.phase != Phase::Finished && now.phase != Phase::Penalties) partido::celebrate((uint8_t)goalTeam);
     sendLine(goalTeam == Team::White ? "GOAL BLANCO" : "GOAL AZUL");
     sendLine("LOCK 3000");
     flashTeam = goalTeam;
@@ -953,6 +971,208 @@ static void onModeChosen(uint8_t mode) {
   lastKey = 0xFFFFFFFF;
 }
 
+// Configuración (ui_config.h): lo que se toca pasa a cfg; CONTINUAR la guarda y empieza el partido.
+static config::State configState() {
+  config::State s;
+  s.mode = chosenMode;
+  s.goals = cfg.goalsPerPeriod;
+  s.minutes = cfg.minutesPerPeriod;
+  s.useGoals = cfg.endCondition != mfv3::EndCondition::Time;
+  s.useTime = cfg.endCondition != mfv3::EndCondition::Goals;
+  return s;
+}
+static void onConfigChanged(const config::State& s) {
+  cfg.goalsPerPeriod = s.goals;
+  cfg.minutesPerPeriod = s.minutes;
+  cfg.endCondition = s.useGoals && s.useTime ? mfv3::EndCondition::Both
+                     : s.useTime            ? mfv3::EndCondition::Time
+                                            : mfv3::EndCondition::Goals;
+}
+static void onConfigBack() { homeCards = true; }
+static void onConfigNext() {
+  saveConfig();
+  startMatch();
+}
+// ---------------------------------------------------------------- partido (ui_partido.h)
+static const char* const PERIOD_LABEL[4] = {"1ª PARTE", "2ª PARTE", "PRÓRROGA", "PENALTIS"};
+static void goalsText(char* out, size_t n, uint8_t g) { snprintf(out, n, "%u %s", g, g == 1 ? "gol" : "goles"); }
+static void formatClock(char* out, size_t n, uint32_t ms) {
+  uint32_t s = ms / 1000;
+  snprintf(out, n, "%02lu:%02lu", (unsigned long)(s / 60), (unsigned long)(s % 60));
+}
+
+// Lo que enseña la pantalla del partido, sacado del motor (mismos textos y colores que MatchScreen.tsx).
+static void matchView(partido::View& v, uint32_t now) {
+  memset(&v, 0, sizeof(v));
+  mfv3::Score s = eng.score();
+  const mfv3::Config& c = eng.config();
+  v.mode = chosenMode;
+  v.phase = (uint8_t)eng.phase();
+  v.period = (uint8_t)eng.period();
+  v.white = s.white;
+  v.blue = s.blue;
+  mfv3::Score ps = eng.periodScore(eng.period());
+  bool canCorrect = eng.phase() == Phase::Playing || eng.phase() == Phase::Paused;
+  v.annulWhite = canCorrect && ps.white > 0;
+  v.annulBlue = canCorrect && ps.blue > 0;
+  v.singlePeriod = c.endCondition == mfv3::EndCondition::Goals;
+  uint32_t ms = eng.clockMs(now);
+  // El reloj que cuenta hacia atrás redondea hacia arriba (como la app): 4:59,2 se ve 05:00 hasta llegar a 4:59.
+  formatClock(v.clock, sizeof(v.clock), eng.clockCountsDown() ? ms + 999 : ms);
+  bool overtime = eng.period() == Period::Overtime;
+  v.clockColor = overtime ? 0x7dffd8 : eng.clockCountsDown() && ms <= 20000 ? 0xff4d5e
+                 : eng.clockCountsDown() && ms <= 60000 ? 0xffd43b : 0x3dff7a;
+  v.lockMs = eng.phase() == Phase::Playing ? eng.lockRemaining(now) : 0;
+  v.matchPoint = overtime ? 0 : eng.matchPoint();
+  // Racha (goalStreak de la app): goles seguidos del último equipo que marcó, sin contar los anulados.
+  for (int i = (int)eng.goalCount() - 1; i >= 0; i--) {
+    const mfv3::Goal& g = eng.goalAt((uint8_t)i);
+    if (g.annulled) continue;
+    if (!v.streak) v.streakTeam = (uint8_t)g.team;
+    else if ((uint8_t)g.team != v.streakTeam) break;
+    v.streak++;
+  }
+  char g[16];
+  goalsText(g, sizeof(g), c.goalsPerPeriod);
+  bool showPeriod = !(v.singlePeriod && eng.period() == Period::First);
+  bool showGoals = c.endCondition != mfv3::EndCondition::Time && !overtime;
+  snprintf(v.info, sizeof(v.info), "%s%s%s%s", showPeriod ? PERIOD_LABEL[(int)eng.period()] : "",
+           showPeriod && showGoals ? " · " : "", showGoals ? "A " : "", showGoals ? g : "");
+  if (c.endCondition == mfv3::EndCondition::Goals) snprintf(v.cond, sizeof(v.cond), "Gana quien llegue a %s", g);
+  else if (c.endCondition == mfv3::EndCondition::Time) snprintf(v.cond, sizeof(v.cond), "2 partes de %u min", c.minutesPerPeriod);
+  else snprintf(v.cond, sizeof(v.cond), "A %s o 2 partes de %u min", g, c.minutesPerPeriod);
+  // Cuenta atrás: cifra 3-2-1 y anillo que se vacía.
+  uint32_t rem = eng.countdownRemaining(now);
+  v.countdownN = (uint8_t)(rem == 0 ? 1 : (rem + 999) / 1000);
+  v.countdownPermille = (uint16_t)(rem * 1000 / Engine::COUNTDOWN_MS);
+  snprintf(v.countdownTitle, sizeof(v.countdownTitle), "%s%s",
+           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()],
+           overtime ? " · GOL DE ORO · 60 s" : "");
+  // Final de parte (el motor sigue en la parte que acaba de terminar).
+  if (eng.phase() == Phase::PeriodEnd) {
+    bool byTime = eng.clockCountsDown() && eng.clockMs(now) == 0;
+    const char* reason = byTime ? "por tiempo" : "por goles";
+    if (eng.period() == Period::Second) {
+      snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 2ª PARTE #6f84a3 · %s#", reason);
+      snprintf(v.endCta, sizeof(v.endCta), "IR A PRÓRROGA");
+      snprintf(v.endNote, sizeof(v.endNote), "Empate: prórroga de 60 segundos con gol de oro.");
+    } else if (overtime) {
+      snprintf(v.endTitle, sizeof(v.endTitle), "FIN DE LA PRÓRROGA #6f84a3 · %s#", reason);
+      snprintf(v.endCta, sizeof(v.endCta), "IR A PENALTIS");
+      snprintf(v.endNote, sizeof(v.endNote), "Sin gol en la prórroga: tanda de penaltis.");
+    } else {
+      snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 1ª PARTE #6f84a3 · %s#", reason);
+      snprintf(v.endCta, sizeof(v.endCta), "CONTINUAR 2ª PARTE");
+    }
+    char d[8], lower[16];
+    formatClock(d, sizeof(d), eng.periodElapsed(now));
+    snprintf(lower, sizeof(lower), "%s", eng.period() == Period::Second ? "2ª parte" : overtime ? "prórroga" : "1ª parte");
+    snprintf(v.endPartial, sizeof(v.endPartial), "Parcial %s: %u–%u · %s", lower, ps.white, ps.blue, d);
+    v.endWhite = s.white;
+    v.endBlue = s.blue;
+  }
+  v.confirmAbandon = confirmAbandon;
+}
+
+static void onMatchGoal(uint8_t t) { inputGoal(t ? Team::Blue : Team::White); }
+static void onMatchAnnul(uint8_t t) {
+  eng.minusOne(t ? Team::Blue : Team::White, millis());
+  afterChange(false, t ? Team::Blue : Team::White);
+}
+static void onMatchSkip() {
+  eng.skipCountdown(millis());
+  afterChange(false, Team::White);
+}
+static void onMatchNext() {
+  eng.next(millis());
+  afterChange(false, Team::White);
+}
+static void onMatchAskAbandon(bool on) { confirmAbandon = on; }
+static void onMatchAbandon() { goHome(); }  // el partido se descarta (no se guarda)
+
+// ---------------------------------------------------------------- penaltis (ui_penaltis.h)
+static void penaltyView(penaltis::View& v) {
+  memset(&v, 0, sizeof(v));
+  mfv3::Score p = eng.penaltyScore(), s = eng.score();
+  v.penWhite = p.white;
+  v.penBlue = p.blue;
+  v.white = s.white;
+  v.blue = s.blue;
+  v.rounds = eng.config().penaltyRounds;
+  v.kicks = eng.kickCount() < penaltis::MAX_KICKS ? eng.kickCount() : penaltis::MAX_KICKS;
+  for (uint8_t i = 0; i < v.kicks; i++) {
+    v.scored[i] = eng.kick(i).scored;
+    v.team[i] = (uint8_t)eng.kick(i).team;
+  }
+  v.active = eng.phase() == Phase::Penalties;
+  v.turn = (uint8_t)eng.nextKicker();
+  v.sudden = eng.suddenDeath();
+}
+static void onPenaltyKick(uint8_t t, bool scored) {
+  eng.penalty(t ? Team::Blue : Team::White, scored, millis());
+  afterChange(false, Team::White);
+}
+static void onPenaltyUndo() {
+  eng.undoPenalty();
+  afterChange(false, Team::White);
+}
+
+// ---------------------------------------------------------------- victoria (ui_victoria.h)
+// Datos del partido como matchFacts() de la app: duración, remontada, racha, portería a cero, gol de oro, penaltis.
+static void victoryView(victoria::View& v) {
+  memset(&v, 0, sizeof(v));
+  mfv3::Score s = eng.score();
+  v.winner = (uint8_t)eng.winner();
+  v.white = s.white;
+  v.blue = s.blue;
+  char d[8];
+  formatClock(d, sizeof(d), eng.totalTimeMs());
+  int n = snprintf(v.facts, sizeof(v.facts), "Duración %s", d);
+  int run[2] = {0, 0}, streak = 0, best = 0, deficit = 0, w = v.winner;
+  int streakTeam = -1;
+  for (uint8_t i = 0; i < eng.goalCount(); i++) {
+    const mfv3::Goal& g = eng.goalAt(i);
+    if (g.annulled) continue;
+    int t = (int)g.team;
+    run[t]++;
+    streak = t == streakTeam ? streak + 1 : 1;
+    streakTeam = t;
+    if (streak > best) best = streak;
+    if (run[1 - w] - run[w] > deficit) deficit = run[1 - w] - run[w];
+  }
+  auto add = [&](const char* f) {
+    if (n < (int)sizeof(v.facts) - 4) n += snprintf(v.facts + n, sizeof(v.facts) - n, " · %s", f);
+  };
+  char b[32];
+  if (deficit >= 2) {
+    snprintf(b, sizeof(b), "¡Remontada de %d goles!", deficit);
+    add(b);
+  } else if (deficit == 1) add("Remontada");
+  if (best >= 3) {
+    snprintf(b, sizeof(b), "%d goles seguidos", best);
+    add(b);
+  }
+  uint8_t mine = w ? s.blue : s.white, theirs = w ? s.white : s.blue;
+  if (theirs == 0 && mine > 0) add("Portería a cero");
+  if (eng.reason() == mfv3::Reason::GoldenGoal) add("Gol de oro");
+  if (eng.kickCount()) {
+    mfv3::Score p = eng.penaltyScore();
+    snprintf(b, sizeof(b), "Penaltis %u–%u", p.white, p.blue);
+    add(b);
+  }
+}
+
+// Reposo (ui_reposo.h): «Último: BLANCO 5 – 3 AZUL» con el último resultado guardado.
+static void sleepView() {
+  char last[64] = "";
+  if (historyCount)
+    snprintf(last, sizeof(last), "Último: #4f7ea3 BLANCO %u – %u AZUL#", history[0].white, history[0].blue);
+  reposo::update(rtc.now.hour, rtc.now.minute, rtc.now.second, reloj::weekday(rtc.now), rtc.now.day, rtc.now.month, last,
+                 rtc.lowBattery());
+}
+
+static void onConfigRefused() { ui::toast("Deja activa al menos una: goles o tiempo"); }
+
 static void render() {
   uint32_t now = millis();
   if (!test.active && !inMatch && screen == Screen::Home && homeCards && !sleepClock()) {
@@ -961,6 +1181,38 @@ static void render() {
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (!test.active && !inMatch && screen == Screen::Home && !sleepClock()) {
+    config::show(configState());
+    config::tickClock(rtc.clockOk, rtc.now.hour, rtc.now.minute, rtc.now.second);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (sleepClock()) {
+    sleepView();
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (inMatch && !test.active && eng.phase() == Phase::Finished) {
+    victoria::View v;
+    victoryView(v);
+    victoria::update(v);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (inMatch && !test.active && eng.phase() == Phase::Penalties) {
+    penaltis::View v;
+    penaltyView(v);
+    penaltis::update(v);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (inMatch && !test.active && eng.phase() != Phase::Penalties && eng.phase() != Phase::Finished) {
+    partido::View v;
+    matchView(v, now);
+    partido::update(v);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -1150,6 +1402,21 @@ void setup() {
   gfx.tapCb = onTap;
   inicio::hooks.mode = onModeChosen;
   inicio::hooks.settings = openSettings;
+  config::hooks.back = onConfigBack;
+  config::hooks.next = onConfigNext;
+  config::hooks.changed = onConfigChanged;
+  config::hooks.refused = onConfigRefused;
+  partido::hooks.goal = onMatchGoal;
+  partido::hooks.annul = onMatchAnnul;
+  partido::hooks.pause = inputPause;
+  partido::hooks.skip = onMatchSkip;
+  partido::hooks.next = onMatchNext;
+  partido::hooks.askAbandon = onMatchAskAbandon;
+  partido::hooks.abandon = onMatchAbandon;
+  penaltis::hooks.kick = onPenaltyKick;
+  penaltis::hooks.undo = onPenaltyUndo;
+  victoria::hooks.home = goHome;
+  victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());
   initColors();
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);

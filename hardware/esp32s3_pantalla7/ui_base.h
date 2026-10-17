@@ -5,6 +5,7 @@
 #define MFV3_UI_BASE_H
 
 #include <lvgl.h>
+#include <math.h>
 #include "ui_assets.h"
 
 namespace ui {
@@ -30,8 +31,9 @@ static lv_obj_t* box(lv_obj_t* parent, int x, int y, int w, int h) {
   return o;
 }
 
-// Pantalla nueva de 800×480 (se carga con show()).
+// Pantalla nueva de 800×480 (se carga con show()). Desde aquí, las imágenes que pida son «suyas» (ui_assets.h).
 static lv_obj_t* screen() {
+  assets::newScreen();
   lv_obj_t* s = lv_obj_create(nullptr);
   lv_obj_remove_style_all(s);
   lv_obj_set_size(s, 800, 480);
@@ -70,6 +72,74 @@ static lv_obj_t* label(lv_obj_t* parent, const char* txt, uint16_t weight, uint1
   return l;
 }
 
+// Coloca un texto donde lo pone el navegador. `top` y `lineH` son los de la caja medida en la app (line-height en px;
+// 0 = «normal»); `x` es el borde izquierdo, el centro o el borde derecho según `align`. La letra Inter tiene
+// ascendente 0,96875 y descendente 0,2412 del tamaño: con ellas sale la línea base, que se hace coincidir.
+enum class Align : uint8_t { Left, Center, Right };
+static void place(lv_obj_t* l, float x, float top, float lineH, Align align = Align::Center) {
+  const lv_font_t* f = lv_obj_get_style_text_font(l, LV_PART_MAIN);
+  float size = (float)(f->line_height - f->base_line) / 0.96875f;  // tamaño de letra (de su ascendente)
+  if (lineH <= 0) lineH = size * 1.21f;
+  float baseline = top + (lineH - size * 1.2099f) / 2 + size * 0.96875f;
+  lv_obj_update_layout(l);
+  int32_t w = lv_obj_get_width(l);
+  float lx = align == Align::Left ? x : align == Align::Center ? x - w / 2.0f : x - w;
+  lv_obj_set_pos(l, (int32_t)lroundf(lx), (int32_t)lroundf(baseline - (f->line_height - f->base_line)));
+}
+
+// Texto con espaciado entre letras (letter-spacing de la app, en px).
+static lv_obj_t* text(lv_obj_t* parent, const char* txt, uint16_t weight, uint16_t size, uint32_t col, float spacing = 0,
+                      bool italic = false) {
+  lv_obj_t* l = label(parent, txt, weight, size, col, italic);
+  if (spacing) lv_obj_set_style_text_letter_space(l, (int32_t)lroundf(spacing), 0);
+  return l;
+}
+
+// Botón como los de la app (.btn): primario (azul con brillo), peligro (rojo suave) o normal. Se encoge al 96 %
+// mientras se pulsa, como en la app.
+enum class BtnKind : uint8_t { Normal, Primary, Danger, Ghost };
+static lv_obj_t* button(lv_obj_t* parent, int x, int y, int w, int h, const char* txt, uint16_t fontSize, BtnKind kind,
+                        lv_event_cb_t cb, void* user = nullptr) {
+  lv_obj_t* b = box(parent, x, y, w, h);
+  lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_radius(b, kind == BtnKind::Primary && h >= 120 ? 24 : RADIUS_SM, 0);
+  lv_obj_set_style_border_width(b, 1, 0);
+  lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+  uint32_t ink = color::TEXT;
+  switch (kind) {
+    case BtnKind::Primary:
+      lv_obj_set_style_bg_color(b, hex(0x2fb8ec), 0);
+      lv_obj_set_style_bg_grad_color(b, hex(0x168fc4), 0);
+      lv_obj_set_style_bg_grad_dir(b, LV_GRAD_DIR_VER, 0);
+      lv_obj_set_style_border_color(b, hex(color::ACCENT), 0);
+      lv_obj_set_style_shadow_color(b, hex(color::ACCENT), 0);
+      lv_obj_set_style_shadow_width(b, 18, 0);
+      lv_obj_set_style_shadow_opa(b, 46, 0);
+      ink = 0x03121e;
+      break;
+    case BtnKind::Danger:
+      lv_obj_set_style_bg_color(b, hex(color::DANGER), 0);
+      lv_obj_set_style_bg_opa(b, 41, 0);  // --danger-soft: 16 %
+      lv_obj_set_style_border_color(b, hex(color::DANGER), 0);
+      ink = 0xffd2d8;
+      break;
+    case BtnKind::Ghost:
+      lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
+      lv_obj_set_style_border_color(b, hex(color::LINE), 0);
+      break;
+    default:
+      lv_obj_set_style_bg_color(b, hex(color::CARD), 0);
+      lv_obj_set_style_border_color(b, hex(color::LINE), 0);
+  }
+  lv_obj_set_style_transform_pivot_x(b, w / 2, 0);
+  lv_obj_set_style_transform_pivot_y(b, h / 2, 0);
+  lv_obj_set_style_transform_scale(b, 246, LV_STATE_PRESSED);
+  lv_obj_t* l = text(b, txt, 800, fontSize, ink, fontSize * 0.05f);
+  lv_obj_center(l);
+  if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, user);
+  return b;
+}
+
 // Aparece/desaparece fundiéndose (como las transiciones de opacidad de la app).
 static void fadeCb(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
 static void fadeIn(lv_obj_t* o, uint32_t ms) {
@@ -88,6 +158,39 @@ static void hide(lv_obj_t* o) {
   lv_anim_delete(o, fadeCb);
   lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_style_opa(o, LV_OPA_COVER, 0);
+}
+
+// Aviso breve abajo en el centro, como el «toast» de la app (2,6 s, encima de todo).
+static lv_obj_t* toastObj = nullptr;
+static lv_timer_t* toastTimer = nullptr;
+static void toastGone(lv_timer_t*) {
+  toastTimer = nullptr;
+  if (toastObj) lv_obj_delete(toastObj);
+  toastObj = nullptr;
+}
+static void toast(const char* msg) {
+  if (toastTimer) lv_timer_delete(toastTimer);
+  if (toastObj) lv_obj_delete(toastObj);
+  toastObj = lv_obj_create(lv_layer_top());
+  lv_obj_t* t = toastObj;
+  lv_obj_remove_style_all(t);
+  lv_obj_remove_flag(t, (lv_obj_flag_t)(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
+  lv_obj_set_size(t, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_pad_hor(t, 18, 0);
+  lv_obj_set_style_pad_ver(t, 10, 0);
+  lv_obj_set_style_radius(t, 999, 0);
+  lv_obj_set_style_bg_color(t, hex(color::CARD2), 0);
+  lv_obj_set_style_bg_opa(t, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(t, 1, 0);
+  lv_obj_set_style_border_color(t, hex(color::ACCENT), 0);
+  lv_obj_set_style_shadow_width(t, 18, 0);
+  lv_obj_set_style_shadow_color(t, hex(color::ACCENT), 0);
+  lv_obj_set_style_shadow_opa(t, 46, 0);
+  lv_obj_t* l = label(t, msg, 700, 14, color::TEXT);
+  (void)l;
+  lv_obj_align(t, LV_ALIGN_BOTTOM_MID, 0, -14);
+  toastTimer = lv_timer_create(toastGone, 2600, nullptr);
+  lv_timer_set_repeat_count(toastTimer, 1);
 }
 
 // Cambia de pantalla (la anterior se borra).

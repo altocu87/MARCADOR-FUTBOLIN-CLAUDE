@@ -23,6 +23,7 @@ struct Snapshot {
   Period period;
   uint8_t w, b;
   uint8_t kicks;
+  bool sudden;  // penaltis en muerte súbita
 };
 
 // Pantalla de prueba del primer arranque.

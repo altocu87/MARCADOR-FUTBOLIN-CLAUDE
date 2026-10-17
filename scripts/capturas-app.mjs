@@ -12,7 +12,12 @@ const OUT = join(ROOT, 'docs', 'capturas-app');
 const URL = process.env.APP_URL ?? 'http://localhost:5173/';
 export const FIXED_TIME = new Date('2026-10-17T18:30:00+02:00');
 
-export const wait = (page, ms) => page.clock.runFor(ms);
+// Esperas largas (bloqueo de 3 s tras un gol…) también en tiempo real: las animaciones de CSS no siguen al reloj
+// simulado, y la pantalla de gol tiene que haberse ido de verdad.
+export const wait = async (page, ms) => {
+  await page.clock.runFor(ms);
+  if (ms >= 3000) await page.waitForTimeout(3400);
+};
 // La app deja 14 px arriba para la barra del móvil (Stage.tsx): con la ventana 14 px más alta, el lienzo queda a
 // 800 × 480 exactos y sin escalar, como en la placa. Se recorta esa franja en capturas y medidas.
 export const TOP = 14;
@@ -33,14 +38,14 @@ function demo(fn) {
 }
 
 /** Gol del equipo `t` tocando su marcador; espera a que pase el bloqueo de 3 s salvo que se pida otra espera. */
-async function gol(p, t, after = 3300) {
+export async function gol(p, t, after = 3300) {
   await tapSel(p, `.score-btn.score-${t}`, after);
 }
 
 /** Partido rápido Alex (Blanco) contra José (Azul), por goles (5) o por tiempo (5 min por parte). */
-async function partidoRapido(p, { tiempo = false, start = true } = {}) {
-  await tapSel(p, '.mode-card.mode-quick', 300);
-  await tapSel(p, '.mode-card.mode-quick', 1500);
+export async function partidoRapido(p, { tiempo = false, start = true, modo = 'quick' } = {}) {
+  await tapSel(p, `.mode-card.mode-${modo}`, 300);
+  await tapSel(p, `.mode-card.mode-${modo}`, 1500);
   if (tiempo) {
     await p.locator('.cond').nth(1).locator('.cond-box').click();
     await p.locator('.cond').nth(0).locator('.cond-box').click();
@@ -51,6 +56,8 @@ async function partidoRapido(p, { tiempo = false, start = true } = {}) {
   await tap(p, 'SIGUIENTE', { after: 800 });
   await tap(p, 'José', { exact: true });
   await tap(p, 'CONTINUAR', { after: 1500 });
+  // Clasificatorio: antes del partido, la previa con el pronóstico (EMPEZAR PARTIDO).
+  if (modo === 'ranked') await tapSel(p, '.pre-start', 1500);
   if (start) await tapSel(p, '.overlay-countdown', 1200);
 }
 

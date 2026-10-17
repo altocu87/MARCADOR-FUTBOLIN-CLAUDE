@@ -71,6 +71,9 @@ def capas():
     out = os.path.join(FAT, "capas")
     os.makedirs(out, exist_ok=True)
     for name, m in manifest.items():
+        if m.get("medida"):  # solo una medida de la app, sin imagen
+            m["archivo"] = None
+            continue
         src = os.path.join(BUILD, "capas", f"{name}.png")
         im = Image.open(src)
         if m.get("alfa"):
@@ -124,7 +127,9 @@ def cabecera(manifest):
     ]
     for name, m in manifest.items():
         ident = name.replace("-", "_").upper()
-        lines.append(f'const Capa {ident} = {{"{m["archivo"]}", {m["x"]}, {m["y"]}, {m["w"]}, {m["h"]}}};')
+        archivo = f'"{m["archivo"]}"' if m["archivo"] else "nullptr"
+        x, y, w, h = (round(m[k]) for k in ("x", "y", "w", "h"))
+        lines.append(f"const Capa {ident} = {{{archivo}, {x}, {y}, {w}, {h}}};")
     lines += ["}  // namespace capas", "#endif", ""]
     path = os.path.join(SKETCH, "ui_capas.h")
     new = "\n".join(lines)

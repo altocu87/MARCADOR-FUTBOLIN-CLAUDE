@@ -47,7 +47,10 @@ jobs:
           arduino-cli core update-index --additional-urls "$URLS"
           arduino-cli core install "$CORE" --additional-urls "$URLS"
       - name: Bibliotecas
-        run: arduino-cli lib install WebSockets LovyanGFX
+        run: |
+          arduino-cli lib install WebSockets LovyanGFX lvgl@9.5.0
+          # LVGL lee su configuración de un lv_conf.h junto a su carpeta (el de la pantalla de 7").
+          cp hardware/esp32s3_pantalla7/lv_conf.h "$(arduino-cli config get directories.user)/libraries/lv_conf.h"
       - name: Compilar
         run: |
           mkdir -p salida

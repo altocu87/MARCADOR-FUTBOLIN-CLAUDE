@@ -71,28 +71,35 @@ struct Cached {
   uint32_t usedAt;
 };
 static const int MAX_CACHED = 48;
-static Cached cache[MAX_CACHED];
+static Cached* cache[MAX_CACHED];  // cada una en su sitio fijo: LVGL guarda la dirección de su descriptor
 static int cachedCount = 0;
 static uint32_t useCounter = 0;
 static size_t cachedBytes = 0;
-static const size_t MAX_CACHED_BYTES = 9u * 1024u * 1024u;
+static const size_t MAX_CACHED_BYTES = 8u * 1024u * 1024u;  // de 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla
 
-static void evictOne() {
+// Las imágenes pedidas desde el último cambio de pantalla (`screenEpoch`) las está usando la pantalla actual:
+// esas no se borran nunca (LVGL las está pintando); se borra la más antigua de las demás.
+static uint32_t screenEpoch = 0;
+static void newScreen() { screenEpoch = useCounter + 1; }
+
+static bool evictOne() {
   int victim = -1;
   for (int i = 0; i < cachedCount; i++)
-    if (victim < 0 || cache[i].usedAt < cache[victim].usedAt) victim = i;
-  if (victim < 0) return;
-  lv_image_cache_drop(&cache[victim].dsc);
-  cachedBytes -= cache[victim].dsc.data_size;
-  free((void*)cache[victim].dsc.data);
+    if (cache[i]->usedAt < screenEpoch && (victim < 0 || cache[i]->usedAt < cache[victim]->usedAt)) victim = i;
+  if (victim < 0) return false;
+  lv_image_cache_drop(&cache[victim]->dsc);
+  cachedBytes -= cache[victim]->dsc.data_size;
+  free((void*)cache[victim]->dsc.data);
+  delete cache[victim];
   cache[victim] = cache[--cachedCount];
+  return true;
 }
 
 static const lv_image_dsc_t* loadJpeg(const char* rel) {
   for (int i = 0; i < cachedCount; i++)
-    if (!strcmp(cache[i].path, rel)) {
-      cache[i].usedAt = ++useCounter;
-      return &cache[i].dsc;
+    if (!strcmp(cache[i]->path, rel)) {
+      cache[i]->usedAt = ++useCounter;
+      return &cache[i]->dsc;
     }
   char full[320];
   snprintf(full, sizeof(full), "%s/%s", ROOT, rel);
@@ -108,11 +115,18 @@ static const lv_image_dsc_t* loadJpeg(const char* rel) {
   const lv_image_dsc_t* result = nullptr;
   if (pool && jd_prepare(&jd, jpegIn, pool, POOL, &ctx) == JDR_OK) {
     size_t bytes = (size_t)jd.width * jd.height * 2;
-    while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + bytes > MAX_CACHED_BYTES)) evictOne();
+    while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + bytes > MAX_CACHED_BYTES))
+      if (!evictOne()) break;  // todo lo guardado es de esta pantalla: se pasa del límite antes que romperla
+    if (cachedCount >= MAX_CACHED) {
+      free(pool);
+      fclose(f);
+      return nullptr;
+    }
     ctx.dst = (uint16_t*)malloc(bytes);
     ctx.w = jd.width;
     if (ctx.dst && jd_decomp(&jd, jpegOut, 0) == JDR_OK) {
-      Cached& c = cache[cachedCount++];
+      cache[cachedCount] = new Cached();
+      Cached& c = *cache[cachedCount++];
       snprintf(c.path, sizeof(c.path), "%s", rel);
       memset(&c.dsc, 0, sizeof(c.dsc));
       c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
