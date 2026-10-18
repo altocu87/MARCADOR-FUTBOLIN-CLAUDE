@@ -210,7 +210,9 @@ def main(argv):
     elif cmd == "orden":
         orden(" ".join(rest))
     elif cmd == "jugadores":
-        jugadores(rest[0] if rest else os.path.join(ROOT, "build", "placa", "jugadores-demo.txt"))
+        # Por defecto los de la placa (los 6 que dejó Alex); si no, los de prueba de la app.
+        mine = os.path.join(ROOT, "build", "placa", "jugadores-placa.txt")
+        jugadores(rest[0] if rest else mine if os.path.exists(mine) else os.path.join(ROOT, "build", "placa", "jugadores-demo.txt"))
     elif cmd == "captura":
         captura(rest[0] if rest else "captura")
     else:
