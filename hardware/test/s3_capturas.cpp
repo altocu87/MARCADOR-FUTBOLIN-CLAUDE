@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
   if (argc > 1) OUT = argv[1];
   sim::now = 1000;
   assets::setRoot("../build/placa/fat");
+  std::filesystem::remove_all("../build/placa/partidos-sd");  // historial vacío: solo los partidos de estas escenas
   setup();
   usb("HORA 2026-10-17 18:30:00");
   tap(400, 430);  // TERMINAR la prueba de la placa
@@ -283,6 +284,40 @@ int main(int argc, char** argv) {
     }
     tap(78, 32);    // VOLVER → AJUSTES
     shot("fichas-ajustes");
+  }
+
+  // RANKING → HISTORIAL con los partidos que se han jugado arriba (s3_partidos.h guarda cada uno) y siete más.
+  for (int k = 0; k < 7; k++) {
+    toMatch(false);
+    tap(400, 240);  // saltar la cuenta atrás
+    run(500);
+    for (int g = 0; g < 12 && eng.phase() != Phase::Finished; g++) {
+      usb(((g + k) % 3) ? "GB" : "GA");
+      run(3200);
+      if (k == 0 && g == 1) usb("AB");  // un gol anulado (para el partido de ejemplo de tests/fixtures)
+    }
+    run(500);
+    goHome();
+    run(300);
+  }
+  {
+    goHome();
+    run(300);
+    tap(470, 46);  // RANKING
+    run(300);
+    shot("historial");
+    tap(400, 214);  // el partido más nuevo
+    shot("historial-detalle");
+    tap(35, 35);    // volver
+    run(200);
+    tap(16 + 78 + 6 + 82 + 6 + 33, 155);  // LOCO
+    shot("historial-loco");
+    tap(16 + 78 + 6 + 82 + 6 + 66 + 6 + 150 + 2 + 100, 155);  // JUGADOR
+    shot("historial-quien");
+    std::printf("historial: %d partidos guardados\n", partidos::count);
+    tap(400, 470);  // fuera del recuadro: cierra
+    tap(35, 35);    // volver a Inicio
+    run(300);
   }
 
   // Reposo: Inicio sin tocar nada durante más de 5 minutos.

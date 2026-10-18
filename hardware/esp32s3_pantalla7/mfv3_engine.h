@@ -216,6 +216,10 @@ class Engine {
   Team winner() const { return winner_; }
   Reason reason() const { return reason_; }
   uint32_t totalTimeMs() const { return closedMs_; }
+  // Tiempo de juego que duró cada parte ya cerrada (0 si no se jugó), para guardar el partido como la app.
+  uint32_t periodDuration(Period p) const { return periodMs_[(uint8_t)p & 3]; }
+  uint8_t visitMarkCount() const { return visitMarkCount_; }
+  const VisitMark& visitMark(uint8_t i) const { return visitMarks_[i]; }
 
   // Equipos que ganarían con el siguiente gol (bit 0 Blanco, bit 1 Azul).
   uint8_t matchPoint() const {
@@ -796,6 +800,7 @@ class Engine {
     phase_ = Phase::PeriodEnd;
     undoCount_ = 0;
     closedMs_ += e;
+    periodMs_[(uint8_t)period_ & 3] = e;
     Score s = score();
     if (by == PeriodEndBy::Goals) {
       finish(s.white > s.blue ? Team::White : Team::Blue, Reason::Regulation, at);
@@ -822,6 +827,7 @@ class Engine {
   uint32_t runningSince_ = 0;
   bool running_ = false;
   uint32_t closedMs_ = 0;
+  uint32_t periodMs_[4] = {0, 0, 0, 0};
   uint32_t lastGoalAt_ = 0;
   bool hasLastGoal_ = false;
   Goal goals_[MAX_GOALS];

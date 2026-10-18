@@ -29,6 +29,7 @@ namespace jug {
 const uint8_t MAX = 64;
 const char* const DIR = "/jugadores";
 const char* const LIST = "/jugadores/lista.txt";
+const char* const IDS = "/jugadores/ids.txt";  // «<código> <id>» por línea
 const uint32_t PHOTO_BYTES = 12 + 120 * 120 * 2;  // cabecera de imagen de LVGL + RGB565
 
 struct Player {
@@ -37,6 +38,7 @@ struct Player {
   char name[28];
   char meta[40];
   char title[32];
+  char id[40];  // id del jugador en la app («placa-<código>» si no se sabe); no entra en la huella
 };
 
 // Iniciales como la app (initials() de services/players): primera letra de las dos primeras palabras, o las dos
@@ -254,14 +256,27 @@ class Store {
     return false;
   }
 
-  // Jugador nuevo al final de la lista. Devuelve su código (0 si no se pudo).
+  // Id de la app de un jugador (o «placa-<código>» si llegó sin él).
+  void idOf(uint32_t code, char* out, size_t n) const {
+    const Player* p = find(code);
+    if (p && p->id[0]) snprintf(out, n, "%s", p->id);
+    else snprintf(out, n, "placa-%08lx", (unsigned long)code);
+  }
+
+  // Jugador nuevo al final de la lista, con un id como los de la app (UUID) y su código (FNV-1a del id, como en
+  // la app). Devuelve el código (0 si no se pudo).
   uint32_t add(const char* name, const uint16_t* px) {
     if (!fs_ || count >= MAX || !name[0]) return 0;
-    uint32_t code = fnv(2166136261u, name) ^ (uint32_t)millis() * 2654435761u;
-    while (!code || find(code)) code = code * 16777619u + 1;
+    char id[40];
+    uint32_t code = 0;
+    do {
+      newUuid(id);
+      code = fnv(2166136261u, id);
+    } while (!code || find(code));
     Player& p = list[count];
     memset(&p, 0, sizeof(p));
     p.code = code;
+    snprintf(p.id, sizeof(p.id), "%s", id);
     snprintf(p.name, sizeof(p.name), "%s", name);
     count++;
     known[count - 1] = 0;
@@ -383,6 +398,22 @@ class Store {
     fs_->remove(path);
   }
 
+  static void newUuid(char* out) {
+    uint8_t b[16];
+    for (int i = 0; i < 16; i += 4) {
+#ifdef ARDUINO
+      uint32_t r = esp_random();
+#else
+      uint32_t r = (uint32_t)rand() * 2654435761u ^ (uint32_t)rand();
+#endif
+      memcpy(b + i, &r, 4);
+    }
+    b[6] = (uint8_t)((b[6] & 0x0F) | 0x40);
+    b[8] = (uint8_t)((b[8] & 0x3F) | 0x80);
+    snprintf(out, 37, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5],
+             b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]);
+  }
+
   bool save() {
     if (!fs_) return false;
     fs::File f = fs_->open(LIST, "w");
@@ -393,7 +424,38 @@ class Store {
       f.print(line);
     }
     f.close();
+    fs::File g = fs_->open(IDS, "w");
+    if (g) {
+      for (uint8_t i = 0; i < count; i++)
+        if (list[i].id[0]) {
+          snprintf(line, sizeof(line), "%08lx %s\n", (unsigned long)list[i].code, list[i].id);
+          g.print(line);
+        }
+      g.close();
+    }
     return true;
+  }
+
+  void loadIds() {
+    fs::File f = fs_->open(IDS, "r");
+    if (!f) return;
+    char line[64];
+    size_t n = 0;
+    while (f.available()) {
+      int c = f.read();
+      if (c < 0) break;
+      if (c != '\n' && n < sizeof(line) - 1) {
+        line[n++] = (char)c;
+        continue;
+      }
+      line[n] = 0;
+      n = 0;
+      uint32_t code = 0;
+      if (strlen(line) > 9 && line[8] == ' ' && mfv3snd::parseCode(line, 8, code))
+        for (uint8_t i = 0; i < count; i++)
+          if (list[i].code == code) snprintf(list[i].id, sizeof(list[i].id), "%s", line + 9);
+    }
+    f.close();
   }
 
   void load() {
@@ -416,6 +478,7 @@ class Store {
       }
       f.close();
     }
+    loadIds();
     hash = hashOf(list, count);
   }
 

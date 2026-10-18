@@ -342,6 +342,10 @@ la tarjeta micro SD (FAT32), mete la tarjeta con la placa apagada y entra en AJU
 Se escribe el nombre, se elige la foto y se guarda. Cada foto grande tarda 1–3 s en salir en la galería (se abren
 de una en una). Las fotos «progresivas» (algunas editadas en el PC) no se pueden abrir: guárdalas como JPEG normal.
 
+### Historial de partidos
+Todos los partidos se guardan en la tarjeta SD, en la carpeta `partidos` (un `.json` por partido, el mismo formato
+que la app, y `indice.txt`). Sin tarjeta se guardan en la memoria del chip. Se ven en Inicio → RANKING → HISTORIAL.
+
 ### Limitaciones conocidas
 - Compila en GitHub (núcleo esp32 3.3 + LovyanGFX 1.2), pero no se ha probado en la placa real: la lógica
   (motor, botones, protocolo, memoria, sonido) se prueba en PC (`npm run test:hardware`) y el dibujo se ve en las

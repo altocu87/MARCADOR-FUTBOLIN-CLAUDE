@@ -532,6 +532,7 @@ static void go(View v) {
   lv_obj_t* old = scr;
   scr = ui::screen();
   lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, nullptr);
+  ui::gradient(scr, 0x0f2140, 0x05090f);
   nameLabel = chosenImg = nullptr;
   memset(thumbImg, 0, sizeof(thumbImg));
   memset(thumbNote, 0, sizeof(thumbNote));

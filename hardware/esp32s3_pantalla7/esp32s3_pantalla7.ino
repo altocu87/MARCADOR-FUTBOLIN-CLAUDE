@@ -51,10 +51,12 @@
 #include "s3_jugadores.h"
 #include "ui_jugadores.h"
 #include "ui_fichas.h"
+#include "ui_historial.h"
 #include <sys/stat.h>
 #include "ui_perfil.h"
 #include "ui_cargando.h"
 #include "s3_loco.h"
+#include "s3_partidos.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -213,7 +215,9 @@ static void saveConfig() {
   prefs.putUChar("mins", cfg.minutesPerPeriod);
 }
 
+static void saveMatchFile();
 static void saveResult() {
+  saveMatchFile();
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
                   rtc.clockOk ? reloj::stamp(rtc.now) : 0};
@@ -255,6 +259,8 @@ static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que 
 static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
 static elegir::Teams chosenTeams;
 static bool haveTeams = false;        // equipos ya elegidos (para REVANCHA o al volver a elegir sin pasar por inicio)
+
+
 static uint8_t chosenMode = 0;     // inicio::QUICK, CHAOS o RANKED
 static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
 static uint32_t lastKey = 0xFFFFFFFF;
@@ -405,6 +411,8 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   sndBefore = mfv3snd::before(eng);
 }
 
+static uint32_t matchStartEpoch = 0;  // cuándo empezó el partido (segundos UTC; 0 sin hora)
+
 // ---------------------------------------------------------------- acciones
 static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (solo pantalla: el reloj ya está parado)
 static uint16_t hcIntroSeq = 0;
@@ -416,6 +424,7 @@ static void startMatch() {
   hcIntroUntil = 0;
   hcIntroSeq = 0;
   if (!eng.start(cfg, millis())) return;
+  matchStartEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
   inMatch = true;
   confirmAbandon = false;
   snap = takeSnapshot();
@@ -488,6 +497,27 @@ static void inputPause() {
 }
 
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
+
+// El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
+static void saveMatchFile() {
+  static partidos::Match m;
+  m = partidos::Match();
+  m.mode = chosenMode == inicio::CHAOS ? 'c' : chosenMode == inicio::RANKED ? 'r' : 'q';
+  m.cfg = eng.config();
+  m.startEpoch = matchStartEpoch;
+  m.endEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
+  m.buildId = (uint32_t)MFV3_BUILD;
+  for (int t = 0; t < 2 && haveTeams; t++)
+    for (int i = 0; i < chosenTeams.n[t] && m.n[t] < 4; i++) {
+      const jug::Player* p = jugadores.find(chosenTeams.code[t][i]);
+      if (!p) continue;
+      partidos::Who& w = m.who[t][m.n[t]++];
+      w.code = p->code;
+      jugadores.idOf(p->code, w.id, sizeof(w.id));
+      snprintf(w.name, sizeof(w.name), "%s", p->name);
+    }
+  if (!partidos::save(eng, m)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+}
 
 static void sendHello() {
   char buf[160];
@@ -1160,6 +1190,17 @@ static void onConfigNext() {
   }
 }
 // Atrás desde elegir jugadores: lo elegido se guarda por si se vuelve a CONTINUAR (como la app).
+// Inicio → RANKING (de momento, el historial de partidos; TORNEO y RETOS llegarán más adelante).
+static bool rankingFresh = false;
+static void onHomeMenu(uint8_t which) {
+  if (which == inicio::RANKING) {
+    screen = Screen::Ranking;
+    rankingFresh = true;
+  } else {
+    ui::toast(which == inicio::TOURNAMENT ? "Los torneos llegan más adelante" : "Los retos llegan más adelante");
+  }
+}
+static void onRankingBack() { goHome(); }
 static void onFichasBack() {
   fichas::leave();
   screen = Screen::Settings;
@@ -1443,6 +1484,12 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Ranking && !sleepClock()) {
+    if (!historial::active() || rankingFresh) historial::show(&jugadores, rankingFresh);
+    rankingFresh = false;
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Players && !sleepClock()) {
     if (!fichas::active() || fichasFresh) fichas::show(&jugadores, fichasFresh);
     fichasFresh = false;
@@ -1676,6 +1723,8 @@ void setup() {
   gfx.tapCb = onTap;
   inicio::hooks.mode = onModeChosen;
   inicio::hooks.settings = openSettings;
+  inicio::hooks.menu = onHomeMenu;
+  historial::hooks.back = onRankingBack;
   config::hooks.back = onConfigBack;
   config::hooks.next = onConfigNext;
   config::hooks.changed = onConfigChanged;
@@ -1704,6 +1753,11 @@ void setup() {
 #if HAS_AUDIO
   sndStore.begin();
   player.begin(lcd, sndStore, sndVolume);
+#endif
+#if HAS_AUDIO
+  partidos::begin(sndStore.sdOk);  // todos los partidos, en la tarjeta (sin ella, en el chip)
+#else
+  partidos::begin(false);
 #endif
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)

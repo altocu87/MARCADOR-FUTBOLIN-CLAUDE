@@ -244,6 +244,13 @@ static void toast(const char* msg) {
   lv_timer_set_repeat_count(toastTimer, 1);
 }
 
+// Fondo en degradado vertical (en vez de las imágenes de fondo de la app): oscuro para que se lea todo encima.
+static void gradient(lv_obj_t* s, uint32_t top, uint32_t bottom) {
+  lv_obj_set_style_bg_color(s, hex(top), 0);
+  lv_obj_set_style_bg_grad_color(s, hex(bottom), 0);
+  lv_obj_set_style_bg_grad_dir(s, LV_GRAD_DIR_VER, 0);
+}
+
 // Cambia de pantalla (la anterior se borra).
 static void show(lv_obj_t* scr) { lv_screen_load_anim(scr, LV_SCREEN_LOAD_ANIM_NONE, 0, 0, true); }
 
