@@ -125,6 +125,18 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   `scripts/capturas_placa_pc.py` saca las mismas capturas con la placa simulada en el PC (mismo código y LVGL).
 - **Pruebas en PC**: el sketch se compila con LVGL de verdad (`hardware/test/lvgl_lib.sh`, `s3_build.sh`) para las
   tres placas; la prueba de partido completo lee los textos de los objetos LVGL.
+- **Más ligera (18/10/2026)**, medido en la placa con las órdenes USB `RENDIMIENTO 1` (imágenes por segundo y cuánto
+  tarda cada una, con la zona repintada) y `PERFIL` (cuánto cuesta cada efecto de la pantalla que se ve):
+  - Repintar una pantalla entera cuesta ~35 ms aunque esté vacía, y una foto de fondo de 800 × 480, ~60 ms más.
+  - No se repinta lo que no cambia (antes el partido se repintaba entero 8 veces por segundo sin hacer nada) y las
+    imágenes sin transparencias tapan lo de debajo (LVGL 9.5 no lo hacía solo): el cartel de gol sale en 86 ms (343).
+  - La interrupción que alimenta la pantalla va en el otro núcleo; las fotos de jugadores se reducen y redondean una
+    vez y se guardan; la placa recuerda qué fotos están bien (antes leía los ficheros en cada repaso).
+  - Elegir jugadores: fondo en degradado de blancos o de azules según el turno (idea de Alex) y al tocar solo se
+    recoloca lo que cambia (0,4 s → 0,15 s por toque).
+  - Diferencias con la app para ir fluida: el cartel de gol y los de PARTIDO / 2ª PARTE aparecen y se van de golpe
+    (sin fundido ni deslizarse), en la bola de partido solo late el cartel (el aro rojo queda fijo), la barra del
+    bloqueo baja a saltos de décima y el confeti de la victoria no gira y son 16 trocitos.
 
 ## Web y compilación
 

@@ -20,6 +20,7 @@ inline std::deque<char> in;
 }  // namespace sim
 
 inline uint32_t millis() { return sim::now; }
+inline uint32_t micros() { return sim::now * 1000u; }
 inline void delay(uint32_t ms) { sim::now += ms; }
 inline void pinMode(uint8_t p, uint8_t m) {
   sim::modes[p] = m;

@@ -10,6 +10,7 @@
 #define MFV3_UI_ASSETS_H
 
 #include <lvgl.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "libs/tjpgd/tjpgd.h"
@@ -271,6 +272,84 @@ static const lv_image_dsc_t* loadLz4(const char* rel) {
   cachedBytes += raw;
   if (lv_tick_elaps(t0) > 40)
     LV_LOG_WARN("LZ4 %s: %lu ms (leer %lu)", rel, (unsigned long)lv_tick_elaps(t0), (unsigned long)tRead);
+  return &c.dsc;
+}
+
+// Foto de jugador (120 × 120 RGB565 de la app, «jugadores/<código>.bin») ya reducida a `size` px y con las esquinas
+// redondeadas en su transparencia: así LVGL solo la copia, sin escalarla ni recortarla en cada imagen (escalar y
+// recortar esquinas en cada repintado era lo que más frenaba las pantallas de jugadores y del partido).
+// `bottom`: también las esquinas de abajo (en la lista de libres la foto va arriba de la ficha y abajo es recta).
+static const lv_image_dsc_t* photo(const char* rel, int size, int radius, bool bottom = true) {
+  char key[48];
+  snprintf(key, sizeof(key), "%s@%d,%d,%d", rel, size, radius, bottom ? 1 : 0);
+  for (int i = 0; i < cachedCount; i++)
+    if (!strcmp(cache[i]->path, key)) {
+      cache[i]->usedAt = ++useCounter;
+      return &cache[i]->dsc;
+    }
+  const int S = 120;
+  if (size < 1 || size > 240) return nullptr;
+  char full[320];
+  snprintf(full, sizeof(full), "%s/%s", ROOT, rel);
+  FILE* f = fopen(full, "rb");
+  if (!f) return nullptr;
+  uint16_t* in = (uint16_t*)malloc(S * S * 2);
+  bool ok = in && fseek(f, 12, SEEK_SET) == 0 && fread(in, 2, S * S, f) == (size_t)(S * S);
+  fclose(f);
+  size_t raw = (size_t)size * size * 3;
+  while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
+    if (!evictOne()) break;
+  uint8_t* out = ok && cachedCount < MAX_CACHED ? (uint8_t*)malloc(raw) : nullptr;
+  if (!out) {
+    free(in);
+    return nullptr;
+  }
+  uint16_t* px = (uint16_t*)out;
+  uint8_t* alpha = out + (size_t)size * size * 2;
+  // Media de los píxeles que caen en cada uno (de 120 a menos se ve mejor que coger uno suelto).
+  for (int y = 0; y < size; y++) {
+    int y0 = y * S / size, y1 = ((y + 1) * S + size - 1) / size;
+    for (int x = 0; x < size; x++) {
+      int x0 = x * S / size, x1 = ((x + 1) * S + size - 1) / size;
+      uint32_t r = 0, g = 0, b = 0, n = 0;
+      for (int sy = y0; sy < y1; sy++)
+        for (int sx = x0; sx < x1; sx++) {
+          uint16_t v = in[sy * S + sx];
+          r += v >> 11;
+          g += (v >> 5) & 63;
+          b += v & 31;
+          n++;
+        }
+      px[y * size + x] = (uint16_t)(((r / n) << 11) | ((g / n) << 5) | (b / n));
+      // Esquinas: cuánto del píxel cae dentro del círculo de radio `radius` (suavizado de medio píxel).
+      float a = 1;
+      if (radius > 0) {
+        float cx = x < radius ? radius : x >= size - radius ? size - radius : -1;
+        float cy = y < radius ? radius : (bottom && y >= size - radius) ? size - radius : -1;
+        if (cx >= 0 && cy >= 0) {
+          float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+          float d = sqrtf(dx * dx + dy * dy);
+          a = radius + 0.5f - d;
+          a = a < 0 ? 0 : a > 1 ? 1 : a;
+        }
+      }
+      alpha[y * size + x] = (uint8_t)(a * 255 + 0.5f);
+    }
+  }
+  free(in);
+  cache[cachedCount] = new Cached();
+  Cached& c = *cache[cachedCount++];
+  snprintf(c.path, sizeof(c.path), "%s", key);
+  memset(&c.dsc, 0, sizeof(c.dsc));
+  c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
+  c.dsc.header.cf = LV_COLOR_FORMAT_RGB565A8;
+  c.dsc.header.w = (uint16_t)size;
+  c.dsc.header.h = (uint16_t)size;
+  c.dsc.header.stride = (uint16_t)(size * 2);
+  c.dsc.data = out;
+  c.dsc.data_size = raw;
+  c.usedAt = ++useCounter;
+  cachedBytes += raw;
   return &c.dsc;
 }
 

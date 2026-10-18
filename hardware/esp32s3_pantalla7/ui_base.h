@@ -7,6 +7,8 @@
 #include <lvgl.h>
 #include <math.h>
 #include "ui_assets.h"
+#include "core/lv_obj_event_private.h"
+#include "misc/lv_area_private.h"
 
 namespace ui {
 
@@ -46,6 +48,26 @@ static lv_obj_t* screen() {
 // Capa de la app (fondo o recorte) en su sitio. Sin tocar: los toques pasan a lo que haya debajo.
 // Las que empiezan ocultas (botón pulsado, tarjeta elegida…) no se descomprimen hasta enseñarlas con reveal():
 // así cambiar de pantalla solo cuesta lo que se ve (antes se descomprimían todas y la placa se quedaba parada).
+// Una capa sin transparencias tapa lo que tiene debajo: así LVGL no lo pinta (con una de pantalla entera, como los
+// carteles de gol, era pintar el partido entero debajo para nada). LVGL 9.5 no lo sabe solo: para él una imagen
+// solo tapa si además tiene fondo propio.
+static void coverCheck(lv_event_t* e) {
+  lv_cover_check_info_t* info = (lv_cover_check_info_t*)lv_event_get_param(e);
+  lv_obj_t* o = lv_event_get_current_target_obj(e);
+  if (info->res == LV_COVER_RES_MASKED) return;
+  const void* src = lv_image_get_src(o);
+  if (!src || lv_image_src_get_type(src) != LV_IMAGE_SRC_VARIABLE) return;
+  const lv_image_dsc_t* d = (const lv_image_dsc_t*)src;
+  if (lv_color_format_has_alpha((lv_color_format_t)d->header.cf)) return;
+  if (lv_obj_get_style_image_opa(o, LV_PART_MAIN) < LV_OPA_MAX || lv_obj_get_style_opa(o, LV_PART_MAIN) < LV_OPA_MAX) return;
+  if (lv_image_get_scale(o) != LV_SCALE_NONE || lv_image_get_rotation(o) != 0) return;
+  lv_area_t c;
+  lv_obj_get_coords(o, &c);
+  if (lv_area_get_width(&c) != d->header.w || lv_area_get_height(&c) != d->header.h) return;
+  if (!lv_area_is_in(info->area, &c, 0)) return;
+  info->res = LV_COVER_RES_COVER;
+}
+
 static lv_obj_t* layer(lv_obj_t* parent, const capas::Capa& c, bool visible = true) {
   lv_obj_t* img = lv_image_create(parent);
   lv_obj_set_user_data(img, (void*)&c);
@@ -53,6 +75,7 @@ static lv_obj_t* layer(lv_obj_t* parent, const capas::Capa& c, bool visible = tr
   lv_obj_set_pos(img, c.x, c.y);
   lv_obj_set_size(img, c.w, c.h);
   lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(img, coverCheck, LV_EVENT_COVER_CHECK, nullptr);
   if (!visible) lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
   return img;
 }
@@ -62,19 +85,23 @@ static void reveal(lv_obj_t* o) {
   if (!o) return;
   if (lv_obj_check_type(o, &lv_image_class) && !lv_image_get_src(o) && lv_obj_get_user_data(o))
     lv_image_set_src(o, assets::src(*(const capas::Capa*)lv_obj_get_user_data(o)));
-  lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+  // Solo si estaba escondido: LVGL vuelve a pintar el objeto aunque ya se viera, y las pantallas llaman a esto
+  // en cada repaso.
+  if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
 }
 static void setVisible(lv_obj_t* o, bool v) {
   if (!o) return;
   if (v) reveal(o);
-  else lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+  else if (!lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
 }
 
 // Transparencia sin capas intermedias: en las imágenes, la de la propia imagen (más rápido y sin gastar memoria);
 // en lo demás, la del objeto entero.
+// (Si ya la tenía no se toca: cambiar un estilo, aunque sea al mismo valor, obliga a pintarlo otra vez.)
 static void setOpa(lv_obj_t* o, lv_opa_t v) {
-  if (lv_obj_check_type(o, &lv_image_class)) lv_obj_set_style_image_opa(o, v, 0);
-  else lv_obj_set_style_opa(o, v, 0);
+  if (lv_obj_check_type(o, &lv_image_class)) {
+    if (lv_obj_get_style_image_opa(o, LV_PART_MAIN) != v) lv_obj_set_style_image_opa(o, v, 0);
+  } else if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v) lv_obj_set_style_opa(o, v, 0);
 }
 
 // Zona táctil invisible con su acción.

@@ -45,11 +45,11 @@ static void onBtn(lv_event_t* e) {
 }
 
 // ---------------------------------------------------------------- confeti
-// Como la app: trocitos de colores que caen 520 px girando, con su deriva, en dos pasadas.
+// Como la app: trocitos de colores que caen 520 px con su deriva, en dos pasadas. En la placa no giran (cada trocito
+// girado se pinta aparte y luego se mezcla: con 40 a la vez la pantalla iba a 7 imágenes por segundo) y son 16.
 static const uint32_t CONF_COLORS[6] = {0x62d6ff, 0xf2c94c, 0xff5a6e, 0x3ddc97, 0xd65cff, 0xeef6ff};
 static void confY(void* o, int32_t v) { lv_obj_set_y((lv_obj_t*)o, v); }
 static void confX(void* o, int32_t v) { lv_obj_set_x((lv_obj_t*)o, v); }
-static void confRot(void* o, int32_t v) { lv_obj_set_style_transform_rotation((lv_obj_t*)o, v, 0); }
 
 static void confetti(lv_obj_t* parent) {
   uint32_t seed = 12345;
@@ -57,14 +57,12 @@ static void confetti(lv_obj_t* parent) {
     seed = seed * 1103515245u + 12345u;
     return (int)((seed >> 16) % (uint32_t)n);
   };
-  for (int i = 0; i < 40; i++) {
+  for (int i = 0; i < 16; i++) {
     int w = 5 + rnd(9), h = 4 + rnd(10), x = rnd(800);
     lv_obj_t* c = ui::box(parent, x, -20, w, h);
     lv_obj_set_style_radius(c, 2, 0);
     lv_obj_set_style_bg_color(c, ui::hex(CONF_COLORS[i % 6]), 0);
     lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
-    lv_obj_set_style_transform_pivot_x(c, w / 2, 0);
-    lv_obj_set_style_transform_pivot_y(c, h / 2, 0);
     uint32_t dur = 2200 + rnd(1800), delay = rnd(1600);
     lv_anim_t a;
     lv_anim_init(&a);
@@ -78,10 +76,7 @@ static void confetti(lv_obj_t* parent) {
     lv_anim_set_exec_cb(&a, confX);
     lv_anim_set_values(&a, x, x + rnd(160) - 80);
     lv_anim_start(&a);
-    lv_anim_set_exec_cb(&a, confRot);
-    int r0 = rnd(3600);
-    lv_anim_set_values(&a, r0, r0 + 7200);
-    lv_anim_start(&a);
+    rnd(3600);  // (el giro de la app: se gasta el número para que la lluvia caiga igual que antes)
   }
 }
 

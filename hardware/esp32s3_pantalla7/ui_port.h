@@ -38,6 +38,10 @@ static uint32_t tickCb() { return millis(); }
 
 static void logCb(lv_log_level_t, const char* buf) { Serial.print(buf); }
 
+// Contadores de «RENDIMIENTO» (ver step()).
+static uint32_t perfWaitFrame = 0, perfT0 = 0, perfFrames = 0, perfDrawUs = 0, perfDrawMax = 0, perfWaitUs = 0, perfLvUs = 0, perfLvMax = 0,
+                perfGapMax = 0, perfLast = 0, perfRenderStart = 0;
+
 #ifdef ESP_PLATFORM
 }  // namespace uiport
 #include <esp_lcd_panel_ops.h>
@@ -56,13 +60,17 @@ static bool IRAM_ATTR onVsync(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_ev
   return woken == pdTRUE;
 }
 
+
 // Al acabar de dibujar: se enseña la imagen nueva y se espera al retorno vertical antes de dejar a LVGL dibujar
 // en la otra (que ya no se está viendo).
 static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t* px) {
   if (lv_display_flush_is_last(disp)) {
     xSemaphoreTake(vsyncSem, 0);
     esp_lcd_panel_draw_bitmap(panel, 0, 0, W, H, px);
+    uint32_t w0 = micros();
     xSemaphoreTake(vsyncSem, pdMS_TO_TICKS(60));
+    perfWaitFrame = micros() - w0;
+    perfWaitUs += perfWaitFrame;
     shown = (uint16_t*)px;
   }
   lv_display_flush_ready(disp);
@@ -147,11 +155,27 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
                         (int)b.pin_d12, (int)b.pin_d13, (int)b.pin_d14, (int)b.pin_d15};
   for (int i = 0; i < 16; i++) c.data_gpio_nums[i] = pins[i];
   c.flags.fb_in_psram = 1;
-  if (esp_lcd_new_rgb_panel(&c, &panel) != ESP_OK) return false;
-  esp_lcd_rgb_panel_event_callbacks_t cbs = {};
-  cbs.on_vsync = onVsync;
-  esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, nullptr);
-  if (esp_lcd_panel_reset(panel) != ESP_OK || esp_lcd_panel_init(panel) != ESP_OK) return false;
+  // El panel se crea desde el núcleo 0: su interrupción (la que copia cada imagen de la PSRAM a los búferes de
+  // reserva, unas 30 veces por segundo) se queda en ese núcleo y deja el 1 entero para dibujar.
+  static esp_lcd_rgb_panel_config_t cfg;
+  static volatile int made;
+  cfg = c;
+  made = 0;
+  xTaskCreatePinnedToCore(
+      [](void*) {
+        bool ok = esp_lcd_new_rgb_panel(&cfg, &panel) == ESP_OK;
+        if (ok) {
+          esp_lcd_rgb_panel_event_callbacks_t cbs = {};
+          cbs.on_vsync = onVsync;
+          esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, nullptr);
+          ok = esp_lcd_panel_reset(panel) == ESP_OK && esp_lcd_panel_init(panel) == ESP_OK;
+        }
+        made = ok ? 1 : -1;
+        vTaskDelete(nullptr);
+      },
+      "panel", 4096, nullptr, configMAX_PRIORITIES - 2, nullptr, 0);
+  while (!made) vTaskDelay(1);
+  if (made < 0) return false;
   void *f0 = nullptr, *f1 = nullptr;
   if (esp_lcd_rgb_panel_get_frame_buffer(panel, 2, &f0, &f1) != ESP_OK) return false;
   fb0 = (uint16_t*)f0;
@@ -231,12 +255,77 @@ static bool begin(LGFX& lcd) {
 static volatile bool needResync = false;
 
 // Un paso de LVGL (animaciones, toques, dibujo). Se llama en cada vuelta de loop().
+// «RENDIMIENTO 1»: cada segundo, por el USB, cuántas imágenes se han pintado y cuánto se ha tardado (para ver
+// dónde se atasca la pantalla). «RENDIMIENTO 0» lo apaga.
+static bool perfOn = false;
+// Zona repintada en cada imagen (unión de lo invalidado), para decir qué se está repintando cuando tarda.
+static lv_area_t perfInv = {0, 0, -1, -1};
+static void perfInvalidate(lv_event_t* e) {
+  const lv_area_t* a = (const lv_area_t*)lv_event_get_param(e);
+  if (!a) return;
+  if (perfInv.x2 < perfInv.x1) perfInv = *a;
+  else {
+    if (a->x1 < perfInv.x1) perfInv.x1 = a->x1;
+    if (a->y1 < perfInv.y1) perfInv.y1 = a->y1;
+    if (a->x2 > perfInv.x2) perfInv.x2 = a->x2;
+    if (a->y2 > perfInv.y2) perfInv.y2 = a->y2;
+  }
+}
+static void perfRender(lv_event_t* e) {
+  if (lv_event_get_code(e) == LV_EVENT_RENDER_START) perfRenderStart = micros();
+  else {
+    uint32_t d = micros() - perfRenderStart - perfWaitFrame;  // sin la espera al retorno vertical
+    perfWaitFrame = 0;
+    if (d > 60000) {
+      char b[96];
+      snprintf(b, sizeof(b), "RENDIMIENTO lenta %lu ms: zona %ld,%ld %ldx%ld", (unsigned long)(d / 1000), (long)perfInv.x1,
+               (long)perfInv.y1, (long)lv_area_get_width(&perfInv), (long)lv_area_get_height(&perfInv));
+      Serial.println(b);
+    }
+    perfInv = {0, 0, -1, -1};
+    perfFrames++;
+    perfDrawUs += d;
+    if (d > perfDrawMax) perfDrawMax = d;
+  }
+}
+static void perfEnable(bool on) {
+  perfOn = on;
+  perfT0 = millis();
+  perfFrames = perfDrawUs = perfDrawMax = perfWaitUs = perfLvUs = perfLvMax = perfGapMax = 0;
+  static bool hooked = false;
+  if (on && !hooked && display) {
+    hooked = true;
+    lv_display_add_event_cb(display, perfRender, LV_EVENT_RENDER_START, nullptr);
+    lv_display_add_event_cb(display, perfRender, LV_EVENT_RENDER_READY, nullptr);
+    lv_display_add_event_cb(display, perfInvalidate, LV_EVENT_INVALIDATE_AREA, nullptr);
+  }
+}
+
 static void step() {
   if (needResync) {
     needResync = false;
     resyncPanel();
   }
+  if (!perfOn) {
+    lv_timer_handler();
+    return;
+  }
+  uint32_t t = micros();
+  if (perfLast && t - perfLast > perfGapMax) perfGapMax = t - perfLast;  // lo que ha tardado el resto del bucle
   lv_timer_handler();
+  perfLast = micros();
+  uint32_t d = perfLast - t;
+  perfLvUs += d;
+  if (d > perfLvMax) perfLvMax = d;
+  if (millis() - perfT0 >= 1000) {
+    char b[160];
+    snprintf(b, sizeof(b), "RENDIMIENTO %lu fps, pintar media %lu ms max %lu, espera %lu ms, lvgl %lu ms/s max %lu, resto max %lu ms",
+             (unsigned long)perfFrames, (unsigned long)(perfFrames ? perfDrawUs / perfFrames / 1000 : 0), (unsigned long)(perfDrawMax / 1000),
+             (unsigned long)(perfWaitUs / 1000), (unsigned long)(perfLvUs / 1000), (unsigned long)(perfLvMax / 1000),
+             (unsigned long)(perfGapMax / 1000));
+    Serial.println(b);
+    perfEnable(true);
+  }
 }
 
 // CRC32 (el mismo que zlib) para que el PC compruebe la captura.

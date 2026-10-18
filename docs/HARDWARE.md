@@ -327,6 +327,9 @@ SPIFFS** u **8M with spiffs**; el programa funciona, pero sin la FAT esas placas
 **Ver lo que enseña la placa sin tocarla** (por el USB):
 - `python scripts/placa.py captura <nombre>` → `docs/capturas-placa/<nombre>.png` (orden `CAPTURA`, unos 3 s).
 - `python scripts/placa.py orden "TOQUE 400 240"` → un toque simulado; `orden "GB"` → gol del Blanco.
+- `orden "RENDIMIENTO 1"` → cada segundo, imágenes pintadas y cuánto tardan (y la zona de las que pasan de 60 ms);
+  `orden PERFIL` → cuánto cuesta cada efecto de la pantalla que se ve (luego hay que volver al inicio);
+  `orden MEMORIA` → memoria libre (interna y PSRAM).
 - `python scripts/comparar.py <escena>` → app | placa lado a lado en `docs/comparar/`.
 - `python scripts/recorrido_placa.py` → recorre Inicio, configuración y un partido entero capturando cada pantalla.
 

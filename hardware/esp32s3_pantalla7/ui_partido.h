@@ -69,7 +69,7 @@ static uint8_t streakShown = 0, streakTeamShown = 0;
 static const capas::Capa* RACHA[7] = {&capas::RACHA_3, &capas::RACHA_4, &capas::RACHA_5, &capas::RACHA_6,
                                       &capas::RACHA_7, &capas::RACHA_8, &capas::RACHA_9};
 static lv_obj_t *annulOff[2], *pulAnnul[2], *pulPause, *mp[3], *clockFrame[3];
-static lv_obj_t *panel[2], *panelDim[2], *teamLabel[2], *cardsBox[2];
+static lv_obj_t *panel[2], *panelDim[2], *teamLabel[2], *cardsBox[2], *cardsVeil[2];
 static lv_obj_t *score[2], *clock, *info, *cond, *lockMsg, *lockTrack[2], *lockFill[2];
 static float panelH[2] = {356, 356};
 static uint32_t lineupKey[2] = {0xFFFFFFFF, 0xFFFFFFFF};
@@ -175,21 +175,20 @@ static void playerCard(lv_obj_t* parent, int t, const View::Card& c, int x, int 
   lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(card, onPanel, LV_EVENT_ALL, (void*)(intptr_t)t);
   int phx = pad, phy = (h - 4 - ph) / 2;
-  lv_obj_t* box = ui::box(card, phx, phy, ph, ph);
-  lv_obj_set_style_radius(box, pr, 0);
-  lv_obj_set_style_clip_corner(box, true, 0);
-  lv_obj_set_style_bg_color(box, ui::hex(0x1d3a63), 0);
-  lv_obj_set_style_bg_grad_color(box, ui::hex(0x0f2140), 0);
-  lv_obj_set_style_bg_grad_dir(box, LV_GRAD_DIR_VER, 0);
-  lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
-  if (c.photo[0]) {
-    lv_obj_t* img = lv_image_create(box);
-    lv_image_set_src(img, c.photo);
-    lv_image_set_antialias(img, true);
-    lv_image_set_pivot(img, 0, 0);
-    lv_image_set_scale(img, (uint32_t)(256 * ph / 120));
+  // Foto ya reducida y con sus esquinas (assets::photo); sin foto, el degradado con las iniciales.
+  const lv_image_dsc_t* pic = c.photo[0] ? assets::photo(c.photo, ph, pr) : nullptr;
+  if (pic) {
+    lv_obj_t* img = lv_image_create(card);
+    lv_image_set_src(img, pic);
+    lv_obj_set_pos(img, phx, phy);
     lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
   } else {
+    lv_obj_t* box = ui::box(card, phx, phy, ph, ph);
+    lv_obj_set_style_radius(box, pr, 0);
+    lv_obj_set_style_bg_color(box, ui::hex(0x1d3a63), 0);
+    lv_obj_set_style_bg_grad_color(box, ui::hex(0x0f2140), 0);
+    lv_obj_set_style_bg_grad_dir(box, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
     char ini[8];
     jug::initials(c.name, ini, sizeof(ini));
     lv_obj_t* l = ui::text(box, ini, 900, one ? 38 : many ? 14 : 26, ui::color::TEXT2);
@@ -240,6 +239,7 @@ static void lineup(int t, const View& v) {
   lineupKey[t] = key;
   layoutSide(t, n);
   lv_obj_clean(cardsBox[t]);
+  cardsVeil[t] = nullptr;
   int W = (int)lroundf(PANEL_W);
   for (uint8_t i = 0; i < n; i++) {
     if (n <= 2) playerCard(cardsBox[t], t, v.cards[t][i], 0, i * 90, W, n == 1 ? 100 : 84, n);
@@ -248,6 +248,14 @@ static void lineup(int t, const View& v) {
       bool full = n == 3 && i == 2;  // con 3, el tercero ocupa el ancho entero
       playerCard(cardsBox[t], t, v.cards[t][i], full ? 0 : (i % 2) * (half + 6), (i / 2) * 72, full ? W : half, 66, n);
     }
+  }
+  // Velo del bloqueo (.match-card.locked, al 70 %): un velo oscuro encima, más ligero que la transparencia.
+  if (n) {
+    lv_obj_update_layout(cardsBox[t]);
+    cardsVeil[t] = ui::box(cardsBox[t], -6, -6, lv_obj_get_width(cardsBox[t]) + 12, lv_obj_get_height(cardsBox[t]) + 12);
+    lv_obj_set_style_bg_color(cardsVeil[t], ui::hex(0x04080f), 0);
+    lv_obj_set_style_bg_opa(cardsVeil[t], 77, 0);
+    lv_obj_add_flag(cardsVeil[t], LV_OBJ_FLAG_HIDDEN);
   }
   setScore(t, t ? v.blue : v.white);
 }
@@ -330,16 +338,13 @@ static void celebrate(uint8_t team) {
   if (!scr || lv_screen_active() != scr) return;
   if (goalShow) lv_obj_delete(goalShow);
   goalShow = ui::layer(scr, *GOL[team & 1][nextVariant % 6]);
+  // Aparece y se va de golpe (la app la funde): fundir una imagen de pantalla entera obliga a repintarla mezclada
+  // en cada paso y la placa daba trompicones. Se queda los mismos 3,2 s.
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, goalShow);
-  lv_anim_set_exec_cb(&a, ui::fadeCb);
-  lv_anim_set_values(&a, 0, 255);
-  lv_anim_set_duration(&a, 200);
-  lv_anim_start(&a);
-  lv_anim_set_values(&a, 255, 0);
-  lv_anim_set_delay(&a, 2800);
-  lv_anim_set_duration(&a, 400);
+  lv_anim_set_values(&a, 0, 1);
+  lv_anim_set_duration(&a, 3200);
   lv_anim_set_completed_cb(&a, goalGone);
   lv_anim_start(&a);
   nextVariant = (uint8_t)((nextVariant + 1) % 6);
@@ -386,11 +391,6 @@ static const capas::Capa* CARTEL[7] = {&capas::CARTEL_PARTIDO, &capas::CARTEL_PA
                                        &capas::CARTEL_2_PARTE, &capas::CARTEL_PRORROGA, &capas::CARTEL_PENALTIS,
                                        &capas::CARTEL_MUERTE_SUBITA};
 static lv_obj_t* bannerObj = nullptr;
-static void bannerX(void* o, int32_t v) {
-  lv_obj_set_x((lv_obj_t*)o, v);
-  int32_t d = v < 0 ? -v : v;  // se ve del todo en el centro y se desvanece hacia los lados
-  lv_obj_set_style_image_opa((lv_obj_t*)o, (lv_opa_t)(d >= 880 ? 0 : 255 - d * 255 / 880), 0);
-}
 static void bannerGone(lv_anim_t* a) {
   lv_obj_t* o = (lv_obj_t*)a->var;
   if (o == bannerObj) bannerObj = nullptr;
@@ -400,41 +400,38 @@ static void banner(uint8_t which) {
   if (bannerObj) lv_obj_delete(bannerObj);
   const capas::Capa& c = *CARTEL[which % 7];
   bannerObj = ui::layer(lv_layer_top(), c);
+  // En su sitio desde el principio y fuera a los 1,5 s (en la app entra y sale deslizándose): moverla por la
+  // pantalla repintaba en cada paso una franja de 800 × 220 con transparencias.
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, bannerObj);
-  lv_anim_set_exec_cb(&a, bannerX);
-  lv_anim_set_values(&a, -880, 0);
-  lv_anim_set_duration(&a, 290);
-  lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-  lv_anim_start(&a);
-  lv_anim_set_values(&a, 0, 880);
-  lv_anim_set_delay(&a, 1210);
-  lv_anim_set_duration(&a, 290);
-  lv_anim_set_path_cb(&a, lv_anim_path_ease_in);
+  lv_anim_set_values(&a, 0, 1);
+  lv_anim_set_duration(&a, 1500);
   lv_anim_set_completed_cb(&a, bannerGone);
   lv_anim_start(&a);
 }
 
 // Bola de partido (mp-pulse): aro de 3 px y halo rojo de 32 px que baja a 12 px y vuelve cada 1,1 s; el cartel late.
 static uint8_t mpMask = 0;
+// En la placa solo late el cartel «BOLA DE PARTIDO», a saltos (fuerte / suave); el aro rojo y el halo de la tarjeta
+// se quedan fijos: cambiar el halo obliga a repintar la tarjeta entera con su sombra y frenaba todo el partido.
+static int8_t mpLevel = -1;
 static void mpPulse(void*, int32_t v) {
+  int8_t level = v >= 128 ? 1 : 0;
+  if (level == mpLevel) return;
+  mpLevel = level;
   for (int i = 0; i < 3; i++)
-    if (mp[i]) lv_obj_set_style_image_opa(mp[i], (lv_opa_t)(110 + (v * 145) / 255), 0);
-  for (int t = 0; t < 2; t++) {
-    if (!panel[t] || !(mpMask >> t & 1)) continue;
-    lv_obj_set_style_shadow_width(panel[t], 12 + (20 * v) / 255, 0);
-    lv_obj_set_style_shadow_opa(panel[t], (lv_opa_t)(64 + (76 * v) / 255), 0);
-  }
+    if (mp[i] && !lv_obj_has_flag(mp[i], LV_OBJ_FLAG_HIDDEN)) lv_obj_set_style_image_opa(mp[i], level ? 255 : 110, 0);
 }
 static void setMatchPoint(uint8_t mask) {
   if (mask == mpMask) return;
   mpMask = mask;
+  mpLevel = -1;
   for (int t = 0; t < 2; t++) {
     bool on = mask >> t & 1;
     lv_obj_set_style_outline_width(panel[t], on ? 3 : 0, 0);
     lv_obj_set_style_shadow_color(panel[t], ui::hex(on ? ui::color::DANGER : t ? ui::color::BLUE_TEAM : ui::color::WHITE_TEAM), 0);
-    lv_obj_set_style_shadow_width(panel[t], 28, 0);
+    lv_obj_set_style_shadow_width(panel[t], on ? 32 : 28, 0);
     lv_obj_set_style_shadow_opa(panel[t], on ? 140 : t ? 115 : 56, 0);
   }
 }
@@ -443,11 +440,13 @@ static void onDelete(lv_event_t*) {
   lv_anim_delete(nullptr, mpPulse);
   scr = nullptr;
   panel[0] = panel[1] = nullptr;  // ya no existen: que nadie las toque
+  cardsVeil[0] = cardsVeil[1] = nullptr;
   mpMask = 0;
 }
 
 static void build() {
   panel[0] = panel[1] = nullptr;
+  cardsVeil[0] = cardsVeil[1] = nullptr;
   mpMask = 0;
   scr = ui::screen();
   lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, nullptr);
@@ -497,8 +496,8 @@ static void build() {
     lv_obj_set_style_radius(lockTrack[t], 3, 0);
     lv_obj_set_style_bg_color(lockTrack[t], lv_color_black(), 0);
     lv_obj_set_style_bg_opa(lockTrack[t], 46, 0);
-    lv_obj_set_style_clip_corner(lockTrack[t], true, 0);
     lockFill[t] = ui::box(lockTrack[t], 0, 0, w, 5);
+    lv_obj_set_style_radius(lockFill[t], 3, 0);
     lv_obj_set_style_bg_color(lockFill[t], ui::hex(INK[t]), 0);
     lv_obj_set_style_bg_opa(lockFill[t], 153, 0);
     vis(lockTrack[t], false);
@@ -649,9 +648,14 @@ static void update(const View& v) {
   // Bloqueo: barra que se vacía en las dos tarjetas y el aviso con décimas.
   for (int t = 0; t < 2; t++) {
     vis(panelDim[t], v.lockMs > 0);
-    lv_obj_set_style_opa(cardsBox[t], v.lockMs > 0 ? 178 : LV_OPA_COVER, 0);  // .match-card.locked
+    vis(cardsVeil[t], v.lockMs > 0);
     vis(lockTrack[t], v.lockMs > 0);
-    if (v.lockMs) lv_obj_set_width(lockFill[t], (int32_t)(lv_obj_get_width(lockTrack[t]) * v.lockMs / LOCK_MS));
+    if (v.lockMs) {
+      // A saltos de una décima, como el aviso: cada cambio repinta la franja de las dos tarjetas.
+      uint32_t tenths = (v.lockMs + 99) / 100 * 100;
+      int32_t w = (int32_t)(lv_obj_get_width(lockTrack[t]) * (tenths > LOCK_MS ? LOCK_MS : tenths) / LOCK_MS);
+      if (lv_obj_get_width(lockFill[t]) != w) lv_obj_set_width(lockFill[t], w);
+    }
   }
   char lm[24] = "";
   if (v.lockMs) snprintf(lm, sizeof(lm), "BLOQUEO %u.%u S", (unsigned)(v.lockMs / 1000), (unsigned)(v.lockMs % 1000 / 100));

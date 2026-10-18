@@ -84,11 +84,29 @@ class Store {
     return nullptr;
   }
 
-  // Ruta de la foto para LVGL («A:/ffat/jugadores/1a2b3c4d.bin»), o nullptr si no la tiene.
+  // ¿Tiene foto guardada y entera? Se comprueba en el chip una vez por jugador y se recuerda (las pantallas lo
+  // preguntan en cada repaso y leer los ficheros cada vez frenaba el partido).
+  bool photoOk(uint32_t code) {
+    for (uint8_t i = 0; i < count; i++)
+      if (list[i].code == code) {
+        if (!list[i].photoCrc) return false;
+        if (known[i] != list[i].photoCrc) known[i] = hasPhoto(code, list[i].photoCrc) ? list[i].photoCrc : 0;
+        return known[i] != 0;
+      }
+    return false;
+  }
+
+  // Ruta de la foto para LVGL («A:/ffat/jugadores/1a2b3c4d.bin»), o false si no la tiene.
   bool photoPath(uint32_t code, char* out, size_t n, const char* root) {
-    const Player* p = find(code);
-    if (!p || !p->photoCrc || !hasPhoto(code, p->photoCrc)) return false;
+    if (!photoOk(code)) return false;
     snprintf(out, n, "A:%s%s/%08lx.bin", root, DIR, (unsigned long)code);
+    return true;
+  }
+
+  // Ruta relativa a la carpeta de recursos («jugadores/1a2b3c4d.bin»), para assets::photo().
+  bool photoRel(uint32_t code, char* out, size_t n) {
+    if (!photoOk(code)) return false;
+    snprintf(out, n, "%s/%08lx.bin", DIR + 1, (unsigned long)code);
     return true;
   }
 
@@ -146,6 +164,7 @@ class Store {
       snprintf(out, sizeof(out), "JUGADORES_GUARDADOS %u", count);
       send(out);
       changed = true;
+      memset(known, 0, sizeof(known));
       return true;
     }
     if (!strcmp(line, "FOTOS?")) {
@@ -218,12 +237,14 @@ class Store {
       snprintf(out, sizeof(out), "FOTO_GUARDADA %08lx", (unsigned long)upCode);
       send(out);
       changed = true;
+      memset(known, 0, sizeof(known));
       return true;
     }
     return false;
   }
 
   bool changed = false;  // la lista o alguna foto cambió (las pantallas se rehacen)
+  uint32_t known[MAX] = {};  // CRC de la foto ya comprobada de cada jugador (0 = sin comprobar o sin foto)
 
  private:
   fs::FS* fs_ = nullptr;
@@ -291,6 +312,7 @@ class Store {
 
   void load() {
     count = 0;
+    memset(known, 0, sizeof(known));
     fs::File f = fs_->open(LIST, "r");
     if (f) {
       char line[160];

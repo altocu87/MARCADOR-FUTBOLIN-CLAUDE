@@ -50,6 +50,7 @@
 #include "ui_victoria.h"
 #include "s3_jugadores.h"
 #include "ui_jugadores.h"
+#include "ui_perfil.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -505,6 +506,11 @@ static void handleBoardLine(const char* line) {
     sendLine(ok ? "HORA_OK" : "HORA_ERROR");
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
+  else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i) != 0);
+  else if (!strcmp(word, "PERFIL")) {
+    perfil::run(sendLine);
+    sendLine("PERFIL_FIN");
+  }
   else if (!strcmp(word, "MEMORIA")) {
     // Memoria libre: la interna (rápida, la que piden el USB, la red y los ficheros) y la grande (PSRAM).
     char b[96];
@@ -1133,7 +1139,7 @@ static void matchView(partido::View& v, uint32_t now) {
       snprintf(c.name, sizeof(c.name), "%s", p->name);
       snprintf(c.meta, sizeof(c.meta), "%s", p->meta);
       snprintf(c.title, sizeof(c.title), "%s", p->title);
-      if (!jugadores.photoPath(p->code, c.photo, sizeof(c.photo), assets::ROOT)) c.photo[0] = 0;
+      if (!jugadores.photoRel(p->code, c.photo, sizeof(c.photo))) c.photo[0] = 0;
     }
   }
 }
