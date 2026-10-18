@@ -28,18 +28,28 @@ static char dir[64] = "";
 static void setDir(const char* d) { snprintf(dir, sizeof(dir), "%s", d); }  // PC: carpeta de pruebas
 #endif
 
-// ---------------------------------------------------------------- lo que enseña la lista
+// ---------------------------------------------------------------- lo que enseña la lista y lo que usan los cálculos
+// (ELO, XP, logros y retos de la app: s3_progresion.h). Todo sale del JSON del partido (rowFromJson), sea de la placa
+// o de la app.
 struct Row {
-  char id[37];
-  uint32_t fin;  // segundos desde 1970 (UTC); 0 = la placa no tenía hora
+  char id[48];  // la placa: UUID (36); la app: «m_» + UUID
+  uint32_t fin;  // segundos desde 1970 (UTC); 0 = sin hora
   char mode;     // 'q' rápido, 'c' loco, 'r' clasificatorio
-  char winner;   // 'w', 'b' o '-'
+  char winner;   // 'w', 'b' o '-' (empate)
   char reason;   // 'r' normal, 'g' gol de oro, 'p' penaltis
   uint8_t w, b;
   int16_t pw, pb;  // -1 sin penaltis
   uint8_t n[2];
-  uint32_t code[2][4];
+  uint32_t code[2][4];  // FNV-1a del id del jugador en la app (como los sonidos)
   char name[2][4][20];
+  // Para los cálculos
+  uint32_t totalMs;
+  uint8_t comeback;       // mayor desventaja que remontó el ganador
+  int32_t earliest[2];    // gol válido más temprano de cada equipo (ms desde el inicio de su parte; -1 sin goles)
+  uint8_t run[2];         // mayor serie de goles seguidos de cada equipo
+  int8_t firstScorer;     // quién marcó el primer gol válido (equipo × 4 + plaza; -1 nadie apuntado)
+  uint8_t pg[2][4];       // goles apuntados a cada jugador
+  uint8_t kicks[2], kicksIn[2], sdKicks, penRounds;
 };
 static Row* rows = nullptr;  // en orden de guardado (el último, el más nuevo)
 static int count = 0, cap = 0;
@@ -56,7 +66,225 @@ static bool push(const Row& r) {
   return true;
 }
 
-// «código,nombre;código,nombre»
+// Código de un jugador a partir de su id: FNV-1a (como la app); «placa-<código>» lleva el código dentro.
+static uint32_t codeOf(const char* id) {
+  if (!strncmp(id, "placa-", 6) && strlen(id) == 14) return (uint32_t)strtoul(id + 6, nullptr, 16);
+  uint32_t h = 2166136261u;
+  for (const char* s = id; *s; s++) h = (h ^ (uint8_t)*s) * 16777619u;
+  return h;
+}
+
+// ---------------------------------------------------------------- JSON (lo justo para leer un StoredMatch)
+static const char* skipStr(const char* p) {  // p en la comilla de apertura → tras la de cierre
+  for (p++; *p && *p != '"'; p++)
+    if (*p == '\\' && p[1]) p++;
+  return *p ? p + 1 : p;
+}
+static const char* closeOf(const char* p) {  // p en { o [ → su cierre
+  int depth = 0;
+  for (; *p; p++) {
+    if (*p == '"') {
+      p = skipStr(p) - 1;
+      continue;
+    }
+    if (*p == '{' || *p == '[') depth++;
+    else if ((*p == '}' || *p == ']') && --depth == 0) return p;
+  }
+  return p;
+}
+// Valor de `key` en el objeto que empieza en `o` (solo en su primer nivel).
+static const char* keyIn(const char* o, const char* key) {
+  if (!o || *o != '{') return nullptr;
+  size_t kl = strlen(key);
+  int depth = 0;
+  for (const char* p = o; *p; p++) {
+    if (*p == '"') {
+      const char* e = skipStr(p);
+      if (depth == 1 && (size_t)(e - p - 2) == kl && !memcmp(p + 1, key, kl)) {
+        const char* v = e;
+        while (*v == ' ' || *v == ':') v++;
+        if (e[0] == ':') return v;
+      }
+      p = e - 1;
+      continue;
+    }
+    if (*p == '{' || *p == '[') depth++;
+    else if (*p == '}' || *p == ']') {
+      if (--depth == 0) return nullptr;
+    }
+  }
+  return nullptr;
+}
+static void strOf(const char* v, char* out, size_t n) {
+  size_t i = 0;
+  if (v && *v == '"')
+    for (v++; *v && *v != '"' && i < n - 1; v++) {
+      if (*v == '\\' && v[1]) v++;
+      out[i++] = *v;
+    }
+  out[i] = 0;
+}
+static double numOf(const char* v, double def = 0) {
+  return v && (*v == '-' || (*v >= '0' && *v <= '9')) ? strtod(v, nullptr) : def;
+}
+static bool isTrue(const char* v) { return v && !strncmp(v, "true", 4); }
+// Cada objeto de un array: el siguiente tras `prev` (nullptr = el primero).
+static const char* nextIn(const char* arr, const char* prev) {
+  if (!arr || *arr != '[') return nullptr;
+  const char* p = prev ? closeOf(prev) + 1 : arr + 1;
+  while (*p && *p != '{' && *p != ']') p++;
+  return *p == '{' ? p : nullptr;
+}
+static int teamOf(const char* v) {
+  char t[8];
+  strOf(v, t, sizeof(t));
+  return !strcmp(t, "blue") ? 1 : !strcmp(t, "white") ? 0 : -1;
+}
+
+static char* readAll(const char* path) {
+  FILE* f = fopen(path, "rb");
+  if (!f) return nullptr;
+  fseek(f, 0, SEEK_END);
+  long n = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  char* t = n > 0 && n < 4000000 ? (char*)malloc((size_t)n + 1) : nullptr;
+  bool ok = t && fread(t, 1, (size_t)n, f) == (size_t)n;
+  fclose(f);
+  if (!ok) {
+    free(t);
+    return nullptr;
+  }
+  t[n] = 0;
+  return t;
+}
+
+static void clean(char* s) {  // los separadores del índice no pueden ir en un nombre
+  for (; *s; s++)
+    if (*s == '|' || *s == ';' || *s == ',') *s = ' ';
+}
+
+// La fila de un partido a partir de su JSON (formato StoredMatch de la app).
+static bool rowFromText(const char* t, Row& r) {
+  memset(&r, 0, sizeof(r));
+  while (*t == ' ' || *t == '\n' || *t == '\r' || *t == '\t') t++;
+  if (*t != '{') return false;
+  strOf(keyIn(t, "id"), r.id, sizeof(r.id));
+  if (!r.id[0]) return false;
+  r.fin = (uint32_t)(numOf(keyIn(t, "finishedAt")) / 1000.0);
+  const char* cfg = keyIn(t, "config");
+  char s[24];
+  strOf(keyIn(cfg, "mode"), s, sizeof(s));
+  r.mode = !strcmp(s, "chaos") ? 'c' : !strcmp(s, "ranked") ? 'r' : 'q';
+  r.penRounds = (uint8_t)numOf(keyIn(cfg, "penaltyRounds"), 5);
+  const char* res = keyIn(t, "result");
+  int win = teamOf(keyIn(res, "winner"));
+  r.winner = win == 1 ? 'b' : win == 0 ? 'w' : '-';
+  strOf(keyIn(res, "reason"), s, sizeof(s));
+  r.reason = !strcmp(s, "golden_goal") ? 'g' : !strcmp(s, "penalties") ? 'p' : 'r';
+  const char* sc = keyIn(res, "score");
+  r.w = (uint8_t)numOf(keyIn(sc, "white"));
+  r.b = (uint8_t)numOf(keyIn(sc, "blue"));
+  const char* ps = keyIn(res, "penaltyScore");
+  r.pw = ps && *ps == '{' ? (int16_t)numOf(keyIn(ps, "white")) : -1;
+  r.pb = ps && *ps == '{' ? (int16_t)numOf(keyIn(ps, "blue")) : -1;
+  r.totalMs = (uint32_t)numOf(keyIn(res, "totalTimeMs"));
+  // Jugadores (por equipo, en el orden del partido)
+  static char ids[2][4][48];
+  memset(ids, 0, sizeof(ids));
+  const char* parts = keyIn(t, "participants");
+  for (const char* o = nextIn(parts, nullptr); o; o = nextIn(parts, o)) {
+    int tm = teamOf(keyIn(o, "team"));
+    if (tm < 0 || r.n[tm] >= 4) continue;
+    int i = r.n[tm]++;
+    strOf(keyIn(o, "playerId"), ids[tm][i], sizeof(ids[0][0]));
+    r.code[tm][i] = codeOf(ids[tm][i]);
+    strOf(keyIn(o, "nameSnapshot"), r.name[tm][i], sizeof(r.name[0][0]));
+    clean(r.name[tm][i]);
+  }
+  // Goles válidos (sin los anulados), como validGoalsFromEvents.
+  const char* evs = keyIn(t, "events");
+  static char annulled[160][12];
+  int na = 0;
+  for (const char* o = nextIn(evs, nullptr); o; o = nextIn(evs, o)) {
+    strOf(keyIn(o, "type"), s, sizeof(s));
+    char ref[12];
+    strOf(keyIn(o, "refEventId"), ref, sizeof(ref));
+    if (!strcmp(s, "CORRECTION") && ref[0] && na < 160) snprintf(annulled[na++], 12, "%s", ref);
+  }
+  // UNDO: deshace un gol (anulado) o una anulación (vuelve a valer).
+  for (const char* o = nextIn(evs, nullptr); o; o = nextIn(evs, o)) {
+    strOf(keyIn(o, "type"), s, sizeof(s));
+    if (strcmp(s, "UNDO")) continue;
+    char ref[12];
+    strOf(keyIn(o, "refEventId"), ref, sizeof(ref));
+    for (const char* q = nextIn(evs, nullptr); q && ref[0]; q = nextIn(evs, q)) {
+      char qid[12], qt[16];
+      strOf(keyIn(q, "id"), qid, sizeof(qid));
+      if (strcmp(qid, ref)) continue;
+      strOf(keyIn(q, "type"), qt, sizeof(qt));
+      if (!strcmp(qt, "GOAL") && na < 160) snprintf(annulled[na++], 12, "%s", qid);
+      if (!strcmp(qt, "CORRECTION")) {
+        char back[12];
+        strOf(keyIn(q, "refEventId"), back, sizeof(back));
+        for (int i = 0; i < na; i++)
+          if (!strcmp(annulled[i], back)) annulled[i][0] = 0;
+      }
+      break;
+    }
+  }
+  const char* scorers = keyIn(t, "scorers");
+  r.earliest[0] = r.earliest[1] = -1;
+  r.firstScorer = -1;
+  int score[2] = {0, 0}, runNow[2] = {0, 0}, maxDef = 0, loser = win == 0 ? 1 : 0;
+  bool first = true;
+  for (const char* o = nextIn(evs, nullptr); o; o = nextIn(evs, o)) {
+    strOf(keyIn(o, "type"), s, sizeof(s));
+    if (strcmp(s, "GOAL")) continue;
+    char gid[12];
+    strOf(keyIn(o, "id"), gid, sizeof(gid));
+    bool off = false;
+    for (int i = 0; i < na && !off; i++) off = annulled[i][0] && !strcmp(annulled[i], gid);
+    int tm = teamOf(keyIn(o, "team"));
+    if (off || tm < 0) continue;
+    int32_t ms = (int32_t)numOf(keyIn(o, "periodTimeMs"));
+    if (r.earliest[tm] < 0 || ms < r.earliest[tm]) r.earliest[tm] = ms;
+    runNow[tm]++;
+    runNow[1 - tm] = 0;
+    if (runNow[tm] > r.run[tm]) r.run[tm] = (uint8_t)runNow[tm];
+    score[tm] += (int)numOf(keyIn(o, "value"), 1);
+    if (win >= 0 && score[loser] - score[win] > maxDef) maxDef = score[loser] - score[win];
+    char who[48] = "";
+    if (scorers && *scorers == '{') strOf(keyIn(scorers, gid), who, sizeof(who));
+    for (int t2 = 0; t2 < 2 && who[0]; t2++)
+      for (int i = 0; i < r.n[t2]; i++)
+        if (!strcmp(ids[t2][i], who)) {
+          if (r.pg[t2][i] < 255) r.pg[t2][i]++;
+          if (first) r.firstScorer = (int8_t)(t2 * 4 + i);
+        }
+    first = false;
+  }
+  r.comeback = (uint8_t)maxDef;
+  const char* pens = keyIn(t, "penalties");
+  for (const char* o = nextIn(pens, nullptr); o; o = nextIn(pens, o)) {
+    int tm = teamOf(keyIn(o, "team"));
+    if (tm < 0) continue;
+    r.kicks[tm]++;
+    if (isTrue(keyIn(o, "scored"))) r.kicksIn[tm]++;
+    if (isTrue(keyIn(o, "suddenDeath"))) r.sdKicks++;
+  }
+  return true;
+}
+
+static bool rowFromJson(const char* path, Row& r) {
+  char* t = readAll(path);
+  if (!t) return false;
+  bool ok = rowFromText(t, r);
+  free(t);
+  return ok;
+}
+
+// ---------------------------------------------------------------- índice
+// Una línea por partido: id|fin|modo|ganador|cómo|B|A|penB|penA|<código,nombre;…>|<…>|x<cálculos, con comas>
 static void parseSide(const char* s, const char* end, Row& r, int t) {
   r.n[t] = 0;
   while (s < end && r.n[t] < 4) {
@@ -74,15 +302,15 @@ static void parseSide(const char* s, const char* end, Row& r, int t) {
 
 static bool parseLine(char* l, Row& r) {
   memset(&r, 0, sizeof(r));
-  char* f[11];
+  char* f[12];
   int k = 0;
   f[k++] = l;
-  for (char* p = l; *p && k < 11; p++)
+  for (char* p = l; *p && k < 12; p++)
     if (*p == '|') {
       *p = 0;
       f[k++] = p + 1;
     }
-  if (k < 11 || strlen(f[0]) > 36) return false;
+  if (k < 12 || strlen(f[0]) > 47 || f[11][0] != 'x') return false;  // sin los cálculos: se lee el JSON otra vez
   snprintf(r.id, sizeof(r.id), "%s", f[0]);
   r.fin = (uint32_t)strtoul(f[1], nullptr, 10);
   r.mode = f[2][0];
@@ -94,10 +322,73 @@ static bool parseLine(char* l, Row& r) {
   r.pb = f[8][0] == '-' ? -1 : (int16_t)atoi(f[8]);
   parseSide(f[9], f[9] + strlen(f[9]), r, 0);
   parseSide(f[10], f[10] + strlen(f[10]), r, 1);
+  long v[26] = {0};
+  int nv = 0;
+  for (char* p = f[11] + 1; *p && nv < 26;) {
+    v[nv++] = strtol(p, &p, 10);
+    if (*p == ',') p++;
+  }
+  if (nv < 21) return false;
+  r.totalMs = (uint32_t)v[0];
+  r.comeback = (uint8_t)v[1];
+  r.earliest[0] = (int32_t)v[2];
+  r.earliest[1] = (int32_t)v[3];
+  r.run[0] = (uint8_t)v[4];
+  r.run[1] = (uint8_t)v[5];
+  r.firstScorer = (int8_t)v[6];
+  r.kicks[0] = (uint8_t)v[7];
+  r.kicks[1] = (uint8_t)v[8];
+  r.kicksIn[0] = (uint8_t)v[9];
+  r.kicksIn[1] = (uint8_t)v[10];
+  r.sdKicks = (uint8_t)v[11];
+  r.penRounds = (uint8_t)v[12];
+  for (int i = 0; i < 8; i++) r.pg[i / 4][i % 4] = (uint8_t)v[13 + i];
   return true;
 }
 
+static int lineOf(const Row& r, char* line, size_t size) {
+  int n = snprintf(line, size, "%s|%lu|%c|%c|%c|%u|%u|", r.id, (unsigned long)r.fin, r.mode, r.winner, r.reason, r.w, r.b);
+  n += r.pw >= 0 ? snprintf(line + n, size - n, "%d|%d|", r.pw, r.pb) : snprintf(line + n, size - n, "-|-|");
+  for (int t = 0; t < 2; t++) {
+    for (int i = 0; i < r.n[t]; i++)
+      n += snprintf(line + n, size - n, "%s%08lx,%s", i ? ";" : "", (unsigned long)r.code[t][i], r.name[t][i]);
+    n += snprintf(line + n, size - n, "|");
+  }
+  n += snprintf(line + n, size - n, "x%lu,%u,%ld,%ld,%u,%u,%d,%u,%u,%u,%u,%u,%u", (unsigned long)r.totalMs, r.comeback,
+                (long)r.earliest[0], (long)r.earliest[1], r.run[0], r.run[1], r.firstScorer, r.kicks[0], r.kicks[1], r.kicksIn[0],
+                r.kicksIn[1], r.sdKicks, r.penRounds);
+  for (int i = 0; i < 8; i++) n += snprintf(line + n, size - n, ",%u", r.pg[i / 4][i % 4]);
+  return n;
+}
+
 static void indexPath(char* out, size_t n) { snprintf(out, n, "%s/indice.txt", dir); }
+static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json", dir, id); }
+
+static bool appendIndex(const Row& r) {
+  char ip[96], line[700];
+  indexPath(ip, sizeof(ip));
+  FILE* x = fopen(ip, "ab");
+  if (!x) return false;
+  lineOf(r, line, sizeof(line));
+  fprintf(x, "%s\n", line);
+  fclose(x);
+  return true;
+}
+
+static void rewriteIndex() {
+  char ip[96], tmp[100], line[700];
+  indexPath(ip, sizeof(ip));
+  snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
+  FILE* out = fopen(tmp, "wb");
+  if (!out) return;
+  for (int i = 0; i < count; i++) {
+    lineOf(rows[i], line, sizeof(line));
+    fprintf(out, "%s\n", line);
+  }
+  fclose(out);
+  ::remove(ip);
+  rename(tmp, ip);
+}
 
 // Al encender: dónde se guardan y la lista de los que ya hay.
 static void begin(bool sd) {
@@ -118,13 +409,24 @@ static void begin(bool sd) {
   indexPath(path, sizeof(path));
   FILE* f = fopen(path, "rb");
   if (!f) return;
-  char line[640];
+  char line[700];
+  bool dirty = false;
   while (fgets(line, sizeof(line), f)) {
     line[strcspn(line, "\r\n")] = 0;
     Row r;
-    if (parseLine(line, r)) push(r);
+    char id[48];
+    snprintf(id, sizeof(id), "%.*s", (int)strcspn(line, "|") < 47 ? (int)strcspn(line, "|") : 47, line);
+    if (parseLine(line, r)) {
+      push(r);
+    } else if (strlen(id) >= 36) {  // índice de una versión anterior: se vuelve a leer el partido
+      char jp[112];
+      jsonPath(id, jp, sizeof(jp));
+      if (rowFromJson(jp, r)) push(r);
+      dirty = true;
+    }
   }
   fclose(f);
+  if (dirty) rewriteIndex();
 }
 
 // ---------------------------------------------------------------- hora
@@ -191,10 +493,6 @@ static void jstr(FILE* f, const char* s) {
 static const char* TEAM[2] = {"white", "blue"};
 static const char* PERIOD[4] = {"first", "second", "overtime", "shootout"};
 
-static void clean(char* s) {  // los separadores del índice no pueden ir en un nombre
-  for (; *s; s++)
-    if (*s == '|' || *s == ';' || *s == ',') *s = ' ';
-}
 
 // Guarda el partido que acaba de terminar. Devuelve false si no se pudo escribir.
 static bool save(const mfv3::Engine& e, const Match& m) {
@@ -303,8 +601,10 @@ static bool save(const mfv3::Engine& e, const Match& m) {
       else ev("PERIOD_START", -1, lastPeriod, 0, nullptr);
     }
   };
+  static int goalSeq[mfv3::Engine::MAX_GOALS];
   for (uint8_t i = 0; i < e.goalCount(); i++) {
     const mfv3::Goal& g = e.goalAt(i);
+    goalSeq[i] = 0;
     int p = (int)g.period;
     if (p > 2) continue;
     closeTo(p);
@@ -322,6 +622,7 @@ static bool save(const mfv3::Engine& e, const Match& m) {
     if (bonus) n += snprintf(x + n, sizeof(x) - n, ",\"bonus\":[\"%s\"]", bonus);
     if (g.steal) snprintf(x + n, sizeof(x) - n, ",\"steal\":true");
     ev("GOAL", t, p, g.periodTimeMs, x);
+    goalSeq[i] = seq;
     if (g.annulled) {
       (t ? sb : sw) -= v;
       if (g.steal) (t ? sw : sb)++;
@@ -355,46 +656,31 @@ static bool save(const mfv3::Engine& e, const Match& m) {
     fprintf(f, "%s{\"order\":%u,\"team\":\"%s\",\"scored\":%s,\"attempt\":%d,\"suddenDeath\":%s,\"eventId\":\"e%d\"}", i ? "," : "", i + 1,
             TEAM[t], k.scored ? "true" : "false", att[t], att[t] > c.penaltyRounds ? "true" : "false", firstKick + i);
   }
-  fputs("]}\n", f);
+  fputs("]", f);
+  // Goleadores: si un equipo juega con un solo jugador, sus goles son suyos (autoScorers de la app).
+  if (m.n[0] == 1 || m.n[1] == 1) {
+    fputs(",\"scorers\":{", f);
+    bool firstS = true;
+    for (uint8_t i = 0; i < e.goalCount(); i++) {
+      int t = e.goalAt(i).team == Team::Blue;
+      if (!goalSeq[i] || m.n[t] != 1) continue;
+      fprintf(f, "%s\"e%d\":", firstS ? "" : ",", goalSeq[i]);
+      jstr(f, m.who[t][0].id);
+      firstS = false;
+    }
+    fputc('}', f);
+  }
+  fputs("}\n", f);
   bool ok = fclose(f) == 0;
   if (!ok) return false;
-  // Índice
+  // Índice: la fila sale del JSON recién escrito (igual que con los partidos que lleguen de la app).
   Row r;
-  memset(&r, 0, sizeof(r));
-  snprintf(r.id, sizeof(r.id), "%s", id);
-  r.fin = m.endEpoch;
-  r.mode = m.mode;
-  r.winner = e.winner() == Team::Blue ? 'b' : 'w';
-  r.reason = e.reason() == mfv3::Reason::GoldenGoal ? 'g' : e.reason() == mfv3::Reason::Penalties ? 'p' : 'r';
-  r.w = s.white;
-  r.b = s.blue;
-  r.pw = pens ? ps.white : -1;
-  r.pb = pens ? ps.blue : -1;
-  char line[640];
-  int n = snprintf(line, sizeof(line), "%s|%lu|%c|%c|%c|%u|%u|", r.id, (unsigned long)r.fin, r.mode, r.winner, r.reason, r.w, r.b);
-  n += pens ? snprintf(line + n, sizeof(line) - n, "%d|%d|", r.pw, r.pb) : snprintf(line + n, sizeof(line) - n, "-|-|");
-  for (int t = 0; t < 2; t++) {
-    r.n[t] = m.n[t];
-    for (int i = 0; i < m.n[t]; i++) {
-      r.code[t][i] = m.who[t][i].code;
-      snprintf(r.name[t][i], sizeof(r.name[0][0]), "%s", m.who[t][i].name);
-      clean(r.name[t][i]);
-      n += snprintf(line + n, sizeof(line) - n, "%s%08lx,%s", i ? ";" : "", (unsigned long)r.code[t][i], r.name[t][i]);
-    }
-    if (t == 0) n += snprintf(line + n, sizeof(line) - n, "|");
-  }
-  char ip[96];
-  indexPath(ip, sizeof(ip));
-  FILE* x = fopen(ip, "ab");
-  if (!x) return false;
-  fprintf(x, "%s\n", line);
-  fclose(x);
+  if (!rowFromJson(path, r)) return false;
+  appendIndex(r);
   push(r);
   return true;
 }
 
-// Ruta del JSON de un partido (para el detalle o para subirlo).
-static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json", dir, id); }
 
 // ---------------------------------------------------------------- hora local (para enseñar las fechas)
 static reloj::Clock localOf(uint32_t utc) {

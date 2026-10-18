@@ -15,6 +15,8 @@ g++ -std=c++11 -Wall -Wextra -Icommon test/ota_test.cpp -o /tmp/mfv3_ota_test &&
 g++ -std=c++11 -Wall -Wextra -Icommon test/radio_test.cpp -o /tmp/mfv3_radio_test && /tmp/mfv3_radio_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/sound_test.cpp -o /tmp/mfv3_sound_test && /tmp/mfv3_sound_test
 g++ -std=c++17 -Wall -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/jugadores_test.cpp -o /tmp/mfv3_jug_test && /tmp/mfv3_jug_test
+# ELO, XP, niveles y logros de la placa = los de la app (tests/fixtures/progresion)
+g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp -o /tmp/mfv3_prog_test && /tmp/mfv3_prog_test
 g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO -Itest/mock -Iarduino_usb -x c++ test/arduino_sim_test.cpp -o /tmp/mfv3_ard_sim && /tmp/mfv3_ard_sim
 # ESP32 clásico, C3, S3 y S2 (este último sin Bluetooth)
 for t in CONFIG_IDF_TARGET_ESP32 CONFIG_IDF_TARGET_ESP32C3 CONFIG_IDF_TARGET_ESP32S3 CONFIG_IDF_TARGET_ESP32S2; do

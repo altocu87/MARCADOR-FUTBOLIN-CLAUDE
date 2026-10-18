@@ -34,7 +34,7 @@ static uint32_t whoFilter = 0;   // código del jugador (0 = todos)
 static int page = 0;
 static int* shown = nullptr;     // índices de partidos::rows que pasan el filtro (el más nuevo primero)
 static int shownCount = 0, shownCap = 0;
-static char openId[37] = "";     // partido abierto en el detalle
+static char openId[48] = "";     // partido abierto en el detalle
 
 static void go(bool detail);
 
