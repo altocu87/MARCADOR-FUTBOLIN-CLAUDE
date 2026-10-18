@@ -1547,6 +1547,7 @@ void setup() {
                                &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
                                &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA})
     assets::preload(*c, true);
+  assets::preloadFonts();  // todas las letras abiertas (la primera vez que se usaba una grande, el partido se paraba)
   elegir::prewarm(&jugadores);  // fichas de la lista de jugadores ya pintadas
   sendHello();
   sendLine("STATE idle");

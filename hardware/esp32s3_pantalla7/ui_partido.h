@@ -666,6 +666,10 @@ static void update(const View& v) {
   // Capas de encima
   bool cd = v.phase == P_COUNTDOWN, paused = v.phase == P_PAUSED, end = v.phase == P_PERIOD_END;
   vis(overlay, cd || paused || end);
+  // En la cuenta atrás el fondo es opaco (en la app deja ver el partido al 14 %, casi negro): así LVGL no pinta el
+  // partido entero debajo y empieza antes.
+  lv_opa_t ov = cd ? LV_OPA_COVER : 219;
+  if (lv_obj_get_style_bg_opa(overlay, LV_PART_MAIN) != ov) lv_obj_set_style_bg_opa(overlay, ov, 0);
   vis(cdLayer, cd);
   vis(pauseLayer, paused && !v.confirmAbandon);
   vis(confirmLayer, paused && v.confirmAbandon);

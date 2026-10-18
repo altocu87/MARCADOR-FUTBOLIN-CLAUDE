@@ -11,6 +11,7 @@
 
 #include <lvgl.h>
 #include <math.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include "libs/tjpgd/tjpgd.h"
@@ -378,7 +379,7 @@ struct Font {
   bool italic;
   lv_font_t* font;
 };
-static Font fonts[40];
+static Font fonts[48];
 static int fontCount = 0;
 
 static const lv_font_t* font(uint16_t weight, uint16_t size, bool italic = false) {
@@ -386,13 +387,45 @@ static const lv_font_t* font(uint16_t weight, uint16_t size, bool italic = false
     if (fonts[i].weight == weight && fonts[i].size == size && fonts[i].italic == italic) return fonts[i].font;
   char path[320];
   snprintf(path, sizeof(path), "A:%s/fuentes/inter-%u%s-%u.bin", ROOT, weight, italic ? "i" : "", size);
-  lv_font_t* f = lv_binfont_create(path);
+  uint32_t t0 = lv_tick_get();
+  // El fichero entero a la memoria de una vez y la letra se monta desde ahí: leyéndolo trozo a trozo (como hace
+  // LVGL) una de las cifras grandes tardaba medio segundo.
+  lv_font_t* f = nullptr;
+  char full[320];
+  snprintf(full, sizeof(full), "%s/fuentes/inter-%u%s-%u.bin", ROOT, weight, italic ? "i" : "", size);
+  if (FILE* fp = fopen(full, "rb")) {
+    fseek(fp, 0, SEEK_END);
+    long n = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    void* buf = n > 0 ? malloc((size_t)n) : nullptr;
+    if (buf && fread(buf, 1, (size_t)n, fp) == (size_t)n) f = lv_binfont_create_from_buffer(buf, (uint32_t)n);
+    fclose(fp);
+    free(buf);  // la letra ya tiene su copia
+  }
+  if (!f) f = lv_binfont_create(path);
+  if (lv_tick_elaps(t0) > 40) LV_LOG_WARN("Letra %u%s-%u: %lu ms", weight, italic ? "i" : "", size, (unsigned long)lv_tick_elaps(t0));
   if (!f) {
     LV_LOG_WARN("Falta la letra %s", path);
     return LV_FONT_DEFAULT;
   }
   if (fontCount < (int)(sizeof(fonts) / sizeof(fonts[0]))) fonts[fontCount++] = {weight, size, italic, f};
   return f;
+}
+
+// Todas las letras de la carpeta, cargadas al encender: la primera vez que se usa una grande (las cifras del
+// marcador, ~180 KB) tardaba en abrirse y el partido se quedaba parado antes de empezar.
+static void preloadFonts() {
+  char dirPath[300];
+  snprintf(dirPath, sizeof(dirPath), "%s/fuentes", ROOT);
+  DIR* d = opendir(dirPath);
+  if (!d) return;
+  while (struct dirent* e = readdir(d)) {
+    unsigned w = 0, sz = 0;
+    char it = 0;
+    if (sscanf(e->d_name, "inter-%u-%u.bin", &w, &sz) == 2) font((uint16_t)w, (uint16_t)sz);
+    else if (sscanf(e->d_name, "inter-%u%c-%u.bin", &w, &it, &sz) == 3 && it == 'i') font((uint16_t)w, (uint16_t)sz, true);
+  }
+  closedir(d);
 }
 
 // Tamaño (en px) con el que se pidió una letra; 0 si no es de las nuestras. Hace falta para colocar el texto en
