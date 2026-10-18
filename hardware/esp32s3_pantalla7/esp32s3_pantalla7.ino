@@ -247,7 +247,7 @@ static const char* phaseName(Phase p) {
 static bool inMatch = false;       // false = pantalla de inicio
 static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
 static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
-static bool haveTeams = false;        // equipos del partido anterior (se proponen otra vez)
+static bool haveTeams = false;        // equipos ya elegidos (para REVANCHA o al volver a elegir sin pasar por inicio)
 static uint8_t chosenMode = 0;     // inicio::QUICK, CHAOS o RANKED
 static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
 static uint32_t lastKey = 0xFFFFFFFF;
@@ -1021,6 +1021,7 @@ static uint32_t screenKey(uint32_t now) {
 static void onModeChosen(uint8_t mode) {
   chosenMode = mode;
   homeCards = false;
+  haveTeams = false;  // partido nuevo desde el inicio: equipos vacíos, como la app (REVANCHA sí repite los mismos)
   lastKey = 0xFFFFFFFF;
 }
 
@@ -1056,7 +1057,12 @@ static void onConfigNext() {
     startMatch();
   }
 }
-static void onPlayersBack() { choosingPlayers = false; }
+// Atrás desde elegir jugadores: lo elegido se guarda por si se vuelve a CONTINUAR (como la app).
+static void onPlayersBack() {
+  choosingPlayers = false;
+  chosenTeams = elegir::teams;
+  haveTeams = chosenTeams.n[0] + chosenTeams.n[1] > 0;
+}
 static void onPlayersDone(const elegir::Teams& t) {
   chosenTeams = t;
   haveTeams = true;
