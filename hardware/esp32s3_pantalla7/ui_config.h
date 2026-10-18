@@ -150,26 +150,7 @@ static lv_obj_t* zone(int x, int y, int w, int h, lv_event_cb_t cb, intptr_t use
   return o;
 }
 
-// Cifras preparadas de una en una al entrar (encendidas y apagadas, 20): así al tocar no hay que descomprimir
-// ninguna. Una cada 50 ms para no parar la pantalla; se quedan mientras se esté en esta pantalla.
-static lv_timer_t* warmTimer = nullptr;
-static int warmNext = 0;
-static void warm(lv_timer_t*) {
-  if (warmNext < 20) {
-    assets::preload(warmNext < 10 ? *DIG_ON[warmNext] : *DIG_OFF[warmNext - 10]);
-    warmNext++;
-  }
-  if (warmNext >= 20 && warmTimer) {
-    lv_timer_delete(warmTimer);
-    warmTimer = nullptr;
-  }
-}
-
-static void onDelete(lv_event_t*) {
-  scr = nullptr;
-  if (warmTimer) lv_timer_delete(warmTimer);
-  warmTimer = nullptr;
-}
+static void onDelete(lv_event_t*) { scr = nullptr; }
 
 static void build() {
   scr = ui::screen();
@@ -208,8 +189,8 @@ static void build() {
   zone(275, 416, 250, 54, onNext, 0);
   refresh();
   lastClockKey = 0xFFFFFFFF;
-  warmNext = 0;
-  if (!warmTimer) warmTimer = lv_timer_create(warm, 50, nullptr);
+  // (Las cifras ya no se preparan de antemano: descomprimirlas mientras se usaba la pantalla hacía perder toques,
+  // sobre todo el primer CONTINUAR. Cada una tarda ~0,04 s la primera vez que sale.)
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }

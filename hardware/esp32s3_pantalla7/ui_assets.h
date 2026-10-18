@@ -78,7 +78,9 @@ static Cached* cache[MAX_CACHED];  // cada una en su sitio fijo: LVGL guarda la 
 static int cachedCount = 0;
 static uint32_t useCounter = 0;
 static size_t cachedBytes = 0;
-static const size_t MAX_CACHED_BYTES = 10u * 1024u * 1024u;  // de 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla
+// De 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla, ~3 MB las letras y lo demás objetos, fichas y cifras
+// del reloj. Con 10 MB la memoria se quedaba sin un hueco grande para los carteles y la placa podía reiniciarse.
+static const size_t MAX_CACHED_BYTES = 8u * 1024u * 1024u;
 
 // Las imágenes pedidas desde el último cambio de pantalla (`screenEpoch`) las está usando la pantalla actual:
 // esas no se borran nunca (LVGL las está pintando); se borra la más antigua de las demás.
@@ -412,6 +414,13 @@ static const lv_image_dsc_t* flat(const capas::Capa& c, uint32_t bg, bool sticky
       break;
     }
   return &e.dsc;
+}
+
+// Suelta imágenes guardadas (las más antiguas que no use la pantalla) hasta dejar `bytes` libres de la caché: para
+// hacer sitio a algo grande (un cartel) antes de pedirlo.
+static void trim(size_t bytes) {
+  while (cachedCount && cachedBytes + bytes > MAX_CACHED_BYTES)
+    if (!evictOne()) break;
 }
 
 // Fuente para lv_image_set_src: capa ya descomprimida (LZ4 o JPEG) o ruta «A:» de una imagen de LVGL (.bin).

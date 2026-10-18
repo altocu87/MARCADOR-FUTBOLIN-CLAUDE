@@ -314,6 +314,20 @@ static Snapshot takeSnapshot() {
   return Snapshot{eng.phase(), eng.period(), s.white, s.blue, eng.kickCount(), eng.suddenDeath()};
 }
 
+// Goles seguidos (sin anulados) del equipo que marcó el último.
+static uint8_t lastStreak() {
+  uint8_t n = 0;
+  int team = -1;
+  for (int i = (int)eng.goalCount() - 1; i >= 0; i--) {
+    const mfv3::Goal& g = eng.goalAt((uint8_t)i);
+    if (g.annulled) continue;
+    if (team < 0) team = (int)g.team;
+    else if ((int)g.team != team) break;
+    n++;
+  }
+  return n;
+}
+
 static void afterChange(bool goalAccepted, Team goalTeam) {
   Snapshot now = takeSnapshot();
   char buf[32];
@@ -333,8 +347,9 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   }
   if (now.phase == Phase::Penalties && now.sudden && !snap.sudden) partido::banner(partido::B_MUERTE_SUBITA);
   if (goalAccepted) {
-    // ¡GOL! a pantalla completa (si el partido sigue: el gol que lo gana va directo a la victoria).
-    if (now.phase != Phase::Finished && now.phase != Phase::Penalties) partido::celebrate((uint8_t)goalTeam);
+    // ¡GOL! en franja (si el partido sigue: el gol que lo gana va directo a la victoria).
+    if (now.phase != Phase::Finished && now.phase != Phase::Penalties)
+      partido::celebrate((uint8_t)goalTeam, lastStreak(), now.w == now.b);
     sendLine(goalTeam == Team::White ? "GOAL BLANCO" : "GOAL AZUL");
     sendLine("LOCK 3000");
     flashTeam = goalTeam;
@@ -344,6 +359,9 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     goalOutput(goalTeam);
 #endif
   }
+  // Gol anulado: el marcador baja.
+  if (inMatch && now.phase != Phase::Penalties && (now.w < snap.w || now.b < snap.b))
+    partido::annulled(now.w < snap.w ? 0 : 1);
   if (now.w != snap.w || now.b != snap.b) {
     snprintf(buf, sizeof(buf), "SCORE %u %u", now.w, now.b);
     sendLine(buf);
@@ -531,6 +549,9 @@ static void handleBoardLine(const char* line) {
     snprintf(b, sizeof(b), "MEMORIA interna %u (mayor %u, minima %u) psram %u", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    sendLine(b);
+    snprintf(b, sizeof(b), "MEMORIA psram mayor hueco %u, cache %u KB", (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+             (unsigned)(assets::cachedBytes / 1024));
     sendLine(b);
   }
 #endif
@@ -1544,8 +1565,7 @@ void setup() {
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
   // con su porcentaje (unos 7 s al encender).
-  static const capas::Capa* const BOOT_LAYERS[] = {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::CARTEL_PARTIDO,
-                               &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL,
+  static const capas::Capa* const BOOT_LAYERS[] = {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO,
                                // tarjetas y botones de inicio y configuración encendidos y pulsados: al tocarlos
                                // responden al momento (antes la primera vez tardaban ~0,2 s en descomprimirse)
                                &capas::INICIO_SEL_RAPIDO, &capas::INICIO_SEL_LOCO, &capas::INICIO_SEL_CLASIFICATORIO,

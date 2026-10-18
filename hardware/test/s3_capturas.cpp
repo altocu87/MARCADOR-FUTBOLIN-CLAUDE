@@ -130,6 +130,24 @@ int main(int argc, char** argv) {
   shot("partido", 1080);
   goal(true, 600);
   shot("partido-gol", 0);
+  // Los demás carteles en franja (ui_cartel.h), uno tras otro sobre el mismo partido.
+  partido::celebrate(1, 3, false);
+  shot("cartel-racha", 0);
+  partido::celebrate(0, 1, true);
+  shot("cartel-empate", 0);
+  partido::celebrate(0, 2, false);
+  shot("cartel-otro-mas", 0);
+  partido::annulled(0);
+  shot("cartel-anulado", 0);
+  partido::banner(partido::B_PRORROGA);
+  shot("cartel-prorroga", 0);
+  partido::banner(partido::B_PENALTIS);
+  shot("cartel-penaltis", 0);
+  partido::banner(partido::B_MUERTE_SUBITA);
+  shot("cartel-muerte-subita", 0);
+  partido::banner(partido::B_PARTIDO_LOCO);
+  shot("cartel-partido-loco", 0);
+  cartel::hide();
   run(2700);
   for (bool w : {false, true, false, true}) goal(w);
   run(65000);

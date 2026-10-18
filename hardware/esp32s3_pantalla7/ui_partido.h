@@ -12,6 +12,7 @@
 #define MFV3_UI_PARTIDO_H
 
 #include "ui_base.h"
+#include "ui_cartel.h"
 #include "ui_sevenseg.h"
 #include "s3_jugadores.h"
 
@@ -311,46 +312,40 @@ static lv_obj_t* zone(lv_obj_t* parent, float x, float y, float w, float h, lv_e
   return o;
 }
 
-// ---------------------------------------------------------------- ¡GOL! a pantalla completa
-// Seis variantes por equipo fotografiadas de la app (GoalEffect.tsx); cada gol enseña una, como allí. Entra
-// fundiéndose en 0,2 s y se va de 2,8 a 3,2 s (lo que dura en la app, justo pasado el bloqueo de 3 s). La app las
-// anima con mucho más movimiento; aquí, la imagen final de cada una (un zoom de pantalla entera iría a tirones).
-static const capas::Capa* GOL[2][6] = {
-    {&capas::GOL_BLANCO_ZOOM, &capas::GOL_BLANCO_GOOOOL, &capas::GOL_BLANCO_NEON, &capas::GOL_BLANCO_GOLDEN,
-     &capas::GOL_BLANCO_COMIC, &capas::GOL_BLANCO_CONFETTI},
-    {&capas::GOL_AZUL_ZOOM, &capas::GOL_AZUL_GOOOOL, &capas::GOL_AZUL_NEON, &capas::GOL_AZUL_GOLDEN,
-     &capas::GOL_AZUL_COMIC, &capas::GOL_AZUL_CONFETTI}};
-static lv_obj_t* goalShow = nullptr;
-static uint8_t nextVariant = 0;
+// ---------------------------------------------------------------- ¡GOL! en franja
+// En la app, a pantalla completa (GoalEffect.tsx); en la placa, una franja inclinada que dibuja ella misma
+// (ui_cartel.h): al irse solo se repinta lo que tapaba. Variedad: ¡GOL! y ¡GOLAZO! alternos, ¡OTRO MÁS! con dos
+// seguidos del mismo equipo, ¡RACHA xN! desde tres, y ¡EMPATE! si el gol iguala. Dura 2,6 s (casi el bloqueo).
+static uint8_t goalCount = 0;
+static const char* const TEAM_SUB[2] = {"EQUIPO BLANCO", "EQUIPO AZUL"};
 
-static void goalGone(lv_anim_t* a) {
-  lv_obj_t* o = (lv_obj_t*)a->var;
-  if (o == goalShow) goalShow = nullptr;
-  lv_obj_delete_async(o);
-}
-
-static void preloadNext(lv_timer_t*) {
-  assets::preload(*GOL[0][nextVariant]);
-  assets::preload(*GOL[1][nextVariant]);
-}
-
-static void celebrate(uint8_t team) {
+static void celebrate(uint8_t team, uint8_t streak = 1, bool tie = false) {
   if (!scr || lv_screen_active() != scr) return;
-  if (goalShow) lv_obj_delete(goalShow);
-  goalShow = ui::layer(scr, *GOL[team & 1][nextVariant % 6]);
-  // Aparece y se va de golpe (la app la funde): fundir una imagen de pantalla entera obliga a repintarla mezclada
-  // en cada paso y la placa daba trompicones. Se queda los mismos 3,2 s.
-  lv_anim_t a;
-  lv_anim_init(&a);
-  lv_anim_set_var(&a, goalShow);
-  lv_anim_set_values(&a, 0, 1);
-  lv_anim_set_duration(&a, 3200);
-  lv_anim_set_completed_cb(&a, goalGone);
-  lv_anim_start(&a);
-  nextVariant = (uint8_t)((nextVariant + 1) % 6);
-  // La siguiente se prepara mientras se ve esta (la imagen está quieta entre 0,2 y 2,8 s): al marcar no hay espera.
-  lv_timer_t* t = lv_timer_create(preloadNext, 700, nullptr);
-  lv_timer_set_repeat_count(t, 1);
+  team &= 1;
+  static char title[24];
+  const cartel::Style* st = team ? &cartel::BLUE_GOAL : &cartel::WHITE_GOAL;
+  if (streak >= 3) {
+    snprintf(title, sizeof(title), "¡RACHA x%u!", streak);
+    st = &cartel::FIRE;
+  } else if (streak == 2) {
+    snprintf(title, sizeof(title), "¡OTRO MÁS!");
+  } else if (tie) {
+    snprintf(title, sizeof(title), "¡EMPATE!");
+    st = &cartel::GOLD;
+  } else if (goalCount % 3 == 2) {
+    snprintf(title, sizeof(title), "¡GOLAZO!");
+    st = &cartel::GOLD;
+  } else {
+    snprintf(title, sizeof(title), "¡GOL!");
+  }
+  goalCount++;
+  cartel::show(*st, title, TEAM_SUB[team], 2600);
+}
+
+// Gol anulado: franja roja con el equipo al que se le quita.
+static void annulled(uint8_t team) {
+  if (!scr || lv_screen_active() != scr) return;
+  cartel::show(cartel::ANNUL, "GOL ANULADO", TEAM_SUB[team & 1], 1800);
 }
 
 // «🔥 xN» arriba en la tarjeta de quien lleva la racha; aparece creciendo (pop-in de la app, 0,3 s).
@@ -384,31 +379,19 @@ static void showStreak(uint8_t team, uint8_t n) {
 }
 
 // ---------------------------------------------------------------- carteles (Banner de la app)
-// Franja inclinada que entra por la izquierda (0,29 s), se queda y sale por la derecha; 1,5 s en total. Va en la capa
-// de arriba para verse también sobre los penaltis.
+// Al empezar cada parte, la prórroga, los penaltis y la muerte súbita: la misma franja inclinada (ui_cartel.h),
+// 1,5 s. Va en la capa de arriba para verse también sobre los penaltis.
 enum Banner : uint8_t { B_PARTIDO, B_PARTIDO_LOCO, B_1_PARTE, B_2_PARTE, B_PRORROGA, B_PENALTIS, B_MUERTE_SUBITA };
-static const capas::Capa* CARTEL[7] = {&capas::CARTEL_PARTIDO, &capas::CARTEL_PARTIDO_LOCO, &capas::CARTEL_1_PARTE,
-                                       &capas::CARTEL_2_PARTE, &capas::CARTEL_PRORROGA, &capas::CARTEL_PENALTIS,
-                                       &capas::CARTEL_MUERTE_SUBITA};
-static lv_obj_t* bannerObj = nullptr;
-static void bannerGone(lv_anim_t* a) {
-  lv_obj_t* o = (lv_obj_t*)a->var;
-  if (o == bannerObj) bannerObj = nullptr;
-  lv_obj_delete_async(o);
-}
 static void banner(uint8_t which) {
-  if (bannerObj) lv_obj_delete(bannerObj);
-  const capas::Capa& c = *CARTEL[which % 7];
-  bannerObj = ui::layer(lv_layer_top(), c);
-  // En su sitio desde el principio y fuera a los 1,5 s (en la app entra y sale deslizándose): moverla por la
-  // pantalla repintaba en cada paso una franja de 800 × 220 con transparencias.
-  lv_anim_t a;
-  lv_anim_init(&a);
-  lv_anim_set_var(&a, bannerObj);
-  lv_anim_set_values(&a, 0, 1);
-  lv_anim_set_duration(&a, 1500);
-  lv_anim_set_completed_cb(&a, bannerGone);
-  lv_anim_start(&a);
+  switch (which) {
+    case B_PARTIDO_LOCO: cartel::show(cartel::CHAOS, "PARTIDO LOCO", "¡A JUGAR!", 1500); break;
+    case B_1_PARTE: cartel::show(cartel::START, "1ª PARTE", "¡A JUGAR!", 1500); break;
+    case B_2_PARTE: cartel::show(cartel::START, "2ª PARTE", "¡A JUGAR!", 1500); break;
+    case B_PRORROGA: cartel::show(cartel::EXTRA, "PRÓRROGA", "¡EL QUE MARQUE GANA!", 1800); break;
+    case B_PENALTIS: cartel::show(cartel::PENALTY, "PENALTIS", "¡MUCHA SUERTE!", 1800); break;
+    case B_MUERTE_SUBITA: cartel::show(cartel::SUDDEN, "MUERTE SÚBITA", "¡TODO O NADA!", 1800); break;
+    default: cartel::show(cartel::START, "PARTIDO", "¡A JUGAR!", 1500); break;
+  }
 }
 
 // Bola de partido (mp-pulse): aro de 3 px y halo rojo de 32 px que baja a 12 px y vuelve cada 1,1 s; el cartel late.
@@ -427,6 +410,9 @@ static void setMatchPoint(uint8_t mask) {
   if (mask == mpMask) return;
   mpMask = mask;
   mpLevel = -1;
+  // A un gol de ganar: se prepara ya la victoria de ese equipo (al encender no, para no ocupar memoria siempre).
+  if (mask & 1) assets::preload(capas::VICTORIA_BLANCO);
+  if (mask & 2) assets::preload(capas::VICTORIA_AZUL);
   for (int t = 0; t < 2; t++) {
     bool on = mask >> t & 1;
     lv_obj_set_style_outline_width(panel[t], on ? 3 : 0, 0);
@@ -581,11 +567,9 @@ static void build() {
   endNote = ui::text(endLayer, "", 400, 16, ui::color::TEXT2);
   endCta = ui::button(endLayer, 250, 296, 300, 68, "CONTINUAR", 20, ui::BtnKind::Primary, onNext);
   fresh = true;
-  goalShow = nullptr;
+  goalCount = 0;
   mpMask = 0;
   lineupKey[0] = lineupKey[1] = 0xFFFFFFFF;
-  lv_timer_t* t = lv_timer_create(preloadNext, 1500, nullptr);
-  lv_timer_set_repeat_count(t, 1);
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }
@@ -661,7 +645,9 @@ static void update(const View& v) {
   }
   // Bloqueo: barra que se vacía en las dos tarjetas y el aviso con décimas.
   for (int t = 0; t < 2; t++) {
-    vis(panelDim[t], v.lockMs > 0);
+    // En la app las tarjetas se oscurecen durante el bloqueo; en la placa no (encenderlo y apagarlo repintaba las
+    // dos tarjetas enteras con su brillo en cada gol). Quedan la barra y el aviso de «BLOQUEO».
+    vis(panelDim[t], false);
     vis(cardsVeil[t], v.lockMs > 0);
     vis(lockTrack[t], v.lockMs > 0);
     if (v.lockMs) {

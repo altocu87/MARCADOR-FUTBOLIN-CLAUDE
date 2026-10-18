@@ -136,7 +136,7 @@ struct Glyph {
   lv_draw_buf_t* buf;
   uint32_t used;
 };
-static Glyph glyphs[48];
+static Glyph glyphs[28];  // reloj del partido (3 colores), cuenta atrás y configuración
 static uint32_t glyphUse = 0;
 
 static void drawDigit(const Ctx& c, char ch, lv_color_t col, uint8_t glow, bool ghost) {

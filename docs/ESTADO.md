@@ -141,6 +141,14 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
     de la foto de la app (Alex); sus tarjetas y botones encendidos y pulsados se preparan al encender y la tarjeta
     elegida se enciende de golpe. Reloj de reposo nuevo y ligero (hora grande dentro de un aro que hace de
     secundero): cada segundo repinta solo un trocito (11 ms).
+  - Carteles en franja horizontal dibujada por la placa (sin imágenes): ¡GOL!, ¡GOLAZO!, ¡OTRO MÁS!, ¡RACHA xN!,
+    ¡EMPATE!, GOL ANULADO, PARTIDO, PARTIDO LOCO, 1ª/2ª PARTE, PRÓRROGA, PENALTIS y MUERTE SÚBITA (antes
+    imágenes de pantalla completa de la app). Al irse solo se repinta la franja: 0,08 s (0,3). Las tarjetas ya no
+    se oscurecen durante el bloqueo (quedan la barra y el aviso).
+  - Memoria: la caché de imágenes baja a 8 MB y las victorias se preparan al llegar a bola de partido (con 10 MB
+    la placa se quedaba sin un hueco grande y podía reiniciarse).
+  - Pendiente: una comprobación del PC (pantalla de actualizar sin internet, s3_sim_test) falla de vez en cuando
+    (2 de unas 15 veces) y luego pasa; sin causa encontrada todavía.
   - La imagen se corría de lado al cambiar mucho la pantalla (cartel de gol): la interrupción del panel vuelve a ir
     en el mismo núcleo que dibuja (en el otro se pisaban la PSRAM). Pendiente de que Alex confirme que ya no pasa.
 

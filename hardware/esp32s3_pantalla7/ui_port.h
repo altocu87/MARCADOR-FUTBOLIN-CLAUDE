@@ -31,7 +31,7 @@ static bool swallowing = false, wasDown = false;
 static volatile int16_t fakeX2 = 0, fakeY2 = 0;
 static volatile uint32_t fakeStart = 0, fakeMove = 0;  // arrastre simulado: de (fakeX, fakeY) a (fakeX2, fakeY2)
 
-static void injectTouch(int16_t x, int16_t y, uint32_t ms = 90) {
+static void injectTouch(int16_t x, int16_t y, uint32_t ms = 160) {  // como un dedo (con 90 ms se perdía si la placa estaba pintando)
   fakeX = fakeX2 = x;
   fakeY = fakeY2 = y;
   fakeStart = millis();
