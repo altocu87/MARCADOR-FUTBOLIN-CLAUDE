@@ -52,6 +52,7 @@
 #include "ui_jugadores.h"
 #include "ui_perfil.h"
 #include "ui_cargando.h"
+#include "s3_loco.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -240,6 +241,8 @@ static const char* phaseName(Phase p) {
     case Phase::PeriodEnd: return "periodEnd";
     case Phase::Penalties: return "penalties";
     case Phase::Finished: return "finished";
+    case Phase::Handicap: return "handicap";
+    case Phase::Visit: return "visit";
   }
   return "idle";
 }
@@ -248,6 +251,7 @@ static const char* phaseName(Phase p) {
 static bool inMatch = false;       // false = pantalla de inicio
 static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
 static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
+static elegir::Teams chosenTeams;
 static bool haveTeams = false;        // equipos ya elegidos (para REVANCHA o al volver a elegir sin pasar por inicio)
 static uint8_t chosenMode = 0;     // inicio::QUICK, CHAOS o RANKED
 static Screen screen = Screen::Home;  // fuera del partido: Inicio o una de AJUSTES
@@ -348,8 +352,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   if (now.phase == Phase::Penalties && now.sudden && !snap.sudden) partido::banner(partido::B_MUERTE_SUBITA);
   if (goalAccepted) {
     // ¡GOL! en franja (si el partido sigue: el gol que lo gana va directo a la victoria).
-    if (now.phase != Phase::Finished && now.phase != Phase::Penalties)
-      partido::celebrate((uint8_t)goalTeam, lastStreak(), now.w == now.b);
+    if (now.phase != Phase::Finished && now.phase != Phase::Penalties) {
+      const mfv3::Goal& g = eng.goalAt((uint8_t)(eng.goalCount() - 1));
+      partido::celebrate((uint8_t)goalTeam, lastStreak(), now.w == now.b, (uint8_t)g.bonus);
+    }
     sendLine(goalTeam == Team::White ? "GOAL BLANCO" : "GOAL AZUL");
     sendLine("LOCK 3000");
     flashTeam = goalTeam;
@@ -359,8 +365,28 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     goalOutput(goalTeam);
 #endif
   }
-  // Gol anulado: el marcador baja.
-  if (inMatch && now.phase != Phase::Penalties && (now.w < snap.w || now.b < snap.b))
+  // Partido Loco: penalti del hándicap, fin de un hándicap gastado y visitas de los animales.
+  static uint16_t seenPenalty = 0, seenVisit = 0;
+  if (eng.penaltySeq() != seenPenalty) {
+    seenPenalty = eng.penaltySeq();
+    if (eng.lastHandicapPenalty() == 1) {
+      partido::celebrate((uint8_t)eng.lastHandicapPenaltyTeam(), 1, false, (uint8_t)mfv3::Bonus::Penalty);
+      flashTeam = eng.lastHandicapPenaltyTeam();
+      flashUntil = millis() + 900;
+      beep(90);
+    } else if (eng.lastHandicapPenalty() == 2) {
+      partido::showInfo(cartel::ANNUL, "PENALTI FALLADO", eng.lastHandicapPenaltyTeam() == Team::Blue ? "EQUIPO AZUL" : "EQUIPO BLANCO", 1800);
+    }
+  }
+  if (eng.visitSeq() != seenVisit && eng.phase() == Phase::Visit) {
+    seenVisit = eng.visitSeq();
+    char vt[40], vs[48];
+    loco::visitTexts(eng.visitor(), vt, sizeof(vt), vs, sizeof(vs));
+    partido::visit((uint8_t)eng.visitor().animal, vt, vs, 7400);
+  }
+  // Gol anulado: el marcador baja (no la ardilla ni el robo, que ya salen en su franja).
+  bool chaosChange = now.phase == Phase::Visit || snap.phase == Phase::Visit || goalAccepted;
+  if (inMatch && !chaosChange && now.phase != Phase::Penalties && (now.w < snap.w || now.b < snap.b))
     partido::annulled(now.w < snap.w ? 0 : 1);
   if (now.w != snap.w || now.b != snap.b) {
     snprintf(buf, sizeof(buf), "SCORE %u %u", now.w, now.b);
@@ -378,7 +404,15 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
 }
 
 // ---------------------------------------------------------------- acciones
+static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (solo pantalla: el reloj ya está parado)
+static uint16_t hcIntroSeq = 0;
 static void startMatch() {
+  // Partido Loco: hándicaps y visitas; algunos dependen de cuántos juegan en cada equipo.
+  cfg.chaos = chosenMode == inicio::CHAOS;
+  cfg.players[0] = haveTeams && chosenTeams.n[0] ? chosenTeams.n[0] : 1;
+  cfg.players[1] = haveTeams && chosenTeams.n[1] ? chosenTeams.n[1] : 1;
+  hcIntroUntil = 0;
+  hcIntroSeq = 0;
   if (!eng.start(cfg, millis())) return;
   inMatch = true;
   confirmAbandon = false;
@@ -418,6 +452,17 @@ static void inputGoal(Team t) {
     if (eng.penalty(t, true, now) == mfv3::Result::Accepted) afterChange(false, t);
     return;
   }
+  // Partido Loco: con el cartel del hándicap, un pulsador sigue (en el penalti, el del equipo que tira es gol y el
+  // del rival, fallo). Durante la visita de un animal no se hace nada.
+  if (eng.phase() == Phase::Handicap) {
+    if (eng.handicapStage() == mfv3::HStage::Announce && now < hcIntroUntil) hcIntroUntil = now;
+    else if (eng.handicapStage() == mfv3::HStage::Announce && eng.handicap().kind == mfv3::HKind::Penalty)
+      eng.handicapPenalty((uint8_t)t == eng.handicap().team, now);
+    else eng.handicapGo(now);
+    afterChange(false, t);
+    return;
+  }
+  if (eng.phase() == Phase::Visit) return;
   mfv3::Result r = eng.goal(t, now);
   afterChange(r == mfv3::Result::Accepted, t);
 }
@@ -1065,7 +1110,6 @@ static void onConfigChanged(const config::State& s) {
                                             : mfv3::EndCondition::Goals;
 }
 static void onConfigBack() { homeCards = true; }
-static elegir::Teams chosenTeams;
 static const char* const MODE_LABEL[3] = {"PARTIDO RÁPIDO", "PARTIDO LOCO", "CLASIFICATORIO"};
 
 // CONTINUAR: con jugadores pasados por la app, a elegirlos; sin ellos, directo al partido (Blanco contra Azul).
@@ -1100,6 +1144,7 @@ static void formatClock(char* out, size_t n, uint32_t ms) {
 }
 
 // Lo que enseña la pantalla del partido, sacado del motor (mismos textos y colores que MatchScreen.tsx).
+static void hcName(uint8_t team, int8_t idx, char* out, size_t n);
 static void matchView(partido::View& v, uint32_t now) {
   memset(&v, 0, sizeof(v));
   mfv3::Score s = eng.score();
@@ -1183,9 +1228,59 @@ static void matchView(partido::View& v, uint32_t now) {
       if (!jugadores.photoRel(p->code, c.photo, sizeof(c.photo))) c.photo[0] = 0;
     }
   }
+  // Partido Loco
+  mfv3::HStage st = eng.handicapStage();
+  v.hcStage = (uint8_t)st;
+  if (st != mfv3::HStage::None) {
+    const mfv3::Handicap& h = st == mfv3::HStage::Ending ? eng.lastEnded() : eng.handicap();
+    v.hcKind = (uint8_t)h.kind;
+    v.hcTeam = h.team;
+    v.hcSeq = h.seq;
+    loco::Texts t;
+    loco::texts(h, hcName, t);
+    snprintf(v.hcTitle, sizeof(v.hcTitle), "%s", t.title);
+    snprintf(v.hcShort, sizeof(v.hcShort), "%s", t.shortT);
+    snprintf(v.hcDetail, sizeof(v.hcDetail), "%s", t.detail);
+    snprintf(v.hcDuration, sizeof(v.hcDuration), "%s", t.duration);
+    // La cuenta atrás de 3 s empieza cuando sale cada hándicap nuevo.
+    if (st == mfv3::HStage::Announce && h.seq != hcIntroSeq) {
+      hcIntroSeq = h.seq;
+      hcIntroUntil = now + 3000;
+    }
+    v.hcIntroN = st == mfv3::HStage::Announce && now < hcIntroUntil ? (uint8_t)((hcIntroUntil - now + 999) / 1000) : 0;
+    if (st == mfv3::HStage::Announce && eng.hasReplaced()) loco::endText(eng.replaced(), hcName, v.hcReplaced, sizeof(v.hcReplaced));
+    if (st == mfv3::HStage::Ending) {
+      loco::endText(h, hcName, v.hcEnd, sizeof(v.hcEnd));
+      v.hcEndPermille = (uint16_t)(eng.endingRemaining(now) * 1000 / mfv3::Engine::HANDICAP_END_PAUSE_MS);
+    }
+    v.hcLeftMs = eng.handicapRemaining(now);
+    v.hcLeftPermille = v.hcLeftMs >= 0 && h.durationMs ? (uint16_t)((uint32_t)v.hcLeftMs * 1000 / h.durationMs) : 1000;
+    v.hcButton = st == mfv3::HStage::Active && (eng.phase() == Phase::Playing || eng.phase() == Phase::Paused);
+  } else {
+    v.hcLeftMs = -1;
+  }
 }
 
 static void onMatchGoal(uint8_t t) { inputGoal(t ? Team::Blue : Team::White); }
+static void onHcTap() {
+  uint32_t now = millis();
+  if (eng.phase() != Phase::Handicap) return;
+  if (eng.handicapStage() == mfv3::HStage::Announce && now < hcIntroUntil) {
+    hcIntroUntil = now;  // saltar la cuenta atrás
+    return;
+  }
+  if (eng.handicapStage() == mfv3::HStage::Announce && eng.handicap().kind == mfv3::HKind::Penalty) return;  // GOL / FALLO
+  if (eng.handicapGo(now) == mfv3::Result::Accepted) afterChange(false, Team::White);
+}
+static void onHcPenalty(bool scored) {
+  if (eng.handicapPenalty(scored, millis()) == mfv3::Result::Accepted) afterChange(false, Team::White);
+}
+// Nombre del jugador `idx` de un equipo para los textos del hándicap (o «un jugador del Blanco» sin jugadores).
+static void hcName(uint8_t team, int8_t idx, char* out, size_t n) {
+  const jug::Player* p = haveTeams && idx >= 0 && idx < chosenTeams.n[team & 1] ? jugadores.find(chosenTeams.code[team & 1][idx]) : nullptr;
+  if (p) snprintf(out, n, "%s", p->name);
+  else snprintf(out, n, "Un jugador del %s", team ? "Azul" : "Blanco");
+}
 static void onMatchAnnul(uint8_t t) {
   eng.minusOne(t ? Team::Blue : Team::White, millis());
   afterChange(false, t ? Team::Blue : Team::White);
@@ -1545,6 +1640,8 @@ void setup() {
   partido::hooks.next = onMatchNext;
   partido::hooks.askAbandon = onMatchAskAbandon;
   partido::hooks.abandon = onMatchAbandon;
+  partido::hooks.hcTap = onHcTap;
+  partido::hooks.hcPenalty = onHcPenalty;
   penaltis::hooks.kick = onPenaltyKick;
   penaltis::hooks.undo = onPenaltyUndo;
   victoria::hooks.home = goHome;

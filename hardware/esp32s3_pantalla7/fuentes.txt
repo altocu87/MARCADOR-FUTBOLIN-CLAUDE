@@ -39,3 +39,4 @@
 900 11
 900 150 cifras
 900 96 i titulos
+900 72 i titulos

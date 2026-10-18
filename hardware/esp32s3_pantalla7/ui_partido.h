@@ -13,6 +13,7 @@
 
 #include "ui_base.h"
 #include "ui_cartel.h"
+#include "mfv3_engine.h"
 #include "ui_sevenseg.h"
 #include "s3_jugadores.h"
 
@@ -47,6 +48,15 @@ struct View {
     uint32_t code;
     char name[28], meta[40], title[32], photo[72];  // photo: ruta «A:…» de la foto o vacía (iniciales)
   } cards[2][4];
+  // Partido Loco
+  uint8_t hcStage;              // mfv3::HStage: 0 nada, 1 anuncio, 2 en marcha, 3 vuelta a la normalidad
+  uint8_t hcKind, hcTeam;
+  uint16_t hcSeq;
+  uint8_t hcIntroN;             // cuenta atrás «¡HÁNDICAP! 3·2·1» antes de enseñarlo (0 = ya no)
+  bool hcButton;                // botón del hándicap en lugar de PAUSA (en marcha o en pausa con hándicap)
+  int32_t hcLeftMs;             // lo que le queda (−1 sin duración)
+  uint16_t hcLeftPermille, hcEndPermille;
+  char hcTitle[48], hcShort[24], hcDetail[200], hcDuration[32], hcReplaced[72], hcEnd[72];
 };
 
 struct Hooks {
@@ -57,10 +67,12 @@ struct Hooks {
   void (*next)() = nullptr;          // continuar tras el final de parte
   void (*askAbandon)(bool on) = nullptr;
   void (*abandon)() = nullptr;
+  void (*hcTap)() = nullptr;               // tocar el cartel del hándicap (saltar la cuenta atrás o seguir)
+  void (*hcPenalty)(bool scored) = nullptr;  // penalti del hándicap: GOL o FALLO
 };
 static Hooks hooks;
 
-const uint8_t P_COUNTDOWN = 0, P_PLAYING = 1, P_PAUSED = 2, P_PERIOD_END = 3;
+const uint8_t P_COUNTDOWN = 0, P_PLAYING = 1, P_PAUSED = 2, P_PERIOD_END = 3, P_HANDICAP = 6, P_VISIT = 7;
 const uint32_t LOCK_MS = 3000;
 
 static lv_obj_t* scr = nullptr;
@@ -279,7 +291,12 @@ static void onPause(lv_event_t* e) {
 }
 
 static void onOverlay(lv_event_t* e) {
-  if (lv_event_get_code(e) == LV_EVENT_CLICKED && shown.phase == P_COUNTDOWN && hooks.skip) hooks.skip();
+  if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+  if (shown.phase == P_COUNTDOWN && hooks.skip) hooks.skip();
+  else if (shown.phase == P_HANDICAP && hooks.hcTap) hooks.hcTap();
+}
+static void onHcPenalty(lv_event_t* e) {
+  if (hooks.hcPenalty) hooks.hcPenalty(lv_event_get_user_data(e) != nullptr);
 }
 
 static void onPauseBtn(lv_event_t* e) {
@@ -319,11 +336,34 @@ static lv_obj_t* zone(lv_obj_t* parent, float x, float y, float w, float h, lv_e
 static uint8_t goalCount = 0;
 static const char* const TEAM_SUB[2] = {"EQUIPO BLANCO", "EQUIPO AZUL"};
 
-static void celebrate(uint8_t team, uint8_t streak = 1, bool tie = false) {
+// `bonus` (Partido Loco, mfv3::Bonus): gol doble, triple, robo, congelado o de penalti.
+static void celebrate(uint8_t team, uint8_t streak = 1, bool tie = false, uint8_t bonus = 0) {
   if (!scr || lv_screen_active() != scr) return;
   team &= 1;
-  static char title[24];
+  static char title[24], sub[40];
   const cartel::Style* st = team ? &cartel::BLUE_GOAL : &cartel::WHITE_GOAL;
+  if (bonus) {
+    const char* sb = TEAM_SUB[team];
+    switch ((mfv3::Bonus)bonus) {
+      case mfv3::Bonus::Double: snprintf(title, sizeof(title), "¡GOL DOBLE!"); st = &cartel::GOLD; break;
+      case mfv3::Bonus::Triple: snprintf(title, sizeof(title), "¡GOL TRIPLE!"); st = &cartel::GOLD; break;
+      case mfv3::Bonus::Steal:
+        snprintf(title, sizeof(title), "¡ROBO!");
+        snprintf(sub, sizeof(sub), "LE QUITA UN GOL AL %s", team ? "BLANCO" : "AZUL");
+        sb = sub;
+        st = &cartel::FIRE;
+        break;
+      case mfv3::Bonus::Frozen:
+        snprintf(title, sizeof(title), "GOL CONGELADO");
+        sb = "NO CUENTA";
+        st = &cartel::ICE;
+        break;
+      default: snprintf(title, sizeof(title), "¡GOL DE PENALTI!"); break;
+    }
+    goalCount++;
+    cartel::show(*st, title, sb, 2600);
+    return;
+  }
   if (streak >= 3) {
     snprintf(title, sizeof(title), "¡RACHA x%u!", streak);
     st = &cartel::FIRE;
@@ -340,6 +380,19 @@ static void celebrate(uint8_t team, uint8_t streak = 1, bool tie = false) {
   }
   goalCount++;
   cartel::show(*st, title, TEAM_SUB[team], 2600);
+}
+
+// Partido Loco: el animal de la visita en la franja, mientras dura (el reloj está parado).
+static void visit(uint8_t animal, const char* title, const char* sub, uint32_t ms) {
+  if (!scr || lv_screen_active() != scr) return;
+  static const capas::Capa ANIMAL[3] = {{"capas/animal-ardilla.lz4", 0, 0, 140, 140},
+                                        {"capas/animal-caracol.lz4", 0, 0, 140, 140},
+                                        {"capas/animal-gato.lz4", 0, 0, 140, 140}};
+  cartel::show(cartel::CHAOS, title, sub, ms, 240, assets::src(ANIMAL[animal % 3]));
+}
+static void showInfo(const cartel::Style& st, const char* title, const char* sub, uint32_t ms) {
+  if (!scr || lv_screen_active() != scr) return;
+  cartel::show(st, title, sub, ms);
 }
 
 // Gol anulado: franja roja con el equipo al que se le quita.
@@ -431,6 +484,176 @@ static void onDelete(lv_event_t*) {
 }
 
 const uint32_t OVERLAY_BG = 0x04080f;
+
+// ---------------------------------------------------------------- Partido Loco (HandicapOverlay de la app)
+// Sobre el fondo opaco de las capas de encima: la cuenta atrás «¡HÁNDICAP! 3·2·1», la tarjeta del hándicap (icono,
+// título, explicación y duración; se sigue tocando), el penalti con GOL / FALLO y «¡VUELTA A LA NORMALIDAD!». En el
+// partido, mientras dura, el botón de PAUSA enseña el hándicap (icono, nombre y segundos).
+const uint32_t CHAOS_INK = 0xff5ad1, CHAOS_EDGE = 0xd65cff;
+static const char* const HC_ICON[14] = {"double-all", "double-team", "triple-next", "steal", "freeze-score", "swap-positions",
+                                        "frozen-player", "bar-lock", "penalty", "transfer", "weak-hand", "no-spin",
+                                        "long-shots", "one-hand"};
+static lv_obj_t *hcLayer, *hcIntro, *hcIntroNum, *hcIntroReplaced, *hcCard, *hcCardIcon, *hcCardTitle, *hcCardDetail,
+    *hcCardDuration, *hcCardHint, *hcCardKicker, *hcPen, *hcEndBox, *hcEndTitle, *hcEndSub, *hcEndBar;
+static lv_obj_t *hcBtn, *hcBtnIcon, *hcBtnShort, *hcBtnTime, *hcBtnBar;
+static char hcIconPath[2][64];
+
+// Icono del hándicap (capa «hc-<tipo>.lz4», con su transparencia).
+static const void* hcIcon(uint8_t kind, bool small, int slot) {
+  snprintf(hcIconPath[slot], sizeof(hcIconPath[slot]), "capas/hc-%s%s.lz4", HC_ICON[kind % 14], small ? "-p" : "");
+  capas::Capa c = {hcIconPath[slot], 0, 0, small ? 44 : 96, small ? 44 : 96};
+  return assets::src(c);
+}
+
+static lv_obj_t* hcText(lv_obj_t* parent, uint16_t w, uint16_t sz, uint32_t col, int width) {
+  lv_obj_t* l = ui::text(parent, "", w, sz, col);
+  lv_obj_set_width(l, width);
+  lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+  lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_WRAP);
+  return l;
+}
+
+static void onHcLayer(lv_event_t* e) {
+  if (lv_event_get_code(e) == LV_EVENT_CLICKED && hooks.hcTap) hooks.hcTap();
+}
+
+// Panel del hándicap: un recuadro de 560 × 360 en medio de la pantalla, encima del partido (no la pantalla entera:
+// al salir y al irse solo se repinta ese trozo).
+const int HC_W = 560, HC_H = 360, HC_IN = HC_W - 6;  // ancho por dentro (borde de 3)
+static void buildChaos() {
+  hcLayer = ui::box(scr, (800 - HC_W) / 2, (480 - HC_H) / 2, HC_W, HC_H);
+  lv_obj_set_style_radius(hcLayer, 18, 0);
+  lv_obj_set_style_bg_color(hcLayer, ui::hex(0x0b0f22), 0);
+  lv_obj_set_style_bg_opa(hcLayer, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(hcLayer, ui::hex(CHAOS_EDGE), 0);
+  lv_obj_set_style_border_width(hcLayer, 3, 0);
+  lv_obj_add_flag(hcLayer, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(hcLayer, onHcLayer, LV_EVENT_CLICKED, nullptr);
+  lv_obj_add_flag(hcLayer, LV_OBJ_FLAG_HIDDEN);
+  // Cuenta atrás
+  hcIntro = ui::box(hcLayer, 0, 0, HC_IN, HC_H - 6);
+  hcIntroReplaced = hcText(hcIntro, 400, 14, ui::color::TEXT2, HC_IN - 20);
+  lv_obj_set_pos(hcIntroReplaced, 10, 8);
+  lv_obj_t* k = ui::text(hcIntro, "¡HÁNDICAP!", 900, 72, CHAOS_INK);
+  lv_obj_set_style_text_font(k, assets::font(900, 72, true), 0);
+  ui::place(k, HC_IN / 2, 32, 82);
+  hcIntroNum = ui::text(hcIntro, "3", 900, 134, ui::color::TEXT);
+  ui::place(hcIntroNum, HC_IN / 2, 130, 112);
+  lv_obj_t* hint = ui::text(hcIntro, "TOCA PARA SALTAR", 400, 13, ui::color::TEXT2, 1.8f);
+  ui::place(hint, HC_IN / 2, 318, 0);
+  // Tarjeta
+  hcCard = ui::box(hcLayer, 0, 0, HC_IN, HC_H - 6);
+  hcCardKicker = ui::text(hcCard, "HÁNDICAP", 900, 15, CHAOS_INK, 3.6f);
+  ui::place(hcCardKicker, HC_IN / 2, 14, 0);
+  hcCardIcon = lv_image_create(hcCard);
+  lv_obj_set_pos(hcCardIcon, HC_IN / 2 - 48, 36);
+  lv_obj_remove_flag(hcCardIcon, LV_OBJ_FLAG_CLICKABLE);
+  hcCardTitle = hcText(hcCard, 900, 30, ui::color::TEXT, HC_IN - 24);
+  lv_obj_set_pos(hcCardTitle, 12, 138);
+  hcCardDetail = hcText(hcCard, 400, 16, ui::color::TEXT2, HC_IN - 60);
+  lv_obj_set_pos(hcCardDetail, 30, 182);
+  hcCardDuration = hcText(hcCard, 800, 18, 0xf2c94c, HC_IN - 24);
+  lv_obj_set_pos(hcCardDuration, 12, 262);
+  hcCardHint = hcText(hcCard, 400, 12, ui::color::TEXT3, HC_IN - 24);
+  lv_obj_set_pos(hcCardHint, 12, 328);
+  // Penalti: GOL / FALLO
+  hcPen = ui::box(hcCard, 0, 254, HC_IN, 64);
+  ui::button(hcPen, HC_IN / 2 - 190, 0, 180, 60, "GOL", 20, ui::BtnKind::Primary, onHcPenalty, (void*)1);
+  ui::button(hcPen, HC_IN / 2 + 10, 0, 180, 60, "FALLO", 20, ui::BtnKind::Danger, onHcPenalty, nullptr);
+  // Vuelta a la normalidad
+  hcEndBox = ui::box(hcLayer, 0, 0, HC_IN, HC_H - 6);
+  hcEndTitle = hcText(hcEndBox, 900, 30, 0x3ddc97, HC_IN - 24);
+  lv_label_set_text(hcEndTitle, "¡VUELTA A LA NORMALIDAD!");
+  lv_obj_set_pos(hcEndTitle, 12, 100);
+  hcEndSub = hcText(hcEndBox, 400, 16, ui::color::TEXT2, HC_IN - 60);
+  lv_obj_set_pos(hcEndSub, 30, 150);
+  hcEndBar = lv_bar_create(hcEndBox);
+  lv_obj_set_size(hcEndBar, 300, 8);
+  lv_obj_set_pos(hcEndBar, HC_IN / 2 - 150, 220);
+  lv_bar_set_range(hcEndBar, 0, 1000);
+  lv_obj_set_style_bg_color(hcEndBar, ui::hex(ui::color::CARD), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(hcEndBar, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(hcEndBar, ui::hex(0x3ddc97), LV_PART_INDICATOR);
+  lv_obj_t* h2 = ui::text(hcEndBox, "TOCA PARA SEGUIR YA", 400, 13, ui::color::TEXT2, 1.8f);
+  ui::place(h2, HC_IN / 2, 318, 0);
+  // Botón del hándicap en el partido (encima de PAUSA; los toques pasan a la zona de PAUSA de debajo).
+  hcBtn = ui::box(scr, 334, 238, 132, 152);
+  lv_obj_set_style_radius(hcBtn, 16, 0);
+  lv_obj_set_style_bg_color(hcBtn, ui::hex(0x1a0b2e), 0);
+  lv_obj_set_style_bg_opa(hcBtn, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(hcBtn, ui::hex(CHAOS_EDGE), 0);
+  lv_obj_set_style_border_width(hcBtn, 3, 0);
+  hcBtnIcon = lv_image_create(hcBtn);
+  lv_obj_set_pos(hcBtnIcon, 41, 12);
+  hcBtnShort = hcText(hcBtn, 900, 15, ui::color::TEXT, 120);
+  lv_obj_set_pos(hcBtnShort, 3, 62);
+  hcBtnTime = hcText(hcBtn, 900, 24, 0xf2c94c, 120);
+  lv_obj_set_pos(hcBtnTime, 3, 100);
+  hcBtnBar = lv_bar_create(hcBtn);
+  lv_obj_set_size(hcBtnBar, 104, 5);
+  lv_obj_set_pos(hcBtnBar, 11, 136);
+  lv_bar_set_range(hcBtnBar, 0, 1000);
+  lv_obj_set_style_bg_color(hcBtnBar, ui::hex(0x3a2552), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(hcBtnBar, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(hcBtnBar, ui::hex(CHAOS_EDGE), LV_PART_INDICATOR);
+  lv_obj_add_flag(hcBtn, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void setText(lv_obj_t* l, const char* t) {
+  if (strcmp(lv_label_get_text(l), t)) lv_label_set_text(l, t);
+}
+
+static void updateChaos(const View& v) {
+  bool on = v.phase == P_HANDICAP;
+  if (on && shown.phase != P_HANDICAP) cartel::hide();  // el cartel del hándicap manda sobre la franja que hubiera
+  vis(hcLayer, on);
+  if (on) {
+    bool intro = v.hcStage == 1 && v.hcIntroN > 0;
+    bool card = v.hcStage == 1 && !intro;
+    vis(hcIntro, intro);
+    vis(hcCard, card);
+    vis(hcEndBox, v.hcStage == 3);
+    if (intro) {
+      char n[4];
+      snprintf(n, sizeof(n), "%u", v.hcIntroN);
+      setText(hcIntroNum, n);
+      setText(hcIntroReplaced, v.hcReplaced);
+    }
+    if (card && (v.hcSeq != shown.hcSeq || shown.hcStage != 1 || shown.hcIntroN)) {
+      lv_image_set_src(hcCardIcon, hcIcon(v.hcKind, false, 0));
+      setText(hcCardTitle, v.hcTitle);
+      setText(hcCardDetail, v.hcDetail);
+      setText(hcCardDuration, v.hcDuration);
+      bool pen = v.hcKind == (uint8_t)mfv3::HKind::Penalty;
+      vis(hcPen, pen);
+      vis(hcCardDuration, !pen);  // «Un lanzamiento» ya lo dice la explicación (y ahí van los botones)
+      setText(hcCardHint, pen ? "Con pulsadores: el del equipo que tira = gol · el del rival = fallo"
+                              : "Toca la pantalla o pulsa un botón para seguir");
+      lv_obj_set_style_text_color(hcCardTitle, ui::hex(pen ? (v.hcTeam == 1 ? 0x6fb6f5 : ui::color::WHITE_TEAM) : ui::color::TEXT), 0);
+    }
+    if (v.hcStage == 3) {
+      setText(hcEndSub, v.hcEnd);
+      if (lv_bar_get_value(hcEndBar) != v.hcEndPermille) lv_bar_set_value(hcEndBar, v.hcEndPermille, LV_ANIM_OFF);
+    }
+  }
+  // Botón del hándicap en lugar de PAUSA.
+  vis(hcBtn, v.hcButton);
+  if (v.hcButton) {
+    if (v.hcSeq != shown.hcSeq || !shown.hcButton) {
+      lv_image_set_src(hcBtnIcon, hcIcon(v.hcKind, true, 1));
+      setText(hcBtnShort, v.hcShort);
+    }
+    char t[24];
+    if (v.hcLeftMs >= 0) snprintf(t, sizeof(t), "%ld s", (long)((v.hcLeftMs + 999) / 1000));
+    else snprintf(t, sizeof(t), v.hcKind == (uint8_t)mfv3::HKind::SwapPositions ? "HASTA EL PRÓXIMO" : "HASTA QUE SE USE");
+    setText(hcBtnTime, t);
+    lv_obj_set_style_text_font(hcBtnTime, assets::font(900, v.hcLeftMs >= 0 ? 24 : 12), 0);
+    vis(hcBtnBar, v.hcLeftMs >= 0);
+    // A saltos de una décima del total (cada cambio repinta el botón).
+    uint16_t q = (uint16_t)(v.hcLeftPermille / 50 * 50);
+    if (v.hcLeftMs >= 0 && lv_bar_get_value(hcBtnBar) != q) lv_bar_set_value(hcBtnBar, q, LV_ANIM_OFF);
+  }
+}
 static lv_obj_t* flatLayer(lv_obj_t* parent, const capas::Capa& c, bool visible) {
   lv_obj_t* img = lv_image_create(parent);
   lv_image_set_src(img, assets::flat(c, OVERLAY_BG));
@@ -566,6 +789,7 @@ static void build() {
   endPartial = ui::text(endLayer, "", 400, 16, ui::color::TEXT2);
   endNote = ui::text(endLayer, "", 400, 16, ui::color::TEXT2);
   endCta = ui::button(endLayer, 250, 296, 300, 68, "CONTINUAR", 20, ui::BtnKind::Primary, onNext);
+  buildChaos();
   fresh = true;
   goalCount = 0;
   mpMask = 0;
@@ -674,6 +898,7 @@ static void update(const View& v) {
     vis(pausePulAband, false);
   }
   vis(endLayer, end);
+  updateChaos(v);
   if (cd) {
     if (first || strcmp(v.countdownTitle, shown.countdownTitle) || shown.phase != P_COUNTDOWN) {
       lv_label_set_text(cdSub, v.countdownTitle);

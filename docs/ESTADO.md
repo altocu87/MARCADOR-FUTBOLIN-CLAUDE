@@ -145,6 +145,14 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
     ¡EMPATE!, GOL ANULADO, PARTIDO, PARTIDO LOCO, 1ª/2ª PARTE, PRÓRROGA, PENALTIS y MUERTE SÚBITA (antes
     imágenes de pantalla completa de la app). Al irse solo se repinta la franja: 0,08 s (0,3). Las tarjetas ya no
     se oscurecen durante el bloqueo (quedan la barra y el aviso).
+  - Partido Loco en la placa (antes jugaba como el rápido): los 14 hándicaps de la app con sus efectos en el
+    marcador (goles dobles y triples, robo, marcador congelado, penalti con GOL/FALLO…), su sorteo y tiempos
+    (cada 30–60 s de juego), «¡VUELTA A LA NORMALIDAD!» y las visitas de la ardilla, el caracol y el gato.
+    Motor en mfv3_engine.h (probado en el PC: engine_test), textos en s3_loco.h. La cuenta atrás y la tarjeta
+    del hándicap van en un recuadro en medio de la pantalla (no a pantalla completa) y, mientras dura, el botón
+    de PAUSA enseña el hándicap con sus segundos. Iconos (los emoji de la app) y animales: scripts/placa-loco.mjs.
+    Diferencias: una sola cuenta atrás (la app tiene 12 estilos) y los animales salen en una franja (la app los
+    anima por la pantalla).
   - Memoria: la caché de imágenes baja a 8 MB y las victorias se preparan al llegar a bola de partido (con 10 MB
     la placa se quedaba sin un hueco grande y podía reiniciarse).
   - Pendiente: una comprobación del PC (pantalla de actualizar sin internet, s3_sim_test) falla de vez en cuando

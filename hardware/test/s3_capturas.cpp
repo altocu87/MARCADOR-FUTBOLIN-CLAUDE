@@ -190,6 +190,42 @@ int main(int argc, char** argv) {
   tap(712, 422);  // FALLO del Azul
   shot("penaltis");
 
+  // Partido Loco: lo que salga en 5 minutos de juego (cuenta atrás del hándicap, su tarjeta, el botón en el partido,
+  // la vuelta a la normalidad, el penalti y las visitas), cada cosa la primera vez.
+  {
+    goHome();
+    run(300);
+    tap(400, 280); tap(400, 280);  // LOCO
+    run(300);
+    tap(400, 443);  // CONTINUAR
+    run(200);
+    pickPlayers();
+    run(200);
+    usb("SALTAR");
+    run(200);
+    bool intro = false, card = false, button = false, ending = false, penalty = false, visit = false;
+    for (int i = 0; i < 1200 && eng.phase() != Phase::Finished; i++) {
+      run(250);
+      if (eng.phase() == Phase::Handicap && eng.handicapStage() == mfv3::HStage::Announce) {
+        if (!intro) { intro = true; run(300); shot("loco-cuenta", 0); }
+        run(3200);
+        bool pen = eng.handicap().kind == mfv3::HKind::Penalty;
+        if (pen && !penalty) { penalty = true; shot("loco-penalti", 0); }
+        if (!pen && !card) { card = true; shot("loco-handicap", 0); }
+        if (pen) tap(290, 392);  // GOL
+        else tap(400, 120);      // seguir
+        run(400);
+        if (!pen && !button && partido::shown.hcButton) { button = true; shot("loco-boton", 0); }
+      }
+      if (eng.phase() == Phase::Handicap && eng.handicapStage() == mfv3::HStage::Ending && !ending) {
+        ending = true; run(500); shot("loco-normalidad", 0);
+      }
+      if (eng.phase() == Phase::Visit && !visit) { visit = true; run(500); shot("loco-visita", 0); }
+      if (i % 24 == 0 && eng.phase() == Phase::Playing && eng.lockRemaining(sim::now) == 0) usb(i % 48 ? "GB" : "GA");
+    }
+    std::printf("loco: cuenta %d tarjeta %d boton %d normalidad %d penalti %d visita %d\n", intro, card, button, ending, penalty, visit);
+  }
+
   // Reposo: Inicio sin tocar nada durante más de 5 minutos.
   goHome();
   run(SLEEP_AFTER_MS + 2000);

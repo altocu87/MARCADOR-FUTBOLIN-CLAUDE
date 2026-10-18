@@ -33,6 +33,7 @@ const Style CHAOS = {"", "", 0xe040fb, 0x7c3aed, 0xffffff, 0xf6dcff, 0xf0a8ff};
 const Style EXTRA = {"", "", 0x2ee6b6, 0x0e7a6a, 0x04241f, 0x0b3d35, 0xb8fff0};
 const Style PENALTY = {"", "", 0x8b5cf6, 0x4c1d95, 0xffffff, 0xe6dcff, 0xc4b5fd};
 const Style SUDDEN = {"", "", 0xff4d5e, 0x1a0508, 0xffffff, 0xffc2c9, 0xff8a96};
+const Style ICE = {"", "", 0xbfefff, 0x4f8fdc, 0x06203f, 0x123a66, 0xffffff};
 
 // La franja: 150 px de alto, horizontal, de lado a lado.
 const int BAND_H = 150, FH = BAND_H;
@@ -40,7 +41,9 @@ const int BAND_H = 150, FH = BAND_H;
 static lv_obj_t* shown = nullptr;
 static Style cur;
 static char curTitle[32], curSub[40];
+static const void* curImg = nullptr;  // dibujo a la izquierda (animales de las visitas) o nada
 static int32_t titleSpace = 2;
+static uint16_t titleSize = 96;  // 96, o 72 si el título es largo
 
 static void gone(lv_anim_t*) {
   if (shown) lv_obj_delete(shown);
@@ -71,41 +74,59 @@ static void drawCb(lv_event_t* e) {
   r.border_side = (lv_border_side_t)(LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM);
   lv_draw_rect(layer, &r, &co);
   float mid = co.y1 + BAND_H / 2.0f;
+  int32_t textX = co.x1;
+  if (curImg) {
+    lv_draw_image_dsc_t im;
+    lv_draw_image_dsc_init(&im);
+    im.src = curImg;
+    lv_area_t ia = {co.x1 + 16, co.y1 + 5, co.x1 + 16 + 139, co.y1 + 5 + 139};
+    lv_draw_image(layer, &im, &ia);
+    textX = co.x1 + 150;
+  }
   lv_draw_label_dsc_t t;
   lv_draw_label_dsc_init(&t);
-  t.font = assets::font(900, 96, true);
+  t.font = assets::font(900, titleSize, true);
   t.color = lv_color_hex(cur.ink);
   t.letter_space = titleSpace;
   t.align = LV_TEXT_ALIGN_CENTER;
   t.text = curTitle;
-  lv_area_t ta = {co.x1, (int32_t)(mid - 66), co.x2, (int32_t)(mid + 40)};
+  int32_t ty = titleSize == 96 ? 66 : 54;
+  lv_area_t ta = {textX, (int32_t)(mid - ty), co.x2, (int32_t)(mid + 40)};
   lv_draw_label(layer, &t, &ta);
   lv_draw_label_dsc_t sd;
   lv_draw_label_dsc_init(&sd);
   sd.font = assets::font(900, 24);
   sd.color = lv_color_hex(cur.subInk);
-  sd.letter_space = 8;
+  sd.letter_space = curImg ? 4 : 8;
   sd.align = LV_TEXT_ALIGN_CENTER;
   sd.text = curSub;
-  lv_area_t sa = {co.x1, (int32_t)(mid + 36), co.x2, (int32_t)(mid + 66)};
+  lv_area_t sa = {textX, (int32_t)(mid + 36), co.x2, (int32_t)(mid + 66)};
   lv_draw_label(layer, &sd, &sa);
 }
 
 // Enseña la franja `ms` milisegundos, centrada en `cy`, encima de todo.
-static void show(const Style& base, const char* title, const char* sub, uint32_t ms, int cy = 240) {
+static void show(const Style& base, const char* title, const char* sub, uint32_t ms, int cy = 240, const void* img = nullptr) {
   if (shown) lv_obj_delete(shown);
   cur = base;
+  curImg = img;
   snprintf(curTitle, sizeof(curTitle), "%s", title);
   snprintf(curSub, sizeof(curSub), "%s", sub);
-  // Títulos largos («MUERTE SÚBITA»): se juntan las letras para que quepan (unos 740 px).
-  const lv_font_t* f = assets::font(900, 96, true);
-  lv_point_t sz;
-  lv_text_get_size(&sz, curTitle, f, 2, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  // Títulos largos: con la letra de 96 si cabe, si no con la de 72, y si aún no, juntando un poco las letras.
+  int32_t room = img ? 600 : 740;
   int n = 0;  // letras (no bytes: la Ú son dos)
   for (const char* q = curTitle; *q; q++) n += ((uint8_t)*q & 0xC0) != 0x80;
-  titleSpace = (sz.x > 740 && n > 1) ? (int32_t)(2 - (sz.x - 740 + n - 2) / (n - 1)) : 2;
-  // Se crea escondida y se enseña ya colocada: si no, al crearla se marca para repintar también la franja de
-  // arriba de la pantalla (donde nace).
+  titleSize = 96;
+  titleSpace = 2;
+  for (int pass = 0; pass < 2; pass++) {
+    lv_point_t sz;
+    lv_text_get_size(&sz, curTitle, assets::font(900, titleSize, true), 2, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (sz.x <= room) break;
+    if (pass == 0) {
+      titleSize = 72;
+      continue;
+    }
+    if (n > 1) titleSpace = (int32_t)(2 - (sz.x - room + n - 2) / (n - 1));
+  }
   shown = lv_obj_create(lv_layer_top());
   lv_obj_add_flag(shown, LV_OBJ_FLAG_HIDDEN);
   lv_obj_remove_style_all(shown);

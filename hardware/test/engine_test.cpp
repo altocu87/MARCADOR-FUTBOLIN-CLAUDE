@@ -200,6 +200,118 @@ static void match_point() {
   assert(s.e.matchPoint() == 3);
 }
 
+// Partido Loco: un hándicap entre los 30 y 45 s de juego, con el reloj parado mientras se anuncia.
+static void chaos_handicaps() {
+  Config c = cfg(EndCondition::Goals, 20);
+  c.chaos = true;
+  c.players[0] = 2;
+  c.players[1] = 2;
+  for (uint32_t seed = 1; seed <= 300; seed++) {
+    Sim s(c);
+    s.e.seed(seed);
+    s.startPeriod();
+    // 1 s cada vez hasta que salga.
+    int secs = 0;
+    while (s.e.phase() == Phase::Playing && secs < 60) { s.wait(1000); secs++; }
+    assert(s.e.phase() == Phase::Handicap && s.e.handicapStage() == HStage::Announce);
+    assert(secs >= 30 && secs <= 46);
+    uint32_t clock = s.e.clockMs(s.t);
+    s.wait(5000);
+    assert(s.e.clockMs(s.t) == clock);  // reloj parado
+    const Handicap h = s.e.handicap();
+    if (h.kind == HKind::Penalty) {
+      Score before = s.e.score();
+      assert(s.e.handicapPenalty(true, s.t) == R::Accepted);
+      assert(s.e.phase() == Phase::Playing && s.e.score().of(h.team ? Team::Blue : Team::White) == before.of(h.team ? Team::Blue : Team::White) + 1);
+      continue;
+    }
+    assert(s.e.handicapGo(s.t) == R::Accepted && s.e.handicapStage() == HStage::Active && s.e.phase() == Phase::Playing);
+    s.wait(3000);
+    Score b = s.e.score();
+    Team who = h.team == 1 ? Team::Blue : Team::White;
+    assert(s.goal(who) == R::Accepted);
+    Score a = s.e.score();
+    int got = a.of(who) - b.of(who);
+    switch (h.kind) {
+      case HKind::DoubleAll: assert(got == 2); break;
+      case HKind::DoubleTeam: assert(got == 2); break;
+      case HKind::TripleNext: assert(got == 3 && s.e.handicapStage() == HStage::None); break;
+      case HKind::FreezeScore: assert(got == 0); break;
+      case HKind::Steal: assert(got == 1 && a.of(other(who)) + 1 == b.of(other(who)) && s.e.handicapStage() == HStage::None); break;
+      default: assert(got == 1); break;
+    }
+    // Los de duración terminan solos: «vuelta a la normalidad» 3 s y se sigue.
+    if (h.durationMs && s.e.handicapStage() == HStage::Active) {
+      int steps = 0;
+      while (s.e.phase() == Phase::Playing && steps++ < 100) s.wait(500);
+      if (!(s.e.phase() == Phase::Handicap && s.e.handicapStage() == HStage::Ending)) std::printf("seed %u kind %d dur %u fase %d etapa %d fin %d\n", seed, (int)h.kind, h.durationMs, (int)s.e.phase(), (int)s.e.handicapStage(), (int)s.e.lastEnd());
+      assert(s.e.phase() == Phase::Handicap && s.e.handicapStage() == HStage::Ending && s.e.lastEnd() == HEnd::Time);
+      s.wait(3000);
+      assert(s.e.phase() == Phase::Playing && s.e.handicapStage() == HStage::None);
+    }
+  }
+  // Sin modo loco no sale ninguno.
+  Sim q(cfg(EndCondition::Goals, 20));
+  q.startPeriod();
+  for (int i = 0; i < 200; i++) q.wait(1000);
+  assert(q.e.phase() == Phase::Playing && q.e.handicapStage() == HStage::None);
+}
+
+// Visitas: el animal para el reloj, hace su travesura y se sigue; nunca decide el partido.
+static void chaos_visits() {
+  Config c = cfg(EndCondition::Goals, 10);
+  c.chaos = true;
+  int visits = 0;
+  for (uint32_t seed = 1; seed <= 200; seed++) {
+    Sim s(c);
+    s.e.seed(seed);
+    s.startPeriod();
+    s.goalLater(Team::White);
+    for (int i = 0; i < 400 && s.e.phase() != Phase::Finished; i++) {
+      s.wait(500);
+      if (s.e.phase() == Phase::Handicap) {
+        if (s.e.handicapStage() == HStage::Announce && s.e.handicap().kind == HKind::Penalty) s.e.handicapPenalty(false, s.t);
+        else s.e.handicapGo(s.t);
+      }
+      if (s.e.phase() == Phase::Visit) {
+        visits++;
+        Score b = s.e.score();
+        uint8_t tgt = s.e.goalTarget();
+        while (s.e.phase() == Phase::Visit) s.wait(500);
+        Score a = s.e.score();
+        const Visitor& v = s.e.visitor();
+        assert(s.e.visitApplied());
+        if (v.animal == Animal::Squirrel) assert(a.white + a.blue == b.white + b.blue && a.of(v.from ? Team::Blue : Team::White) + 1 == b.of(v.from ? Team::Blue : Team::White));
+        if (v.animal == Animal::Cat) assert(a.white + a.blue == b.white + b.blue + 1);
+        if (v.animal == Animal::Snail) assert(s.e.goalTarget() == tgt + 1);
+        assert(s.e.phase() == Phase::Playing);
+      }
+    }
+  }
+  assert(visits > 20);
+  // Por tiempo: se juega hasta el final sin atascarse (el caracol añade un minuto a su parte).
+  Config t = cfg(EndCondition::Time, 5, 3);
+  t.chaos = true;
+  for (uint32_t seed = 1; seed <= 60; seed++) {
+    Sim s(t);
+    s.e.seed(seed);
+    s.startPeriod();
+    int guard = 0;
+    while (s.e.phase() != Phase::Finished && guard++ < 4000) {
+      s.wait(500);
+      if (s.e.phase() == Phase::Handicap && s.e.handicapStage() == HStage::Announce) {
+        if (s.e.handicap().kind == HKind::Penalty) s.e.handicapPenalty(seed & 1, s.t);
+        else s.e.handicapGo(s.t);
+      }
+      if (s.e.phase() == Phase::PeriodEnd) s.e.next(s.t);
+      if (s.e.phase() == Phase::Countdown) s.startPeriod();
+      if (s.e.phase() == Phase::Penalties) s.e.penalty(s.e.nextKicker(), s.e.nextKicker() == Team::White, s.t);
+      if (guard % 20 == 0 && s.e.phase() == Phase::Playing) s.e.goal(guard % 40 ? Team::White : Team::Blue, s.t);
+    }
+    assert(s.e.phase() == Phase::Finished);
+  }
+}
+
 int main() {
   a01_full_match();
   a02_invalid_config();
@@ -212,6 +324,8 @@ int main() {
   a11_a12_a13_penalties();
   pause_keeps_time();
   match_point();
-  std::puts("mfv3_engine: criterios A01-A13 OK");
+  chaos_handicaps();
+  chaos_visits();
+  std::puts("mfv3_engine: criterios A01-A13 y Partido Loco OK");
   return 0;
 }
