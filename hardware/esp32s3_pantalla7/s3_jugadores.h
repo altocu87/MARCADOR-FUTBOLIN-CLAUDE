@@ -21,6 +21,7 @@
 #include <FS.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include "mfv3_sound.h"
 
 namespace jug {
@@ -243,6 +244,58 @@ class Store {
     return false;
   }
 
+  // ---------------------------------------------------------------- jugadores hechos en la placa
+  // (Ajustes → JUGADORES, ui_fichas.h). La foto llega ya a 120 × 120 RGB565 (s3_fotos.h); nullptr = sin foto.
+
+  // ¿Ya hay otro jugador con ese nombre? (sin mirar mayúsculas)
+  bool nameTaken(const char* name, uint32_t except = 0) const {
+    for (uint8_t i = 0; i < count; i++)
+      if (list[i].code != except && !strcasecmp(list[i].name, name)) return true;
+    return false;
+  }
+
+  // Jugador nuevo al final de la lista. Devuelve su código (0 si no se pudo).
+  uint32_t add(const char* name, const uint16_t* px) {
+    if (!fs_ || count >= MAX || !name[0]) return 0;
+    uint32_t code = fnv(2166136261u, name) ^ (uint32_t)millis() * 2654435761u;
+    while (!code || find(code)) code = code * 16777619u + 1;
+    Player& p = list[count];
+    memset(&p, 0, sizeof(p));
+    p.code = code;
+    snprintf(p.name, sizeof(p.name), "%s", name);
+    count++;
+    known[count - 1] = 0;
+    if (px) p.photoCrc = writePhoto(code, px);
+    return commit() ? code : 0;
+  }
+
+  bool rename(uint32_t code, const char* name) {
+    Player* p = (Player*)find(code);
+    if (!p || !name[0]) return false;
+    snprintf(p->name, sizeof(p->name), "%s", name);
+    return commit();
+  }
+
+  bool setPhoto(uint32_t code, const uint16_t* px) {
+    Player* p = (Player*)find(code);
+    if (!p) return false;
+    removePhoto(code);
+    p->photoCrc = px ? writePhoto(code, px) : 0;
+    memset(known, 0, sizeof(known));
+    return commit();
+  }
+
+  bool remove(uint32_t code) {
+    uint8_t k = 0;
+    for (uint8_t i = 0; i < count; i++)
+      if (list[i].code != code) list[k++] = list[i];
+    if (k == count) return false;
+    count = k;
+    removePhoto(code);
+    memset(known, 0, sizeof(known));
+    return commit();
+  }
+
   bool changed = false;  // la lista o alguna foto cambió (las pantallas se rehacen)
   uint32_t known[MAX] = {};  // CRC de la foto ya comprobada de cada jugador (0 = sin comprobar o sin foto)
 
@@ -295,6 +348,39 @@ class Store {
     snprintf(p.meta, sizeof(p.meta), "%.*s", (int)(b2 - b1 - 1), b1 + 1);
     snprintf(p.title, sizeof(p.title), "%s", b2 + 1);
     return p.name[0] != 0;
+  }
+
+  bool commit() {
+    hash = hashOf(list, count);
+    changed = true;
+    return save();
+  }
+
+  // Guarda la foto como la manda la app (cabecera de LVGL + RGB565) y devuelve su CRC (0 si no se pudo).
+  uint32_t writePhoto(uint32_t code, const uint16_t* px) {
+    char path[48];
+    snprintf(path, sizeof(path), "%s/%08lx.bin", DIR, (unsigned long)code);
+    fs::File f = fs_->open(path, "w");
+    if (!f) return 0;
+    uint8_t h[12] = {0x19, 0x12, 0, 0, 120, 0, 120, 0, 240, 0, 0, 0};
+    uint32_t crc = mfv3snd::crc32Update(0, h, sizeof(h));
+    crc = mfv3snd::crc32Update(crc, (const uint8_t*)px, PHOTO_BYTES - 12);
+    bool ok = f.write(h, sizeof(h)) == sizeof(h) && f.write((const uint8_t*)px, PHOTO_BYTES - 12) == PHOTO_BYTES - 12;
+    f.close();
+    if (!ok || !crc) {
+      fs_->remove(path);
+      return 0;
+    }
+    setPhotoCrc(code, crc);
+    return crc;
+  }
+
+  void removePhoto(uint32_t code) {
+    char path[48];
+    snprintf(path, sizeof(path), "%s/%08lx.bin", DIR, (unsigned long)code);
+    fs_->remove(path);
+    snprintf(path, sizeof(path), "%s/%08lx.crc", DIR, (unsigned long)code);
+    fs_->remove(path);
   }
 
   bool save() {

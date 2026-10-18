@@ -50,6 +50,8 @@
 #include "ui_victoria.h"
 #include "s3_jugadores.h"
 #include "ui_jugadores.h"
+#include "ui_fichas.h"
+#include <sys/stat.h>
 #include "ui_perfil.h"
 #include "ui_cargando.h"
 #include "s3_loco.h"
@@ -524,6 +526,36 @@ static bool handleSoundLine(const char* line) {
 
 static void onTap(int16_t x, int16_t y);
 
+// Pruebas desde el PC: «FOTOSD <nombre.jpg>», «FOTOSD_DATOS <base64>»… y «FOTOSD_FIN» dejan una foto en la carpeta
+// FOTOS de la tarjeta SD (la que usa AJUSTES → JUGADORES), sin sacar la tarjeta.
+static FILE* sdUp = nullptr;
+static void sdPhotoCmd(const char* line) {
+  if (!strncmp(line, "FOTOSD_DATOS ", 13)) {
+    uint8_t buf[300];
+    int n = sdUp ? mfv3snd::base64Decode(line + 13, strlen(line + 13), buf, sizeof(buf)) : -1;
+    if (n < 0 || fwrite(buf, 1, (size_t)n, sdUp) != (size_t)n) {
+      if (sdUp) fclose(sdUp);
+      sdUp = nullptr;
+      sendLine("FOTOSD_ERROR datos");
+    } else {
+      sendLine("FOTOSD_OK");
+    }
+  } else if (!strcmp(line, "FOTOSD_FIN")) {
+    bool ok = sdUp && fclose(sdUp) == 0;
+    sdUp = nullptr;
+    sendLine(ok ? "FOTOSD_GUARDADA" : "FOTOSD_ERROR fin");
+  } else if (!strncmp(line, "FOTOSD ", 7)) {
+#ifdef ARDUINO
+    mkdir(fotos::dirPath, 0777);
+#endif
+    char p[160];
+    snprintf(p, sizeof(p), "%s/%s", fotos::dirPath, line + 7);
+    if (sdUp) fclose(sdUp);
+    sdUp = fopen(p, "wb");
+    sendLine(sdUp ? "FOTOSD_LISTO" : "FOTOSD_ERROR abrir");
+  }
+}
+
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
@@ -548,6 +580,10 @@ static void handleBoardLine(const char* line) {
       uiport::injectTouch((int16_t)x, (int16_t)y);
       sendLine("TOQUE_OK");
     }
+    return;
+  }
+  if (!strncmp(line, "FOTOSD", 6)) {
+    sdPhotoCmd(line);
     return;
   }
   wakeScreen();
@@ -1124,6 +1160,10 @@ static void onConfigNext() {
   }
 }
 // Atrás desde elegir jugadores: lo elegido se guarda por si se vuelve a CONTINUAR (como la app).
+static void onFichasBack() {
+  fichas::leave();
+  screen = Screen::Settings;
+}
 static void onPlayersBack() {
   choosingPlayers = false;
   chosenTeams = elegir::teams;
@@ -1403,6 +1443,13 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Players && !sleepClock()) {
+    if (!fichas::active() || fichasFresh) fichas::show(&jugadores, fichasFresh);
+    fichasFresh = false;
+    fichas::tick();
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (sleepClock()) {
     sleepView();
     lastKey = lastSleepKey = 0xFFFFFFFF;
@@ -1646,6 +1693,7 @@ void setup() {
   penaltis::hooks.undo = onPenaltyUndo;
   victoria::hooks.home = goHome;
   elegir::hooks.back = onPlayersBack;
+  fichas::hooks.back = onFichasBack;
   elegir::hooks.done = onPlayersDone;
   victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());

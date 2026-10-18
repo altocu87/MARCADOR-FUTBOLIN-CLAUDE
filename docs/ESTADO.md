@@ -153,6 +153,12 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
     de PAUSA enseña el hándicap con sus segundos. Iconos (los emoji de la app) y animales: scripts/placa-loco.mjs.
     Diferencias: una sola cuenta atrás (la app tiene 12 estilos) y los animales salen en una franja (la app los
     anima por la pantalla).
+  - AJUSTES → JUGADORES (18/10/2026): crear jugadores en la propia placa, sin la app. Nombre con teclado en
+    pantalla (Ñ y tildes; mayúscula al empezar cada palabra) y foto de la carpeta FOTOS de la tarjeta SD (.jpg;
+    se abren reducidas, recortadas al centro a 120 × 120 y enderezadas si el móvil las guardó giradas; se puede
+    girar a mano). Tocar un jugador deja cambiarle el nombre o la foto, o borrarlo. En la placa quedan Alex, José,
+    Lucía, María, Vicky y Victoria (Alex pidió borrar los demás). Las JPEG «progresivas» no se pueden abrir.
+    Código: ui_fichas.h (pantallas), s3_fotos.h (fotos de la SD; lector fotojpg.c, copia del TJpgDec completo).
   - Memoria: la caché de imágenes baja a 8 MB y las victorias se preparan al llegar a bola de partido (con 10 MB
     la placa se quedaba sin un hueco grande y podía reiniciarse).
   - Pendiente: una comprobación del PC (pantalla de actualizar sin internet, s3_sim_test) falla de vez en cuando

@@ -28,7 +28,7 @@ enum class Btn : uint8_t {
   // Inicio: ajustes y aviso de versión nueva
   Settings, UpdateAvail,
   // Ajustes
-  Back, SetWifi, SetUpdate, VolMinus, VolPlus, SetTest,
+  Back, SetWifi, SetUpdate, VolMinus, VolPlus, SetTest, SetPlayers,
   // Wi-Fi: redes (WifiNet0 + n), buscar otra vez, olvidar
   WifiNet0, WifiNet1, WifiNet2, WifiNet3, WifiNet4, WifiRescan, WifiForget,
   // Teclado
@@ -65,6 +65,7 @@ const Button SETTINGS[] = {
     {Btn::SetUpdate, {40, 164, 720, 72}},
     {Btn::VolMinus, {460, 248, 110, 72}}, {Btn::VolPlus, {650, 248, 110, 72}},
     {Btn::SetTest, {40, 332, 720, 72}},
+    {Btn::SetPlayers, {40, 416, 720, 56}},
 };
 
 // ---- Wi-Fi: hasta 5 redes

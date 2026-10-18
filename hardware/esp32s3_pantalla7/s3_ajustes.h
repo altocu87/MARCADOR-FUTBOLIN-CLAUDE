@@ -278,6 +278,8 @@ static void drawSettings() {
   text(v, 610, 284, &lgfx::fonts::FreeSansBold18pt7b, sndVolume ? C_TEXT : C_LINE);
 #endif
   settingRow(ui::SETTINGS[5].r, "PRUEBA DE LA PLACA", nullptr, C_TEXT2);
+  snprintf(v, sizeof(v), "%u jugadores", (unsigned)jugadores.count);
+  settingRow(ui::SETTINGS[6].r, "JUGADORES", v, C_TEXT2);
 }
 
 static void signalBars(int x, int y, int8_t rssi) {
@@ -492,7 +494,7 @@ static uint32_t ajustesKey() {
   mix((uint32_t)mandoUpd());
   mix(mandoBuild);
   switch (screen) {
-    case Screen::Settings: mix(sndVolume); break;
+    case Screen::Settings: mix(sndVolume); mix(jugadores.count); break;
     case Screen::Wifi: mix(netScanned); mix(netCount); break;
     case Screen::Keyboard:
       mix(kbMode); mix(kbShow); mix((uint32_t)(uintptr_t)kbError);
@@ -511,6 +513,13 @@ static uint32_t ajustesKey() {
 
 // ---------------------------------------------------------------- toques
 static void openSettings() { screen = Screen::Settings; }
+
+// JUGADORES: crear, cambiar y borrar (ui_fichas.h, pantalla nueva de LVGL).
+static bool fichasFresh = false;
+static void openPlayers() {
+  screen = Screen::Players;
+  fichasFresh = true;
+}
 
 static void openWifi() {
   screen = Screen::Wifi;
@@ -565,6 +574,7 @@ static void ajustesTap(int16_t x, int16_t y) {
       if (b == ui::Btn::Back) goHome();
       else if (b == ui::Btn::SetWifi) openWifi();
       else if (b == ui::Btn::SetUpdate) openUpdate();
+      else if (b == ui::Btn::SetPlayers) openPlayers();
       else if (b == ui::Btn::SetTest) {
         screen = Screen::Home;
         enterTest();

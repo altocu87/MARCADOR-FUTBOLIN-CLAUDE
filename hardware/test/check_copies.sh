@@ -43,4 +43,4 @@ proto() {  # proto <carpeta> <prueba> <mocks> [defines]
 proto arduino_usb arduino_sim_test.cpp test/mock "-DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO"
 proto esp32_marcador esp32_sim_test.cpp test/mock_esp32 "-DARDUINO_ARCH_ESP32 -DCONFIG_IDF_TARGET_ESP32=1"
 proto mando_pulsadores mando_sim_test.cpp test/mock_s3
-proto esp32s3_pantalla7 s3_sim_test.cpp test/mock_s3 "-DMFV3_BOARD=4 -DLV_CONF_INCLUDE_SIMPLE -I$LV -I$LV/src" "$LVLIB"
+proto esp32s3_pantalla7 s3_sim_test.cpp test/mock_s3 "-DMFV3_BOARD=4 -DLV_CONF_INCLUDE_SIMPLE -I$LV -I$LV/src" "-x c esp32s3_pantalla7/fotojpg.c -x none $LVLIB"

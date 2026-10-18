@@ -418,6 +418,22 @@ static const lv_image_dsc_t* flat(const capas::Capa& c, uint32_t bg, bool sticky
 
 // Suelta imágenes guardadas (las más antiguas que no use la pantalla) hasta dejar `bytes` libres de la caché: para
 // hacer sitio a algo grande (un cartel) antes de pedirlo.
+// Olvida las imágenes guardadas cuya ruta empieza por `prefix` (una foto de jugador que acaba de cambiar). Solo se
+// llama justo antes de rehacer la pantalla: la que las enseñaba se borra antes de volver a pintar.
+static void forget(const char* prefix) {
+  size_t n = strlen(prefix);
+  for (int i = 0; i < cachedCount;)
+    if (!strncmp(cache[i]->path, prefix, n)) {
+      lv_image_cache_drop(&cache[i]->dsc);
+      cachedBytes -= cache[i]->dsc.data_size;
+      free((void*)cache[i]->dsc.data);
+      delete cache[i];
+      cache[i] = cache[--cachedCount];
+    } else {
+      i++;
+    }
+}
+
 static void trim(size_t bytes) {
   while (cachedCount && cachedBytes + bytes > MAX_CACHED_BYTES)
     if (!evictOne()) break;

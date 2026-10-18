@@ -331,8 +331,16 @@ SPIFFS** u **8M with spiffs**; el programa funciona, pero sin la FAT esas placas
   `orden PERFIL` → cuánto cuesta cada efecto de la pantalla que se ve (luego hay que volver al inicio);
   `orden MEMORIA` → memoria libre (interna y PSRAM); `orden REPOSO` → pasa ya al reloj de reposo (cualquier otra
   orden que no sea CAPTURA lo despierta).
+- `orden "FOTOSD nombre.jpg"` + `FOTOSD_DATOS <base64>`… + `FOTOSD_FIN` → deja una foto en la carpeta FOTOS de la
+  tarjeta SD sin sacarla (para probar AJUSTES → JUGADORES).
 - `python scripts/comparar.py <escena>` → app | placa lado a lado en `docs/comparar/`.
 - `python scripts/recorrido_placa.py` → recorre Inicio, configuración y un partido entero capturando cada pantalla.
+
+### Jugadores con foto (AJUSTES → JUGADORES)
+Para crear un jugador en la placa: copia sus fotos (.jpg, como salen del móvil) en una carpeta llamada **FOTOS** de
+la tarjeta micro SD (FAT32), mete la tarjeta con la placa apagada y entra en AJUSTES → JUGADORES → + NUEVO JUGADOR.
+Se escribe el nombre, se elige la foto y se guarda. Cada foto grande tarda 1–3 s en salir en la galería (se abren
+de una en una). Las fotos «progresivas» (algunas editadas en el PC) no se pueden abrir: guárdalas como JPEG normal.
 
 ### Limitaciones conocidas
 - Compila en GitHub (núcleo esp32 3.3 + LovyanGFX 1.2), pero no se ha probado en la placa real: la lógica

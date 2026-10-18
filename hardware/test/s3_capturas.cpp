@@ -61,6 +61,30 @@ static void toMatch(bool time) {
   run(200);
   pickPlayers();
 }
+// Las fotos guardadas en la FAT simulada, al disco del PC (LVGL las lee de ahí, como en la placa).
+static void syncFat() {
+  std::filesystem::create_directories("../build/placa/fat/jugadores");
+  for (auto& f : FFat.disk.files)
+    if (f.first.rfind("/jugadores/", 0) == 0) {
+      std::string path = std::string("../build/placa/fat") + f.first;
+      if (FILE* o = fopen(path.c_str(), "wb")) {
+        fwrite(f.second.data(), 1, f.second.size(), o);
+        fclose(o);
+      }
+    }
+}
+// Una tecla del teclado de JUGADORES (ui_fichas.h).
+static void key(const char* k) {
+  static const char* rows[4][10] = {{"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
+                                    {"A", "S", "D", "F", "G", "H", "J", "K", "L", "Ñ"},
+                                    {"Z", "X", "C", "V", "B", "N", "M"},
+                                    {"Á", "É", "Í", "Ó", "Ú", "Ü"}};
+  if (!strcmp(k, " ")) return tap(13 + 6 * 78 + 147, 152 + 3 * 78 + 35);
+  for (int r = 0; r < 4; r++)
+    for (int i = 0; i < 10; i++)
+      if (rows[r][i] && !strcmp(rows[r][i], k)) return tap(13 + i * 78 + 36, 152 + r * 78 + 35);
+}
+
 static void goal(bool white, uint32_t after = 3300) {
   tap(white ? 128 : 671, 186);
   run(after);
@@ -224,6 +248,41 @@ int main(int argc, char** argv) {
       if (i % 24 == 0 && eng.phase() == Phase::Playing && eng.lockRemaining(sim::now) == 0) usb(i % 48 ? "GB" : "GA");
     }
     std::printf("loco: cuenta %d tarjeta %d boton %d normalidad %d penalti %d visita %d\n", intro, card, button, ending, penalty, visit);
+  }
+
+  // AJUSTES → JUGADORES: crear uno con foto de la tarjeta (build/placa/fotos-sd), verlo y borrarlo.
+  {
+    goHome();
+    run(300);
+    openSettings();
+    run(300);
+    tap(400, 444);  // JUGADORES
+    shot("fichas-lista");
+    tap(106, 166);  // + NUEVO JUGADOR
+    for (const char* k : {"A", "N", "A", " ", "M", "A", "R", "Í", "A"}) key(k);
+    shot("fichas-nombre");
+    tap(708, 32);   // SIGUIENTE
+    run(1500);      // en el PC las fotos se abren al momento, de una en una
+    shot("fichas-fotos");
+    tap(16 + 3 * 157 + 70, 150);  // IMG_0002 (vertical, guardada tumbada)
+    shot("fichas-foto");
+    tap(708, 32);   // GUARDAR
+    syncFat();
+    shot("fichas-guardado");
+    const jug::Player* nuevo = jugadores.count ? &jugadores.list[jugadores.count - 1] : nullptr;
+    std::printf("fichas: %u jugadores, ultimo «%s» foto %d\n", jugadores.count, nuevo ? nuevo->name : "", nuevo ? (int)jugadores.photoOk(nuevo->code) : 0);
+    if (nuevo) {
+      fichas::editCode = nuevo->code;
+      fichas::go(fichas::View::Detail);
+      shot("fichas-jugador");
+      tap(550, 379);  // BORRAR JUGADOR
+      shot("fichas-borrar");
+      tap(550, 390);  // SÍ, BORRAR
+      shot("fichas-borrado");
+      std::printf("fichas: quedan %u\n", jugadores.count);
+    }
+    tap(78, 32);    // VOLVER → AJUSTES
+    shot("fichas-ajustes");
   }
 
   // Reposo: Inicio sin tocar nada durante más de 5 minutos.

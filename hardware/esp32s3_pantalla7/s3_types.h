@@ -38,7 +38,7 @@ struct TestState {
 };
 
 // Pantallas fuera del partido (Inicio y las de AJUSTES, ver s3_ajustes.h).
-enum class Screen : uint8_t { Home, Settings, Wifi, Keyboard, Connecting, Update, Install };
+enum class Screen : uint8_t { Home, Settings, Wifi, Keyboard, Connecting, Update, Install, Players };
 
 // Paquete de actualización por radio recibido (se atiende en loop()).
 struct OtaPacket {
