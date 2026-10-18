@@ -1536,7 +1536,7 @@ void setup() {
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento (unos 2 s al encender).
-  for (const capas::Capa* c : {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::PAUSA, &capas::CARTEL_PARTIDO,
+  for (const capas::Capa* c : {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::CARTEL_PARTIDO,
                                &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL,
                                // tarjetas y botones de inicio y configuración encendidos y pulsados: al tocarlos
                                // responden al momento (antes la primera vez tardaban ~0,2 s en descomprimirse)
@@ -1547,6 +1547,9 @@ void setup() {
                                &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
                                &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA})
     assets::preload(*c, true);
+  // La pausa ya pegada sobre su fondo opaco (ui_partido.h).
+  for (const capas::Capa* c : {&capas::PAUSA, &capas::PAUSA_PUL_CONTINUAR, &capas::PAUSA_PUL_ABANDONAR, &capas::PAUSA_ABANDONAR})
+    assets::flat(*c, partido::OVERLAY_BG, true);
   assets::preloadFonts();  // todas las letras abiertas (la primera vez que se usaba una grande, el partido se paraba)
   elegir::prewarm(&jugadores);  // fichas de la lista de jugadores ya pintadas
   sendHello();

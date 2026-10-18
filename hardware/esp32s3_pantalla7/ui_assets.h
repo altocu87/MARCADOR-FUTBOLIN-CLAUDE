@@ -354,6 +354,66 @@ static const lv_image_dsc_t* photo(const char* rel, int size, int radius, bool b
   return &c.dsc;
 }
 
+// Capa con transparencia «pegada» sobre un color liso (el fondo opaco de la pausa): queda una imagen sin
+// transparencias que LVGL solo copia, y tapa lo de debajo. Se guarda aparte; la original se suelta.
+static const lv_image_dsc_t* flat(const capas::Capa& c, uint32_t bg, bool sticky = false) {
+  char key[48];
+  snprintf(key, sizeof(key), "%s#%06lx", c.archivo, (unsigned long)(bg & 0xFFFFFF));
+  for (int i = 0; i < cachedCount; i++)
+    if (!strcmp(cache[i]->path, key)) {
+      cache[i]->usedAt = ++useCounter;
+      return &cache[i]->dsc;
+    }
+  const lv_image_dsc_t* srcDsc = loadLz4(c.archivo);
+  if (!srcDsc) return nullptr;
+  if (srcDsc->header.cf != LV_COLOR_FORMAT_RGB565A8) return srcDsc;
+  int w = srcDsc->header.w, h = srcDsc->header.h;
+  size_t raw = (size_t)w * h * 2;
+  while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
+    if (!evictOne()) break;
+  if (cachedCount >= MAX_CACHED) return srcDsc;
+  uint16_t* out = (uint16_t*)malloc(raw);
+  if (!out) return srcDsc;
+  const uint16_t* px = (const uint16_t*)srcDsc->data;
+  const uint8_t* alpha = srcDsc->data + (size_t)srcDsc->header.stride * h;
+  uint32_t br = (bg >> 16) & 0xFF, bgc = (bg >> 8) & 0xFF, bb = bg & 0xFF;
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) {
+      uint16_t v = px[(size_t)y * (srcDsc->header.stride / 2) + x];
+      uint32_t a = alpha[(size_t)y * w + x];
+      uint32_t r = ((v >> 11) & 31) * 255 / 31, g = ((v >> 5) & 63) * 255 / 63, b = (v & 31) * 255 / 31;
+      r = (r * a + br * (255 - a)) / 255;
+      g = (g * a + bgc * (255 - a)) / 255;
+      b = (b * a + bb * (255 - a)) / 255;
+      out[(size_t)y * w + x] = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+    }
+  cache[cachedCount] = new Cached();
+  Cached& e = *cache[cachedCount++];
+  snprintf(e.path, sizeof(e.path), "%s", key);
+  memset(&e.dsc, 0, sizeof(e.dsc));
+  e.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
+  e.dsc.header.cf = LV_COLOR_FORMAT_RGB565;
+  e.dsc.header.w = (uint16_t)w;
+  e.dsc.header.h = (uint16_t)h;
+  e.dsc.header.stride = (uint16_t)(w * 2);
+  e.dsc.data = (const uint8_t*)out;
+  e.dsc.data_size = raw;
+  e.usedAt = ++useCounter;
+  e.sticky = sticky;
+  cachedBytes += raw;
+  // La original con transparencia ya no hace falta.
+  for (int i = 0; i < cachedCount; i++)
+    if (&cache[i]->dsc == srcDsc) {
+      lv_image_cache_drop(&cache[i]->dsc);
+      cachedBytes -= cache[i]->dsc.data_size;
+      free((void*)cache[i]->dsc.data);
+      delete cache[i];
+      cache[i] = cache[--cachedCount];
+      break;
+    }
+  return &e.dsc;
+}
+
 // Fuente para lv_image_set_src: capa ya descomprimida (LZ4 o JPEG) o ruta «A:» de una imagen de LVGL (.bin).
 static const void* src(const capas::Capa& c) {
   static char path[320];

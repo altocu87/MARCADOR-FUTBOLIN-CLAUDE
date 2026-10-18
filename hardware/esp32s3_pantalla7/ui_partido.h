@@ -444,6 +444,18 @@ static void onDelete(lv_event_t*) {
   mpMask = 0;
 }
 
+const uint32_t OVERLAY_BG = 0x04080f;
+static lv_obj_t* flatLayer(lv_obj_t* parent, const capas::Capa& c, bool visible) {
+  lv_obj_t* img = lv_image_create(parent);
+  lv_image_set_src(img, assets::flat(c, OVERLAY_BG));
+  lv_obj_set_pos(img, c.x, c.y);
+  lv_obj_set_size(img, c.w, c.h);
+  lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(img, ui::coverCheck, LV_EVENT_COVER_CHECK, nullptr);
+  if (!visible) lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
+  return img;
+}
+
 static void build() {
   panel[0] = panel[1] = nullptr;
   cardsVeil[0] = cardsVeil[1] = nullptr;
@@ -517,10 +529,12 @@ static void build() {
   for (int t = 0; t < 2; t++) zone(scr, t ? 474.8f : 254.8f, 237, 70.4f, 154.3f, onAnnul, t);
   zone(scr, 333.2f, 237, 133.7f, 154.3f, onPause, 0);
 
-  // ---- Capas de encima (fondo oscuro rgba(4, 8, 15, 0.86), como .overlay)
+  // ---- Capas de encima (cuenta atrás, pausa, final de parte). En la app el fondo es rgba(4, 8, 15, 0.86) y deja
+  // ver el partido al 14 %; en la placa es opaco: así no se repinta el partido entero debajo en cada toque (la
+  // pausa tardaba 0,35 s en enseñar un botón pulsado).
   overlay = ui::box(scr, 0, 0, 800, 480);
-  lv_obj_set_style_bg_color(overlay, ui::hex(0x04080f), 0);
-  lv_obj_set_style_bg_opa(overlay, 219, 0);
+  lv_obj_set_style_bg_color(overlay, ui::hex(OVERLAY_BG), 0);
+  lv_obj_set_style_bg_opa(overlay, LV_OPA_COVER, 0);
   lv_obj_add_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(overlay, onOverlay, LV_EVENT_CLICKED, nullptr);
   // Cuenta atrás
@@ -543,14 +557,14 @@ static void build() {
   cdNum = sevenseg::create(cdLayer, 349, 167, 150, "3", 0x62d6ff, 230);
   cdHint = ui::text(cdLayer, "TOCA PARA SALTAR", 400, 13, ui::color::TEXT2, 13 * 0.14f);
   ui::place(cdHint, 400, 377.5f, 0);
-  // Pausa
-  pauseLayer = ui::layer(overlay, capas::PAUSA);
-  pausePulCont = ui::layer(overlay, capas::PAUSA_PUL_CONTINUAR, false);
-  pausePulAband = ui::layer(overlay, capas::PAUSA_PUL_ABANDONAR, false);
+  // Pausa: sus capas, pegadas sobre el fondo opaco (copiar en vez de mezclar; ver assets::flat).
+  pauseLayer = flatLayer(overlay, capas::PAUSA, true);
+  pausePulCont = flatLayer(overlay, capas::PAUSA_PUL_CONTINUAR, false);
+  pausePulAband = flatLayer(overlay, capas::PAUSA_PUL_ABANDONAR, false);
   zone(pauseLayer, 140 - capas::PAUSA.x, 190 - capas::PAUSA.y, 520, 140, onPauseBtn, 0);
   zone(pauseLayer, 307.8f - capas::PAUSA.x, 354 - capas::PAUSA.y, 184.4f, 44, onPauseBtn, 1);
   lv_obj_add_flag(pauseLayer, LV_OBJ_FLAG_CLICKABLE);
-  confirmLayer = ui::layer(overlay, capas::PAUSA_ABANDONAR, false);
+  confirmLayer = flatLayer(overlay, capas::PAUSA_ABANDONAR, false);
   lv_obj_add_flag(confirmLayer, LV_OBJ_FLAG_CLICKABLE);
   zone(confirmLayer, capas::PAUSA_ABANDONAR_SEGUIR.x, capas::PAUSA_ABANDONAR_SEGUIR.y, capas::PAUSA_ABANDONAR_SEGUIR.w,
        capas::PAUSA_ABANDONAR_SEGUIR.h, onConfirm, 0);
@@ -666,10 +680,6 @@ static void update(const View& v) {
   // Capas de encima
   bool cd = v.phase == P_COUNTDOWN, paused = v.phase == P_PAUSED, end = v.phase == P_PERIOD_END;
   vis(overlay, cd || paused || end);
-  // En la cuenta atrás el fondo es opaco (en la app deja ver el partido al 14 %, casi negro): así LVGL no pinta el
-  // partido entero debajo y empieza antes.
-  lv_opa_t ov = cd ? LV_OPA_COVER : 219;
-  if (lv_obj_get_style_bg_opa(overlay, LV_PART_MAIN) != ov) lv_obj_set_style_bg_opa(overlay, ov, 0);
   vis(cdLayer, cd);
   vis(pauseLayer, paused && !v.confirmAbandon);
   vis(confirmLayer, paused && v.confirmAbandon);
