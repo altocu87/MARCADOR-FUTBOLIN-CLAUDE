@@ -158,6 +158,9 @@ export const CAPAS = [
   { nombre: 'config-modo-clasificatorio', base: 'config', escena: configEscena('ranked') },
   { nombre: 'config-tiempo', base: 'config', pasos: [caja(2), caja(1)] },
   { nombre: 'config-ambas', base: 'config', pasos: [caja(2)] },
+  // Tarjeta de goles apagada, sola (sobre «las dos encendidas» solo cambia la izquierda): con ella y config-ambas
+  // la placa repinta solo la tarjeta que se toca.
+  { nombre: 'config-izq-apagada', base: 'config-ambas', pasos: [caja(1)] },
   { nombre: 'config-izq-max', base: 'config', pasos: [veces(15, `${COND(1)} .cond-btn.up`)] },
   { nombre: 'config-izq-min', base: 'config', pasos: [veces(4, `${COND(1)} .cond-btn.down`)] },
   { nombre: 'config-izq-pul-mas', base: 'config', pasos: [mantener(`${COND(1)} .cond-btn.up`)] },

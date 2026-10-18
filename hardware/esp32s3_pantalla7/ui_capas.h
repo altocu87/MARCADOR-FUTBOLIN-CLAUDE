@@ -111,5 +111,6 @@ const Capa RACHA_8 = {"capas/racha-8.lz4", 80, 33, 97, 57};
 const Capa RACHA_9 = {"capas/racha-9.lz4", 80, 33, 97, 57};
 const Capa JUGADORES_BLANCO = {"capas/jugadores-blanco.lz4", 0, 0, 800, 480};
 const Capa JUGADORES_AZUL = {"capas/jugadores-azul.lz4", 0, 0, 800, 480};
+const Capa CONFIG_IZQ_APAGADA = {"capas/config-izq-apagada.lz4", 7, 57, 395, 362};
 }  // namespace capas
 #endif

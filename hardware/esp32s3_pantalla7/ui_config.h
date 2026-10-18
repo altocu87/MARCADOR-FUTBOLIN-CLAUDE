@@ -37,7 +37,7 @@ const int DIGIT_ADV = 123;                 // avance de cada cifra (tabular-nums
 const int RIGHT_DX = 391;                  // de la tarjeta de goles a la de minutos
 
 static lv_obj_t* scr = nullptr;
-static lv_obj_t *modeLayer[3], *timeOnly, *both, *limit[2][2], *pressed[2][2], *pressedNext, *clock;
+static lv_obj_t *modeLayer[3], *leftOff, *rightOn, *limit[2][2], *pressed[2][2], *pressedNext, *clock;
 static lv_obj_t* digits[2][2];
 static uint32_t lastClockKey = 0xFFFFFFFF;
 static int drawnKey[2] = {-1, -1};  // número y encendido que enseña cada tarjeta (para no repintar la otra)
@@ -81,8 +81,9 @@ static void drawNumber(int side) {
 }
 
 static void refresh() {
-  setVisible(timeOnly, !st.useGoals && st.useTime);
-  setVisible(both, st.useGoals && st.useTime);
+  // Cada tarjeta con su imagen de encendida o apagada: al tocar una solo se repinta esa.
+  setVisible(leftOff, !st.useGoals);
+  setVisible(rightOn, st.useTime);
   for (int s = 0; s < 2; s++) {
     setVisible(limit[s][0], on(s) && atMax(s));
     setVisible(limit[s][1], on(s) && atMin(s));
@@ -149,7 +150,26 @@ static lv_obj_t* zone(int x, int y, int w, int h, lv_event_cb_t cb, intptr_t use
   return o;
 }
 
-static void onDelete(lv_event_t*) { scr = nullptr; }
+// Cifras preparadas de una en una al entrar (encendidas y apagadas, 20): así al tocar no hay que descomprimir
+// ninguna. Una cada 50 ms para no parar la pantalla; se quedan mientras se esté en esta pantalla.
+static lv_timer_t* warmTimer = nullptr;
+static int warmNext = 0;
+static void warm(lv_timer_t*) {
+  if (warmNext < 20) {
+    assets::preload(warmNext < 10 ? *DIG_ON[warmNext] : *DIG_OFF[warmNext - 10]);
+    warmNext++;
+  }
+  if (warmNext >= 20 && warmTimer) {
+    lv_timer_delete(warmTimer);
+    warmTimer = nullptr;
+  }
+}
+
+static void onDelete(lv_event_t*) {
+  scr = nullptr;
+  if (warmTimer) lv_timer_delete(warmTimer);
+  warmTimer = nullptr;
+}
 
 static void build() {
   scr = ui::screen();
@@ -157,8 +177,8 @@ static void build() {
   ui::layer(scr, capas::CONFIG);
   modeLayer[1] = ui::layer(scr, capas::CONFIG_MODO_LOCO, st.mode == 1);
   modeLayer[2] = ui::layer(scr, capas::CONFIG_MODO_CLASIFICATORIO, st.mode == 2);
-  timeOnly = ui::layer(scr, capas::CONFIG_TIEMPO, false);
-  both = ui::layer(scr, capas::CONFIG_AMBAS, false);
+  rightOn = ui::layer(scr, capas::CONFIG_AMBAS, false);       // minutos encendida
+  leftOff = ui::layer(scr, capas::CONFIG_IZQ_APAGADA, false);  // goles apagada
   limit[0][0] = ui::layer(scr, capas::CONFIG_IZQ_MAX, false);
   limit[0][1] = ui::layer(scr, capas::CONFIG_IZQ_MIN, false);
   limit[1][0] = ui::layer(scr, capas::CONFIG_DER_MAX, false);
@@ -188,6 +208,8 @@ static void build() {
   zone(275, 416, 250, 54, onNext, 0);
   refresh();
   lastClockKey = 0xFFFFFFFF;
+  warmNext = 0;
+  if (!warmTimer) warmTimer = lv_timer_create(warm, 50, nullptr);
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }

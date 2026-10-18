@@ -1532,7 +1532,8 @@ void setup() {
                                &capas::INICIO_PUL_RAPIDO, &capas::INICIO_PUL_LOCO, &capas::INICIO_PUL_CLASIFICATORIO,
                                &capas::INICIO_PUL_TORNEO, &capas::INICIO_PUL_RANKING, &capas::INICIO_PUL_RETOS,
                                &capas::CONFIG_IZQ_PUL_MAS, &capas::CONFIG_IZQ_PUL_MENOS, &capas::CONFIG_DER_PUL_MAS,
-                               &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR})
+                               &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
+                               &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA})
     assets::preload(*c, true);
   sendHello();
   sendLine("STATE idle");
