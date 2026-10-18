@@ -34,8 +34,9 @@ RANGO_TEXTO = "0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x201D,0x2022,0x2026,0x2
 JUEGOS = {"texto": RANGO_TEXTO, "cifras": "0x20,0x2B-0x3A,0x2013,0x2212,0x25"}  # cifras: + , - . / 0-9 : % y guiones
 
 
-def rgb565_dither(im):
-    """RGB888 -> RGB565 con tramado ordenado 4×4 (los degradados no hacen escalones)."""
+def rgb565_dither(im, ox=0, oy=0):
+    """RGB888 -> RGB565 con tramado ordenado 4×4 (los degradados no hacen escalones). `ox`, `oy`: posición del
+    recorte en la pantalla, para que el tramado de un recorte case con el de su fondo."""
     bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
     w, h = im.size
     px = im.load()
@@ -44,7 +45,7 @@ def rgb565_dither(im):
     for y in range(h):
         for x in range(w):
             r, g, b = px[x, y][:3]
-            t = bayer[(y & 3) * 4 + (x & 3)]
+            t = bayer[((y + oy) & 3) * 4 + ((x + ox) & 3)]
             r = min(255, r + (t >> 1))
             g = min(255, g + (t >> 2))
             b = min(255, b + (t >> 1))
@@ -80,11 +81,16 @@ def rgb565(im):
     return bytes(out)
 
 
-def lz4_capa(im, alfa):
+# Capas con fondo en degradado (inicio y configuración): con tramado, que en 16 bits un degradado hace franjas.
+TRAMADAS = ("inicio", "config")
+
+
+def lz4_capa(im, alfa, tramado=None):
     """Capa para la placa: cabecera de imagen de LVGL (12 bytes), tamaño sin comprimir (4) y bloque LZ4.
-    Se abre en milisegundos (un JPEG tardaba 0,3–0,5 s) y ocupa menos que el JPEG, sin perder calidad."""
+    Se abre en milisegundos (un JPEG tardaba 0,3–0,5 s) y ocupa menos que el JPEG, sin perder calidad.
+    `tramado`: (x, y) del recorte en la pantalla si va con tramado."""
     w, h = im.size
-    data = rgb565(im)
+    data = bytes(rgb565_dither(im.convert("RGB"), *tramado)) if tramado else rgb565(im)
     if alfa:
         data += bytes(im.convert("RGBA").getchannel("A").tobytes())
     head = struct.pack("<BBHHHHH", 0x19, 0x14 if alfa else 0x12, 0, w, h, w * 2, 0)
@@ -105,7 +111,8 @@ def capas():
             continue
         src = os.path.join(BUILD, "capas", f"{name}.png")
         im = Image.open(src)
-        open(os.path.join(out, f"{name}.lz4"), "wb").write(lz4_capa(im, bool(m.get("alfa"))))
+        tram = (int(m.get("x", 0)), int(m.get("y", 0))) if name.startswith(TRAMADAS) and not m.get("alfa") else None
+        open(os.path.join(out, f"{name}.lz4"), "wb").write(lz4_capa(im, bool(m.get("alfa")), tram))
         m["archivo"] = f"capas/{name}.lz4"
     return manifest
 

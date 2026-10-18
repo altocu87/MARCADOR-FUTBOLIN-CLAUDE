@@ -155,27 +155,15 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
                         (int)b.pin_d12, (int)b.pin_d13, (int)b.pin_d14, (int)b.pin_d15};
   for (int i = 0; i < 16; i++) c.data_gpio_nums[i] = pins[i];
   c.flags.fb_in_psram = 1;
-  // El panel se crea desde el núcleo 0: su interrupción (la que copia cada imagen de la PSRAM a los búferes de
-  // reserva, unas 30 veces por segundo) se queda en ese núcleo y deja el 1 entero para dibujar.
-  static esp_lcd_rgb_panel_config_t cfg;
-  static volatile int made;
-  cfg = c;
-  made = 0;
-  xTaskCreatePinnedToCore(
-      [](void*) {
-        bool ok = esp_lcd_new_rgb_panel(&cfg, &panel) == ESP_OK;
-        if (ok) {
-          esp_lcd_rgb_panel_event_callbacks_t cbs = {};
-          cbs.on_vsync = onVsync;
-          esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, nullptr);
-          ok = esp_lcd_panel_reset(panel) == ESP_OK && esp_lcd_panel_init(panel) == ESP_OK;
-        }
-        made = ok ? 1 : -1;
-        vTaskDelete(nullptr);
-      },
-      "panel", 4096, nullptr, configMAX_PRIORITIES - 2, nullptr, 0);
-  while (!made) vTaskDelay(1);
-  if (made < 0) return false;
+  // Se crea desde este núcleo (el que dibuja): su interrupción copia la imagen de la PSRAM a los búferes de reserva
+  // y, en el mismo núcleo, mientras copia LVGL no usa la PSRAM. Probado en el otro núcleo (18/10/2026): dibujaba algo
+  // más rápido, pero los dos a la vez se pisaban la PSRAM, la pantalla no recibía a tiempo y la imagen se corría
+  // (con CONFIG_LCD_RGB_RESTART_IN_VSYNC se recoloca en la imagen siguiente, pero se veía el salto).
+  if (esp_lcd_new_rgb_panel(&c, &panel) != ESP_OK) return false;
+  esp_lcd_rgb_panel_event_callbacks_t cbs = {};
+  cbs.on_vsync = onVsync;
+  esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, nullptr);
+  if (esp_lcd_panel_reset(panel) != ESP_OK || esp_lcd_panel_init(panel) != ESP_OK) return false;
   void *f0 = nullptr, *f1 = nullptr;
   if (esp_lcd_rgb_panel_get_frame_buffer(panel, 2, &f0, &f1) != ESP_OK) return false;
   fb0 = (uint16_t*)f0;

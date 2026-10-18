@@ -48,6 +48,14 @@ const partidoProrroga = async (p) => {
   await SCENES.prorroga(p);
   await wait(p, 3000);
 };
+/** Fondo de inicio y configuración en la placa (Alex, 18/10/2026): en vez de la foto de la app, un degradado radial de
+ * cuatro colores (violeta, cian, rosa y azul noche). Va en las capas, así que en la placa cuesta lo mismo que antes. */
+const DEGRADADO = `radial-gradient(circle at 16% 20%, rgba(139, 92, 246, 0.85) 0%, rgba(139, 92, 246, 0) 52%),
+  radial-gradient(circle at 86% 26%, rgba(34, 211, 238, 0.75) 0%, rgba(34, 211, 238, 0) 48%),
+  radial-gradient(circle at 58% 108%, rgba(236, 72, 153, 0.7) 0%, rgba(236, 72, 153, 0) 55%),
+  radial-gradient(ellipse at 50% 45%, #1b1f4a 0%, #090c1f 100%)`;
+const FONDO_INICIO = `.home-bg-img, .tron-grid { visibility: hidden !important; } .home-bg { background: ${DEGRADADO} !important; }`;
+const FONDO_CONFIG = `.setup-bg { visibility: hidden !important; } .setup-screen { background: ${DEGRADADO} !important; }`;
 const JUG_OCULTAR = ['.select-layout', '.screen-footer > *', '.screen-header .badge', '.screen-header .btn-sm', '.screen-title small'];
 const VIC_OCULTAR = ['.vic-score', '.vic-facts', '.vic-body', '.confetti', '.match-main', '.goal-show', '.banner'];
 const VIC_CSS = '.victory-rays { animation: none !important; }';
@@ -129,7 +137,7 @@ const clase = (sel, cls, on) => forzar(([s, c, o]) => document.querySelectorAll(
 
 export const CAPAS = [
   // ---------------------------------------------------------------- Inicio
-  { nombre: 'inicio', escena: 'inicio' },
+  { nombre: 'inicio', escena: 'inicio', css: FONDO_INICIO },
   { nombre: 'inicio-sel-rapido', base: 'inicio', pasos: [pulsa('.mode-card.mode-quick', 800)] },
   { nombre: 'inicio-sel-loco', base: 'inicio', pasos: [pulsa('.mode-card.mode-chaos', 800)] },
   { nombre: 'inicio-sel-clasificatorio', base: 'inicio', pasos: [pulsa('.mode-card.mode-ranked', 800)] },
@@ -145,7 +153,7 @@ export const CAPAS = [
   // ---------------------------------------------------------------- Configuración (SetupScreen.tsx)
   // Fondo: solo goles (lo de siempre), sin números ni reloj (los dibuja la placa). Los demás estados, con toques
   // de verdad (la app repinta y desharía cualquier cambio forzado a mano).
-  { nombre: 'config', escena: configEscena('quick'), ocultar: ['.cond-box .num', '.setup-clock'] },
+  { nombre: 'config', escena: configEscena('quick'), ocultar: ['.cond-box .num', '.setup-clock'], css: FONDO_CONFIG },
   { nombre: 'config-modo-loco', base: 'config', escena: configEscena('chaos') },
   { nombre: 'config-modo-clasificatorio', base: 'config', escena: configEscena('ranked') },
   { nombre: 'config-tiempo', base: 'config', pasos: [caja(2), caja(1)] },

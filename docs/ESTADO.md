@@ -137,6 +137,12 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   - Diferencias con la app para ir fluida: el cartel de gol y los de PARTIDO / 2ª PARTE aparecen y se van de golpe
     (sin fundido ni deslizarse), en la bola de partido solo late el cartel (el aro rojo queda fijo), la barra del
     bloqueo baja a saltos de décima y el confeti de la victoria no gira y son 16 trocitos.
+  - Inicio y configuración con fondo en degradado radial de cuatro colores (violeta, cian, rosa y azul noche) en vez
+    de la foto de la app (Alex); sus tarjetas y botones encendidos y pulsados se preparan al encender y la tarjeta
+    elegida se enciende de golpe. Reloj de reposo nuevo y ligero (hora grande dentro de un aro que hace de
+    secundero): cada segundo repinta solo un trocito (11 ms).
+  - La imagen se corría de lado al cambiar mucho la pantalla (cartel de gol): la interrupción del panel vuelve a ir
+    en el mismo núcleo que dibuja (en el otro se pisaban la PSRAM). Pendiente de que Alex confirme que ya no pasa.
 
 ## Web y compilación
 

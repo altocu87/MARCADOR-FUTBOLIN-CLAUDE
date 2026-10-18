@@ -507,6 +507,7 @@ static void handleBoardLine(const char* line) {
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
   else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i) != 0);
+  else if (!strcmp(word, "REPOSO")) lastActivity = millis() - SLEEP_AFTER_MS - 1;  // a reposo ya (para probarlo)
   else if (!strcmp(word, "PERFIL")) {
     perfil::run(sendLine);
     sendLine("PERFIL_FIN");
@@ -1524,7 +1525,14 @@ void setup() {
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento (unos 2 s al encender).
   for (const capas::Capa* c : {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::PAUSA, &capas::CARTEL_PARTIDO,
-                               &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL})
+                               &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL,
+                               // tarjetas y botones de inicio y configuración encendidos y pulsados: al tocarlos
+                               // responden al momento (antes la primera vez tardaban ~0,2 s en descomprimirse)
+                               &capas::INICIO_SEL_RAPIDO, &capas::INICIO_SEL_LOCO, &capas::INICIO_SEL_CLASIFICATORIO,
+                               &capas::INICIO_PUL_RAPIDO, &capas::INICIO_PUL_LOCO, &capas::INICIO_PUL_CLASIFICATORIO,
+                               &capas::INICIO_PUL_TORNEO, &capas::INICIO_PUL_RANKING, &capas::INICIO_PUL_RETOS,
+                               &capas::CONFIG_IZQ_PUL_MAS, &capas::CONFIG_IZQ_PUL_MENOS, &capas::CONFIG_DER_PUL_MAS,
+                               &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR})
     assets::preload(*c, true);
   sendHello();
   sendLine("STATE idle");

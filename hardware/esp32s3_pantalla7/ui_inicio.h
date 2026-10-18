@@ -81,7 +81,7 @@ static void onCard(lv_event_t* e) {
   if (selected != i) {
     for (int k = 0; k < 3; k++)
       if (k != i) ui::hide(sel[k]);
-    ui::fadeIn(sel[i], 250);
+    ui::reveal(sel[i]);  // de golpe (la app la funde en 0,25 s): en la placa el fundido iba a saltos y retrasaba el toque
     selected = (int8_t)i;
     selTimer = lv_timer_create(onSelTimeout, SELECT_TIMEOUT_MS, nullptr);
     lv_timer_set_repeat_count(selTimer, 1);
@@ -178,21 +178,26 @@ static bool active() { return scr && lv_screen_active() == scr; }
 // Mando conectado / versión nueva / aviso (nullptr = ninguno).
 static void setStatus(bool mandoLinked, bool update, const char* warning) {
   if (!active()) return;
+  // Se llama en cada vuelta: solo se toca lo que cambia (cambiar un color, aunque sea al mismo, lo repinta).
   if (mandoLinked || update) {
-    uint32_t c = update ? ui::color::RANKED : ui::color::OK;
-    lv_obj_set_style_bg_color(dot, ui::hex(c), 0);
-    lv_obj_set_style_shadow_color(dot, ui::hex(c), 0);
-    lv_obj_remove_flag(dot, LV_OBJ_FLAG_HIDDEN);
+    lv_color_t c = ui::hex(update ? ui::color::RANKED : ui::color::OK);
+    if (!lv_color_eq(lv_obj_get_style_bg_color(dot, LV_PART_MAIN), c)) {
+      lv_obj_set_style_bg_color(dot, c, 0);
+      lv_obj_set_style_shadow_color(dot, c, 0);
+    }
+    ui::setVisible(dot, true);
   } else {
-    lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
+    ui::setVisible(dot, false);
   }
   if (warning) {
-    if (strcmp(lv_label_get_text(warnText), warning)) lv_label_set_text(warnText, warning);
-    lv_obj_update_layout(warn);
-    lv_obj_set_x(warn, 400 - lv_obj_get_width(warn) / 2);
-    lv_obj_remove_flag(warn, LV_OBJ_FLAG_HIDDEN);
+    if (strcmp(lv_label_get_text(warnText), warning)) {
+      lv_label_set_text(warnText, warning);
+      lv_obj_update_layout(warn);
+      lv_obj_set_x(warn, 400 - lv_obj_get_width(warn) / 2);
+    }
+    ui::setVisible(warn, true);
   } else {
-    lv_obj_add_flag(warn, LV_OBJ_FLAG_HIDDEN);
+    ui::setVisible(warn, false);
   }
 }
 static bool dotShown() { return dot && !lv_obj_has_flag(dot, LV_OBJ_FLAG_HIDDEN); }
