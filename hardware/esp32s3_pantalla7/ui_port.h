@@ -236,6 +236,9 @@ static bool begin(LGFX& lcd) {
   touch = lv_indev_create();
   lv_indev_set_type(touch, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(touch, indevCb);
+  // Mantener pulsado (flechas de la configuración): empieza a repetir a los 0,5 s y luego cada 0,15 s.
+  lv_indev_set_long_press_time(touch, 500);
+  lv_indev_set_long_press_repeat_time(touch, 150);
   return true;
 }
 

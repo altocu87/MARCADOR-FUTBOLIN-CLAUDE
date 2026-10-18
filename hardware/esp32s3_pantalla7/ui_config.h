@@ -40,6 +40,7 @@ static lv_obj_t* scr = nullptr;
 static lv_obj_t *modeLayer[3], *timeOnly, *both, *limit[2][2], *pressed[2][2], *pressedNext, *clock;
 static lv_obj_t* digits[2][2];
 static uint32_t lastClockKey = 0xFFFFFFFF;
+static int drawnKey[2] = {-1, -1};  // número y encendido que enseña cada tarjeta (para no repintar la otra)
 
 static const capas::Capa* DIG_ON[10] = {&capas::CONFIG_CIFRA_ON_0, &capas::CONFIG_CIFRA_ON_1, &capas::CONFIG_CIFRA_ON_2,
                                         &capas::CONFIG_CIFRA_ON_3, &capas::CONFIG_CIFRA_ON_4, &capas::CONFIG_CIFRA_ON_5,
@@ -60,6 +61,9 @@ static void setVisible(lv_obj_t* o, bool v) { ui::setVisible(o, v); }
 // Número de una tarjeta con las cifras de la app (una o dos, centradas igual que allí).
 static void drawNumber(int side) {
   uint8_t v = value(side);
+  int key = v * 2 + (on(side) ? 1 : 0);
+  if (key == drawnKey[side]) return;  // igual que antes: no se toca (cambiar la imagen la repinta aunque sea la misma)
+  drawnKey[side] = key;
   const capas::Capa** set = on(side) ? DIG_ON : DIG_OFF;
   int dx = side ? RIGHT_DX : 0;
   if (v < 10) {
@@ -86,32 +90,35 @@ static void refresh() {
   }
 }
 
-// ▲ / ▼: se ven pulsados mientras se mantienen (si se pueden usar) y cambian el valor al soltar, como en la app.
+// ▲ / ▼: cambian el valor al pulsar (no al soltar, como en la app: en la placa se notaba el retraso) y, si se
+// mantienen, siguen subiendo o bajando solos. Se ven pulsados mientras se mantienen y se pueden usar.
+static void step(int side, int down) {
+  uint8_t& v = side ? st.minutes : st.goals;
+  v = (uint8_t)(v + (down ? -1 : 1));
+  refresh();
+  if (down ? atMin(side) : atMax(side)) setVisible(pressed[side][down], false);  // ya en el tope
+  if (hooks.changed) hooks.changed(st);
+}
 static void onStep(lv_event_t* e) {
   int code = (int)(intptr_t)lv_event_get_user_data(e);
   int side = code >> 1, down = code & 1;
   bool usable = on(side) && !(down ? atMin(side) : atMax(side));
   lv_event_code_t ev = lv_event_get_code(e);
-  if (ev == LV_EVENT_PRESSED) setVisible(pressed[side][down], usable);
-  else if (ev == LV_EVENT_RELEASED || ev == LV_EVENT_PRESS_LOST) setVisible(pressed[side][down], false);
-  else if (ev == LV_EVENT_CLICKED && usable) {
-    uint8_t& v = side ? st.minutes : st.goals;
-    v = (uint8_t)(v + (down ? -1 : 1));
-    refresh();
-    if (hooks.changed) hooks.changed(st);
+  if (ev == LV_EVENT_PRESSED) {
+    setVisible(pressed[side][down], usable);
+    if (usable) step(side, down);
+  } else if (ev == LV_EVENT_LONG_PRESSED_REPEAT) {
+    if (usable) step(side, down);
+  } else if (ev == LV_EVENT_RELEASED || ev == LV_EVENT_PRESS_LOST) {
+    setVisible(pressed[side][down], false);
   }
 }
 
-// Número: se encoge un poco mientras se pulsa; al soltar, enciende o apaga la tarjeta.
+// Número: al pulsarlo enciende o apaga la tarjeta (al momento; la app además lo encoge un poco mientras se pulsa,
+// pero encoger una imagen con brillo en la placa costaba repintarla dos veces).
 static void onBox(lv_event_t* e) {
   int side = (int)(intptr_t)lv_event_get_user_data(e);
-  lv_event_code_t ev = lv_event_get_code(e);
-  if (ev == LV_EVENT_PRESSED || ev == LV_EVENT_RELEASED || ev == LV_EVENT_PRESS_LOST) {
-    uint32_t sc = ev == LV_EVENT_PRESSED ? 246 : 256;  // scale(0.96)
-    for (int i = 0; i < 2; i++) lv_image_set_scale(digits[side][i], sc);
-    return;
-  }
-  if (ev != LV_EVENT_CLICKED) return;
+  if (lv_event_get_code(e) != LV_EVENT_PRESSED) return;
   bool goals = side == 0 ? !st.useGoals : st.useGoals;
   bool time = side == 1 ? !st.useTime : st.useTime;
   if (!goals && !time) {
@@ -161,6 +168,7 @@ static void build() {
   pressed[1][0] = ui::layer(scr, capas::CONFIG_DER_PUL_MAS, false);
   pressed[1][1] = ui::layer(scr, capas::CONFIG_DER_PUL_MENOS, false);
   pressedNext = ui::layer(scr, capas::CONFIG_PUL_CONTINUAR, false);
+  drawnKey[0] = drawnKey[1] = -1;
   for (int s = 0; s < 2; s++)
     for (int i = 0; i < 2; i++) {
       digits[s][i] = lv_image_create(scr);
