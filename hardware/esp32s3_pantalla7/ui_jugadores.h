@@ -330,11 +330,14 @@ static lv_draw_buf_t* cardImage(uint8_t i, lv_obj_t* parent) {
 }
 
 // Prepara las fichas fuera de la pantalla (al encender o cuando la app pasa jugadores).
-static void prewarm(jug::Store* s) {
+static void prewarm(jug::Store* s, void (*tick)() = nullptr) {
   store = s;
   if (!store) return;
   lv_obj_t* tmp = lv_obj_create(nullptr);
-  for (uint8_t i = 0; i < store->count; i++) cardImage(i, tmp);
+  for (uint8_t i = 0; i < store->count; i++) {
+    cardImage(i, tmp);
+    if (tick) tick();
+  }
   lv_obj_delete(tmp);
 }
 

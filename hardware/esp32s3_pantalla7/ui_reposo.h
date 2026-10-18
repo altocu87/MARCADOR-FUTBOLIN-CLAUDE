@@ -24,7 +24,7 @@ static const char* const DIAS[7] = {"Domingo", "Lunes", "Martes", "Miércoles", 
 static const char* const MESES[12] = {"enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
                                       "agosto", "septiembre", "octubre", "noviembre", "diciembre"};
 
-const int CX = 400, CY = 236, R = 202;  // centro y radio del aro
+const int CX = 400, CY = 236, R = 222;  // centro y radio del aro
 const uint32_t CYAN = 0x4fd8ff, ORANGE = 0xff9a3c;
 
 static void onDelete(lv_event_t*) { scr = nullptr; }
@@ -55,14 +55,14 @@ static void build() {
   lv_obj_set_style_radius(ring, LV_RADIUS_CIRCLE, LV_PART_KNOB);
 
   // Dentro del aro: hora, segundos y fecha.
-  timeLbl = ui::text(scr, "00:00", 900, 110, 0xeaf6ff);
+  timeLbl = ui::text(scr, "00:00", 900, 150, 0xeaf6ff);  // grande, que se lea desde lejos
   sec = ui::text(scr, "00", 900, 26, ORANGE);
   date = ui::text(scr, "", 400, 22, 0x6f90ae, 0.5f);
   // Fuera: último partido arriba y el aviso para despertar abajo.
   last = ui::text(scr, "", 700, 15, 0x4a6784, 0.9f);
   lv_label_set_recolor(last, true);
   hint = ui::text(scr, "TOCA PARA DESPERTAR", 400, 12, 0x2c4058, 1.68f);
-  ui::place(hint, 400 + 0.84f, 452, 0);
+  ui::place(hint, 400 + 0.84f, 463, 0);
   // Solo en la placa (la app no tiene batería): aviso en rojo arriba a la derecha.
   battery = ui::text(scr, "BATERÍA BAJA: CONECTA EL CARGADOR", 800, 13, ui::color::DANGER, 1.3f);
   ui::place(battery, 784, 12, 0, ui::Align::Right);
@@ -84,17 +84,17 @@ static void update(uint8_t hour, uint8_t minute, uint8_t second, uint8_t weekday
   if (minute != lastMinute) {
     snprintf(b, sizeof(b), "%02u:%02u", hour, minute);
     lv_label_set_text(timeLbl, b);
-    ui::place(timeLbl, CX, CY - 112, 120);
+    ui::place(timeLbl, CX, CY - 136, 156);
     snprintf(b, sizeof(b), "%s, %u de %s", DIAS[weekday % 7], day, MESES[(month + 11) % 12]);
     lv_label_set_text(date, b);
-    ui::place(date, CX, CY + 66, 26);
+    ui::place(date, CX, CY + 92, 26);
     lastMinute = minute;
   }
   if (second != lastSec) {
     lv_arc_set_value(ring, second % 60);
     snprintf(b, sizeof(b), "%02u", second);
     lv_label_set_text(sec, b);
-    ui::place(sec, CX, CY + 20, 32);
+    ui::place(sec, CX, CY + 46, 32);
     lastSec = second;
   }
   ui::setVisible(battery, lowBattery);

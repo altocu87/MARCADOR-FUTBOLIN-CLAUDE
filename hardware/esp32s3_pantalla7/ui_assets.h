@@ -474,7 +474,7 @@ static const lv_font_t* font(uint16_t weight, uint16_t size, bool italic = false
 
 // Todas las letras de la carpeta, cargadas al encender: la primera vez que se usa una grande (las cifras del
 // marcador, ~180 KB) tardaba en abrirse y el partido se quedaba parado antes de empezar.
-static void preloadFonts() {
+static void preloadFonts(void (*tick)() = nullptr) {
   char dirPath[300];
   snprintf(dirPath, sizeof(dirPath), "%s/fuentes", ROOT);
   DIR* d = opendir(dirPath);
@@ -484,6 +484,8 @@ static void preloadFonts() {
     char it = 0;
     if (sscanf(e->d_name, "inter-%u-%u.bin", &w, &sz) == 2) font((uint16_t)w, (uint16_t)sz);
     else if (sscanf(e->d_name, "inter-%u%c-%u.bin", &w, &it, &sz) == 3 && it == 'i') font((uint16_t)w, (uint16_t)sz, true);
+    else continue;
+    if (tick) tick();
   }
   closedir(d);
 }

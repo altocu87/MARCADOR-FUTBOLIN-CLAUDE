@@ -51,6 +51,7 @@
 #include "s3_jugadores.h"
 #include "ui_jugadores.h"
 #include "ui_perfil.h"
+#include "ui_cargando.h"
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -79,7 +80,7 @@ static const char* FW_VERSION = "1.0";
 #define S3_CAPS "goles,anular,pausa,pantalla,radio,brillo"
 #endif
 static const uint8_t GRUPO_MESA = 1;  // MISMO número que en el mando (cámbialo si hay dos mesas cerca)
-static const uint32_t SLEEP_AFTER_MS = 5UL * 60UL * 1000UL;  // atenuar pantalla tras 5 min sin uso fuera de partido
+static const uint32_t SLEEP_AFTER_MS = 2UL * 60UL * 1000UL;  // reloj de reposo tras 2 min sin uso fuera de partido (Alex)
 
 LGFX lcd;        // expansor, brillo y bus I2C de la placa (el panel lo lleva ui_port.h con LVGL)
 static LegacyGfx gfx;  // pantallas aún sin rehacer: su dibujo antiguo pasa a objetos LVGL (ui_legacy.h)
@@ -1541,8 +1542,9 @@ void setup() {
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
-  // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento (unos 2 s al encender).
-  for (const capas::Capa* c : {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::CARTEL_PARTIDO,
+  // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
+  // con su porcentaje (unos 7 s al encender).
+  static const capas::Capa* const BOOT_LAYERS[] = {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO, &capas::CARTEL_PARTIDO,
                                &capas::VICTORIA_BLANCO, &capas::VICTORIA_AZUL,
                                // tarjetas y botones de inicio y configuración encendidos y pulsados: al tocarlos
                                // responden al momento (antes la primera vez tardaban ~0,2 s en descomprimirse)
@@ -1551,13 +1553,23 @@ void setup() {
                                &capas::INICIO_PUL_TORNEO, &capas::INICIO_PUL_RANKING, &capas::INICIO_PUL_RETOS,
                                &capas::CONFIG_IZQ_PUL_MAS, &capas::CONFIG_IZQ_PUL_MENOS, &capas::CONFIG_DER_PUL_MAS,
                                &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
-                               &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA})
+                               &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA};
+  static const capas::Capa* const BOOT_FLAT[] = {&capas::PAUSA, &capas::PAUSA_PUL_CONTINUAR, &capas::PAUSA_PUL_ABANDONAR,
+                                                 &capas::PAUSA_ABANDONAR};
+  const int nLayers = sizeof(BOOT_LAYERS) / sizeof(BOOT_LAYERS[0]), nFlat = sizeof(BOOT_FLAT) / sizeof(BOOT_FLAT[0]);
+  cargando::show(nLayers + nFlat + 38 /* letras */ + jugadores.count);
+  for (const capas::Capa* c : BOOT_LAYERS) {
     assets::preload(*c, true);
+    cargando::step();
+  }
   // La pausa ya pegada sobre su fondo opaco (ui_partido.h).
-  for (const capas::Capa* c : {&capas::PAUSA, &capas::PAUSA_PUL_CONTINUAR, &capas::PAUSA_PUL_ABANDONAR, &capas::PAUSA_ABANDONAR})
+  for (const capas::Capa* c : BOOT_FLAT) {
     assets::flat(*c, partido::OVERLAY_BG, true);
-  assets::preloadFonts();  // todas las letras abiertas (la primera vez que se usaba una grande, el partido se paraba)
-  elegir::prewarm(&jugadores);  // fichas de la lista de jugadores ya pintadas
+    cargando::step();
+  }
+  assets::preloadFonts(cargando::step);  // todas las letras (la primera vez que se usaba una grande, el partido se paraba)
+  elegir::prewarm(&jugadores, cargando::step);  // fichas de la lista de jugadores ya pintadas
+  cargando::finish();
   sendHello();
   sendLine("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba

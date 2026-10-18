@@ -8,6 +8,7 @@
 #define MFV3_UI_SEVENSEG_H
 
 #include <lvgl.h>
+#include "misc/cache/instance/lv_image_cache.h"
 #include <math.h>
 #include <string.h>
 
@@ -121,6 +122,73 @@ static void dot(const Ctx& c, float x, float y, lv_color_t col, lv_opa_t opa, fl
   lv_draw_rect(c.layer, &d, &a);
 }
 
+// ---------------------------------------------------------------- cifras ya pintadas
+// Pintar los 7 segmentos con su halo (4 triángulos por segmento y tres pasadas) costaba ~0,1 s cada vez, y el reloj
+// del partido se repinta cada segundo. Cada cifra se pinta una vez por tamaño, color, halo y «fantasma» en una
+// imagen con transparencia, y luego solo se copia. Margen de 12 unidades alrededor para el halo y la inclinación.
+const float CELL_MARGIN = 12;
+struct Glyph {
+  char ch;
+  int16_t h;
+  uint32_t color;
+  uint8_t glow;
+  bool ghost;
+  lv_draw_buf_t* buf;
+  uint32_t used;
+};
+static Glyph glyphs[48];
+static uint32_t glyphUse = 0;
+
+static void drawDigit(const Ctx& c, char ch, lv_color_t col, uint8_t glow, bool ghost) {
+  const float grows[3] = {5.0f, 2.5f, 0.0f};
+  const lv_opa_t haloOpa[3] = {(lv_opa_t)(glow * 0.22f), (lv_opa_t)(glow * 0.45f), 255};
+  const char* on = segsOf(ch);
+  for (int pass = glow ? 0 : 2; pass < 3; pass++)
+    for (const char* sg = "abcdefg"; *sg; sg++) {
+      bool lit = strchr(on, *sg) != nullptr;
+      if (!lit && (pass < 2 || !ghost)) continue;
+      float xs[6], ys[6];
+      segPoly(*sg, xs, ys);
+      hexa(c, xs, ys, col, lit ? haloOpa[pass] : (lv_opa_t)18, grows[pass]);
+    }
+}
+
+static lv_draw_buf_t* glyph(char ch, int h, uint32_t color, uint8_t glow, bool ghost) {
+  int lru = -1;  // hueco libre o, si no hay, la menos usada
+  for (int i = 0; i < (int)(sizeof(glyphs) / sizeof(glyphs[0])); i++) {
+    Glyph& g = glyphs[i];
+    if (g.buf && g.ch == ch && g.h == h && g.color == color && g.glow == glow && g.ghost == ghost) {
+      g.used = ++glyphUse;
+      return g.buf;
+    }
+    if (lru < 0 || (glyphs[lru].buf && (!g.buf || g.used < glyphs[lru].used))) lru = i;
+  }
+  Glyph& g = glyphs[lru];
+  if (g.buf) {
+    lv_image_cache_drop(g.buf);
+    lv_draw_buf_destroy(g.buf);
+    g.buf = nullptr;
+  }
+  float scale = h / 100.0f;
+  int w = (int)ceilf((60 + 2 * CELL_MARGIN) * scale), hh = (int)ceilf((100 + 2 * CELL_MARGIN) * scale);
+  lv_draw_buf_t* buf = lv_draw_buf_create((uint32_t)w, (uint32_t)hh, LV_COLOR_FORMAT_ARGB8888, 0);
+  if (!buf) return nullptr;
+  lv_draw_buf_clear(buf, nullptr);
+  static lv_obj_t* canvas = nullptr;
+  if (!canvas) {
+    canvas = lv_canvas_create(lv_layer_sys());
+    lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+  }
+  lv_canvas_set_draw_buf(canvas, buf);
+  lv_layer_t layer;
+  lv_canvas_init_layer(canvas, &layer);
+  Ctx c = {&layer, scale, CELL_MARGIN * scale, CELL_MARGIN * scale, tanf(6.0f * 3.14159265f / 180.0f)};
+  drawDigit(c, ch, lv_color_hex(color), glow, ghost);
+  lv_canvas_finish_layer(canvas, &layer);
+  g = {ch, (int16_t)h, color, glow, ghost, buf, ++glyphUse};
+  return buf;
+}
+
 static void drawCb(lv_event_t* e) {
   lv_obj_t* obj = (lv_obj_t*)lv_event_get_target(e);
   Data* d = (Data*)lv_obj_get_user_data(obj);
@@ -132,31 +200,33 @@ static void drawCb(lv_event_t* e) {
   Ctx c = {lv_event_get_layer(e), scale, co.x1 + 4 * scale, (float)co.y1, tanf(6.0f * 3.14159265f / 180.0f)};
   (void)w;
   lv_color_t col = lv_color_hex(d->color);
-  // Tres pasadas: halo ancho, halo cercano y el segmento.
+  // Las cifras, ya pintadas (glyph); los dos puntos se dibujan aquí (son dos círculos).
   const float grows[3] = {5.0f, 2.5f, 0.0f};
   const lv_opa_t haloOpa[3] = {(lv_opa_t)(d->glow * 0.22f), (lv_opa_t)(d->glow * 0.45f), 255};
-  for (int pass = d->glow ? 0 : 2; pass < 3; pass++) {
-    float x = 0;
-    for (const char* ch = d->text; *ch; ch++) {
-      Ctx cc = c;
-      cc.ox += x * scale;
-      if (*ch == ':' || *ch == '.') {
+  float x = 0;
+  int h = lv_area_get_height(&co);
+  for (const char* ch = d->text; *ch; ch++) {
+    Ctx cc = c;
+    cc.ox += x * scale;
+    if (*ch == ':' || *ch == '.') {
+      for (int pass = d->glow ? 0 : 2; pass < 3; pass++) {
         lv_opa_t o = pass == 2 ? (d->colonDim ? (lv_opa_t)38 : 255) : (lv_opa_t)(haloOpa[pass] * (d->colonDim ? 0.15f : 1.0f));
         if (*ch == ':') dot(cc, 10, 32, col, o, 5 + grows[pass]);
         dot(cc, 10, *ch == ':' ? 68 : 92, col, o, 5 + grows[pass]);
-        x += 20;
-        continue;
       }
-      const char* on = segsOf(*ch);
-      for (const char* s = "abcdefg"; *s; s++) {
-        bool lit = strchr(on, *s) != nullptr;
-        if (!lit && (pass < 2 || !d->ghost)) continue;
-        float xs[6], ys[6];
-        segPoly(*s, xs, ys);
-        hexa(cc, xs, ys, col, lit ? haloOpa[pass] : (lv_opa_t)18, grows[pass]);
-      }
-      x += 66;
+      x += 20;
+      continue;
     }
+    lv_draw_buf_t* g = glyph(*ch, h, d->color, d->glow, d->ghost);
+    if (g) {
+      lv_draw_image_dsc_t id;
+      lv_draw_image_dsc_init(&id);
+      id.src = g;
+      int32_t gx = (int32_t)lroundf(cc.ox - CELL_MARGIN * scale), gy = (int32_t)lroundf(cc.oy - CELL_MARGIN * scale);
+      lv_area_t a = {gx, gy, gx + (int32_t)g->header.w - 1, gy + (int32_t)g->header.h - 1};
+      lv_draw_image(c.layer, &id, &a);
+    }
+    x += 66;
   }
 }
 
