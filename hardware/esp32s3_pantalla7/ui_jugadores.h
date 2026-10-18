@@ -15,6 +15,7 @@
 
 #include "ui_base.h"
 #include "s3_jugadores.h"
+#include "misc/cache/instance/lv_image_cache.h"
 
 namespace elegir {
 
@@ -38,6 +39,7 @@ static uint8_t step = 0;  // 0 = Blanco, 1 = Azul
 
 static lv_obj_t *scr = nullptr, *title, *small, *col[2], *grid, *notice, *noticeText, *btnNext, *btnSplit[2];
 static lv_obj_t* freeCard[jug::MAX];  // una por jugador de la lista, en el mismo orden (nullptr si no hay)
+static lv_draw_buf_t* cardShot[jug::MAX];  // la ficha ya pintada (foto, textos y borde) de cada jugador
 static uint32_t splitSeed = 1;
 
 const uint32_t TEAM_COLOR[2] = {ui::color::WHITE_TEAM, 0x4fb0ff};
@@ -178,26 +180,17 @@ static void onSplit(lv_event_t* e) {
   update();
 }
 
-static uint32_t colKey[2] = {0, 0};  // lo que enseña cada columna (turno y jugadores): si no cambia, no se rehace
-static void teamColumn(int t) {
-  bool active = step == t;
-  uint32_t key = 2166136261u ^ (active ? 1u : 2u);
-  for (int i = 0; i < teams.n[t]; i++) key = (key ^ teams.code[t][i]) * 16777619u;
-  if (key == colKey[t]) return;
-  colKey[t] = key;
-  lv_obj_clean(col[t]);
-  lv_obj_set_style_border_color(col[t], ui::hex(active ? TEAM_COLOR[t] : 0x000000), 0);
-  lv_obj_set_style_border_opa(col[t], active ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
-  lv_obj_set_style_shadow_width(col[t], active ? 16 : 0, 0);
-  lv_obj_set_style_shadow_color(col[t], ui::hex(TEAM_COLOR[t]), 0);
-  lv_obj_set_style_shadow_opa(col[t], t ? 128 : 102, 0);
-  lv_obj_t* label = ui::text(col[t], SIDE[t], 900, 13, LABEL_COLOR[t], 1.82f);
-  ui::place(label, 92 - 2 + 0.91f, 72 - 64 - 2, 16);
-  for (int i = 0; i < MAX_PER_TEAM; i++) {
-    int y = (int)lroundf(94 - 64 - 2 + i * 73.5f);
-    if (i < teams.n[t]) {
-      const jug::Player* p = store ? store->find(teams.code[t][i]) : nullptr;
-      if (!p) continue;
+// Columnas: el marco (borde, brillo y velo del turno) solo cambia con el turno, y cada plaza solo se rehace si
+// cambia quién la ocupa (antes se rehacía la columna entera en cada toque).
+static int8_t colActive[2] = {-1, -1};
+static uint32_t slotCode[2][MAX_PER_TEAM];
+static lv_obj_t *slotObj[2][MAX_PER_TEAM], *colVeil[2];
+
+static lv_obj_t* teamSlot(int t, int i) {
+  int y = (int)lroundf(94 - 64 - 2 + i * 73.5f);
+  if (i < teams.n[t]) {
+    const jug::Player* p = store ? store->find(teams.code[t][i]) : nullptr;
+    if (p) {
       // Ficha horizontal (.team-card): foto de 52 px, nombre, detalle y título.
       lv_obj_t* c = ui::box(col[t], 6, y, 168, 67);
       lv_obj_set_style_radius(c, ui::RADIUS_SM, 0);
@@ -220,59 +213,144 @@ static void teamColumn(int t) {
         lv_obj_t* ti = line(c, p->title, 900, 12, ui::color::RANKED, 168 - tx - 10, false);
         lv_obj_set_pos(ti, tx, 42);
       }
-    } else {
-      lv_obj_t* s = ui::box(col[t], 6, y, 168, 67);
-      lv_obj_set_style_radius(s, ui::RADIUS_SM, 0);
-      lv_obj_set_style_border_width(s, 1, 0);
-      lv_obj_set_style_border_color(s, ui::hex(ui::color::LINE), 0);
-      lv_obj_set_style_bg_color(s, ui::hex(0x11223b), 0);
-      lv_obj_set_style_bg_opa(s, 153, 0);
-      char b[24];
-      if (i == 0) snprintf(b, sizeof(b), "Plaza 1");
-      else snprintf(b, sizeof(b), "Plaza %d · opcional", i + 1);
-      lv_obj_t* l = ui::text(s, b, 400, 13, ui::color::TEXT3);
-      lv_obj_center(l);
+      return c;
     }
   }
-  // La columna que no tiene el turno, apagada (en la app, al 60 %): un velo oscuro encima, mucho más ligero de
-  // pintar que la transparencia de la columna entera.
-  if (!active) {
-    lv_obj_t* veil = ui::box(col[t], -2, -2, 184, 326);
-    lv_obj_set_style_radius(veil, ui::RADIUS, 0);
-    lv_obj_set_style_bg_color(veil, ui::hex(0x07101c), 0);
-    lv_obj_set_style_bg_opa(veil, 110, 0);
+  lv_obj_t* sl = ui::box(col[t], 6, y, 168, 67);
+  lv_obj_set_style_radius(sl, ui::RADIUS_SM, 0);
+  lv_obj_set_style_border_width(sl, 1, 0);
+  lv_obj_set_style_border_color(sl, ui::hex(ui::color::LINE), 0);
+  lv_obj_set_style_bg_color(sl, ui::hex(0x11223b), 0);
+  lv_obj_set_style_bg_opa(sl, 153, 0);
+  char b[24];
+  if (i == 0) snprintf(b, sizeof(b), "Plaza 1");
+  else snprintf(b, sizeof(b), "Plaza %d · opcional", i + 1);
+  lv_obj_t* l = ui::text(sl, b, 400, 13, ui::color::TEXT3);
+  lv_obj_center(l);
+  return sl;
+}
+
+static void teamColumn(int t) {
+  bool active = step == t;
+  if (colActive[t] != (int8_t)active) {
+    colActive[t] = (int8_t)active;
+    lv_obj_set_style_border_color(col[t], ui::hex(active ? TEAM_COLOR[t] : 0x000000), 0);
+    lv_obj_set_style_border_opa(col[t], active ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+    lv_obj_set_style_shadow_width(col[t], active ? 16 : 0, 0);
+    lv_obj_set_style_shadow_color(col[t], ui::hex(TEAM_COLOR[t]), 0);
+    lv_obj_set_style_shadow_opa(col[t], t ? 128 : 102, 0);
+    // La columna que no tiene el turno, apagada (en la app, al 60 %): un velo oscuro encima, mucho más ligero de
+    // pintar que la transparencia de la columna entera.
+    ui::setVisible(colVeil[t], !active);
+  }
+  for (int i = 0; i < MAX_PER_TEAM; i++) {
+    uint32_t code = i < teams.n[t] ? teams.code[t][i] : 0;
+    if (slotObj[t][i] && slotCode[t][i] == code) continue;
+    if (slotObj[t][i]) lv_obj_delete(slotObj[t][i]);
+    slotObj[t][i] = teamSlot(t, i);
+    slotCode[t][i] = code;
+  }
+}
+
+// Marco de cada columna: su título y el velo (una vez por pantalla). El velo va encima de la columna, como pieza
+// aparte (dentro habría que reordenarlo al añadir fichas, y eso repinta la columna entera); no se puede tocar.
+static void columnFrame(int t, int x) {
+  lv_obj_t* label = ui::text(col[t], SIDE[t], 900, 13, LABEL_COLOR[t], 1.82f);
+  ui::place(label, 92 - 2 + 0.91f, 72 - 64 - 2, 16);
+  colVeil[t] = ui::box(scr, x, 64, 184, 326);
+  lv_obj_set_style_radius(colVeil[t], ui::RADIUS, 0);
+  lv_obj_set_style_bg_color(colVeil[t], ui::hex(0x07101c), 0);
+  lv_obj_set_style_bg_opa(colVeil[t], 110, 0);
+  lv_obj_add_flag(colVeil[t], LV_OBJ_FLAG_HIDDEN);
+  colActive[t] = -1;
+  for (int i = 0; i < MAX_PER_TEAM; i++) {
+    slotObj[t][i] = nullptr;
+    slotCode[t][i] = 0;
   }
 }
 
 // Lista de libres: 3 por fila de 123 × 181 (foto cuadrada y debajo nombre, detalle y título). Las fichas se crean
 // todas una vez (makeCards) y en cada toque solo se esconden las elegidas y se recolocan las demás (layoutGrid).
 static const float CARD_W = (388 - 2 - 16) / 3.0f;
+// Las fichas pintadas se guardan como imagen: al desplazar la lista la placa copia imágenes en vez de dibujar unos
+// 50 textos, bordes y fotos en cada paso (iba a 8–10 imágenes por segundo).
+static uint32_t shotKey[jug::MAX];  // de qué jugador (nombre, detalle, título y foto) es cada imagen guardada
+
+static uint32_t playerKey(const jug::Player& p) {
+  uint32_t h = 2166136261u;
+  auto mix = [&](const char* t) {
+    for (; *t; t++) h = (h ^ (uint8_t)*t) * 16777619u;
+    h = (h ^ 0xFF) * 16777619u;
+  };
+  h = (h ^ p.code) * 16777619u;
+  h = (h ^ p.photoCrc) * 16777619u;
+  h = (h ^ (store->photoOk(p.code) ? 7u : 3u)) * 16777619u;  // la foto puede llegar después que la lista
+  mix(p.name);
+  mix(p.meta);
+  mix(p.title);
+  return h ? h : 1;
+}
+
+// La ficha de un jugador para la lista, pintada una vez y guardada como imagen. Se guardan entre visitas a la
+// pantalla (y se preparan al encender y cuando la app pasa jugadores): entrar ya no espera a pintarlas.
+static lv_draw_buf_t* cardImage(uint8_t i, lv_obj_t* parent) {
+  const jug::Player& p = store->list[i];
+  uint32_t key = playerKey(p);
+  if (cardShot[i] && shotKey[i] == key) return cardShot[i];
+  if (cardShot[i]) {
+    lv_image_cache_drop(cardShot[i]);
+    lv_draw_buf_destroy(cardShot[i]);
+    cardShot[i] = nullptr;
+  }
+  lv_obj_t* c = ui::box(parent, 0, 0, (int)lroundf(CARD_W), 181);
+  lv_obj_set_style_radius(c, ui::RADIUS_SM, 0);
+  lv_obj_set_style_border_width(c, 2, 0);
+  lv_obj_set_style_border_color(c, ui::hex(ui::color::LINE), 0);
+  lv_obj_set_style_bg_color(c, ui::hex(0x0a1628), 0);
+  lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
+  int pw = (int)lroundf(CARD_W) - 4;
+  // Arriba de la ficha, con las esquinas de la ficha (radio menos el borde) y recta abajo.
+  photo(c, p, 0, 0, pw, 34, ui::RADIUS_SM - 2, false);
+  lv_obj_t* n = line(c, p.name, 800, 13, ui::color::TEXT, pw - 8, true);
+  lv_obj_set_pos(n, 4, pw + 2);
+  lv_obj_t* m = line(c, p.meta, 400, 13, ui::color::TEXT2, pw - 8, true);
+  lv_obj_set_pos(m, 4, pw + 19);
+  if (p.title[0]) {
+    lv_obj_t* ti = line(c, p.title, 900, 12, ui::color::RANKED, pw - 8, true);
+    lv_obj_set_pos(ti, 4, pw + 36);
+  }
+  lv_obj_update_layout(c);
+  cardShot[i] = lv_snapshot_take(c, LV_COLOR_FORMAT_RGB565);
+  shotKey[i] = cardShot[i] ? key : 0;
+  lv_obj_delete(c);
+  // De paso, la foto pequeña de la columna, ya preparada.
+  char rel[40];
+  if (store->photoRel(p.code, rel, sizeof(rel))) assets::photo(rel, 52, 10);
+  return cardShot[i];
+}
+
+// Prepara las fichas fuera de la pantalla (al encender o cuando la app pasa jugadores).
+static void prewarm(jug::Store* s) {
+  store = s;
+  if (!store) return;
+  lv_obj_t* tmp = lv_obj_create(nullptr);
+  for (uint8_t i = 0; i < store->count; i++) cardImage(i, tmp);
+  lv_obj_delete(tmp);
+}
+
 static void makeCards() {
   lv_obj_clean(grid);
   memset(freeCard, 0, sizeof(freeCard));
   for (uint8_t i = 0; store && i < store->count; i++) {
     const jug::Player& p = store->list[i];
-    lv_obj_t* c = ui::box(grid, 0, 0, (int)lroundf(CARD_W), 181);
-    lv_obj_set_style_radius(c, ui::RADIUS_SM, 0);
-    lv_obj_set_style_border_width(c, 2, 0);
-    lv_obj_set_style_border_color(c, ui::hex(ui::color::LINE), 0);
-    lv_obj_set_style_bg_color(c, ui::hex(0x0a1628), 0);
-    lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
-    lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(c, LV_OBJ_FLAG_EVENT_BUBBLE);  // que el desplazamiento de la lista siga funcionando
-    lv_obj_add_event_cb(c, onPick, LV_EVENT_SHORT_CLICKED, (void*)(uintptr_t)p.code);
-    int pw = (int)lroundf(CARD_W) - 4;
-    // Arriba de la ficha, con las esquinas de la ficha (radio menos el borde) y recta abajo.
-    photo(c, p, 0, 0, pw, 34, ui::RADIUS_SM - 2, false);
-    lv_obj_t* n = line(c, p.name, 800, 13, ui::color::TEXT, pw - 8, true);
-    lv_obj_set_pos(n, 4, pw + 2);
-    lv_obj_t* m = line(c, p.meta, 400, 13, ui::color::TEXT2, pw - 8, true);
-    lv_obj_set_pos(m, 4, pw + 19);
-    if (p.title[0]) {
-      lv_obj_t* ti = line(c, p.title, 900, 12, ui::color::RANKED, pw - 8, true);
-      lv_obj_set_pos(ti, 4, pw + 36);
-    }
-    freeCard[i] = c;
+    lv_draw_buf_t* shot = cardImage(i, grid);
+    if (!shot) continue;
+    lv_obj_t* img = lv_image_create(grid);
+    lv_image_set_src(img, shot);
+    lv_obj_add_flag(img, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(img, LV_OBJ_FLAG_EVENT_BUBBLE);  // que el desplazamiento de la lista siga funcionando
+    lv_obj_add_event_cb(img, onPick, LV_EVENT_SHORT_CLICKED, (void*)(uintptr_t)p.code);
+    freeCard[i] = img;
   }
   if (store && store->count == 0) {
     lv_obj_t* l = ui::text(grid, "Sin jugadores", 800, 18, ui::color::TEXT);
@@ -298,27 +376,48 @@ static void layoutGrid() {
   }
 }
 
+// Pie: el aviso cambia con cada toque; el botón de seguir solo se rehace al cambiar de turno o de «se puede
+// pulsar», y los de repartir al aparecer o desaparecer (rehacerlos en cada toque repintaba el pie entero).
+static uint32_t footKey = 0, nextKey = 0;
+static lv_obj_t* nextVeil = nullptr;
 static void footer() {
   char b[64];
   bool ok = step == 1 && valid();
   uint8_t count = teams.n[step];
+  uint32_t key = 1u + step + 2u * teams.n[0] + 16u * teams.n[1];
+  if (key == footKey && btnNext) return;
+  footKey = key;
   if (ok) snprintf(b, sizeof(b), "%u contra %u listo", teams.n[0], teams.n[1]);
   else if (count == 0) snprintf(b, sizeof(b), "Equipo %s: elige de 1 a %u jugadores", SIDE[step], MAX_PER_TEAM);
   else snprintf(b, sizeof(b), "Equipo %s: %u de %u jugadores", SIDE[step], count, MAX_PER_TEAM);
-  lv_label_set_text(noticeText, b);
+  if (strcmp(lv_label_get_text(noticeText), b)) lv_label_set_text(noticeText, b);
   // .notice (y .warn hasta que se puede seguir): borde fino y letra de 13 px.
-  lv_obj_set_style_border_color(notice, ui::hex(ok ? ui::color::LINE : ui::color::RANKED), 0);
-  lv_obj_set_style_text_color(noticeText, ui::hex(ok ? ui::color::TEXT2 : 0xffe9a8), 0);
-  if (btnNext) lv_obj_delete(btnNext);
+  lv_color_t border = ui::hex(ok ? ui::color::LINE : ui::color::RANKED);
+  if (!lv_color_eq(lv_obj_get_style_border_color(notice, LV_PART_MAIN), border)) {
+    lv_obj_set_style_border_color(notice, border, 0);
+    lv_obj_set_style_text_color(noticeText, ui::hex(ok ? ui::color::TEXT2 : 0xffe9a8), 0);
+  }
   bool enabled = step == 0 ? teams.n[0] > 0 : valid();
+  uint8_t chosen = teams.n[0] + teams.n[1];
+  bool canSplit = ok && chosen >= 4 && chosen % 2 == 0;
+  uint32_t nk = 1u + step + (enabled ? 2u : 0u) + (canSplit ? 4u : 0u);
+  if (nk == nextKey && btnNext) return;
+  nextKey = nk;
+  if (btnNext) lv_obj_delete(btnNext);
+  if (nextVeil) lv_obj_delete(nextVeil);
+  nextVeil = nullptr;
   int w = step == 0 ? 228 : 177;
   btnNext = ui::button(scr, 784 - w, 408, w, 60, step == 0 ? "SIGUIENTE: AZUL" : "CONTINUAR", 18, ui::BtnKind::Primary, onNext);
   if (!enabled) {
-    lv_obj_set_style_opa(btnNext, 102, 0);
+    // Apagado (en la app, al 40 %): sin poder pulsarlo y con un velo del color del pie encima, que pinta mucho más
+    // rápido que la transparencia del botón entero.
     lv_obj_remove_flag(btnNext, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_shadow_width(btnNext, 0, 0);
+    nextVeil = ui::box(scr, 784 - w, 408, w, 60);
+    lv_obj_set_style_radius(nextVeil, ui::RADIUS_SM, 0);
+    lv_obj_set_style_bg_color(nextVeil, ui::hex(0x0b1220), 0);
+    lv_obj_set_style_bg_opa(nextVeil, 153, 0);
   }
-  uint8_t chosen = teams.n[0] + teams.n[1];
-  bool canSplit = ok && chosen >= 4 && chosen % 2 == 0;
   for (int i = 0; i < 2; i++) {
     if (btnSplit[i]) lv_obj_delete(btnSplit[i]);
     btnSplit[i] = nullptr;
@@ -366,7 +465,9 @@ static void refresh() {
   int32_t scroll = lv_obj_get_scroll_y(grid);
   makeCards();
   lookStep = 0xFF;
-  colKey[0] = colKey[1] = 0;
+  footKey = nextKey = 0;
+  for (int t = 0; t < 2; t++)
+    for (int k = 0; k < MAX_PER_TEAM; k++) slotCode[t][k] = 0xFFFFFFFF;  // los datos pueden haber cambiado
   update();
   lv_obj_update_layout(grid);
   lv_obj_scroll_to_y(grid, scroll, LV_ANIM_OFF);
@@ -376,6 +477,7 @@ static void onDelete(lv_event_t*) {
   scr = nullptr;
   memset(freeCard, 0, sizeof(freeCard));
   btnNext = btnSplit[0] = btnSplit[1] = nullptr;
+  nextVeil = nullptr;
 }
 
 static void build() {
@@ -419,7 +521,13 @@ static void build() {
     lv_obj_add_flag(col[t], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(col[t], onCol, LV_EVENT_CLICKED, (void*)(intptr_t)t);
   }
+  for (int t = 0; t < 2; t++) {
+    columnFrame(t, colX[t]);
+  }
   grid = ui::box(scr, 206, 64, 388, 326);
+  // Panel liso detrás de la lista (tapa el degradado): al desplazar no hay que pintar el degradado debajo.
+  lv_obj_set_style_bg_color(grid, ui::hex(0x0b1424), 0);
+  lv_obj_set_style_bg_opa(grid, LV_OPA_COVER, 0);
   lv_obj_add_flag(grid, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_scroll_dir(grid, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(grid, LV_SCROLLBAR_MODE_AUTO);
@@ -434,6 +542,7 @@ static void build() {
   noticeText = ui::text(notice, "", 400, 13, ui::color::TEXT2);
   lv_obj_align(noticeText, LV_ALIGN_LEFT_MID, 0, 0);
   btnNext = btnSplit[0] = btnSplit[1] = nullptr;
+  nextVeil = nullptr;
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }

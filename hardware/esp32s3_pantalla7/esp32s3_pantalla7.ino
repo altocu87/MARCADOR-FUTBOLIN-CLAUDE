@@ -470,6 +470,14 @@ static void handleBoardLine(const char* line) {
   }
   if (!strcmp(line, "CAPTURA")) { uiport::sendCapture(); return; }  // lo que se ve, por el USB (scripts/placa.py)
   // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
+  if (!strncmp(line, "DESLIZA ", 8)) {  // «DESLIZA x y x2 y2 ms»: arrastre simulado
+    int x = 0, y = 0, x2 = 0, y2 = 0, ms = 300;
+    if (sscanf(line + 8, "%d %d %d %d %d", &x, &y, &x2, &y2, &ms) >= 4) {
+      uiport::injectDrag((int16_t)x, (int16_t)y, (int16_t)x2, (int16_t)y2, (uint32_t)ms);
+      sendLine("DESLIZA_OK");
+    }
+    return;
+  }
   if (!strncmp(line, "TOQUE ", 6)) {
     int x = 0, y = 0;
     if (sscanf(line + 6, "%d %d", &x, &y) == 2) {
@@ -506,10 +514,14 @@ static void handleBoardLine(const char* line) {
     sendLine(ok ? "HORA_OK" : "HORA_ERROR");
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
-  else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i) != 0);
+  else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i));
   else if (!strcmp(word, "REPOSO")) lastActivity = millis() - SLEEP_AFTER_MS - 1;  // a reposo ya (para probarlo)
-  else if (!strcmp(word, "PERFIL")) {
-    perfil::run(sendLine);
+  else if (!strcmp(word, "PERFIL")) {  // «PERFIL» (pantalla entera) o «PERFIL x y ancho alto» (solo esa zona)
+    int x = 0, y = 0, w = 0, h = 0;
+    lv_area_t a;
+    bool zone = sscanf(line + i, "%d %d %d %d", &x, &y, &w, &h) == 4;
+    if (zone) lv_area_set(&a, x, y, x + w - 1, y + h - 1);
+    perfil::run(sendLine, zone ? &a : nullptr);
     sendLine("PERFIL_FIN");
   }
   else if (!strcmp(word, "MEMORIA")) {
@@ -1535,6 +1547,7 @@ void setup() {
                                &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
                                &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA})
     assets::preload(*c, true);
+  elegir::prewarm(&jugadores);  // fichas de la lista de jugadores ya pintadas
   sendHello();
   sendLine("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba
@@ -1575,6 +1588,12 @@ void loop() {
     lcd.backlight(16);
   }
 
+  // La app ha pasado jugadores o fotos y no se está eligiendo: se preparan ya sus fichas (eligiendo, se rehace
+  // la pantalla en render()).
+  if (jugadores.changed && !elegir::active()) {
+    elegir::prewarm(&jugadores);
+    jugadores.changed = false;
+  }
   render();
   uiport::step();
   delay(2);

@@ -28,10 +28,26 @@ static uint16_t* shown = nullptr;  // la imagen de pantalla que se está viendo 
 static bool (*touchDownHook)() = nullptr;
 static bool swallowing = false, wasDown = false;
 
+static volatile int16_t fakeX2 = 0, fakeY2 = 0;
+static volatile uint32_t fakeStart = 0, fakeMove = 0;  // arrastre simulado: de (fakeX, fakeY) a (fakeX2, fakeY2)
+
 static void injectTouch(int16_t x, int16_t y, uint32_t ms = 90) {
+  fakeX = fakeX2 = x;
+  fakeY = fakeY2 = y;
+  fakeStart = millis();
+  fakeMove = 0;
+  fakeUntil = fakeStart + ms;
+}
+
+// Dedo que se arrastra de (x, y) a (x2, y2) en `ms` y se levanta (orden DESLIZA, para medir el desplazamiento).
+static void injectDrag(int16_t x, int16_t y, int16_t x2, int16_t y2, uint32_t ms) {
   fakeX = x;
   fakeY = y;
-  fakeUntil = millis() + ms;
+  fakeX2 = x2;
+  fakeY2 = y2;
+  fakeStart = millis();
+  fakeMove = ms ? ms : 1;
+  fakeUntil = fakeStart + fakeMove;
 }
 
 static uint32_t tickCb() { return millis(); }
@@ -208,6 +224,11 @@ static void indevCb(lv_indev_t*, lv_indev_data_t* d) {
   if ((int32_t)(fakeUntil - millis()) > 0) {
     x = fakeX;
     y = fakeY;
+    if (fakeMove) {
+      uint32_t t = millis() - fakeStart;
+      x = (int16_t)(fakeX + (int32_t)(fakeX2 - fakeX) * (int32_t)t / (int32_t)fakeMove);
+      y = (int16_t)(fakeY + (int32_t)(fakeY2 - fakeY) * (int32_t)t / (int32_t)fakeMove);
+    }
     down = true;
   } else {
     down = readTouch(x, y);
@@ -251,9 +272,15 @@ static volatile bool needResync = false;
 static bool perfOn = false;
 // Zona repintada en cada imagen (unión de lo invalidado), para decir qué se está repintando cuando tarda.
 static lv_area_t perfInv = {0, 0, -1, -1};
+static bool perfZones = false;  // «RENDIMIENTO 2»: además, cada zona que se marca para repintar
 static void perfInvalidate(lv_event_t* e) {
   const lv_area_t* a = (const lv_area_t*)lv_event_get_param(e);
   if (!a) return;
+  if (perfZones) {
+    char b[64];
+    snprintf(b, sizeof(b), "ZONA %ld,%ld %ldx%ld", (long)a->x1, (long)a->y1, (long)lv_area_get_width(a), (long)lv_area_get_height(a));
+    Serial.println(b);
+  }
   if (perfInv.x2 < perfInv.x1) perfInv = *a;
   else {
     if (a->x1 < perfInv.x1) perfInv.x1 = a->x1;
@@ -279,7 +306,9 @@ static void perfRender(lv_event_t* e) {
     if (d > perfDrawMax) perfDrawMax = d;
   }
 }
-static void perfEnable(bool on) {
+static void perfEnable(int mode) {
+  bool on = mode != 0;
+  perfZones = mode == 2;
   perfOn = on;
   perfT0 = millis();
   perfFrames = perfDrawUs = perfDrawMax = perfWaitUs = perfLvUs = perfLvMax = perfGapMax = 0;
@@ -315,7 +344,7 @@ static void step() {
              (unsigned long)(perfWaitUs / 1000), (unsigned long)(perfLvUs / 1000), (unsigned long)(perfLvMax / 1000),
              (unsigned long)(perfGapMax / 1000));
     Serial.println(b);
-    perfEnable(true);
+    perfEnable(perfZones ? 2 : 1);
   }
 }
 
