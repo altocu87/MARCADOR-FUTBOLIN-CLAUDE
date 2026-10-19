@@ -24,6 +24,9 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#ifdef ARDUINO
+#include <mbedtls/platform.h>
+#endif
 #include <FFat.h>
 #include <WiFi.h>
 #include <esp_now.h>
@@ -52,6 +55,8 @@
 #include "ui_jugadores.h"
 #include "ui_fichas.h"
 #include "ui_historial.h"
+#include "s3_nube.h"
+#include "ui_cuenta.h"
 #include <sys/stat.h>
 #include "ui_perfil.h"
 #include "ui_cargando.h"
@@ -216,8 +221,10 @@ static void saveConfig() {
 }
 
 static void saveMatchFile();
+static uint32_t nextCloudSync = 20000;  // la primera, al poco de encender
 static void saveResult() {
   saveMatchFile();
+  nextCloudSync = millis() + 8000;  // al volver a Inicio, se sube
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
                   rtc.clockOk ? reloj::stamp(rtc.now) : 0};
@@ -517,6 +524,7 @@ static void saveMatchFile() {
       snprintf(w.name, sizeof(w.name), "%s", p->name);
     }
   if (!partidos::save(eng, m)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+  else if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
 }
 
 static void sendHello() {
@@ -610,6 +618,12 @@ static void handleBoardLine(const char* line) {
       uiport::injectTouch((int16_t)x, (int16_t)y);
       sendLine("TOQUE_OK");
     }
+    return;
+  }
+  if (!strcmp(line, "NUBE?")) {  // pruebas: cómo va la cuenta de la nube
+    char b[200];
+    snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount, nube::message);
+    sendLine(b);
     return;
   }
   if (!strncmp(line, "FOTOSD", 6)) {
@@ -1201,6 +1215,110 @@ static void onHomeMenu(uint8_t which) {
   }
 }
 static void onRankingBack() { goHome(); }
+// ---------------------------------------------------------------- nube (s3_nube.h, ui_cuenta.h)
+#ifdef ARDUINO
+// La conexión segura (mbedTLS) guarda sus búferes (~30–40 KB) en la PSRAM: en la memoria interna no caben con la
+// pantalla en marcha (la petición fallaba con «Sin conexión»).
+static void* tlsCalloc(size_t n, size_t size) {
+  void* p = heap_caps_calloc(n, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  return p ? p : heap_caps_calloc(n, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+}
+static void tlsFree(void* p) { heap_caps_free(p); }
+
+// Petición HTTPS a Supabase (comprueba el certificado con los certificados raíz del ESP32).
+static nube::Resp nubeHttp(const char* method, const char* url, const char* bearer, const char* prefer, const char* body) {
+  nube::Resp r;
+  NetworkClientSecure client;
+  client.useBuiltinCACertBundle();
+  HTTPClient http;
+  http.setTimeout(15000);
+  if (!http.begin(client, url)) return r;
+  http.addHeader("apikey", nube::ANON);
+  String auth = String("Bearer ") + bearer;
+  http.addHeader("Authorization", auth);
+  http.addHeader("Content-Type", "application/json");
+  if (prefer) http.addHeader("Prefer", prefer);
+  int code = !strcmp(method, "GET") ? http.GET() : http.POST((uint8_t*)body, strlen(body));
+  r.code = code > 0 ? code : 0;
+  if (code > 0) {
+    String b = http.getString();
+    r.len = b.length();
+    r.body = (char*)malloc(r.len + 1);
+    if (r.body) {
+      memcpy(r.body, b.c_str(), r.len);
+      r.body[r.len] = 0;
+    }
+  }
+  http.end();
+  return r;
+}
+static bool nubeWifiUp() { return wifiSsid[0] && s3net::connectWait(wifiSsid, wifiPass, nullptr); }
+static bool nubeWifiDown() {
+  s3net::stop();
+  return true;
+}
+#endif
+
+// Recién entrado con la cuenta: todo lo de la placa se apunta para subir.
+static void nubeLoggedIn() {
+  for (int i = 0; i < partidos::count; i++) nube::matchSaved(partidos::rows[i].id);
+  for (int i = 0; i < jugadores.count; i++) nube::playerChanged(jugadores.list[i].code);
+}
+static void nubeMatchArrived(const char* id) { partidos::addFromFile(id); }
+static void nubeMatchGone(const char* id) { partidos::remove(id); }
+// Jugador de la cuenta: se actualiza, se une con el de la placa del mismo nombre o se añade.
+static void nubePlayer(const nube::Change& c) {
+  const jug::Player* p = jugadores.findById(c.id);
+  uint32_t code = 0;
+  if (p) {
+    code = p->code;
+    if (strcmp(p->name, c.name) && c.name[0]) jugadores.rename(code, c.name);
+  } else {
+    // Solo se une con uno de la placa que aún no es de la cuenta: los que llegaron sin id («placa-…») o los
+    // creados aquí; y nunca con uno que subió otra placa (también «placa-…»).
+    const jug::Player* same = nullptr;
+    bool fromBoard = !strncmp(c.id, "placa-", 6);
+    for (int i = 0; i < jugadores.count && !same && !fromBoard; i++) {
+      char mine[48];
+      jugadores.idOf(jugadores.list[i].code, mine, sizeof(mine));
+      bool local = !strncmp(mine, "placa-", 6) || strlen(mine) == 36;  // sin id de la app, o UUID de la placa
+      if (local && !strcasecmp(jugadores.list[i].name, c.name)) same = &jugadores.list[i];
+    }
+    if (same) {
+      uint32_t oldCode = same->code;
+      char oldId[48];
+      jugadores.idOf(oldCode, oldId, sizeof(oldId));
+      code = jugadores.adopt(oldCode, c.id);
+      if (code && partidos::replacePlayerId(oldCode, oldId, c.id))
+        for (int i = 0; i < partidos::count; i++)  // sus partidos, otra vez arriba con el id bueno
+          for (int t = 0; t < 2; t++)
+            for (int k = 0; k < partidos::rows[i].n[t]; k++)
+              if (partidos::rows[i].code[t][k] == code) nube::matchSaved(partidos::rows[i].id);
+    } else {
+      code = jugadores.addWithId(c.id, c.name, c.px);
+      return;
+    }
+  }
+  if (code && c.px) {
+    assets::forget("jugadores/");  // la foto vieja ya no vale (solo se aplica con pantallas sin fotos a la vista)
+    jugadores.setPhoto(code, c.px);
+  }
+}
+static void nubePlayerGone(const char* id) {
+  const jug::Player* p = jugadores.findById(id);
+  if (p) jugadores.remove(p->code);
+}
+static uint32_t nubeNow() { return rtc.clockOk ? partidos::epoch(rtc.now) : 0; }
+static void onCuentaBack() { screen = Screen::Settings; }
+static bool cuentaHasWifi() { return wifiSsid[0] != 0; }
+// Jugadores creados, cambiados o borrados en AJUSTES → JUGADORES: a la nube en la próxima sincronización.
+static void onFichaChanged(uint32_t code) {
+  if (nube::loggedIn()) nube::playerChanged(code);
+}
+static void onFichaRemoved(const char* id) {
+  if (nube::loggedIn()) nube::playerRemoved(id);
+}
+
 static void onFichasBack() {
   fichas::leave();
   screen = Screen::Settings;
@@ -1490,6 +1608,13 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Account && !sleepClock()) {
+    if (!cuenta::active() || cuentaFresh) cuenta::show(cuentaFresh);
+    cuentaFresh = false;
+    cuenta::tick();
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Players && !sleepClock()) {
     if (!fichas::active() || fichasFresh) fichas::show(&jugadores, fichasFresh);
     fichasFresh = false;
@@ -1699,6 +1824,10 @@ static bool onTouchDown() {
 // (Aquí y no arriba: la macro define una función y el IDE de Arduino pone sus declaraciones antes de la primera.)
 SET_LOOP_TASK_STACK_SIZE(32 * 1024);
 void setup() {
+#ifdef ARDUINO
+  mbedtls_platform_set_calloc_free(tlsCalloc, tlsFree);
+#endif
+  fotos::startWorker();
   // La app manda la lista de jugadores seguida (hasta 64 líneas de ~100 letras): con el buzón de 256 de serie se
   // perdían letras mientras la pantalla pintaba. 8 KB caben de sobra.
   Serial.setRxBufferSize(8192);
@@ -1744,6 +1873,24 @@ void setup() {
   victoria::hooks.home = goHome;
   elegir::hooks.back = onPlayersBack;
   fichas::hooks.back = onFichasBack;
+  fichas::hooks.changed = onFichaChanged;
+  fichas::hooks.removed = onFichaRemoved;
+  cuenta::hooks.back = onCuentaBack;
+  cuenta::hooks.hasWifi = cuentaHasWifi;
+  nube::hooks.loggedIn = nubeLoggedIn;
+  nube::hooks.matchArrived = nubeMatchArrived;
+  nube::hooks.matchGone = nubeMatchGone;
+  nube::hooks.player = nubePlayer;
+  nube::hooks.playerGone = nubePlayerGone;
+  nube::nowUtc = nubeNow;
+  nube::hooks.finished = [](bool ok) {
+    if (ok && nube::pendingCount) nextCloudSync = millis() + 3000;  // lo que quedó apuntado mientras tanto
+  };
+#ifdef ARDUINO
+  nube::http = nubeHttp;
+  nube::wifiUp = nubeWifiUp;
+  nube::wifiDown = nubeWifiDown;
+#endif
   elegir::hooks.done = onPlayersDone;
   victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());
@@ -1759,6 +1906,12 @@ void setup() {
   partidos::begin(sndStore.sdOk);  // todos los partidos, en la tarjeta (sin ella, en el chip)
 #else
   partidos::begin(false);
+#endif
+#ifdef ARDUINO
+  nube::startWorker(!strncmp(partidos::dir, "/sdcard", 7));  // pila en la PSRAM si los partidos van a la tarjeta
+  nube::begin(&jugadores, "/ffat");
+#else
+  nube::begin(&jugadores, "../build/placa");
 #endif
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
@@ -1818,6 +1971,16 @@ void loop() {
 
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
+  // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
+  // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
+  bool calm = !inMatch && !test.active &&
+              ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
+  if (calm) nube::apply();
+  if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && checkState != CheckState::Running &&
+      s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {
+    nextCloudSync = now + 15u * 60u * 1000u;
+    nube::sync();
+  }
 
   if (buzzerUntil && now > buzzerUntil) {
     buzzerUntil = 0;

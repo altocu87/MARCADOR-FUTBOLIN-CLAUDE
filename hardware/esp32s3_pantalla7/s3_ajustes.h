@@ -69,13 +69,14 @@ static void fetchVersions() {
 
 // Comprobación sin bloquear: conectar (en loop()), leer las versiones y desconectar.
 static void startCheck() {
-  if (!wifiSsid[0] || inMatch || s3net::link != s3net::Link::Off) return;
+  if (!wifiSsid[0] || inMatch || s3net::link != s3net::Link::Off || nube::phase == nube::BUSY) return;
   s3net::connect(wifiSsid, wifiPass);
   checkState = CheckState::Running;
 }
 
 static void checkPoll() {
   if (checkState != CheckState::Running || screen == Screen::Connecting || screen == Screen::Install) return;
+  if (nube::phase == nube::BUSY) return;  // la nube tiene el Wi-Fi
   if (inMatch) {  // nunca durante un partido
     s3net::stop();
     checkState = CheckState::Never;
@@ -270,16 +271,17 @@ static void drawSettings() {
   }
   settingRow(ui::SETTINGS[2].r, "ACTUALIZAR", v, vc);
 #if HAS_AUDIO
-  const ui::Rect vr = {40, 248, 720, 72};
+  const ui::Rect vr = {40, 208, 720, 60};
   settingRow(vr, "VOLUMEN", nullptr, C_TEXT2);
   button(ui::SETTINGS[3].r, "-", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
   button(ui::SETTINGS[4].r, "+", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
   snprintf(v, sizeof(v), "%u%%", (unsigned)sndVolume);
-  text(v, 610, 284, &lgfx::fonts::FreeSansBold18pt7b, sndVolume ? C_TEXT : C_LINE);
+  text(v, 610, 238, &lgfx::fonts::FreeSansBold18pt7b, sndVolume ? C_TEXT : C_LINE);
 #endif
   settingRow(ui::SETTINGS[5].r, "PRUEBA DE LA PLACA", nullptr, C_TEXT2);
   snprintf(v, sizeof(v), "%u jugadores", (unsigned)jugadores.count);
   settingRow(ui::SETTINGS[6].r, "JUGADORES", v, C_TEXT2);
+  settingRow(ui::SETTINGS[7].r, "CUENTA", nube::loggedIn() ? nube::saved.email : "Sin cuenta", nube::loggedIn() ? C_TEXT2 : C_GOLD);
 }
 
 static void signalBars(int x, int y, int8_t rssi) {
@@ -494,7 +496,11 @@ static uint32_t ajustesKey() {
   mix((uint32_t)mandoUpd());
   mix(mandoBuild);
   switch (screen) {
-    case Screen::Settings: mix(sndVolume); mix(jugadores.count); break;
+    case Screen::Settings:
+      mix(sndVolume);
+      mix(jugadores.count);
+      mix(nube::loggedIn());
+      break;
     case Screen::Wifi: mix(netScanned); mix(netCount); break;
     case Screen::Keyboard:
       mix(kbMode); mix(kbShow); mix((uint32_t)(uintptr_t)kbError);
@@ -516,6 +522,11 @@ static void openSettings() { screen = Screen::Settings; }
 
 // JUGADORES: crear, cambiar y borrar (ui_fichas.h, pantalla nueva de LVGL).
 static bool fichasFresh = false;
+static bool cuentaFresh = false;
+static void openAccount() {
+  screen = Screen::Account;
+  cuentaFresh = true;
+}
 static void openPlayers() {
   screen = Screen::Players;
   fichasFresh = true;
@@ -575,6 +586,7 @@ static void ajustesTap(int16_t x, int16_t y) {
       else if (b == ui::Btn::SetWifi) openWifi();
       else if (b == ui::Btn::SetUpdate) openUpdate();
       else if (b == ui::Btn::SetPlayers) openPlayers();
+      else if (b == ui::Btn::SetAccount) openAccount();
       else if (b == ui::Btn::SetTest) {
         screen = Screen::Home;
         enterTest();

@@ -125,7 +125,7 @@ int main() {
   assert(inicio::active());        // Inicio con las tarjetas de la app
   tap(750, 46);                    // engranaje → AJUSTES → PRUEBA DE LA PLACA: vuelve a la prueba
   assert(screen == Screen::Settings && shows("WI-FI") && shows("Sin configurar") && shows("PRUEBA DE LA PLACA"));
-  tap(400, 368);
+  tapBtn(ui::SETTINGS[5].r);  // PRUEBA DE LA PLACA
   assert(test.active);
   tap(400, 430);
   assert(!test.active);

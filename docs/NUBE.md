@@ -5,7 +5,14 @@ torneos y los ajustes de la mesa. Los demás jugadores no tienen cuenta: su fich
 
 - **App web:** Ajustes → Cuenta (entrar, crear cuenta, he olvidado la contraseña, sincronizar, cerrar sesión).
   Sin cuenta, la app funciona en local como siempre. En modo prueba no se sincroniza nada.
-- **Pantalla de 7":** usará las mismas peticiones (abajo) con el Wi-Fi.
+- **Pantalla de 7":** AJUSTES → CUENTA (correo y contraseña con el teclado de la pantalla). Guarda solo el
+  «refresh token» (en la memoria del chip, `/ffat/nube.txt`), nunca la contraseña. Sincroniza con la placa parada
+  (al entrar, al encender, al acabar cada partido y cada 15 minutos; nunca durante un partido, porque mientras
+  está en el Wi-Fi la radio del mando no oye), en una tarea aparte para que la pantalla no se pare. Sube los
+  partidos jugados en ella y los jugadores creados o cambiados en ella; baja jugadores (con foto) y partidos.
+  Un jugador de la placa sin id de la app se une con el de la cuenta que tiene su mismo nombre (y sus partidos se
+  corrigen y se vuelven a subir). Código: `hardware/esp32s3_pantalla7/s3_nube.h` y `ui_cuenta.h`; prueba con una
+  nube simulada en `hardware/test/s3_capturas.cpp`.
 - Base de datos: `supabase/migrations/20261019120000_mesa_datos.sql` (tabla `mesa_datos`). Se aplica a Supabase
   al unir con `main` (workflow «Base de datos») o a mano desde Actions.
 

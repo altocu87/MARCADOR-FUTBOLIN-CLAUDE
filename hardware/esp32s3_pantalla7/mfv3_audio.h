@@ -205,7 +205,7 @@ class Player {
     i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
     cc.auto_clear = true;  // sin datos, silencio
     cc.dma_desc_num = 8;
-    cc.dma_frame_num = 500;  // 8 × 500 tramas = 250 ms a 16 kHz
+    cc.dma_frame_num = 250;  // 8 × 250 tramas = 125 ms a 16 kHz (búferes en la memoria interna: el Wi-Fi la necesita)
     if (i2s_new_channel(&cc, &tx_, nullptr) != ESP_OK) return false;
     i2s_std_config_t sc;
     memset(&sc, 0, sizeof(sc));

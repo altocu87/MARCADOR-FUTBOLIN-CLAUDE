@@ -284,6 +284,64 @@ class Store {
     return commit() ? code : 0;
   }
 
+  // ---------------------------------------------------------------- jugadores de la cuenta (s3_nube.h)
+  // Código de la placa para un id de la app: FNV-1a del id (como la app); «placa-<código>» lleva el código dentro.
+  static uint32_t codeForId(const char* id) {
+    if (!strncmp(id, "placa-", 6) && strlen(id) == 14) {
+      uint32_t c = 0;
+      if (mfv3snd::parseCode(id + 6, 8, c)) return c;
+    }
+    return fnv(2166136261u, id);
+  }
+
+  const Player* findById(const char* id) const {
+    for (uint8_t i = 0; i < count; i++) {
+      char mine[48];
+      idOf(list[i].code, mine, sizeof(mine));
+      if (!strcmp(mine, id)) return &list[i];
+    }
+    return nullptr;
+  }
+
+  // Jugador que llega de la cuenta (con su id de la app). Devuelve su código (0 si no se pudo).
+  uint32_t addWithId(const char* id, const char* name, const uint16_t* px) {
+    if (!fs_ || count >= MAX || !name[0]) return 0;
+    uint32_t code = codeForId(id);
+    if (!code || find(code)) return 0;
+    Player& p = list[count];
+    memset(&p, 0, sizeof(p));
+    p.code = code;
+    snprintf(p.id, sizeof(p.id), "%s", id);
+    snprintf(p.name, sizeof(p.name), "%s", name);
+    count++;
+    known[count - 1] = 0;
+    if (px) p.photoCrc = writePhoto(code, px);
+    return commit() ? code : 0;
+  }
+
+  // Un jugador de la placa pasa a ser el de la cuenta con ese id (mismo nombre): cambia su código y su foto se
+  // queda. Devuelve el código nuevo (0 si no se pudo). Los partidos guardados se cambian aparte (s3_partidos.h).
+  uint32_t adopt(uint32_t oldCode, const char* id) {
+    Player* p = (Player*)find(oldCode);
+    uint32_t code = codeForId(id);
+    if (!p || !code || (code != oldCode && find(code))) return 0;
+    if (code != oldCode && p->photoCrc) {
+      char a[48], b[48];
+      snprintf(a, sizeof(a), "%s/%08lx.bin", DIR, (unsigned long)oldCode);
+      snprintf(b, sizeof(b), "%s/%08lx.bin", DIR, (unsigned long)code);
+      fs_->remove(b);
+      fs_->rename(a, b);
+      snprintf(a, sizeof(a), "%s/%08lx.crc", DIR, (unsigned long)oldCode);
+      snprintf(b, sizeof(b), "%s/%08lx.crc", DIR, (unsigned long)code);
+      fs_->remove(b);
+      fs_->rename(a, b);
+    }
+    p->code = code;
+    snprintf(p->id, sizeof(p->id), "%s", id);
+    memset(known, 0, sizeof(known));
+    return commit() ? code : 0;
+  }
+
   bool rename(uint32_t code, const char* name) {
     Player* p = (Player*)find(code);
     if (!p || !name[0]) return false;

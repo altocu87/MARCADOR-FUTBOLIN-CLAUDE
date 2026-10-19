@@ -7,6 +7,9 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <algorithm>
+#include <vector>
+#include <map>
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
 
@@ -73,6 +76,96 @@ static void syncFat() {
       }
     }
 }
+
+// ---------------------------------------------------------------- nube simulada (Supabase: auth y mesa_datos)
+namespace fake {
+struct Row {
+  std::string tipo, id, datos, actualizado;
+  bool borrado;
+};
+static std::map<std::string, Row> rows;  // «tipo:id»
+static int clock = 0, logins = 0, posts = 0;
+static std::string stamp() {
+  char b[40];
+  snprintf(b, sizeof(b), "2026-10-19T10:%02d:%02d.%06d+00:00", clock / 60, clock % 60, clock);
+  clock++;
+  return b;
+}
+static nube::Resp reply(int code, const std::string& body) {
+  nube::Resp r;
+  r.code = code;
+  r.body = (char*)malloc(body.size() + 1);
+  memcpy(r.body, body.c_str(), body.size() + 1);
+  r.len = body.size();
+  return r;
+}
+static nube::Resp http(const char* method, const char* url, const char* bearer, const char* prefer, const char* body) {
+  std::string u = url;
+  if (u.find("/auth/v1/token?grant_type=password") != std::string::npos) {
+    logins++;
+    if (!strstr(body, "\"password\":\"clave-de-prueba\"")) return reply(400, "{\"error_code\":\"invalid_credentials\",\"msg\":\"Invalid login credentials\"}");
+    return reply(200, "{\"access_token\":\"acc1\",\"refresh_token\":\"ref1\",\"expires_in\":3600,\"user\":{\"id\":\"u1\",\"email\":\"dueno@mesa.test\"}}");
+  }
+  if (u.find("/auth/v1/token?grant_type=refresh_token") != std::string::npos)
+    return reply(200, "{\"access_token\":\"acc2\",\"refresh_token\":\"ref2\",\"expires_in\":3600,\"user\":{\"id\":\"u1\",\"email\":\"dueno@mesa.test\"}}");
+  if (u.find("/rest/v1/mesa_datos") == std::string::npos) return reply(404, "");
+  if (strcmp(bearer, "acc1") && strcmp(bearer, "acc2")) return reply(401, "{}");
+  if (!strcmp(method, "POST")) {
+    posts++;
+    const char* arr = body;
+    for (const char* o = partidos::nextIn(arr, nullptr); o; o = partidos::nextIn(arr, o)) {
+      Row r;
+      char t[16], id[64];
+      partidos::strOf(partidos::keyIn(o, "tipo"), t, sizeof(t));
+      partidos::strOf(partidos::keyIn(o, "id"), id, sizeof(id));
+      r.tipo = t;
+      r.id = id;
+      r.borrado = partidos::isTrue(partidos::keyIn(o, "borrado"));
+      const char* d = partidos::keyIn(o, "datos");
+      r.datos = std::string(d, partidos::closeOf(d) + 1);
+      r.actualizado = stamp();
+      rows[r.tipo + ":" + r.id] = r;
+    }
+    return reply(201, "");
+  }
+  // GET: lo cambiado desde una fecha, por orden, en páginas.
+  std::string since;
+  size_t g = u.find("actualizado=gt.");
+  if (g != std::string::npos) {
+    since = u.substr(g + 15);
+    size_t a = since.find('&');
+    if (a != std::string::npos) since = since.substr(0, a);
+    for (size_t k; (k = since.find("%2B")) != std::string::npos;) since.replace(k, 3, "+");
+  }
+  int offset = atoi(u.substr(u.find("offset=") + 7).c_str()), limit = atoi(u.substr(u.find("limit=") + 6).c_str());
+  std::vector<const Row*> list;
+  for (auto& kv : rows)
+    if ((kv.second.tipo == "player" || kv.second.tipo == "match") && kv.second.actualizado > since) list.push_back(&kv.second);
+  std::sort(list.begin(), list.end(), [](const Row* a, const Row* b) { return a->actualizado < b->actualizado; });
+  std::string out = "[";
+  for (int i = offset; i < (int)list.size() && i < offset + limit; i++) {
+    const Row& r = *list[i];
+    if (out.size() > 1) out += ",";
+    out += "{\"tipo\":\"" + r.tipo + "\",\"id\":\"" + r.id + "\",\"datos\":" + r.datos + ",\"borrado\":" + (r.borrado ? "true" : "false") +
+           ",\"actualizado\":\"" + r.actualizado + "\"}";
+  }
+  return reply(200, out + "]");
+}
+static void seed(const std::string& tipo, const std::string& id, const std::string& datos) {
+  rows[tipo + ":" + id] = Row{tipo, id, datos, stamp(), false};
+}
+}  // namespace fake
+
+// Tecla del teclado de CUENTA (ui_cuenta.h): fila y columna.
+static void ckey(char ch) {
+  static const char* R[4] = {"1234567890", "qwertyuiop", "asdfghjkl", "..zxcvbnm_-"};
+  if (ch == '@') return tap(13 + 10 * 70 + 33, 196 + 1 * 70 + 31);
+  if (ch == '.') return tap(13 + 10 * 70 + 33, 196 + 2 * 70 + 31);
+  for (int r = 0; r < 4; r++)
+    for (int c = 0; R[r][c]; c++)
+      if (R[r][c] == ch && !(r == 3 && c < 2)) return tap(13 + c * 70 + 33, 196 + r * 70 + 31);
+}
+
 // Una tecla del teclado de JUGADORES (ui_fichas.h).
 static void key(const char* k) {
   static const char* rows[4][10] = {{"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
@@ -85,6 +178,7 @@ static void key(const char* k) {
       if (rows[r][i] && !strcmp(rows[r][i], k)) return tap(13 + i * 78 + 36, 152 + r * 78 + 35);
 }
 
+static void tapBtn(const ui::Rect& r) { tap(r.x + r.w / 2, r.y + r.h / 2); }
 static void goal(bool white, uint32_t after = 3300) {
   tap(white ? 128 : 671, 186);
   run(after);
@@ -257,7 +351,7 @@ int main(int argc, char** argv) {
     run(300);
     openSettings();
     run(300);
-    tap(400, 444);  // JUGADORES
+    tapBtn(ui::SETTINGS[6].r);  // JUGADORES
     shot("fichas-lista");
     tap(106, 166);  // + NUEVO JUGADOR
     for (const char* k : {"A", "N", "A", " ", "M", "A", "R", "Í", "A"}) key(k);
@@ -340,6 +434,74 @@ int main(int argc, char** argv) {
     std::printf("historial: %d partidos guardados\n", partidos::count);
     tap(400, 470);  // fuera del recuadro: cierra
     tap(35, 35);    // volver a Inicio
+    run(300);
+  }
+
+  // AJUSTES → CUENTA con una nube simulada: entrar con el teclado, bajar jugadores y partidos de la cuenta (Alex se
+  // une con su ficha de la cuenta) y subir lo de la placa.
+  {
+    nube::http = fake::http;
+    snprintf(wifiSsid, sizeof(wifiSsid), "CasaPrueba");  // en el PC no hay Wi-Fi de verdad (wifiUp sin poner = conectado)
+    // En la cuenta: Alex (con foto JPEG de la app), Nuria (nueva) y un partido jugado en la app.
+    std::string jpg;
+    if (FILE* f = fopen("../build/placa/fotos-sd/foto pequeña.jpg", "rb")) {
+      char b[4096];
+      size_t n;
+      while ((n = fread(b, 1, sizeof(b), f)) > 0) jpg.append(b, n);
+      fclose(f);
+    }
+    std::string b64(jpg.size() / 3 * 4 + 8, 0);
+    b64.resize(nube::base64Encode((const uint8_t*)jpg.data(), jpg.size(), &b64[0]));
+    fake::seed("player", "p_alex", "{\"id\":\"p_alex\",\"name\":\"Alex\",\"active\":true,\"createdAt\":1,\"updatedAt\":2,\"photo\":\"data:image/jpeg;base64," + b64 + "\"}");
+    fake::seed("player", "p_nuria", "{\"id\":\"p_nuria\",\"name\":\"Nuria\",\"active\":true,\"createdAt\":1,\"updatedAt\":2}");
+    if (FILE* f = fopen("../tests/fixtures/progresion/partidos.jsonl", "rb")) {
+      char line[200000];
+      if (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = 0;
+        char id[64];
+        partidos::strOf(partidos::keyIn(line, "id"), id, sizeof(id));
+        fake::seed("match", id, line);
+      }
+      fclose(f);
+    }
+    uint32_t alexBefore = 0;
+    for (int i = 0; i < jugadores.count; i++)
+      if (!strcmp(jugadores.list[i].name, "Alex")) alexBefore = jugadores.list[i].code;
+    int matchesBefore = partidos::count;
+    goHome();
+    run(300);
+    openSettings();
+    run(300);
+    tapBtn(ui::SETTINGS[7].r);  // CUENTA
+    run(300);
+    for (char c : std::string("dueno@mesa.test")) ckey(c);
+    tap(300, 159);  // contraseña
+    for (char c : std::string("clave-de-prueba")) ckey(c);
+    shot("cuenta-entrar");
+    tap(708, 32);   // ENTRAR (en el PC, la nube responde al momento)
+    for (int i = 0; i < 100; i++) run(100);  // y la segunda vuelta (los partidos de Alex, ya con su id de la cuenta)
+    shot("cuenta-dentro");
+    int stale = 0;
+    for (auto& kv : fake::rows)
+      if (kv.second.tipo == "match" && kv.second.datos.find("placa-a6d4eae1") != std::string::npos) stale++;
+    std::printf("nube: partidos en la nube con el id viejo de Alex: %d\n", stale);
+    uint32_t alexAfter = 0;
+    for (int i = 0; i < jugadores.count; i++)
+      if (!strcmp(jugadores.list[i].name, "Alex")) alexAfter = jugadores.list[i].code;
+    char aid[48] = "";
+    jugadores.idOf(alexAfter, aid, sizeof(aid));
+    int upMatches = 0, upPlayers = 0;
+    for (auto& kv : fake::rows) (kv.second.tipo == "match" ? upMatches : upPlayers) += kv.second.tipo == "match" || kv.second.tipo == "player";
+    std::printf("nube: %d jugadores en la placa, entrar %d, sesión %d, Alex %08lx→%08lx (%s, foto %d), Nuria %d, partidos %d→%d, en la nube %d jugadores y %d partidos, pendientes %d\n",
+                jugadores.count, fake::logins, (int)nube::loggedIn(), (unsigned long)alexBefore, (unsigned long)alexAfter, aid,
+                (int)jugadores.photoOk(alexAfter), jugadores.findById("p_nuria") != nullptr, matchesBefore, partidos::count, upPlayers, upMatches,
+                nube::pendingCount);
+    tap(78, 32);    // VOLVER → AJUSTES
+    shot("cuenta-ajustes");
+    tapBtn(ui::BACK);
+    wifiSsid[0] = 0;
+    nube::logout();  // que no quede la sesión guardada para las demás pruebas del PC
+    nube::http = nullptr;
     run(300);
   }
 

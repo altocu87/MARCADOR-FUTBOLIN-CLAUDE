@@ -213,13 +213,21 @@ static void workerTask(void*) {
 }
 #endif
 
+// Pila en la PSRAM (solo lee la tarjeta SD): la memoria interna se queda para el Wi-Fi.
+static void startWorker() {
+#ifdef ARDUINO
+  if (!worker) xTaskCreatePinnedToCoreWithCaps(workerTask, "fotos", 6144, nullptr, 1, &worker, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!worker) xTaskCreatePinnedToCore(workerTask, "fotos", 5120, nullptr, 1, &worker, 0);
+#endif
+}
+
 // Pide la foto número `i` de la lista en `out` (120 × 120). false si ya hay otra a medias.
 static bool request(int i, uint16_t* out) {
   if (jobState == QUEUED || jobState == BUSY || i < 0 || i >= count) return false;
   snprintf(jobPath, sizeof(jobPath), "%s/%s", dirPath, names[i]);
   jobOut = out;
 #ifdef ARDUINO
-  if (!worker) xTaskCreatePinnedToCore(workerTask, "fotos", 6144, nullptr, 1, &worker, 0);
+  startWorker();
   jobState = QUEUED;
 #else
   jobState = QUEUED;

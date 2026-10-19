@@ -48,8 +48,10 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   contraseña). La cuenta es del dueño de la mesa: sus jugadores (con foto), partidos, torneos y ajustes se guardan
   en la tabla `mesa_datos` y se sincronizan solos (al entrar, al abrir, tras cada cambio, cada minuto). Sin cuenta
   o en modo prueba, todo sigue en local. Peticiones para la placa: docs/NUBE.md.
-- Pendiente: aplicar la migración `20261019120000_mesa_datos.sql` en Supabase (se aplica al unir con `main` o a mano
-  desde Actions → «Base de datos»), y el login en la placa (fase 3).
+- Migración aplicada en Supabase (19/10/2026) y probada en producción: un partido de la app llegó a la nube.
+- Pantalla de 7" (fase 3): AJUSTES → CUENTA con teclado (letras, números y símbolos); sube sus partidos y
+  jugadores y baja los de la cuenta (con foto); une por nombre los jugadores que la placa tenía sin id de la app.
+  Ver docs/NUBE.md.
 
 ## Sonidos propios (fases 1 y 3 hechas, 16/10/2026; la 2, en la nube, no se hace por ahora)
 

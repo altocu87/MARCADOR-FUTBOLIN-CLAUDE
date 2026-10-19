@@ -17,6 +17,8 @@ namespace fichas {
 
 struct Hooks {
   void (*back)() = nullptr;  // volver a AJUSTES
+  void (*changed)(uint32_t code) = nullptr;   // jugador creado o cambiado (para subirlo a la cuenta)
+  void (*removed)(const char* id) = nullptr;  // jugador borrado
 };
 static Hooks hooks;
 
@@ -209,7 +211,10 @@ static void onDeleteYes(lv_event_t*) {
   char who[28];
   const jug::Player* p = editing();
   snprintf(who, sizeof(who), "%s", p ? p->name : "");
+  char gone[48] = "";
+  if (editCode) store->idOf(editCode, gone, sizeof(gone));
   if (editCode && store->remove(editCode)) {
+    if (hooks.removed) hooks.removed(gone);
     char b[64];
     snprintf(b, sizeof(b), "%s ya no está en la lista", who);
     ui::toast(b);
@@ -296,7 +301,10 @@ static void onNameNext(lv_event_t*) {
   if (!name[0]) return ui::toast("Escribe el nombre");
   if (store->nameTaken(name, editCode)) return ui::toast("Ya hay un jugador con ese nombre");
   if (editCode) {
-    if (store->rename(editCode, name)) ui::toast("Nombre cambiado");
+    if (store->rename(editCode, name)) {
+      ui::toast("Nombre cambiado");
+      if (hooks.changed) hooks.changed(editCode);
+    }
     go(View::Detail);
   } else {
     go(View::Photos);
@@ -362,10 +370,12 @@ static void saveWith(const uint16_t* px) {
   assets::forget("jugadores/");  // la foto vieja de este jugador ya no vale
   if (editCode) {
     bool ok = store->setPhoto(editCode, px);
+    if (ok && hooks.changed) hooks.changed(editCode);
     ui::toast(ok ? (px ? "Foto cambiada" : "Foto quitada") : "No se pudo guardar");
     go(View::Detail);
   } else {
     uint32_t code = store->add(name, px);
+    if (code && hooks.changed) hooks.changed(code);
     char b[64];
     if (code) snprintf(b, sizeof(b), "%s ya está en la lista", name);
     else snprintf(b, sizeof(b), "No se pudo guardar el jugador");

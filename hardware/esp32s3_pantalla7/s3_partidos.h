@@ -807,6 +807,64 @@ static bool loadDetail(const char* id, Detail& d) {
   return true;
 }
 
+// Un jugador ha cambiado de id (se ha unido con su ficha de la cuenta): se cambia en sus partidos guardados.
+static int replacePlayerId(uint32_t oldCode, const char* oldId, const char* newId) {
+  int changed = 0;
+  char from[64], to[64];
+  snprintf(from, sizeof(from), "\"%s\"", oldId);
+  snprintf(to, sizeof(to), "\"%s\"", newId);
+  size_t fl = strlen(from), tl = strlen(to);
+  for (int i = 0; i < count; i++) {
+    bool mine = false;
+    for (int t = 0; t < 2; t++)
+      for (int k = 0; k < rows[i].n[t]; k++) mine |= rows[i].code[t][k] == oldCode;
+    if (!mine) continue;
+    char path[112];
+    jsonPath(rows[i].id, path, sizeof(path));
+    char* txt = readAll(path);
+    if (!txt) continue;
+    size_t n = strlen(txt), hits = 0;
+    for (const char* q = strstr(txt, from); q; q = strstr(q + fl, from)) hits++;
+    char* out = (char*)malloc(n + hits * (tl > fl ? tl - fl : 0) + 1);
+    if (out) {
+      size_t k = 0;
+      for (const char* q = txt; *q;) {
+        if (!strncmp(q, from, fl)) {
+          memcpy(out + k, to, tl);
+          k += tl;
+          q += fl;
+        } else {
+          out[k++] = *q++;
+        }
+      }
+      out[k] = 0;
+      if (FILE* f = fopen(path, "wb")) {
+        fwrite(out, 1, k, f);
+        fclose(f);
+        Row r;
+        if (rowFromText(out, r)) rows[i] = r;
+        changed++;
+      }
+      free(out);
+    }
+    free(txt);
+  }
+  if (changed) rewriteIndex();
+  return changed;
+}
+
+// Partido que ha llegado de la nube (su JSON ya está en la tarjeta): a la lista.
+static bool addFromFile(const char* id) {
+  for (int i = 0; i < count; i++)
+    if (!strcmp(rows[i].id, id)) return false;
+  char path[112];
+  jsonPath(id, path, sizeof(path));
+  Row r;
+  if (!rowFromJson(path, r)) return false;
+  appendIndex(r);
+  return push(r);
+}
+
 // Borra un partido (su JSON y su línea del índice).
 static bool remove(const char* id) {
   int k = -1;
