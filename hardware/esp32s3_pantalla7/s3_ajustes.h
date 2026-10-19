@@ -60,10 +60,11 @@ static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUp
 static std::atomic<bool> versionsDone{false};
 static bool versionsRunning = false, versionsOk = false;
 static mfv3::ota::Published fetchedScreen, fetchedMando;
+static updateInfo::Release publishedRelease, fetchedRelease;
 static reloj::Clock fetchedClock;
 static bool fetchedClockOk = false;
 static void fetchVersionsWork() {
-  versionsOk = s3net::fetchPublished(S3_BOARD_ID, fetchedScreen);
+  versionsOk = s3net::fetchPublished(S3_BOARD_ID, fetchedScreen, &fetchedRelease);
   s3net::fetchPublished(MANDO_ID, fetchedMando);
   fetchedClockOk = reloj::internetClock(fetchedClock);
   versionsDone.store(true);
@@ -73,6 +74,7 @@ static void versionsTask(void*) { fetchVersionsWork(); vTaskDelete(nullptr); }
 #endif
 static bool beginVersions() {
   if (versionsRunning) return false;
+  fetchedRelease = updateInfo::Release();
   fetchedScreen = mfv3::ota::Published();
   fetchedMando = mfv3::ota::Published();
   versionsDone = false;
@@ -92,7 +94,7 @@ static void finishVersions() {
   if (!versionsRunning || !versionsDone.load()) return;
   versionsRunning = false;
   if (checkState != CheckState::Running) return;  // cancelada al entrar en partido
-  if (versionsOk) { pubScreen = fetchedScreen; pubMando = fetchedMando; }
+  if (versionsOk) { pubScreen = fetchedScreen; pubMando = fetchedMando; publishedRelease = fetchedRelease; }
   checkState = versionsOk ? CheckState::Ok : CheckState::Failed;
   if (fetchedClockOk) rtc.set(fetchedClock);
   s3net::stop();
@@ -124,9 +126,10 @@ static void checkPoll() {
 }
 
 // ---------------------------------------------------------------- instalar
-enum class Inst : uint8_t { MandoConnect, MandoDownload, MandoRadio, MandoConfirm, ScreenConnect, ScreenDownload, Restart, Done, Error };
+enum class Inst : uint8_t { MandoConnect, MandoDownload, MandoRadio, MandoConfirm, ScreenConnect, ScreenDownload, Restart, Done, Error, Cancelled };
 static Inst inst = Inst::Done;
 static const char* instError = "";
+static bool instErrorMando = false;
 static uint8_t instPct = 0;
 static uint32_t instAt = 0;
 static bool instMando = false, instScreen = false, instStepDrawn = false;
@@ -138,20 +141,21 @@ static void instGoScreen() {
     inst = Inst::ScreenConnect;
     s3net::connect(wifiSsid, wifiPass);
   } else {
-    inst = Inst::Done;
+    inst = instMando ? Inst::Done : Inst::Cancelled;
   }
   instPct = 0;
   instStepDrawn = false;
 }
 
 static void instFail(const char* why) {
+  instErrorMando = inst <= Inst::MandoConfirm;
   s3net::stop();
   instError = why;
   inst = Inst::Error;
 }
 
 static void startInstall() {
-  if (versionsRunning || nube::busy() || s3net::scanning) return;
+  if (inMatch || checkState != CheckState::Ok || versionsRunning || nube::busy() || s3net::scanning || !wifiSsid[0]) return;
   instMando = mandoUpd() == MandoUpd::Outdated;
   instScreen = screenOutdated();
   if (!instMando && !instScreen) return;
@@ -170,10 +174,13 @@ static void startInstall() {
 
 static void drawProgressBar(uint8_t pct);
 static void instProgress(uint32_t done, uint32_t total) {
-  uint8_t p = total ? (uint8_t)((uint64_t)done * 100 / total) : 0;
+  uint8_t p = total ? (uint8_t)(done >= total ? 100 : (uint64_t)done * 100 / total) : 0;
   if (p != instPct) {
     instPct = p;
     drawProgressBar(p);
+    // Descarga y comprobación se ejecutan en loop(): refrescar el dibujo sin atender toques
+    // ni disparar temporizadores que puedan abrir otra pantalla mientras se escribe flash.
+    lv_refr_now(uiport::display);
   }
 }
 
@@ -200,7 +207,8 @@ static void installPoll(uint32_t now) {
         instFail("No se pudo descargar el programa del mando");
         break;
       }
-      sender.start(GRUPO_MESA, pubMando.build, pubMando.size, md5, now);
+      // La espera del mando empieza DESPUÉS de la descarga, que puede tardar.
+      sender.start(GRUPO_MESA, pubMando.build, pubMando.size, md5, millis());
       inst = Inst::MandoRadio;
       instPct = 0;
       break;
@@ -227,11 +235,10 @@ static void installPoll(uint32_t now) {
       break;
     }
     case Inst::MandoConfirm:
-      if ((mandoBuild == pubMando.build && mandoInfoAt > instAt) || now - instAt > 15000UL) {
-        if (mandoBuild != pubMando.build && sender.state() != mfv3::ota::Sender::State::Done)
-          instFail("El mando no confirmo la version nueva");
-        else
-          instGoScreen();
+      if (mandoBuild == pubMando.build && mandoInfoAt && (int32_t)(mandoInfoAt - instAt) >= 0) {
+        instGoScreen();
+      } else if (now - instAt > 15000UL) {
+        instFail("El mando no confirmó la nueva versión. Comprueba que está encendido.");
       }
       break;
     case Inst::ScreenDownload: {
@@ -239,7 +246,7 @@ static void installPoll(uint32_t now) {
       if (s3net::selfUpdate(S3_BOARD_ID, pubScreen, instProgress)) {
         s3net::stop();
         inst = Inst::Restart;
-        instAt = now;
+        instAt = millis();  // enseñar «Listo» también después de una descarga lenta
       } else {
         instFail("No se pudo descargar la version nueva");
       }
@@ -298,9 +305,9 @@ static void drawSettings() {
   } else if (checkState == CheckState::Running) {
     snprintf(v, sizeof(v), "Buscando...");
   } else {
-    buildLabel(v, sizeof(v), MFV3_BUILD);
+    snprintf(v, sizeof(v), "Version %s", FW_VERSION);
   }
-  settingRow(ui::SETTINGS[2].r, "ACTUALIZAR", v, vc);
+  settingRow(ui::SETTINGS[2].r, "ACTUALIZACIONES", v, vc);
 #if HAS_AUDIO
   const ui::Rect vr = {40, 208, 720, 60};
   settingRow(vr, "VOLUMEN", nullptr, C_TEXT2);
@@ -390,118 +397,7 @@ static void drawConnecting() {
   text(t, ui::W / 2, 220, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
 }
 
-static void versionCard(int y, const char* name, const char* now, const char* status, uint16_t statusColor) {
-  gfx.fillRoundRect(40, y, 720, 104, 16, C_CARD);
-  gfx.drawRoundRect(40, y, 720, 104, 16, C_LINE);
-  textLeft(name, 64, y + 34, &lgfx::fonts::FreeSansBold18pt7b, C_TEXT);
-  textLeft(now, 64, y + 74, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
-  textRight(status, 736, y + 52, &lgfx::fonts::FreeSansBold18pt7b, statusColor);
-}
-
-static void drawUpdate() {
-  titleBar("ACTUALIZAR", C_ACCENT);
-  char now[32], st[32];
-  buildLabel(now, sizeof(now), MFV3_BUILD);
-  uint16_t c = C_OK;
-  if (screenOutdated()) {
-    snprintf(st, sizeof(st), "Nueva: %lu", (unsigned long)pubScreen.build);
-    c = C_GOLD;
-  } else if (pubScreen.ok()) {
-    snprintf(st, sizeof(st), "Al dia");
-  } else {
-    snprintf(st, sizeof(st), "-");
-    c = C_LINE;
-  }
-  versionCard(80, "PANTALLA", now, st, c);
-  MandoUpd m = mandoUpd();
-  if (m == MandoUpd::Unknown) {
-    snprintf(now, sizeof(now), "No se oye: pulsa un boton");
-    snprintf(st, sizeof(st), "-");
-    c = C_LINE;
-  } else if (m == MandoUpd::NeedsCable) {
-    snprintf(now, sizeof(now), "Version antigua");
-    snprintf(st, sizeof(st), "Una vez por USB");
-    c = C_GOLD;
-  } else {
-    buildLabel(now, sizeof(now), mandoBuild);
-    if (m == MandoUpd::Outdated) {
-      snprintf(st, sizeof(st), "Nueva: %lu", (unsigned long)pubMando.build);
-      c = C_GOLD;
-    } else if (pubMando.ok()) {
-      snprintf(st, sizeof(st), "Al dia");
-      c = C_OK;
-    } else {
-      snprintf(st, sizeof(st), "-");
-      c = C_LINE;
-    }
-  }
-  versionCard(198, "MANDO", now, st, c);
-  const char* msg = nullptr;
-  uint16_t mc = C_TEXT2;
-  if (!wifiSsid[0]) msg = "Primero, el Wi-Fi en AJUSTES";
-  else if (checkState == CheckState::Running) msg = "Buscando versiones...";
-  else if (checkState == CheckState::NoConnect) { msg = "No se pudo conectar al Wi-Fi"; mc = C_DANGER; }
-  else if (checkState == CheckState::Failed) { msg = "No se pudo consultar la web"; mc = C_DANGER; }
-  if (msg) text(msg, ui::W / 2, 342, &lgfx::fonts::FreeSansBold12pt7b, mc);
-  button(ui::UPDATE[1].r, "BUSCAR", C_SURFACE, wifiSsid[0] ? C_TEXT : C_LINE, C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
-  bool can = updateAvailable() && wifiSsid[0];
-  button(ui::UPDATE[2].r, "INSTALAR", can ? C_ACCENT : C_SURFACE, can ? C_BG : C_LINE, can ? C_ACCENT : C_LINE,
-         &lgfx::fonts::FreeSansBold18pt7b);
-}
-
-static const ui::Rect PROGRESS = {60, 250, 680, 40};
-static void drawProgressBar(uint8_t pct) {
-  gfx.fillRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_SURFACE);
-  gfx.drawRoundRect(PROGRESS.x, PROGRESS.y, PROGRESS.w, PROGRESS.h, 12, C_LINE);
-  int w = (int)(PROGRESS.w - 8) * pct / 100;
-  if (w > 0) gfx.fillRoundRect(PROGRESS.x + 4, PROGRESS.y + 4, w, PROGRESS.h - 8, 9, C_ACCENT);
-  char t[8];
-  snprintf(t, sizeof(t), "%u%%", pct);
-  gfx.fillRect(PROGRESS.x, PROGRESS.y + PROGRESS.h + 6, PROGRESS.w, 30, C_BG);
-  text(t, ui::W / 2, PROGRESS.y + PROGRESS.h + 22, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
-}
-
-static void drawInstall() {
-  gfx.fillScreen(C_BG);
-  uint8_t steps = (instMando ? 1 : 0) + (instScreen ? 1 : 0);
-  bool mandoStep = inst <= Inst::MandoConfirm;
-  char t[48];
-  if (inst != Inst::Done && inst != Inst::Error) {
-    snprintf(t, sizeof(t), "%u de %u  |  %s", (unsigned)(mandoStep || !instMando ? 1 : 2), (unsigned)steps,
-             mandoStep ? "MANDO" : "PANTALLA");
-    text(t, ui::W / 2, 40, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
-  }
-  const char* big = "";
-  const char* small = nullptr;
-  bool bar = false;
-  switch (inst) {
-    case Inst::MandoConnect:
-    case Inst::ScreenConnect: big = "Conectando al Wi-Fi..."; break;
-    case Inst::MandoDownload: big = "Descargando el programa del mando"; bar = true; break;
-    case Inst::MandoRadio:
-      if (sender.state() == mfv3::ota::Sender::State::Offering) {
-        big = sender.waitingButtons() ? "Manten pulsados los dos botones" : "Buscando el mando...";
-        small = sender.waitingButtons() ? "del mando 3 segundos" : "Pulsa un boton del mando para despertarlo";
-      } else {
-        big = "Pasando el programa al mando";
-        small = "Deja el mando cerca y encendido";
-        bar = true;
-      }
-      break;
-    case Inst::MandoConfirm: big = "El mando se esta reiniciando"; break;
-    case Inst::ScreenDownload: big = "Descargando la version nueva"; small = "No apagues la placa"; bar = true; break;
-    case Inst::Restart: big = "Listo. Reiniciando..."; break;
-    case Inst::Done: big = "Listo, todo al dia"; break;
-    case Inst::Error: big = "No se pudo actualizar"; small = instError; break;
-  }
-  text(big, ui::W / 2, 150, &lgfx::fonts::FreeSansBold18pt7b, inst == Inst::Error ? C_DANGER : inst == Inst::Done ? C_OK : C_TEXT);
-  if (small) text(small, ui::W / 2, 196, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
-  if (bar) drawProgressBar(instPct);
-  if (inst == Inst::MandoRadio && sender.state() == mfv3::ota::Sender::State::Offering)
-    button(ui::INSTALL[0].r, instScreen ? "SALTAR EL MANDO" : "CANCELAR", C_SURFACE, C_TEXT, C_LINE);
-  if (inst == Inst::Done || inst == Inst::Error) button(ui::INSTALL[1].r, "VOLVER", C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold18pt7b);
-  instStepDrawn = true;
-}
+#include "s3_update_ui.h"
 
 static void drawAjustes() {
   switch (screen) {
@@ -537,11 +433,14 @@ static uint32_t ajustesKey() {
       mix(kbMode); mix(kbShow); mix((uint32_t)(uintptr_t)kbError);
       for (const char* p = kbText; *p; p++) mix((uint8_t)*p);
       break;
+    case Screen::Update:
+      mix((uint32_t)updateTab); mix(updateHistoryPage);
+      mix(nube::busy()); mix(versionsRunning); mix(s3net::scanning); break;
     case Screen::Install:
       mix((uint32_t)inst);
       mix((uint32_t)sender.state());
       mix(sender.waitingButtons());
-      mix(inst == Inst::MandoRadio ? instPct : 0);  // en las descargas, la barra se pinta sola
+      // El porcentaje actualiza solo la barra; no reconstruye la pantalla.
       break;
     default: break;
   }
@@ -571,6 +470,7 @@ static void openWifi() {
 }
 
 static void openUpdate() {
+  updateTab = UpdateTab::Overview; updateHistoryPage = 0;
   screen = Screen::Update;
   if (checkState != CheckState::Running && checkState != CheckState::Ok) startCheck();
 }
@@ -669,12 +569,16 @@ static void ajustesTap(int16_t x, int16_t y) {
       break;
     }
     case Screen::Update: {
+      if (updateNavigation(x, y)) break;
       ui::Btn b = ui::hit(ui::UPDATE, x, y);
       if (b == ui::Btn::Back) screen = Screen::Settings;
       else if (b == ui::Btn::UpdSearch && wifiSsid[0] && checkState != CheckState::Running) {
         checkState = CheckState::Never;
         startCheck();
-      } else if (b == ui::Btn::UpdInstall && updateAvailable() && wifiSsid[0]) startInstall();
+      } else if (b == ui::Btn::UpdInstall && canInstallUpdate()) {
+        if (updateTab == UpdateTab::Confirm) startInstall();
+        else updateTab = UpdateTab::Confirm;
+      }
       break;
     }
     case Screen::Install:
@@ -685,7 +589,7 @@ static void ajustesTap(int16_t x, int16_t y) {
         if (n) radioSend(buf, n);
         instMando = false;
         instGoScreen();
-      } else if ((inst == Inst::Done || inst == Inst::Error) && ui::INSTALL[1].r.contains(x, y)) {
+      } else if ((inst == Inst::Done || inst == Inst::Error || inst == Inst::Cancelled) && ui::INSTALL[1].r.contains(x, y)) {
         screen = Screen::Update;
       }
       break;
@@ -705,6 +609,7 @@ static void ajustesLoop(uint32_t now) {
   connectingPoll();
   checkPoll();
   installPoll(now);
+  if (screen == Screen::Install && inst == Inst::MandoRadio) drawProgressBar(instPct);
 }
 
 #endif  // MFV3_S3_AJUSTES_H

@@ -9,6 +9,7 @@ on:
       - 'hardware/**'
       - 'src/inputs/hardware/diy-catalog.json'
       - 'scripts/firmware-manifests.mjs'
+      - 'scripts/native-release.mjs'
       - '.github/workflows/firmware.yml'
   workflow_dispatch:
     inputs:
@@ -51,6 +52,8 @@ jobs:
           arduino-cli lib install WebSockets LovyanGFX lvgl@9.5.0
           # LVGL lee su configuración de un lv_conf.h junto a su carpeta (el de la pantalla de 7").
           cp hardware/esp32s3_pantalla7/lv_conf.h "$(arduino-cli config get directories.user)/libraries/lv_conf.h"
+      - name: Comprobar version y notas de la pantalla
+        run: node scripts/native-release.mjs check
       - name: Compilar
         run: |
           mkdir -p salida
@@ -75,7 +78,11 @@ jobs:
           # Actualización por Wi-Fi: el programa solo (sin arranque ni particiones) y qué versión es.
           # La placa compara «build» con el suyo (MFV3_BUILD) y comprueba el MD5 al instalarlo.
           cp "salida/${{ matrix.placa.sketch }}.ino.bin" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin"
-          python3 -c "import sys,json,hashlib,os; p=sys.argv[1]; d=open(p,'rb').read(); json.dump({'build': int(sys.argv[2]), 'size': len(d), 'md5': hashlib.md5(d).hexdigest()}, open(os.path.join(os.path.dirname(p),'ota.json'),'w')); print(open(os.path.join(os.path.dirname(p),'ota.json')).read())" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin" "${{ github.run_number }}"
+          if [ "${{ matrix.placa.sketch }}" = "esp32s3_pantalla7" ]; then
+            node scripts/native-release.mjs manifest "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin" "${{ github.run_number }}" "firmware/${{ matrix.placa.id }}/ota.json"
+          else
+            python3 -c "import sys,json,hashlib,os; p=sys.argv[1]; d=open(p,'rb').read(); json.dump({'build': int(sys.argv[2]), 'size': len(d), 'md5': hashlib.md5(d).hexdigest()}, open(os.path.join(os.path.dirname(p),'ota.json'),'w')); print(open(os.path.join(os.path.dirname(p),'ota.json')).read())" "firmware/${{ matrix.placa.id }}/${{ matrix.placa.id }}-ota.bin" "${{ github.run_number }}"
+          fi
       - uses: actions/upload-artifact@v4
         if: matrix.placa.chip != ''
         with:
@@ -83,17 +90,31 @@ jobs:
           path: firmware
 
   publicar:
+    concurrency:
+      group: firmware-publicar
+      cancel-in-progress: false
     needs: compilar
     if: ${{ inputs.publicar || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: fw-*
           merge-multiple: true
           path: firmware
+      - name: Exigir una version nueva antes de publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p previous
+          gh release download firmware-latest --pattern firmware.tar.gz --dir previous
+          tar -xOf previous/firmware.tar.gz ./waveshare-7c/ota.json > previous/ota.json
+          node scripts/native-release.mjs check
+          node scripts/native-release.mjs check-published previous/ota.json firmware/waveshare-7c/ota.json
       - name: Release «firmware-latest»
         env:
           GH_TOKEN: ${{ github.token }}

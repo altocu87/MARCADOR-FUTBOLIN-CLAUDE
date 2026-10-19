@@ -15,10 +15,12 @@ class HTTPClient {
     if (sim::webDown) return -1;
     auto it = sim::web.find(url_);
     if (it == sim::web.end()) return 404;
+    sim::now += sim::webLatencyMs;
     client_->body = it->second;
     client_->pos = 0;
     return 200;
   }
+  int getSize() { return (int)client_->body.size(); }
   String getString() { return String(client_->body); }
   NetworkClient* getStreamPtr() { return client_; }
   void end() {}

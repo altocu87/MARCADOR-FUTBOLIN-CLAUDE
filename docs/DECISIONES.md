@@ -3,6 +3,10 @@
 Se distingue entre **requisito fijado** (del documento maestro), **propuesta configurable**
 (implementada, pendiente de aprobación) y **pendiente** (no implementado o pantalla honesta).
 
+## Versiones de la pantalla nativa (requisito fijado, 19/10/2026)
+
+Partir de **0.1**, registrar novedades legibles y subir versión en cada publicación. Continuar en **0.x** hasta autorización expresa del dueño para 1.0. Fuente única: `hardware/esp32s3_pantalla7/releases.json`. Ver [procedimiento y entrega](ACTUALIZACIONES_PANTALLA.md) y las normas de `CLAUDE.md`.
+
 ## Reglas del motor (requisito fijado)
 
 | Regla | Implementación |

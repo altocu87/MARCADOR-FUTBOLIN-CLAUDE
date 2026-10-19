@@ -17,6 +17,7 @@ class HTTPUpdate {
     if (it == sim::web.end()) return HTTP_UPDATE_FAILED;
     std::vector<uint8_t> v(it->second.begin(), it->second.end());
     if (sim::fakeMd5(v) != md5_) return HTTP_UPDATE_FAILED;
+    sim::now += sim::webLatencyMs;
     if (cb_) { cb_(0, (int)v.size()); cb_((int)v.size(), (int)v.size()); }
     sim::selfUpdatedFrom = u.c_str();
     return HTTP_UPDATE_OK;

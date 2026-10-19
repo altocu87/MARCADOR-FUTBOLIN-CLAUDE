@@ -119,3 +119,7 @@ La configuración de acceso se trató antes de esta entrega. El reintento de «B
 ## Continuación: acceso por QR
 
 Ver [entrega específica del acceso QR](ENTREGA_EQUIPO_B_ACCESO_QR.md), con correcciones del móvil, recuperación de publicación y límites pendientes de prueba real.
+
+## Continuación: actualizaciones y versión 0.1
+
+Ver [entrega de Actualizaciones](ACTUALIZACIONES_PANTALLA.md): apartado propio en Ajustes, historial y notas en lenguaje llano, confirmación, barra sin recrear objetos y regla obligatoria de subir versión y registrar cambios antes de publicar. La pantalla permanece en 0.x hasta autorización expresa del propietario. Incluye capturas del simulador, pruebas y límites pendientes de validación física; Cloud debe revisar y valorar esta entrega por separado.

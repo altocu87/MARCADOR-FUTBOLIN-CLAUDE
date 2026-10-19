@@ -6,6 +6,7 @@
 #include "Arduino.h"
 namespace sim {
 inline std::map<std::string, std::string> web;  // dirección → contenido
+inline uint32_t webLatencyMs = 0;                // tiempo ficticio consumido por una descarga
 inline bool webDown = false;                     // sin internet
 }  // namespace sim
 class NetworkClient {

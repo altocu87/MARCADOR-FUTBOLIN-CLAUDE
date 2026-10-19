@@ -25,6 +25,8 @@
 #include "mfv3_ota.h"
 #include "mfv3_radio.h"
 
+#include "s3_update_info.h"
+
 namespace s3net {
 
 inline const char* BASE_URL = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/firmware/";
@@ -120,14 +122,20 @@ inline bool connectWait(const char* ssid, const char* pass, void (*idle)()) {
 // ---------------------------------------------------------------- versiones publicadas
 inline String url(const char* board, const char* file) { return String(BASE_URL) + board + "/" + file; }
 
-inline bool fetchPublished(const char* board, mfv3::ota::Published& out) {
+inline bool fetchPublished(const char* board, mfv3::ota::Published& out, updateInfo::Release* release = nullptr) {
   NetworkClientSecure client;
   client.useBuiltinCACertBundle();
   HTTPClient http;
   http.setTimeout(8000);
   if (!http.begin(client, url(board, "ota.json"))) return false;
   int code = http.GET();
-  bool ok = code == 200 && mfv3::ota::parsePublished(http.getString().c_str(), out);
+  bool ok = false;
+  // GitHub sirve archivos estáticos con longitud. No reservar un cuerpo sin límite.
+  if (code == 200 && http.getSize() > 0 && http.getSize() <= 8192) {
+    String json = http.getString();
+    ok = json.length() <= 8192 && mfv3::ota::parsePublished(json.c_str(), out);
+    if (ok && release) updateInfo::parse(json.c_str(), *release);
+  }
   http.end();
   return ok;
 }

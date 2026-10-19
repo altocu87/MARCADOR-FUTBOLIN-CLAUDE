@@ -38,6 +38,7 @@
 #include "mfv3_ota.h"
 #include "mfv3_radio.h"
 #include "s3_net.h"
+#include "s3_release.h"
 #include "mfv3_sound.h"
 #include "mfv3_audio.h"
 #include "s3_reloj.h"
@@ -70,7 +71,7 @@ using mfv3::Period;
 using mfv3::Team;
 using ui::Btn;
 
-static const char* FW_VERSION = "1.0";
+static const char* FW_VERSION = nativeRelease::VERSION;
 // Número de compilación: lo pone GitHub al compilar (-DMFV3_BUILD=…) y sirve para saber si hay versión nueva.
 // Compilado a mano vale 0 («versión de prueba»): cualquier versión publicada se ofrece como nueva.
 #ifndef MFV3_BUILD

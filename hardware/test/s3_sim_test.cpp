@@ -94,7 +94,7 @@ int main() {
   assets::setRoot("../build/placa/fat");  // capas y letras (si no están, se ve sin ellas)
   setup();
   loop();
-  assert(sent("HELLO " S3_BOARD_ID " 1.0 caps=goles,anular,pausa,pantalla") && sent("STATE idle"));
+  assert(sent((std::string("HELLO " S3_BOARD_ID " ") + FW_VERSION + " caps=goles,anular,pausa,pantalla").c_str()) && sent("STATE idle"));
   // Primer arranque: pantalla de prueba, que no toca el marcador.
   assert(test.active && shows("PRUEBA DE LA PLACA") && shows("Toca las 4 esquinas") && sent("STATE test"));
   tap(400, 200);                   // un toque en medio: se registra, no juega
@@ -486,17 +486,20 @@ int main() {
     assert(screen == Screen::Update && !strcmp(wifiSsid, "CasaPepe") && sim::nvs.count("wssid") && sim::nvs.count("wpass"));
     assert(checkState == CheckState::Ok && pubScreen.build == 60 && pubMando.build == 61 && !sim::wifiUp);
     assert(sim::wifiChannel == mfv3::RADIO_CHANNEL && !sim::insecure);
-    assert(shows("PANTALLA") && shows("Nueva: 60") && shows("INSTALAR"));
+    assert(shows("PANTALLA") && shows("Disponible: nueva actualización") && shows("CONTINUAR"));
     // El mando dice su versión (10): también hay nueva para él. En Inicio sale ACTUALIZAR.
     mandoInfo(10);
-    assert(mandoBuild == 10 && mandoUpd() == MandoUpd::Outdated && shows("Nueva: 61"));
+    assert(mandoBuild == 10 && mandoUpd() == MandoUpd::Outdated && shows("Hay una actualización disponible"));
     tapBtn(ui::BACK);
     tapBtn(ui::BACK);
     assert(screen == Screen::Home && inicio::dotShown());  // punto dorado en el engranaje
     tap(750, 46);                                         // AJUSTES → ACTUALIZAR
     tapBtn(ui::SETTINGS[2].r);
     assert(screen == Screen::Update);
-    tapBtn(ui::UPDATE[2].r);  // INSTALAR
+    tapBtn(ui::UPDATE[2].r);  // revisar los pasos antes de instalar
+    assert(screen == Screen::Update && updateTab == UpdateTab::Confirm);
+    size_t seenRadio = sim::radioSent.size();  // escuchar tambien el primer OFFER
+    tapBtn(ui::UPDATE[2].r);  // INSTALAR AHORA
     assert(screen == Screen::Install && inst == Inst::MandoConnect && shows("Conectando al Wi-Fi"));
     run(400);
     loop();
@@ -507,7 +510,6 @@ int main() {
     assert(std::equal(mandoBytes.begin(), mandoBytes.end(), sim::otaSlotData.begin()));
     MemFlash flash;
     mfv3::ota::Receiver rx(GRUPO_MESA, 1200000);
-    size_t seenRadio = sim::radioSent.size();
     auto mandoListens = [&](uint32_t ms) {
       uint8_t reply[mfv3::ota::MAX_PACKET];
       for (uint32_t t = 0; t < ms && inst == Inst::MandoRadio; t += 10) {
@@ -520,7 +522,7 @@ int main() {
       }
     };
     mandoListens(1500);
-    assert(sender.waitingButtons() && shows("Manten pulsados los dos botones") && shows("SALTAR EL MANDO"));
+    assert(sender.waitingButtons() && shows("Mantén pulsados los dos botones") && shows("SALTAR EL MANDO"));
     rx.arm(sim::now);  // alguien mantiene los dos botones 3 s
     mandoListens(120000);
     assert(flash.finished && flash.data == mandoBytes);
@@ -563,7 +565,7 @@ int main() {
     tap(750, 46);               // engranaje → AJUSTES
     tapBtn(ui::SETTINGS[2].r);  // ACTUALIZAR (busca solo)
     run(500);
-    assert(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar la web"));
+    assert(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar."));
     sim::webDown = false;
     // Olvidar la red.
     tapBtn(ui::BACK);

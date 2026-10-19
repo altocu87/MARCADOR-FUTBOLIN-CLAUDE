@@ -16,3 +16,13 @@
 - Las pantallas se miran de pie y mientras se juega, no sentado leyendo: lo importante, grande y claro de un
   vistazo; nada repetido (si ya está en el título, en un cartel o en otra parte de la pantalla, no se vuelve a
   poner) y fuera lo que no aporta. Las explicaciones largas, detrás de una «?».
+
+## Versiones y actualizaciones de la pantalla nativa (decisión del dueño, 19/10/2026)
+
+- La versión de producto de la pantalla ESP32-S3 empieza en **0.1**. Seguir en **0.x**. No pasar a **1.0 ni superior** hasta que el dueño lo autorice expresamente; no decidirlo por madurez o por estar terminada una fase.
+- Antes de **cada publicación de firmware**, subir esa versión y añadir una entrada a `hardware/esp32s3_pantalla7/releases.json`: fecha, título y qué cambia para quien juega, con lenguaje llano. Conservar las entradas antiguas. Los commits internos de una entrega todavía no publicada pueden compartir versión.
+- Ese registro es la fuente única para la versión del programa, las notas del actualizador y el historial de la pantalla. Regenerar `s3_release.h` con `node scripts/native-release.mjs generate`; comprobarlo con `node scripts/native-release.mjs check` y ejecutar las pruebas.
+- `majorOneAuthorized` permanece en `false` hasta esa autorización expresa. La publicación automática debe rechazar versiones repetidas, notas vacías y el salto no autorizado a 1.x.
+- No confundir esta numeración con la versión de la app web, la versión del protocolo MFV3, el motor o el contador interno de compilaciones. No cambiar esos protocolos por subir la versión visible.
+- Actualizaciones tiene su propio apartado en Ajustes, novedades legibles, explicación previa, confirmación de instalación y progreso real. No mostrar éxito hasta comprobar el archivo y, para el mando, recibir su confirmación.
+- Preparar y probar en la rama; no fusionar, publicar una entrega de firmware ni grabar la placa sin la autorización correspondiente del dueño. Ver `docs/ACTUALIZACIONES_PANTALLA.md` y las entregas del equipo B para Cloud.
