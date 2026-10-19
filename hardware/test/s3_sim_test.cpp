@@ -565,6 +565,11 @@ int main() {
     tap(750, 46);               // engranaje → AJUSTES
     tapBtn(ui::SETTINGS[2].r);  // ACTUALIZAR (busca solo)
     run(500);
+    if (!(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar."))) {
+      fprintf(stderr, "Consulta sin Internet: screen=%u check=%u link=%u running=%d done=%d match=%d dimmed=%d\n%s\n",
+              (unsigned)screen, (unsigned)checkState, (unsigned)s3net::link, (int)versionsRunning,
+              (int)versionsDone.load(), (int)inMatch, (int)dimmed, screenText().c_str());
+    }
     assert(screen == Screen::Update && checkState == CheckState::Failed && shows("No se pudo consultar."));
     sim::webDown = false;
     // Olvidar la red.
