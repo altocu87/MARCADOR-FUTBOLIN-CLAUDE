@@ -68,3 +68,18 @@ jobs:
             from auth.users u left join public.profiles p on p.id = u.id
             order by u.created_at;"
           PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "$DB_URL" -P pager=off -c "select version as migracion from supabase_migrations.schema_migrations order by version;"
+      - name: Datos de las mesas en la nube (mesa_datos)
+        run: |
+          DB_URL=$(cat supabase/.temp/pooler-url)
+          PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "$DB_URL" -P pager=off -c "
+            select regexp_replace(u.email, '^(.).*(@.*)$', '\1***\2') as cuenta, d.tipo,
+                   count(*) filter (where not d.borrado) as filas, count(*) filter (where d.borrado) as borradas,
+                   max(d.actualizado) as ultimo_cambio
+            from public.mesa_datos d join auth.users u on u.id = d.owner_id
+            group by 1, 2 order by 1, 2;"
+          PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "$DB_URL" -P pager=off -c "
+            select regexp_replace(u.email, '^(.).*(@.*)$', '\1***\2') as cuenta, d.datos->'config'->>'mode' as modo,
+                   (d.datos->'result'->'score'->>'white') || '-' || (d.datos->'result'->'score'->>'blue') as resultado,
+                   jsonb_array_length(d.datos->'participants') as jugadores, d.actualizado
+            from public.mesa_datos d join auth.users u on u.id = d.owner_id
+            where d.tipo = 'match' and not d.borrado order by d.actualizado desc limit 5;"
