@@ -288,7 +288,17 @@ int main(int argc, char** argv) {
 
   // RANKING → HISTORIAL con los partidos que se han jugado arriba (s3_partidos.h guarda cada uno) y siete más.
   for (int k = 0; k < 7; k++) {
-    toMatch(false);
+    if (k % 2) {  // CLASIFICATORIO (la tercera tarjeta de Inicio), para la clasificación
+      goHome();
+      run(300);
+      tap(660, 280); tap(660, 280);
+      run(300);
+      tap(400, 443);
+      run(200);
+      pickPlayers();
+    } else {
+      toMatch(false);
+    }
     tap(400, 240);  // saltar la cuenta atrás
     run(500);
     for (int g = 0; g < 12 && eng.phase() != Phase::Finished; g++) {
@@ -303,7 +313,20 @@ int main(int argc, char** argv) {
   {
     goHome();
     run(300);
-    tap(470, 46);  // RANKING
+    tap(470, 46);  // RANKING (empieza en CLASIFICACIÓN)
+    run(300);
+    shot("ranking-clasificacion");
+    tap(277, 155);  // HISTÓRICO
+    shot("ranking-historico");
+    tap(16 + 124 + 6 + 48, 101);  // JUGADORES
+    shot("ranking-jugadores");
+    tap(419, 101);  // SALÓN DE LA FAMA
+    shot("ranking-fama");
+    tap(540, 101);  // RESUMEN
+    shot("ranking-resumen");
+    tap(628, 101);  // PAREJAS
+    shot("ranking-parejas");
+    tap(16 + 124 + 6 + 96 + 6 + 46, 101);  // HISTORIAL
     run(300);
     shot("historial");
     tap(400, 214);  // el partido más nuevo

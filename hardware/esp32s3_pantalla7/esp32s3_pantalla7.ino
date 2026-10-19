@@ -1725,6 +1725,7 @@ void setup() {
   inicio::hooks.settings = openSettings;
   inicio::hooks.menu = onHomeMenu;
   historial::hooks.back = onRankingBack;
+  historial::hooks.nowUtc = []() -> uint32_t { return rtc.clockOk ? partidos::epoch(rtc.now) : 0; };
   config::hooks.back = onConfigBack;
   config::hooks.next = onConfigNext;
   config::hooks.changed = onConfigChanged;
@@ -1788,6 +1789,7 @@ void setup() {
   }
   assets::preloadFonts(cargando::step);  // todas las letras (la primera vez que se usaba una grande, el partido se paraba)
   elegir::prewarm(&jugadores, cargando::step);  // fichas de la lista de jugadores ya pintadas
+  historial::prewarm(&jugadores);               // sus fotos en los tamaños del ranking
   cargando::finish();
   sendHello();
   sendLine("STATE idle");
@@ -1833,6 +1835,7 @@ void loop() {
   // la pantalla en render()).
   if (jugadores.changed && !elegir::active()) {
     elegir::prewarm(&jugadores);
+    historial::prewarm(&jugadores);
     jugadores.changed = false;
   }
   render();

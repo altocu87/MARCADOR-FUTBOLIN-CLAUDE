@@ -330,6 +330,8 @@ struct Player {
   // forma: últimos resultados (bit 1 = victoria), del más nuevo al más viejo
   uint32_t formBits;
   uint8_t formLen;
+  char rform[6];
+  int bestStreak;  // mejor racha de victorias (computePlayerStats)  // forma en clasificatorios: los 5 últimos («G», «P», «E»), del más viejo al más nuevo
 };
 
 // Lo que pasó en cada partido a cada jugador (para el detalle).
@@ -456,6 +458,7 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
         if (won) {
           p.wins++;
           p.winStreak++;
+          if (p.winStreak > p.bestStreak) p.bestStreak = p.winStreak;
           p.lossStreak = 0;
           if (m.mode == 'r') p.rankedWins++;
           if (m.mode == 'c') p.chaosWins++;
@@ -469,6 +472,12 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
           p.lossStreak++;
         }
         p.formBits = (p.formBits << 1) | (won ? 1u : 0u);
+        if (m.mode == 'r') {
+          size_t fl = strlen(p.rform);
+          if (fl == 5) memmove(p.rform, p.rform + 1, 5), fl = 4;
+          p.rform[fl] = won ? 'G' : winner >= 0 ? 'P' : 'E';
+          p.rform[fl + 1] = 0;
+        }
         if (p.formLen < 32) p.formLen++;
         if (strcmp(p.day, dk)) {
           snprintf(p.day, sizeof(p.day), "%s", dk);
@@ -595,6 +604,23 @@ static bool keepRankedSeason(const partidos::Row& r, const void* arg) {
   char k[10];
   seasonKey(r.fin, k);
   return !strcmp(k, (const char*)arg);
+}
+
+static Snapshot season;  // clasificación de la temporada (solo sus clasificatorios, todos desde 1200)
+static char seasonNow[10] = "";
+
+// «octubre 2026», «4º trimestre 2026» (seasonLabel de la app).
+static void seasonLabel(const char* key, char* out, size_t n) {
+  static const char* MONTHS[12] = {"enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+                                   "noviembre", "diciembre"};
+  int y = atoi(key);
+  if (key[5] == 'T') snprintf(out, n, "%cº trimestre %d", key[6], y);
+  else snprintf(out, n, "%s %d", MONTHS[(atoi(key + 5) + 11) % 12], y);
+}
+
+static void refreshSeason(const uint32_t* codes, int n, uint32_t nowUtc) {
+  seasonKey(nowUtc, seasonNow);
+  compute(season, codes, n, keepRankedSeason, seasonNow, false);
 }
 
 // Recalcula el historial completo (al encender y tras cada partido).

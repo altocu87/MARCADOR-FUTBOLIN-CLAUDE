@@ -73,7 +73,7 @@ struct Cached {
   uint32_t usedAt;
   bool sticky;  // precargada al encender: se borra la última
 };
-static const int MAX_CACHED = 48;
+static const int MAX_CACHED = 96;  // capas, fotos de los jugadores en varios tamaños…
 static Cached* cache[MAX_CACHED];  // cada una en su sitio fijo: LVGL guarda la dirección de su descriptor
 static int cachedCount = 0;
 static uint32_t useCounter = 0;

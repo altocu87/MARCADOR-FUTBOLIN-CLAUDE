@@ -50,6 +50,7 @@ struct Row {
   int8_t firstScorer;     // quién marcó el primer gol válido (equipo × 4 + plaza; -1 nadie apuntado)
   uint8_t pg[2][4];       // goles apuntados a cada jugador
   uint8_t kicks[2], kicksIn[2], sdKicks, penRounds;
+  uint8_t goalsValid, goalsAssigned;  // goles válidos y cuántos tienen goleador apuntado (el pichichi usa los completos)
 };
 static Row* rows = nullptr;  // en orden de guardado (el último, el más nuevo)
 static int count = 0, cap = 0;
@@ -255,6 +256,8 @@ static bool rowFromText(const char* t, Row& r) {
     if (win >= 0 && score[loser] - score[win] > maxDef) maxDef = score[loser] - score[win];
     char who[48] = "";
     if (scorers && *scorers == '{') strOf(keyIn(scorers, gid), who, sizeof(who));
+    if (r.goalsValid < 255) r.goalsValid++;
+    if (who[0] && r.goalsAssigned < 255) r.goalsAssigned++;
     for (int t2 = 0; t2 < 2 && who[0]; t2++)
       for (int i = 0; i < r.n[t2]; i++)
         if (!strcmp(ids[t2][i], who)) {
@@ -328,7 +331,7 @@ static bool parseLine(char* l, Row& r) {
     v[nv++] = strtol(p, &p, 10);
     if (*p == ',') p++;
   }
-  if (nv < 21) return false;
+  if (nv < 23) return false;
   r.totalMs = (uint32_t)v[0];
   r.comeback = (uint8_t)v[1];
   r.earliest[0] = (int32_t)v[2];
@@ -343,6 +346,8 @@ static bool parseLine(char* l, Row& r) {
   r.sdKicks = (uint8_t)v[11];
   r.penRounds = (uint8_t)v[12];
   for (int i = 0; i < 8; i++) r.pg[i / 4][i % 4] = (uint8_t)v[13 + i];
+  r.goalsValid = (uint8_t)v[21];
+  r.goalsAssigned = (uint8_t)v[22];
   return true;
 }
 
@@ -358,6 +363,7 @@ static int lineOf(const Row& r, char* line, size_t size) {
                 (long)r.earliest[0], (long)r.earliest[1], r.run[0], r.run[1], r.firstScorer, r.kicks[0], r.kicks[1], r.kicksIn[0],
                 r.kicksIn[1], r.sdKicks, r.penRounds);
   for (int i = 0; i < 8; i++) n += snprintf(line + n, size - n, ",%u", r.pg[i / 4][i % 4]);
+  n += snprintf(line + n, size - n, ",%u,%u", r.goalsValid, r.goalsAssigned);
   return n;
 }
 

@@ -163,8 +163,13 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
     la app (StoredMatch en JSON, /sdcard/partidos/<id>.json, más un índice para la lista; sin tarjeta, en el chip).
     tests/boardMatches.test.ts comprueba que la app los acepta (copia de seguridad, goles y progresión). Inicio →
     RANKING abre la pestaña HISTORIAL como la app: filtros por modalidad y jugador, páginas de 5, y el detalle
-    (cómo acabó, marcador, equipos con foto, goles en orden y ELIMINAR). Las demás pestañas (clasificación,
-    jugadores…) y el ELO/nivel del detalle llegan con los cálculos de la app (fase 4). Fondos en degradado.
+    (cómo acabó, marcador, equipos con foto, goles en orden y ELIMINAR). Fondos en degradado.
+  - Ranking completo (19/10/2026): la placa calcula ELO, experiencia, niveles, rangos, logros y retos con una copia
+    en C++ de la progresión de la app (s3_progresion.h). tests/progresionPlaca.test.ts guarda lo que calcula la app
+    con 154 partidos del modo prueba y hardware/test/progresion_test.cpp comprueba que la placa da lo mismo (si la
+    app cambia una regla, la prueba falla). Pestañas como la app: CLASIFICACIÓN (temporada e histórico, con rango y
+    forma), JUGADORES, HISTORIAL, SALÓN DE LA FAMA (podios, campeones de temporada y récords), RESUMEN (7 y 30 días)
+    y PAREJAS; el detalle enseña rango, ELO y nivel. Sin torneos todavía (la placa aún no los juega).
     Plan acordado con Alex: 2) cuentas del dueño de la mesa en Supabase y login en la app web; 3) login en la placa
     y subir/bajar jugadores y partidos; 4) cálculos de ELO, niveles y categorías en la placa.
   - Memoria: la caché de imágenes baja a 8 MB y las victorias se preparan al llegar a bola de partido (con 10 MB
