@@ -10,7 +10,7 @@ const CODE = /^[A-Za-z0-9]{24,64}$/;
 
 /** Código de la placa en una dirección (#vincular=…, ?vincular=…) o en el texto de un QR. null si no hay. */
 export function boardCodeFrom(text: string): string | null {
-  const m = /[#?&]vincular=([A-Za-z0-9]+)/.exec(text);
+  const m = /[#?&]vincular=([^&#]*)/.exec(text);
   const code = m ? m[1] : text.trim();
   return CODE.test(code) ? code : null;
 }

@@ -115,3 +115,7 @@ Para descartar antes de fusionar basta con seguir usando `main`: la placa actual
 ## Contexto independiente: Supabase
 
 La configuración de acceso se trató antes de esta entrega. El reintento de «Base de datos» #39227596449 llegó a enlazar el proyecto pero falló al conectar con la base de datos por IPv6; la función no se desplegó en ese intento. La migración ya había concluido en el intento anterior. Se sospecha un permiso de lectura del pooler ausente en el token nuevo; debe verificarse por separado. Esta rama no modifica permisos, secretos, migraciones ni funciones, y sus pruebas no certifican ese despliegue.
+
+## Continuación: acceso por QR
+
+Ver [entrega específica del acceso QR](ENTREGA_EQUIPO_B_ACCESO_QR.md), con correcciones del móvil, recuperación de publicación y límites pendientes de prueba real.

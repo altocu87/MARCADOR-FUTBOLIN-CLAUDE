@@ -10,7 +10,7 @@ import { boardCodeFrom } from '../../services/cloud';
 import { Modal } from './common';
 
 export function BoardLinkPrompt() {
-  const { cloud, navigate, toast } = useApp();
+  const { cloud, navigate, toast, route } = useApp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const code = cloud.pendingBoard;
@@ -20,6 +20,8 @@ export function BoardLinkPrompt() {
     setError(null);
   };
   if (!cloud.session) {
+    // Conserva el QR mientras se escribe la contraseña, sin tapar el formulario.
+    if (route.name === 'settings' && route.tab === 'account') return null;
     return (
       <Modal
         title="Conectar la placa"
@@ -31,7 +33,7 @@ export function BoardLinkPrompt() {
           </>
         }
       >
-        <p style={{ margin: 0 }}>Para conectar la placa a tu cuenta, entra primero en la app con tu cuenta. Después se conecta sola.</p>
+        <p style={{ margin: 0 }}>Para conectar la placa a tu cuenta, entra primero en la app con tu cuenta. Al entrar, te pediremos confirmar la conexión.</p>
       </Modal>
     );
   }
@@ -41,7 +43,7 @@ export function BoardLinkPrompt() {
     try {
       await cloud.linkBoard(code);
       cloud.setPendingBoard(null);
-      toast('Placa conectada: en unos segundos entra sola');
+      toast('Autorización enviada: comprueba que la placa termina de entrar');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo conectar la placa');
     } finally {
@@ -72,6 +74,9 @@ type Detector = { detect(src: CanvasImageSource): Promise<{ rawValue: string }[]
 export function BoardQrScanner({ onClose }: { onClose(): void }) {
   const { cloud } = useApp();
   const video = useRef<HTMLVideoElement>(null);
+  // La sincronización cambia el contexto; no debe volver a abrir la cámara.
+  const callbacks = useRef({ setPendingBoard: cloud.setPendingBoard, onClose });
+  callbacks.current = { setPendingBoard: cloud.setPendingBoard, onClose };
   const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,41 +88,49 @@ export function BoardQrScanner({ onClose }: { onClose(): void }) {
     let stream: MediaStream | null = null;
     let timer = 0;
     let done = false;
-    const detector = new Ctor({ formats: ['qr_code'] });
+    const stop = () => stream?.getTracks().forEach((t) => t.stop());
     void (async () => {
       try {
+        const detector = new Ctor({ formats: ['qr_code'] });
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if (!video.current || done) return;
+        if (!video.current || done) {
+          stop();  // El permiso puede llegar después de cerrar la ventana.
+          return;
+        }
         video.current.srcObject = stream;
         await video.current.play();
         const look = async () => {
           if (done || !video.current) return;
           try {
-            for (const c of await detector.detect(video.current)) {
+            const codes = await detector.detect(video.current);
+            if (done) return;
+            for (const c of codes) {
               const code = boardCodeFrom(c.rawValue);
               if (code) {
                 done = true;
-                cloud.setPendingBoard(code);  // la misma pregunta que al abrir el enlace
-                onClose();
+                stop();
+                callbacks.current.setPendingBoard(code);  // la misma pregunta que al abrir el enlace
+                callbacks.current.onClose();
                 return;
               }
             }
           } catch {
             /* la imagen aún no está lista */
           }
-          timer = window.setTimeout(() => void look(), 300);
+          if (!done) timer = window.setTimeout(() => void look(), 300);
         };
         void look();
       } catch {
-        setProblem('No se pudo usar la cámara. Abre la cámara del móvil y apunta al QR de la placa.');
+        stop();
+        if (!done) setProblem('No se pudo usar la cámara. Abre la cámara del móvil y apunta al QR de la placa.');
       }
     })();
     return () => {
       done = true;
       window.clearTimeout(timer);
-      stream?.getTracks().forEach((t) => t.stop());
+      stop();
     };
-  }, [cloud, onClose]);
+  }, []);
 
   return (
     <Modal title="Lee el QR de la placa" onClose={onClose} actions={<button className="btn" onClick={onClose}>Cerrar</button>}>

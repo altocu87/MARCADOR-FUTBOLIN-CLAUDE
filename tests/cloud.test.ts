@@ -164,6 +164,11 @@ describe('entrar en la placa con un QR', () => {
     expect(boardCodeFrom(`?vincular=${CODE}`)).toBe(CODE);
     expect(boardCodeFrom('https://otra.web/')).toBeNull();
     expect(boardCodeFrom('#vincular=corto')).toBeNull();
+    expect(boardCodeFrom(`#vincular=${CODE}!alterado`)).toBeNull();
+    expect(boardCodeFrom(`#vincular=${CODE}%2Fextra`)).toBeNull();
+    expect(boardCodeFrom(`#vincular=${'A'.repeat(65)}`)).toBeNull();
+    expect(boardCodeFrom(`?vincular=${CODE}&otra=1`)).toBe(CODE);
+    expect(boardCodeFrom(`  ${CODE}  `)).toBe(CODE);
   });
 
   it('pide a la función vincular-placa con la sesión del dueño', async () => {
