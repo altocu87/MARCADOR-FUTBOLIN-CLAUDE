@@ -2,6 +2,8 @@
 // tests/fixtures/progresion: lo que calcula la app está en esperado.txt (lo mantiene tests/progresionPlaca.test.ts).
 // Uso (desde hardware/): g++ -std=c++17 -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp && ./a.out
 #include <cassert>
+#include <cstdlib>
+#include <filesystem>
 #include <cstdio>
 #include <cstring>
 #include <set>
@@ -11,7 +13,15 @@
 #include <algorithm>
 #include "Arduino.h"
 #include "s3_partidos.h"
+static int calcAllocations = 0;
+static bool failCalcAllocation = false;
+static void* countedCalloc(size_t n, size_t size) {
+  ++calcAllocations;
+  return failCalcAllocation ? nullptr : calloc(n, size);
+}
+#define calloc countedCalloc
 #include "s3_progresion.h"
+#undef calloc
 
 static std::string readFile(const char* p) {
   FILE* f = fopen(p, "rb");
@@ -90,5 +100,60 @@ int main() {
     return 1;
   }
   std::printf("progresión de la placa igual que la app (%d partidos, %d jugadores)\n", partidos::count, (int)codes.size());
+  // Abrir el ranking repetidamente conserva el cálculo y los resultados de la app.
+  progresion::refresh(codes.data(), (int)codes.size());
+  auto* cached = progresion::all.p;
+  int beforeCalc = calcAllocations;
+  for (int j = 0; j < 20; ++j) progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::all.p == cached && calcAllocations == beforeCalc);
+  for (uint32_t c : codes) {
+    const auto& a = s.p[s.find(c)];
+    const auto& b = progresion::all.p[progresion::all.find(c)];
+    assert(a.elo == b.elo && a.xp == b.xp && a.level == b.level);
+  }
+  // Nuevo jugador sin partidos, nueva regla y nueva temporada invalidan cada cálculo pertinente.
+  codes.push_back(0xfedcba98);
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::all.find(0xfedcba98) >= 0);
+  int oldInitial = progresion::rules.eloInitial;
+  progresion::rules.eloInitial += 100;
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::of(0xfedcba98)->elo == oldInitial + 100);
+  progresion::rules.eloInitial = oldInitial;
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::of(0xfedcba98)->elo == oldInitial);
+  progresion::refreshSeason(codes.data(), (int)codes.size(), 1767225600);  // enero 2026
+  auto* seasonCached = progresion::season.p;
+  beforeCalc = calcAllocations;
+  progresion::refreshSeason(codes.data(), (int)codes.size(), 1767225601);
+  assert(progresion::season.p == seasonCached && calcAllocations == beforeCalc);
+  progresion::refreshSeason(codes.data(), (int)codes.size(), 1769904000);  // febrero 2026
+  assert(!strcmp(progresion::seasonNow, "2026-02"));
+  auto extra = partidos::rows[0];
+  strcpy(extra.id, "equipo-b-extra");
+  uint32_t oldRevision = partidos::revision;
+  assert(partidos::push(extra) && partidos::revision != oldRevision);
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::all.rowsCap == partidos::count);
+  // Borrado: no reutilizar entradas que todavía contengan el partido retirado.
+  std::filesystem::create_directories("../build/equipo-b-ranking-test");
+  partidos::setDir("../build/equipo-b-ranking-test");
+  partidos::rewriteIndex();
+  oldRevision = partidos::revision;
+  assert(partidos::remove("equipo-b-extra") && partidos::revision != oldRevision);
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::all.rowsCap == partidos::count);
+  // Un cálculo que falla no se considera actualizado; vuelve a intentarse con memoria disponible.
+  failCalcAllocation = true;
+  progresion::rules.eloInitial += 1;
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(!progresion::all.p && !progresion::allKey.valid);
+  failCalcAllocation = false;
+  progresion::refresh(codes.data(), (int)codes.size());
+  assert(progresion::of(0xfedcba98)->elo == oldInitial + 1);
+  printf("Equipo B: ranking sin nuevas reservas, invalidacion y recuperacion tras falta de memoria OK\n");
+  s.clear();
+  progresion::all.clear();
+  progresion::season.clear();
   return 0;
 }

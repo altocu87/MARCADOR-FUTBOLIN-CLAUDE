@@ -54,6 +54,7 @@ struct Row {
 };
 static Row* rows = nullptr;  // en orden de guardado (el último, el más nuevo)
 static int count = 0, cap = 0;
+static uint32_t revision = 0;  // invalida los cálculos incluso si el número de partidos no cambia
 
 static bool push(const Row& r) {
   if (count == cap) {
@@ -64,6 +65,7 @@ static bool push(const Row& r) {
     cap = nc;
   }
   rows[count++] = r;
+  ++revision;
   return true;
 }
 
@@ -411,6 +413,7 @@ static void begin(bool sd) {
 #endif
 #endif
   count = 0;
+  ++revision;
   char path[96];
   indexPath(path, sizeof(path));
   FILE* f = fopen(path, "rb");
@@ -842,7 +845,7 @@ static int replacePlayerId(uint32_t oldCode, const char* oldId, const char* newI
         fwrite(out, 1, k, f);
         fclose(f);
         Row r;
-        if (rowFromText(out, r)) rows[i] = r;
+        if (rowFromText(out, r)) { rows[i] = r; ++revision; }
         changed++;
       }
       free(out);
@@ -894,6 +897,7 @@ static bool remove(const char* id) {
   rename(tmp, ip);
   memmove(&rows[k], &rows[k + 1], (size_t)(count - k - 1) * sizeof(Row));
   count--;
+  ++revision;
   return true;
 }
 

@@ -423,7 +423,10 @@ static uint32_t matchStartEpoch = 0;  // cuándo empezó el partido (segundos UT
 // ---------------------------------------------------------------- acciones
 static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (solo pantalla: el reloj ya está parado)
 static uint16_t hcIntroSeq = 0;
+static void prepareMatchNetwork();
 static void startMatch() {
+  if (nube::busy() || s3net::scanning) { ui::toast("Espera a que termine la conexión"); return; }
+  prepareMatchNetwork();
   // Partido Loco: hándicaps y visitas; algunos dependen de cuántos juegan en cada equipo.
   cfg.chaos = chosenMode == inicio::CHAOS;
   cfg.players[0] = haveTeams && chosenTeams.n[0] ? chosenTeams.n[0] : 1;
@@ -811,6 +814,10 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 }
 
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
+static void prepareMatchNetwork() {
+  if (checkState == CheckState::Running) checkState = CheckState::Never;
+  if (s3net::link != s3net::Link::Off) s3net::stop();
+}
 
 // ---------------------------------------------------------------- hora y batería (Inicio y reposo)
 static const char* const DIAS[7] = {"DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"};
@@ -1886,6 +1893,7 @@ void setup() {
   fichas::hooks.removed = onFichaRemoved;
   cuenta::hooks.back = onCuentaBack;
   cuenta::hooks.hasWifi = cuentaHasWifi;
+  cuenta::hooks.networkReady = []() { return !versionsRunning && !s3net::scanning && checkState != CheckState::Running; };
   nube::hooks.loggedIn = nubeLoggedIn;
   nube::hooks.matchArrived = nubeMatchArrived;
   nube::hooks.matchGone = nubeMatchGone;
@@ -1985,7 +1993,7 @@ void loop() {
   bool calm = !inMatch && !test.active &&
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
-  if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && checkState != CheckState::Running &&
+  if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
       s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {
     nextCloudSync = now + 15u * 60u * 1000u;
     nube::sync();

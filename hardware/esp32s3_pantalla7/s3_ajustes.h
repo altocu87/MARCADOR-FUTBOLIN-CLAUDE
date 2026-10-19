@@ -56,25 +56,57 @@ static MandoUpd mandoUpd() {
 static bool screenOutdated() { return pubScreen.ok() && pubScreen.build > (uint32_t)MFV3_BUILD; }
 static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUpd::Outdated; }
 
-static void fetchVersions() {
-  mfv3::ota::Published a, b;
-  bool ok = s3net::fetchPublished(S3_BOARD_ID, a);
-  s3net::fetchPublished(MANDO_ID, b);  // si no está publicado, el mando se queda como está
-  if (ok) {
-    pubScreen = a;
-    pubMando = b;
+// Solo los resultados cruzan de la tarea de red a loop(); LVGL y el reloj quedan en loop().
+static std::atomic<bool> versionsDone{false};
+static bool versionsRunning = false, versionsOk = false;
+static mfv3::ota::Published fetchedScreen, fetchedMando;
+static reloj::Clock fetchedClock;
+static bool fetchedClockOk = false;
+static void fetchVersionsWork() {
+  versionsOk = s3net::fetchPublished(S3_BOARD_ID, fetchedScreen);
+  s3net::fetchPublished(MANDO_ID, fetchedMando);
+  fetchedClockOk = reloj::internetClock(fetchedClock);
+  versionsDone.store(true);
+}
+#ifdef ARDUINO
+static void versionsTask(void*) { fetchVersionsWork(); vTaskDelete(nullptr); }
+#endif
+static bool beginVersions() {
+  if (versionsRunning) return false;
+  fetchedScreen = mfv3::ota::Published();
+  fetchedMando = mfv3::ota::Published();
+  versionsDone = false;
+  versionsRunning = true;
+#ifdef ARDUINO
+  // Pila interna: esta tarea corta no depende de poder usar PSRAM durante escrituras de flash.
+  if (xTaskCreatePinnedToCore(versionsTask, "versiones", 8192, nullptr, 1, nullptr, 0) != pdPASS) {
+    versionsRunning = false;
+    return false;
   }
-  checkState = ok ? CheckState::Ok : CheckState::Failed;
+#else
+  fetchVersionsWork();
+#endif
+  return true;
+}
+static void finishVersions() {
+  if (!versionsRunning || !versionsDone.load()) return;
+  versionsRunning = false;
+  if (checkState != CheckState::Running) return;  // cancelada al entrar en partido
+  if (versionsOk) { pubScreen = fetchedScreen; pubMando = fetchedMando; }
+  checkState = versionsOk ? CheckState::Ok : CheckState::Failed;
+  if (fetchedClockOk) rtc.set(fetchedClock);
+  s3net::stop();
 }
 
 // Comprobación sin bloquear: conectar (en loop()), leer las versiones y desconectar.
 static void startCheck() {
-  if (!wifiSsid[0] || inMatch || s3net::link != s3net::Link::Off || nube::phase == nube::BUSY) return;
+  if (!wifiSsid[0] || inMatch || versionsRunning || s3net::scanning || s3net::link != s3net::Link::Off || nube::phase == nube::BUSY) return;
   s3net::connect(wifiSsid, wifiPass);
   checkState = CheckState::Running;
 }
 
 static void checkPoll() {
+  finishVersions();
   if (checkState != CheckState::Running || screen == Screen::Connecting || screen == Screen::Install) return;
   if (nube::phase == nube::BUSY) return;  // la nube tiene el Wi-Fi
   if (inMatch) {  // nunca durante un partido
@@ -83,10 +115,8 @@ static void checkPoll() {
     return;
   }
   s3net::Link l = s3net::poll();
-  if (l == s3net::Link::Up) {
-    fetchVersions();
-    rtc.syncInternet();  // de paso, la hora de Internet al reloj con pila
-    s3net::stop();
+  if (l == s3net::Link::Up && !versionsRunning) {
+    if (!beginVersions()) { checkState = CheckState::Failed; s3net::stop(); }
   } else if (l == s3net::Link::Failed) {
     s3net::stop();
     checkState = CheckState::NoConnect;
@@ -121,6 +151,7 @@ static void instFail(const char* why) {
 }
 
 static void startInstall() {
+  if (versionsRunning || nube::busy() || s3net::scanning) return;
   instMando = mandoUpd() == MandoUpd::Outdated;
   instScreen = screenOutdated();
   if (!instMando && !instScreen) return;
@@ -533,6 +564,7 @@ static void openPlayers() {
 }
 
 static void openWifi() {
+  if (versionsRunning || nube::busy()) return;
   screen = Screen::Wifi;
   netScanned = false;
   netCount = 0;
@@ -555,6 +587,7 @@ static void openKeyboard(const char* ssid) {
 }
 
 static void startConnect() {
+  if (versionsRunning || nube::busy() || s3net::scanning) return;
   s3net::stop();  // por si había una comprobación a medias
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   s3net::connect(kbSsid, kbText);
@@ -567,10 +600,9 @@ static void connectingPoll() {
   s3net::Link l = s3net::poll();
   if (l == s3net::Link::Up) {
     saveWifi(kbSsid, kbText);
-    fetchVersions();
-    rtc.syncInternet();
-    s3net::stop();
+    checkState = CheckState::Running;
     screen = Screen::Update;
+    if (!beginVersions()) { checkState = CheckState::Failed; s3net::stop(); }
   } else if (l == s3net::Link::Failed) {
     s3net::stop();
     kbError = "No conecta: revisa la clave";
@@ -661,12 +693,14 @@ static void ajustesTap(int16_t x, int16_t y) {
   }
 }
 
-// En loop(): buscar redes (bloquea 2–4 s, con la pantalla ya dibujada), conexiones e instalación.
+// En loop(): recoger la búsqueda de redes sin bloquear el dibujo y atender conexiones e instalación.
 static void ajustesLoop(uint32_t now) {
-  if (screen == Screen::Wifi && !netScanned && lastKey == ajustesKey()) {
+  if (s3net::scanning) {
+    if (s3net::pollScan(nets, ui::WIFI_ROWS, netCount)) netScanned = true;
+  } else if (screen == Screen::Wifi && !netScanned && !versionsRunning && !nube::busy() && lastKey == ajustesKey()) {
     s3net::stop();
-    netCount = s3net::scan(nets, ui::WIFI_ROWS);
-    netScanned = true;
+    if (checkState == CheckState::Running) checkState = CheckState::Never;
+    s3net::startScan();
   }
   connectingPoll();
   checkPoll();

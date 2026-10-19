@@ -17,6 +17,7 @@ namespace cuenta {
 struct Hooks {
   void (*back)() = nullptr;
   bool (*hasWifi)() = nullptr;
+  bool (*networkReady)() = nullptr;
 };
 static Hooks hooks;
 
@@ -116,6 +117,7 @@ static void onBack(lv_event_t*) {
   if (hooks.back) hooks.back();
 }
 static void onEnter(lv_event_t*) {
+  if (hooks.networkReady && !hooks.networkReady()) return ui::toast("Espera a que termine la consulta de red");
   if (hooks.hasWifi && !hooks.hasWifi()) return ui::toast("Primero, el Wi-Fi en AJUSTES");
   if (!strchr(email, '@')) return ui::toast("Escribe tu correo");
   if (strlen(pass) < 6) return ui::toast("La contraseña tiene al menos 6 caracteres");
@@ -125,6 +127,7 @@ static void onEnter(lv_event_t*) {
 }
 
 static void onQr(lv_event_t*) {
+  if (hooks.networkReady && !hooks.networkReady()) return ui::toast("Espera a que termine la consulta de red");
   if (hooks.hasWifi && !hooks.hasWifi()) return ui::toast("Primero, el Wi-Fi en AJUSTES");
   qrMode = true;
   nube::loginWithQr();
@@ -223,6 +226,7 @@ static void statusText(char* out, size_t n) {
 }
 
 static void onSync(lv_event_t*) {
+  if (hooks.networkReady && !hooks.networkReady()) return ui::toast("Espera a que termine la consulta de red");
   if (hooks.hasWifi && !hooks.hasWifi()) return ui::toast("Primero, el Wi-Fi en AJUSTES");
   nube::sync();
 }

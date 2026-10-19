@@ -832,8 +832,8 @@ static void buildFame() {
   } recs[5] = {{"Gol más rápido", -1, 0}, {"Mayor goleada", -1, 0}, {"Más goles en un encuentro", -1, 0}, {"Mayor remontada", -1, 0},
                {"Encuentro más largo", -1, 0}};
   int* ord = (int*)malloc((size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
+  if (!ord) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   for (int i = 0; i < partidos::count; i++) ord[i] = i;
-  progresion::order = (int*)realloc(progresion::order, (size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
   qsort(ord, partidos::count, sizeof(int), progresion::byFinish);
   for (int oi = 0; oi < partidos::count; oi++) {
     const partidos::Row& r = partidos::rows[ord[oi]];
@@ -882,10 +882,10 @@ static void buildDigest() {
   uint32_t now = hooks.nowUtc ? hooks.nowUtc() : 0;
   uint32_t from = now > (digestMonth ? 30u : 7u) * 86400u ? now - (digestMonth ? 30u : 7u) * 86400u : 0;
   int* ord = (int*)malloc((size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
+  if (!ord) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   int nl = 0;
   for (int i = 0; i < partidos::count; i++)
     if (now && partidos::rows[i].fin >= from && partidos::rows[i].fin <= now) ord[nl++] = i;
-  progresion::order = (int*)realloc(progresion::order, (size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
   qsort(ord, nl, sizeof(int), progresion::byFinish);
   if (!nl) {
     free(ord);
@@ -987,8 +987,8 @@ static void buildPairs() {
   static P ps[128];
   int n = 0;
   int* ord = (int*)malloc((size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
+  if (!ord) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   for (int i = 0; i < partidos::count; i++) ord[i] = i;
-  progresion::order = (int*)realloc(progresion::order, (size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
   qsort(ord, partidos::count, sizeof(int), progresion::byFinish);
   for (int oi = 0; oi < partidos::count; oi++) {
     const partidos::Row& r = partidos::rows[ord[oi]];

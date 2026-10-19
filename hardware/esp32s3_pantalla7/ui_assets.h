@@ -1,8 +1,7 @@
 // MARCADOR FUTBOLÍN V3 · recursos de la pantalla de 7": capas de la app y letras Inter, desde la memoria FAT.
 // -----------------------------------------------------------------------------------------------------------
-// - Capas opacas (fondos y variantes): JPEG. Se descomprimen una vez a RGB565 (con tramado, para que los
-//   degradados no hagan escalones) y se guardan en la PSRAM; la segunda vez salen al instante.
-// - Capas con transparencia: imagen de LVGL (RGB565 + A8), las lee LVGL directamente.
+// - Capas actuales: RGB565 o RGB565 + A8 comprimido con LZ4; se descomprimen y conservan en caché.
+// - JPEG sigue disponible como alternativa. Las imágenes de pantallas anteriores se pueden expulsar.
 // - Letras: Inter convertida con lv_font_conv (fuentes.txt), cargada al pedirla por primera vez.
 // En la placa la FAT está en /ffat (FFat). En el PC, en build/placa/fat (lo prepara scripts/placa_recursos.py).
 
@@ -11,6 +10,7 @@
 
 #include <lvgl.h>
 #include <math.h>
+#include <new>
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,6 +103,21 @@ static bool evictOne() {
   return true;
 }
 
+// Si falta un bloque contiguo, soltar únicamente imágenes que ya no usa la pantalla.
+// El límite de caché sigue siendo blando: nunca expulsar una imagen que LVGL esté dibujando.
+static void* allocImage(size_t bytes) {
+  void* p = malloc(bytes);
+  while (!p && evictOne()) p = malloc(bytes);
+  return p;
+}
+
+static Cached* addCached() {
+  if (cachedCount >= MAX_CACHED) return nullptr;
+  Cached* c = new (std::nothrow) Cached();
+  if (c) cache[cachedCount++] = c;
+  return c;
+}
+
 static const lv_image_dsc_t* loadJpeg(const char* rel) {
   for (int i = 0; i < cachedCount; i++)
     if (!strcmp(cache[i]->path, rel)) {
@@ -131,11 +146,12 @@ static const lv_image_dsc_t* loadJpeg(const char* rel) {
       fclose(f);
       return nullptr;
     }
-    ctx.dst = (uint16_t*)malloc(bytes);
+    ctx.dst = (uint16_t*)allocImage(bytes);
     ctx.w = jd.width;
     if (ctx.dst && jd_decomp(&jd, jpegOut, 0) == JDR_OK) {
-      cache[cachedCount] = new Cached();
-      Cached& c = *cache[cachedCount++];
+      Cached* entry = addCached();
+      if (!entry) { free(ctx.dst); free(pool); fclose(f); return nullptr; }
+      Cached& c = *entry;
       snprintf(c.path, sizeof(c.path), "%s", rel);
       memset(&c.dsc, 0, sizeof(c.dsc));
       c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
@@ -241,7 +257,13 @@ static const lv_image_dsc_t* loadLz4(const char* rel) {
     return nullptr;
   }
   uint32_t raw = (uint32_t)head[12] | ((uint32_t)head[13] << 8) | ((uint32_t)head[14] << 16) | ((uint32_t)head[15] << 24);
+  uint16_t w = head[4] | (head[5] << 8), h = head[6] | (head[7] << 8), stride = head[8] | (head[9] << 8);
+  bool alpha = head[1] == LV_COLOR_FORMAT_RGB565A8;
+  size_t expected = (size_t)stride * h + (alpha ? (size_t)w * h : 0);
+  if (!w || !h || (!alpha && head[1] != LV_COLOR_FORMAT_RGB565) || stride != (size_t)w * 2 ||
+      raw != expected || raw > MAX_CACHED_BYTES) { fclose(f); return nullptr; }
   size_t packed = (size_t)fileSize - 16;
+  if (!packed || packed > raw + raw / 255 + 16) { fclose(f); return nullptr; }
   while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
     if (!evictOne()) break;
   if (cachedCount >= MAX_CACHED) {
@@ -249,7 +271,7 @@ static const lv_image_dsc_t* loadLz4(const char* rel) {
     return nullptr;
   }
   char* in = (char*)malloc(packed);
-  uint8_t* out = (uint8_t*)malloc(raw);
+  uint8_t* out = (uint8_t*)allocImage(raw);
   bool ok = in && out && fread(in, 1, packed, f) == packed;
   uint32_t tRead = lv_tick_elaps(t0);
   ok = ok && lz4Unpack((const uint8_t*)in, packed, out, raw) == (int)raw;
@@ -260,8 +282,9 @@ static const lv_image_dsc_t* loadLz4(const char* rel) {
     LV_LOG_WARN("No se pudo abrir %s", full);
     return nullptr;
   }
-  cache[cachedCount] = new Cached();
-  Cached& c = *cache[cachedCount++];
+  Cached* entry = addCached();
+  if (!entry) { free(out); return nullptr; }
+  Cached& c = *entry;
   snprintf(c.path, sizeof(c.path), "%s", rel);
   memset(&c.dsc, 0, sizeof(c.dsc));
   c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
@@ -302,7 +325,7 @@ static const lv_image_dsc_t* photo(const char* rel, int size, int radius, bool b
   size_t raw = (size_t)size * size * 3;
   while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
     if (!evictOne()) break;
-  uint8_t* out = ok && cachedCount < MAX_CACHED ? (uint8_t*)malloc(raw) : nullptr;
+  uint8_t* out = ok && cachedCount < MAX_CACHED ? (uint8_t*)allocImage(raw) : nullptr;
   if (!out) {
     free(in);
     return nullptr;
@@ -340,8 +363,9 @@ static const lv_image_dsc_t* photo(const char* rel, int size, int radius, bool b
     }
   }
   free(in);
-  cache[cachedCount] = new Cached();
-  Cached& c = *cache[cachedCount++];
+  Cached* entry = addCached();
+  if (!entry) { free(out); return nullptr; }
+  Cached& c = *entry;
   snprintf(c.path, sizeof(c.path), "%s", key);
   memset(&c.dsc, 0, sizeof(c.dsc));
   c.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
@@ -374,7 +398,7 @@ static const lv_image_dsc_t* flat(const capas::Capa& c, uint32_t bg, bool sticky
   while (cachedCount && (cachedCount >= MAX_CACHED || cachedBytes + raw > MAX_CACHED_BYTES))
     if (!evictOne()) break;
   if (cachedCount >= MAX_CACHED) return srcDsc;
-  uint16_t* out = (uint16_t*)malloc(raw);
+  uint16_t* out = (uint16_t*)allocImage(raw);
   if (!out) return srcDsc;
   const uint16_t* px = (const uint16_t*)srcDsc->data;
   const uint8_t* alpha = srcDsc->data + (size_t)srcDsc->header.stride * h;
@@ -389,8 +413,9 @@ static const lv_image_dsc_t* flat(const capas::Capa& c, uint32_t bg, bool sticky
       b = (b * a + bb * (255 - a)) / 255;
       out[(size_t)y * w + x] = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
     }
-  cache[cachedCount] = new Cached();
-  Cached& e = *cache[cachedCount++];
+  Cached* entry = addCached();
+  if (!entry) { free(out); return srcDsc; }
+  Cached& e = *entry;
   snprintf(e.path, sizeof(e.path), "%s", key);
   memset(&e.dsc, 0, sizeof(e.dsc));
   e.dsc.header.magic = LV_IMAGE_HEADER_MAGIC;

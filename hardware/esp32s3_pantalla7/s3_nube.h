@@ -15,6 +15,9 @@
 #ifndef MFV3_S3_NUBE_H
 #define MFV3_S3_NUBE_H
 
+#include <atomic>
+#include <errno.h>
+#include "s3_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +55,7 @@ struct Saved {
   char lastPull[40];
 };
 static Saved saved;
+static Saved jobSaved;  // copia privada de la tarea; se publica al terminar
 
 static void saveState() {
   FILE* f = fopen(stateFile, "wb");
@@ -75,7 +79,7 @@ static bool loggedIn() { return saved.refresh[0] != 0; }
 
 // ---------------------------------------------------------------- lo que ve la pantalla
 enum Phase : uint8_t { OFF, IDLE, BUSY, OK, FAILED };
-static volatile uint8_t phase = OFF;
+static uint8_t phase = OFF;
 static char message[96] = "";
 static uint32_t lastOkAt = 0;  // millis() de la última sincronización buena
 static int pendingCount = 0;   // cosas por subir
@@ -84,7 +88,18 @@ static int pendingCount = 0;   // cosas por subir
 static jug::Store* store = nullptr;
 static void pendingPath(char* out, size_t n) { snprintf(out, n, "%s/subir.txt", partidos::dir); }
 
+// Recupera el original si se interrumpió la sustitución de la cola. Se llama desde loop().
+static void recoverPending() {
+  char p[96], backup[104];
+  pendingPath(p, sizeof(p));
+  snprintf(backup, sizeof(backup), "%s.bak", p);
+  FILE* f = fopen(p, "rb");
+  if (f) { fclose(f); ::remove(backup); }
+  else if (errno == ENOENT) rename(backup, p);
+}
+
 static void countPending() {
+  recoverPending();
   char p[96];
   pendingPath(p, sizeof(p));
   pendingCount = 0;
@@ -96,6 +111,7 @@ static void countPending() {
   fclose(f);
 }
 static void addPending(const char* line) {
+  recoverPending();
   char p[96];
   pendingPath(p, sizeof(p));
   FILE* f = fopen(p, "ab");
@@ -237,16 +253,10 @@ struct Change {
   uint16_t* px;  // foto (malloc) o nullptr
 };
 static Change* changes = nullptr;
-static volatile int nChanges = 0;
+static int nChanges = 0;
 static int capChanges = 0, applied = 0;
 static bool pushChange(const Change& c) {
-  if (nChanges == capChanges) {
-    int nc = capChanges ? capChanges * 2 : 64;
-    Change* p = (Change*)realloc(changes, (size_t)nc * sizeof(Change));
-    if (!p) return false;
-    changes = p;
-    capChanges = nc;
-  }
+  if (!s3mem::reserve(changes, capChanges, nChanges + 1, 64)) return false;
   changes[nChanges] = c;
   nChanges = nChanges + 1;
   return true;
@@ -259,6 +269,7 @@ struct Up {
 };
 static Up* ups = nullptr;  // lo pendiente al empezar (lo prepara loop())
 static int nUps = 0;
+static long pendingBytes = 0;  // solo se retiran las líneas incluidas en esta copia
 // Jugadores para subir: lo que hace falta de cada uno, copiado por loop() antes de empezar.
 struct UpPlayer {
   char id[48];
@@ -272,13 +283,14 @@ enum Job : uint8_t { NONE, LOGIN, SYNC, LINK };
 // Entrar con QR: código aleatorio que enseña la placa (y su dirección de la app) y si se ha dejado de esperar.
 static const char* APP_URL = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/app/";
 static char linkCode[40] = "";
-static volatile bool linkCancel = false;
-static volatile uint8_t job = NONE;
+static std::atomic<bool> linkCancel{false};
+static std::atomic<uint8_t> job{NONE};
 static char loginEmail[96], loginPass[96];
 static char access[1600];
 static char newLastPull[40];
 static char jobError[96];
-static volatile bool jobDone = false;
+static std::atomic<bool> jobDone{false};
+static std::atomic<bool> jobReady{false};
 static bool pendingTrimmed = false;
 static bool jobOk = false;
 static const char* ffatRoot = "/ffat";
@@ -297,9 +309,9 @@ static bool auth(const char* grant, const char* body) {
     partidos::strOf(partidos::keyIn(user, "email"), mail, sizeof(mail));
     if (tok[0] && ref[0]) {
       snprintf(access, sizeof(access), "%s", tok);
-      snprintf(saved.refresh, sizeof(saved.refresh), "%s", ref);
-      if (uid[0]) snprintf(saved.userId, sizeof(saved.userId), "%s", uid);
-      if (mail[0]) snprintf(saved.email, sizeof(saved.email), "%s", mail);
+      snprintf(jobSaved.refresh, sizeof(jobSaved.refresh), "%s", ref);
+      if (uid[0]) snprintf(jobSaved.userId, sizeof(jobSaved.userId), "%s", uid);
+      if (mail[0]) snprintf(jobSaved.email, sizeof(jobSaved.email), "%s", mail);
       ok = true;
     }
   }
@@ -331,9 +343,9 @@ static bool verifyHash(const char* tokenHash) {
     partidos::strOf(partidos::keyIn(user, "email"), mail, sizeof(mail));
     if (tok[0] && ref[0]) {
       snprintf(access, sizeof(access), "%s", tok);
-      snprintf(saved.refresh, sizeof(saved.refresh), "%s", ref);
-      snprintf(saved.userId, sizeof(saved.userId), "%s", uid);
-      snprintf(saved.email, sizeof(saved.email), "%s", mail);
+      snprintf(jobSaved.refresh, sizeof(jobSaved.refresh), "%s", ref);
+      snprintf(jobSaved.userId, sizeof(jobSaved.userId), "%s", uid);
+      snprintf(jobSaved.email, sizeof(jobSaved.email), "%s", mail);
       ok = true;
     }
   }
@@ -353,7 +365,7 @@ static bool waitLink() {
     if (r.code == 200 && r.body) partidos::strOf(partidos::keyIn(r.body, "token_hash"), hash, sizeof(hash));
     free(r.body);
     if (hash[0]) {
-      snprintf(message, sizeof(message), "Entrando…");
+
       return verifyHash(hash);
     }
 #ifdef ARDUINO
@@ -382,8 +394,13 @@ static bool pushMatch(const char* id, bool* done) {
   partidos::jsonPath(id, path, sizeof(path));
   char* datos = partidos::readAll(path);
   if (!datos) {
-    *done = true;  // ya no está (se borró): nada que subir
-    return true;
+    // readAll también falla por memoria o lectura: solo descartar un archivo realmente ausente.
+    FILE* exists = fopen(path, "rb");
+    bool missing = !exists && errno == ENOENT;
+    if (exists) fclose(exists);
+    *done = missing;
+    if (!missing) snprintf(jobError, sizeof(jobError), "No se pudo leer el partido; se conserva pendiente");
+    return missing;
   }
   size_t n = strlen(datos);
   while (n && (datos[n - 1] == '\n' || datos[n - 1] == '\r')) datos[--n] = 0;
@@ -428,7 +445,7 @@ static bool pushDeleted(const char* id, bool* done) {
 }
 
 // Una fila de la nube → cambio para loop() (los partidos se escriben ya en la tarjeta).
-static void takeRow(const char* o) {
+static bool takeRow(const char* o) {
   char tipo[16], id[48];
   partidos::strOf(partidos::keyIn(o, "tipo"), tipo, sizeof(tipo));
   partidos::strOf(partidos::keyIn(o, "id"), id, sizeof(id));
@@ -442,47 +459,52 @@ static void takeRow(const char* o) {
     partidos::jsonPath(id, path, sizeof(path));
     if (del) {
       c.kind = 'x';
-      pushChange(c);
-      return;
+      return pushChange(c);
     }
-    if (!datos || *datos != '{') return;
+    if (!datos || *datos != '{') return false;
     FILE* test = fopen(path, "rb");
     if (test) {  // ya lo tenemos (los partidos no cambian)
       fclose(test);
-      return;
+      return true;
     }
     const char* end = partidos::closeOf(datos);
+    if (!end || *end != '}') return false;
     FILE* f = fopen(path, "wb");
-    if (!f) return;
-    fwrite(datos, 1, (size_t)(end - datos + 1), f);
-    fputc('\n', f);
-    fclose(f);
+    if (!f) return false;
+    size_t len = (size_t)(end - datos + 1);
+    bool written = fwrite(datos, 1, len, f) == len;
+    written = fputc('\n', f) != EOF && written;
+    written = fclose(f) == 0 && written;
     c.kind = 'm';
-    pushChange(c);
+    if (!written || !pushChange(c)) {
+      ::remove(path);  // creado por esta descarga: permitir el reintento completo
+      return false;
+    }
+    return true;
   } else if (!strcmp(tipo, "player")) {
     if (del) {
       c.kind = 'q';
-      pushChange(c);
-      return;
+      return pushChange(c);
     }
-    if (!datos || *datos != '{') return;
+    if (!datos || *datos != '{') return false;
     const char* act = partidos::keyIn(datos, "active");
     if (act && !partidos::isTrue(act)) {
       c.kind = 'q';  // inactivo en la app: fuera de la lista de la placa
-      pushChange(c);
-      return;
+      return pushChange(c);
     }
     partidos::strOf(partidos::keyIn(datos, "name"), c.name, sizeof(c.name));
     const char* ph = partidos::keyIn(datos, "photo");
-    if (ph && *ph == '"') {
+    if (ph && *ph == '"' && ph[1] != '"') {
       const char* e = partidos::skipStr(ph);
+      if (e - ph < 2 || e[-1] != '"') return false;
       uint16_t* px = (uint16_t*)malloc(fotos::PIXELS * 2);
       if (px && photoFromDataUrl(ph + 1, (size_t)(e - ph - 2), px)) c.px = px;
-      else free(px);
+      else { free(px); return false; }
     }
     c.kind = 'p';
-    pushChange(c);
+    if (!pushChange(c)) { free(c.px); return false; }
   }
+  return true;
 }
 
 static bool pull(const char* since) {
@@ -510,7 +532,11 @@ static bool pull(const char* since) {
     while (*arr && *arr != '[') arr++;
     for (const char* o = partidos::nextIn(arr, nullptr); o; o = partidos::nextIn(arr, o)) {
       rows++;
-      takeRow(o);
+      if (!takeRow(o)) {
+        snprintf(jobError, sizeof(jobError), "No se pudo guardar lo recibido; se reintentará");
+        free(r.body);
+        return false;
+      }
       char a[40];
       partidos::strOf(partidos::keyIn(o, "actualizado"), a, sizeof(a));
       if (strcmp(a, newLastPull) > 0) snprintf(newLastPull, sizeof(newLastPull), "%s", a);
@@ -528,15 +554,16 @@ static void runJob() {
     jobDone = true;
     return;
   }
-  snprintf(message, sizeof(message), "Conectando al Wi-Fi…");
+
   if (wifiUp && !wifiUp()) {
     snprintf(jobError, sizeof(jobError), "No se pudo conectar al Wi-Fi");
+    if (wifiDown) wifiDown();
     jobDone = true;
     return;
   }
-  snprintf(message, sizeof(message), job == LOGIN ? "Entrando…" : "Sincronizando…");
+
   if (job == LINK) {
-    snprintf(message, sizeof(message), "Esperando al móvil…");
+
     jobOk = waitLink();
   } else if (job == LOGIN) {
     char* e = jsonEscape(loginEmail);
@@ -550,11 +577,11 @@ static void runJob() {
     memset(body, 0, sizeof(body));
   } else {
     char body[300];
-    snprintf(body, sizeof(body), "{\"refresh_token\":\"%s\"}", saved.refresh);
+    snprintf(body, sizeof(body), "{\"refresh_token\":\"%s\"}", jobSaved.refresh);
     jobOk = auth("refresh_token", body);
     // Primero bajar (para unir los jugadores que ya estén en la cuenta) y luego subir lo pendiente.
-    snprintf(newLastPull, sizeof(newLastPull), "%s", saved.lastPull);
-    if (jobOk) jobOk = pull(saved.lastPull);
+    snprintf(newLastPull, sizeof(newLastPull), "%s", jobSaved.lastPull);
+    if (jobOk) jobOk = pull(jobSaved.lastPull);
     for (int i = 0; jobOk && i < nUpPlayers; i++) {
       // Si en la cuenta ya hay uno con su nombre, la placa lo va a unir con ese (no se sube otro igual).
       bool joins = false;
@@ -580,7 +607,7 @@ static void runJob() {
 static TaskHandle_t worker = nullptr;
 static void workerTask(void*) {
   for (;;) {
-    if (job != NONE && !jobDone) runJob();
+    if (jobReady.exchange(false)) runJob();
     vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
@@ -604,11 +631,13 @@ static void startWorker(bool external = true) {
 static void startJob(Job j) {
   jobDone = false;
   pendingTrimmed = false;
-  job = j;
+  jobSaved = saved;
   phase = BUSY;
-  snprintf(message, sizeof(message), j == LOGIN ? "Entrando…" : "Sincronizando…");
+  snprintf(message, sizeof(message), j == LINK ? "Esperando al móvil…" : j == LOGIN ? "Entrando…" : "Sincronizando…");
+  job = j;
 #ifdef ARDUINO
   startWorker();
+  if (worker) jobReady.store(true);
   if (!worker) {  // sin tarea no se puede: se dice en vez de quedarse esperando
     snprintf(jobError, sizeof(jobError), "La placa no tiene memoria libre: reiníciala");
     jobOk = false;
@@ -620,7 +649,7 @@ static void startJob(Job j) {
 }
 
 // ---------------------------------------------------------------- desde loop()
-static bool busy() { return phase == BUSY || (nChanges > applied); }
+static bool busy() { return phase == BUSY; }
 
 static void begin(jug::Store* s, const char* stateDir) {
   store = s;
@@ -657,58 +686,70 @@ static void login(const char* email, const char* pass) {
   startJob(LOGIN);
 }
 
-// Prepara lo pendiente (partidos y jugadores) y lanza la sincronización.
-static void sync() {
-  if (phase == BUSY || !loggedIn()) return;
-  free(ups);
+// Memoria temporal de una sincronización: también se libera al terminar, no en la siguiente.
+static void freeUploads() {
   for (int i = 0; i < nUpPlayers; i++) free(upPlayers[i].photoUrl);
   free(upPlayers);
-  ups = nullptr;
+  free(ups);
   upPlayers = nullptr;
+  ups = nullptr;
   nUps = nUpPlayers = 0;
+}
+
+// Prepara lo pendiente sin perder la cola persistente cuando no cabe en memoria.
+static void sync() {
+  if (phase == BUSY || !loggedIn()) return;
+  freeUploads();
+  recoverPending();
+  pendingBytes = 0;
   char p[96];
   pendingPath(p, sizeof(p));
+  bool ok = true;
   if (FILE* f = fopen(p, "rb")) {
     char line[80];
-    int cap = 0;
-    while (fgets(line, sizeof(line), f)) {
+    int cap = 0, playerCap = 0;
+    while (ok && fgets(line, sizeof(line), f)) {
       line[strcspn(line, "\r\n")] = 0;
       if (line[0] <= ' ') continue;
       bool dup = false;
       for (int i = 0; i < nUps; i++) dup |= !strcmp(ups[i].line, line);
       if (dup) continue;
-      if (nUps == cap) {
-        cap = cap ? cap * 2 : 32;
-        ups = (Up*)realloc(ups, (size_t)cap * sizeof(Up));
-      }
+      if (!s3mem::reserve(ups, cap, nUps + 1, 32)) { ok = false; break; }
       snprintf(ups[nUps].line, sizeof(ups[0].line), "%s", line);
-      ups[nUps].done = false;
-      nUps++;
-      if (line[0] == 'j' && store) {
-        uint32_t code = (uint32_t)strtoul(line + 2, nullptr, 16);
-        const jug::Player* pl = store->find(code);
-        if (!pl) continue;
-        upPlayers = (UpPlayer*)realloc(upPlayers, (size_t)(nUpPlayers + 1) * sizeof(UpPlayer));
-        UpPlayer& u = upPlayers[nUpPlayers++];
-        store->idOf(code, u.id, sizeof(u.id));
-        snprintf(u.name, sizeof(u.name), "%s", pl->name);
-        u.photoUrl = nullptr;
-        char rel[40], path[96];
-        if (store->photoRel(code, rel, sizeof(rel))) {
-          snprintf(path, sizeof(path), "%s/%s", ffatRoot, rel);
-          if (FILE* pf = fopen(path, "rb")) {
-            uint16_t* px = (uint16_t*)malloc(fotos::PIXELS * 2);
-            if (px && fseek(pf, 12, SEEK_SET) == 0 && fread(px, 2, fotos::PIXELS, pf) == fotos::PIXELS) u.photoUrl = photoDataUrl(px);
-            free(px);
-            fclose(pf);
-          }
-        }
+      ups[nUps++].done = false;
+      if (line[0] != 'j' || !store) continue;
+      uint32_t code = (uint32_t)strtoul(line + 2, nullptr, 16);
+      const jug::Player* pl = store->find(code);
+      if (!pl) continue;
+      if (!s3mem::reserve(upPlayers, playerCap, nUpPlayers + 1)) { ok = false; break; }
+      UpPlayer& u = upPlayers[nUpPlayers++];
+      u.photoUrl = nullptr;
+      store->idOf(code, u.id, sizeof(u.id));
+      snprintf(u.name, sizeof(u.name), "%s", pl->name);
+      char rel[40], path[96];
+      if (store->photoRel(code, rel, sizeof(rel))) {
+        snprintf(path, sizeof(path), "%s/%s", ffatRoot, rel);
+        FILE* pf = fopen(path, "rb");
+        uint16_t* px = (uint16_t*)malloc(fotos::PIXELS * 2);
+        if (pf && px && fseek(pf, 12, SEEK_SET) == 0 && fread(px, 2, fotos::PIXELS, pf) == fotos::PIXELS)
+          u.photoUrl = photoDataUrl(px);
+        free(px);
+        if (pf) fclose(pf);
+        // No subir una ficha sin foto por un fallo temporal: podría borrar la foto de la nube.
+        if (!u.photoUrl) ok = false;
       }
     }
+    pendingBytes = ftell(f);
+    if (ferror(f) || pendingBytes < 0) ok = false;
     fclose(f);
   }
-  nChanges = 0;
-  applied = 0;
+  if (!ok) {
+    freeUploads();
+    phase = FAILED;
+    snprintf(message, sizeof(message), "No se pudo preparar la sincronización; se conserva lo pendiente");
+    return;
+  }
+  nChanges = applied = 0;
   startJob(SYNC);
 }
 
@@ -732,33 +773,45 @@ struct Hooks {
 static Hooks hooks;
 
 static void trimPending() {
-  // Lo subido sale de la lista de pendientes (lo apuntado mientras tanto se queda).
-  char p[96], tmp[100];
+  // Retirar solo lo confirmado; ante errores conservar el original (un reenvío es idempotente).
+  char p[96], tmp[104], backup[104];
   pendingPath(p, sizeof(p));
   snprintf(tmp, sizeof(tmp), "%s.tmp", p);
+  snprintf(backup, sizeof(backup), "%s.bak", p);
   FILE* in = fopen(p, "rb");
+  if (!in) { countPending(); return; }
   FILE* out = fopen(tmp, "wb");
-  if (in && out) {
-    char line[80];
-    while (fgets(line, sizeof(line), in)) {
-      line[strcspn(line, "\r\n")] = 0;
-      if (line[0] <= ' ') continue;
-      bool done = false;
+  if (!out) { fclose(in); countPending(); return; }
+  bool ok = true;
+  char line[80];
+  while (fgets(line, sizeof(line), in)) {
+    line[strcspn(line, "\r\n")] = 0;
+    if (line[0] <= ' ') continue;
+    bool done = false;
+    long position = ftell(in);
+    if (position < 0) { ok = false; break; }
+    if (position <= pendingBytes)
       for (int i = 0; i < nUps && !done; i++) done = ups[i].done && !strcmp(ups[i].line, line);
-      if (!done) fprintf(out, "%s\n", line);
+    if (!done && fprintf(out, "%s\n", line) < 0) { ok = false; break; }
+  }
+  ok = !ferror(in) && ok;
+  ok = fclose(in) == 0 && ok;
+  ok = fclose(out) == 0 && ok;
+  if (ok) {
+    // FAT no reemplaza un destino existente: conservar copia hasta confirmar ambos renombrados.
+    if (rename(p, backup) == 0) {
+      if (rename(tmp, p) == 0) ::remove(backup);
+      else rename(backup, p);
     }
   }
-  if (in) fclose(in);
-  if (out) fclose(out);
-  if (in && out) {
-    ::remove(p);
-    rename(tmp, p);
-  }
+  ::remove(tmp);
   countPending();
 }
 
-// En cada vuelta de loop(): aplica unos cuantos cambios que ya han llegado y, al acabar, guarda el estado.
+// La tarea conserva la propiedad de changes y sus fotos hasta publicar jobDone.
+// Después loop() aplica como máximo cuatro cambios por vuelta, sin realloc concurrente.
 static void apply() {
+  if (phase != BUSY || !jobDone.load()) return;
   // En cuanto acaba el trabajo, lo subido sale de la lista (antes de aplicar lo que llega, que puede apuntar más).
   if (phase == BUSY && jobDone && job == SYNC && !pendingTrimmed) {
     pendingTrimmed = true;
@@ -776,6 +829,11 @@ static void apply() {
   }
   if (phase != BUSY || !jobDone || applied < nChanges) return;
   // Trabajo terminado y todo aplicado.
+  saved = jobSaved;
+  freeUploads();
+  free(changes);
+  changes = nullptr;
+  nChanges = capChanges = applied = 0;
   if (job == LOGIN || job == LINK) {
     job = NONE;
     linkCode[0] = 0;

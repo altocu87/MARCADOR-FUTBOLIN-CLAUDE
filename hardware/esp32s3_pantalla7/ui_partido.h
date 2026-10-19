@@ -647,7 +647,8 @@ static void updateChaos(const View& v) {
     if (v.hcLeftMs >= 0) snprintf(t, sizeof(t), "%ld s", (long)((v.hcLeftMs + 999) / 1000));
     else snprintf(t, sizeof(t), v.hcKind == (uint8_t)mfv3::HKind::SwapPositions ? "HASTA EL PRÓXIMO" : "HASTA QUE SE USE");
     setText(hcBtnTime, t);
-    lv_obj_set_style_text_font(hcBtnTime, assets::font(900, v.hcLeftMs >= 0 ? 24 : 12), 0);
+    if (!shown.hcButton || (v.hcLeftMs >= 0) != (shown.hcLeftMs >= 0))
+      lv_obj_set_style_text_font(hcBtnTime, assets::font(900, v.hcLeftMs >= 0 ? 24 : 12), 0);
     vis(hcBtnBar, v.hcLeftMs >= 0);
     // A saltos de una décima del total (cada cambio repinta el botón).
     uint16_t q = (uint16_t)(v.hcLeftPermille / 50 * 50);

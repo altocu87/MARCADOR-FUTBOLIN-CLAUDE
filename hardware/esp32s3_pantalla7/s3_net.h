@@ -39,8 +39,7 @@ struct Network {
 inline void restoreRadio() { esp_wifi_set_channel(mfv3::RADIO_CHANNEL, WIFI_SECOND_CHAN_NONE); }
 
 // Redes a la vista, de más a menos señal y sin repetir nombres (tarda 2–4 s).
-inline uint8_t scan(Network* out, uint8_t max) {
-  int n = WiFi.scanNetworks();
+inline uint8_t scanResults(Network* out, uint8_t max, int n) {
   uint8_t k = 0;
   for (int i = 0; i < n && k < max; i++) {
     String s = WiFi.SSID(i);
@@ -58,6 +57,22 @@ inline uint8_t scan(Network* out, uint8_t max) {
   WiFi.scanDelete();
   restoreRadio();
   return k;
+}
+
+inline bool scanning = false;
+inline int scanResult = WIFI_SCAN_RUNNING;
+inline void startScan() {
+  if (scanning) return;
+  scanning = true;
+  scanResult = WiFi.scanNetworks(true);
+}
+inline bool pollScan(Network* out, uint8_t max, uint8_t& count) {
+  if (!scanning) return false;
+  int n = scanResult == WIFI_SCAN_RUNNING ? WiFi.scanComplete() : scanResult;
+  if (n == WIFI_SCAN_RUNNING) return false;
+  count = scanResults(out, max, n);
+  scanning = false;
+  return true;
 }
 
 // ---------------------------------------------------------------- conexión (sin bloquear)

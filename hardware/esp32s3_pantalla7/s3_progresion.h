@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "s3_partidos.h"
+#include "s3_memory.h"
 
 namespace progresion {
 
@@ -372,6 +373,7 @@ static void setBit(uint8_t* b, int i) { b[i >> 3] |= (uint8_t)(1 << (i & 7)); }
 
 // Orden de la app: por fin y, si coincide, por id.
 static int* order = nullptr;
+static int orderCapacity = 0;
 static int byFinish(const void* a, const void* b) {
   const partidos::Row &x = partidos::rows[*(const int*)a], &y = partidos::rows[*(const int*)b];
   if (x.fin != y.fin) return x.fin < y.fin ? -1 : 1;
@@ -387,8 +389,10 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
   s.rowsCap = partidos::count;
   s.entries = (Entry*)calloc((size_t)(s.rowsCap ? s.rowsCap : 1) * 8, sizeof(Entry));
   s.pairWins = (uint16_t*)calloc((size_t)MAX_P * MAX_P, sizeof(uint16_t));
-  order = (int*)realloc(order, (size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
-  if (!s.p || !s.entries || !s.pairWins || !order) return false;
+  if (!s.p || !s.entries || !s.pairWins || !s3mem::reserve(order, orderCapacity, partidos::count ? partidos::count : 1)) {
+    s.clear();
+    return false;
+  }
   auto ensure = [&](uint32_t code) -> int {
     int i = s.find(code);
     if (i >= 0) return i;
@@ -618,13 +622,44 @@ static void seasonLabel(const char* key, char* out, size_t n) {
   else snprintf(out, n, "%s %d", MONTHS[(atoi(key + 5) + 11) % 12], y);
 }
 
+// Clave exacta: partidos, lista de jugadores y reglas. Se publica solo tras un cálculo correcto.
+struct RefreshKey {
+  bool valid = false;
+  uint32_t revision = 0;
+  int count = 0, n = 0;
+  uint32_t codes[MAX_P] = {};
+  Rules rulesCopy;
+  bool matches(const uint32_t* list, int size) const {
+    return valid && size >= 0 && size <= MAX_P && n == size && count == partidos::count &&
+           revision == partidos::revision && !memcmp(&rulesCopy, &rules, sizeof(rules)) &&
+           (!size || !memcmp(codes, list, (size_t)size * sizeof(uint32_t)));
+  }
+  void remember(const uint32_t* list, int size) {
+    valid = size >= 0 && size <= MAX_P;
+    if (!valid) return;
+    revision = partidos::revision;
+    count = partidos::count;
+    n = size;
+    if (size) memcpy(codes, list, (size_t)size * sizeof(uint32_t));
+    memcpy(&rulesCopy, &rules, sizeof(rules));
+  }
+};
+static RefreshKey allKey, seasonCacheKey;
+
 static void refreshSeason(const uint32_t* codes, int n, uint32_t nowUtc) {
-  seasonKey(nowUtc, seasonNow);
-  compute(season, codes, n, keepRankedSeason, seasonNow, false);
+  char key[10];
+  seasonKey(nowUtc, key);
+  if (seasonCacheKey.matches(codes, n) && !strcmp(key, seasonNow)) return;
+  seasonCacheKey.valid = false;
+  snprintf(seasonNow, sizeof(seasonNow), "%s", key);
+  if (compute(season, codes, n, keepRankedSeason, seasonNow, false)) seasonCacheKey.remember(codes, n);
 }
 
-// Recalcula el historial completo (al encender y tras cada partido).
-static void refresh(const uint32_t* codes, int n) { compute(all, codes, n, nullptr, nullptr, true); }
+static void refresh(const uint32_t* codes, int n) {
+  if (allKey.matches(codes, n)) return;
+  allKey.valid = false;
+  if (compute(all, codes, n, nullptr, nullptr, true)) allKey.remember(codes, n);
+}
 
 static const Player* of(uint32_t code) {
   int i = all.find(code);
