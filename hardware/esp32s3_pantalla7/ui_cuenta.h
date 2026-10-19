@@ -26,6 +26,8 @@ static lv_obj_t* keys[4][11];
 static char email[96] = "", pass[96] = "";
 static bool editingPass = false, showPass = false, caps = false, symbols = false;
 static lv_obj_t* confirmOut = nullptr;
+static lv_obj_t *qrObj = nullptr, *qrStatus = nullptr;
+static bool qrMode = false;  // enseñando el QR (esperando al móvil)
 static uint32_t shownKey = 0;
 
 static void go();
@@ -122,6 +124,18 @@ static void onEnter(lv_event_t*) {
   go();
 }
 
+static void onQr(lv_event_t*) {
+  if (hooks.hasWifi && !hooks.hasWifi()) return ui::toast("Primero, el Wi-Fi en AJUSTES");
+  qrMode = true;
+  nube::loginWithQr();
+  go();
+}
+static void onQrBack(lv_event_t*) {
+  nube::cancelQr();
+  qrMode = false;
+  go();
+}
+
 static lv_obj_t* field(int x, int y, int w, bool isPass) {
   lv_obj_t* f = ui::box(scr, x, y, w, 54);
   lv_obj_set_style_radius(f, ui::RADIUS_SM, 0);
@@ -143,7 +157,8 @@ static lv_obj_t* field(int x, int y, int w, bool isPass) {
 
 static void buildLogin() {
   fichas::header("CUENTA DE LA MESA", onBack, "ENTRAR", onEnter);
-  field(16, 72, 768, false);
+  field(16, 72, 640, false);
+  fichas::btn(scr, 664, 72, 120, 54, "CON QR", 14, fichas::Kind::Primary, onQr);
   field(16, 132, 640, true);
   fichas::btn(scr, 664, 132, 120, 54, "VER", 14, fichas::Kind::Normal, onShow);
   const int KW = 66, KH = 62, X0 = 13, Y0 = 196, DX = 70, DY = 70;
@@ -156,6 +171,42 @@ static void buildLogin() {
     }
   editingPass = false;
   showFields();
+}
+
+// ---------------------------------------------------------------- entrar con el QR (el móvil confirma)
+static void buildQr() {
+  fichas::header("ENTRA CON EL MÓVIL", onQrBack);
+  lv_obj_t* panel = ui::box(scr, 40, 88, 336, 336);
+  lv_obj_set_style_radius(panel, 18, 0);
+  lv_obj_set_style_bg_color(panel, ui::hex(0xffffff), 0);
+  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
+  qrObj = lv_qrcode_create(panel);
+  lv_qrcode_set_size(qrObj, 300);
+  lv_qrcode_set_dark_color(qrObj, ui::hex(0x000000));
+  lv_qrcode_set_light_color(qrObj, ui::hex(0xffffff));
+  char url[160];
+  nube::qrUrl(url, sizeof(url));
+  lv_qrcode_update(qrObj, url, strlen(url));
+  lv_obj_center(qrObj);
+  static const char* STEPS[3] = {"Abre la cámara del móvil y apunta al QR\n(o en la app: Ajustes > Cuenta > Conectar una placa).",
+                                 "En la app, con tu cuenta, pulsa CONECTAR.", "La placa entra sola, sin escribir nada."};
+  for (int i = 0; i < 3; i++) {
+    lv_obj_t* n = ui::box(scr, 410, 96 + i * 92, 44, 44);
+    lv_obj_set_style_radius(n, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(n, ui::hex(0x1aa3dc), 0);
+    lv_obj_set_style_bg_opa(n, LV_OPA_COVER, 0);
+    char d[4];
+    snprintf(d, sizeof(d), "%d", i + 1);
+    lv_obj_t* dl = ui::text(n, d, 900, 20, 0x03121e);
+    lv_obj_center(dl);
+    lv_obj_t* t = ui::text(scr, STEPS[i], 700, 15, ui::color::TEXT);
+    lv_obj_set_width(t, 320);
+    lv_label_set_long_mode(t, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_pos(t, 466, 98 + i * 92);
+  }
+  qrStatus = ui::text(scr, "", 800, 17, ui::color::ACCENT);
+  lv_obj_set_pos(qrStatus, 410, 380);
+  shownKey = 0;
 }
 
 // ---------------------------------------------------------------- con cuenta
@@ -221,6 +272,7 @@ static void buildAccount() {
 static void onDelete(lv_event_t*) {
   scr = nullptr;
   mailBox = passBox = mailText = passText = status = pending = confirmOut = nullptr;
+  qrObj = qrStatus = nullptr;
   memset(keys, 0, sizeof(keys));
 }
 
@@ -233,9 +285,16 @@ static void go() {
   ui::gradient(scr, 0x0f2140, 0x05090f);
   mailBox = passBox = mailText = passText = status = pending = confirmOut = nullptr;
   memset(keys, 0, sizeof(keys));
-  inAccount = nube::loggedIn() || nube::phase == nube::BUSY;
-  if (inAccount) buildAccount();
-  else buildLogin();
+  qrObj = qrStatus = nullptr;
+  if (qrMode && !nube::loggedIn() && nube::phase == nube::BUSY) {
+    inAccount = true;  // esperando al móvil
+    buildQr();
+  } else {
+    qrMode = false;
+    inAccount = nube::loggedIn() || nube::phase == nube::BUSY;
+    if (inAccount) buildAccount();
+    else buildLogin();
+  }
   if (old) lv_obj_remove_event_cb(old, onDelete);
   ui::show(scr);
   fichas::scr = nullptr;
@@ -245,6 +304,8 @@ static bool active() { return scr && lv_screen_active() == scr; }
 
 static void show(bool fresh) {
   if (fresh) {
+    if (qrMode) nube::cancelQr();
+    qrMode = false;
     memset(pass, 0, sizeof(pass));
     caps = symbols = showPass = false;
   }
@@ -254,9 +315,15 @@ static void show(bool fresh) {
 // En cada vuelta: el estado de la sincronización (solo si cambia) y, al acabar de entrar, la pantalla que toca.
 static void tick() {
   bool want = nube::loggedIn() || nube::phase == nube::BUSY;
-  if (want != inAccount) {
+  if (want != inAccount || (qrMode && nube::loggedIn())) {
     if (!want && nube::message[0]) ui::toast(nube::message);
+    qrMode = false;
     return go();
+  }
+  if (qrStatus) {
+    const char* m = nube::message[0] ? nube::message : "Esperando al móvil…";
+    if (strcmp(lv_label_get_text(qrStatus), m)) lv_label_set_text(qrStatus, m);
+    return;
   }
   if (!status) return;
   char s[120], p[60];

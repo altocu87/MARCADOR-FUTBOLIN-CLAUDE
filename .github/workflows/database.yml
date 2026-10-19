@@ -1,4 +1,5 @@
-# Aplica las migraciones de supabase/migrations/ a la base de datos de Supabase.
+# Aplica las migraciones de supabase/migrations/ a la base de datos de Supabase y publica las funciones de
+# supabase/functions/ (p. ej. vincular-placa, para entrar en la placa con un QR).
 # - Al subir a main (si cambia algo en supabase/migrations/) o a mano desde Actions: las aplica (db push).
 # - En una pull request: solo enseña qué aplicaría (--dry-run), sin tocar nada.
 # Necesita: variable SUPABASE_PROJECT_ID y secretos SUPABASE_ACCESS_TOKEN y SUPABASE_DB_PASSWORD (ver docs/ADMIN.md).
@@ -9,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/**'
+      - 'supabase/functions/**'
       - '.github/workflows/database.yml'
   pull_request:
     paths:
@@ -53,3 +55,11 @@ jobs:
       - name: Aplicar migraciones
         if: steps.listo.outputs.ok == 'true' && github.event_name != 'pull_request'
         run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+      - name: Publicar las funciones (supabase/functions)
+        if: steps.listo.outputs.ok == 'true' && github.event_name != 'pull_request'
+        run: |
+          for f in supabase/functions/*/; do
+            n=$(basename "$f")
+            echo "Publicando $n"
+            supabase functions deploy "$n" --project-ref "$PROJECT_ID" --use-api
+          done

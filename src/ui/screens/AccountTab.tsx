@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { Modal } from '../components/common';
+import { BoardQrScanner } from '../components/BoardLink';
 
 type Mode = 'login' | 'signup' | 'recover';
 
@@ -25,6 +26,7 @@ export function AccountTab() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok?: boolean } | null>(null);
   const [confirmOut, setConfirmOut] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   if (!cloud.available) {
     return (
@@ -63,6 +65,18 @@ export function AccountTab() {
             <button className="btn" onClick={() => setConfirmOut(true)}>Cerrar sesión</button>
           </div>
         </div>
+        <div className="card">
+          <div className="label">Placa</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginTop: 8 }}>Conectar la pantalla del futbolín</div>
+          <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }}>
+            En la placa: AJUSTES → CUENTA → ENTRAR CON QR. Lee el QR con el móvil y la placa entra sola con esta cuenta, sin
+            escribir nada.
+          </p>
+          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setScanning(true)}>
+            Conectar una placa (QR)
+          </button>
+        </div>
+        {scanning && <BoardQrScanner onClose={() => setScanning(false)} />}
         {confirmOut && (
           <Modal
             title="¿Cerrar sesión?"

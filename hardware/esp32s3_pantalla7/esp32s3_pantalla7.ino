@@ -620,6 +620,12 @@ static void handleBoardLine(const char* line) {
     }
     return;
   }
+  if (!strcmp(line, "NUBE_QR?")) {  // pruebas: la dirección que enseña el QR
+    char b[200];
+    nube::qrUrl(b, sizeof(b));
+    sendLine(b);
+    return;
+  }
   if (!strcmp(line, "NUBE?")) {  // pruebas: cómo va la cuenta de la nube
     char b[200];
     snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount, nube::message);
@@ -1309,7 +1315,10 @@ static void nubePlayerGone(const char* id) {
   if (p) jugadores.remove(p->code);
 }
 static uint32_t nubeNow() { return rtc.clockOk ? partidos::epoch(rtc.now) : 0; }
-static void onCuentaBack() { screen = Screen::Settings; }
+static void onCuentaBack() {
+  nube::cancelQr();
+  screen = Screen::Settings;
+}
 static bool cuentaHasWifi() { return wifiSsid[0] != 0; }
 // Jugadores creados, cambiados o borrados en AJUSTES → JUGADORES: a la nube en la próxima sincronización.
 static void onFichaChanged(uint32_t code) {

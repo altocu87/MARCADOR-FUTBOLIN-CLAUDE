@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Player, Preferences, Repositories, StoredMatch, Tournament } from '../services/persistence';
 import { supabaseConn } from '../services/profiles';
 import {
+  boardCodeFrom,
+  linkBoard as linkBoardCall,
   CloudError,
   freshSession,
   readSession,
@@ -38,6 +40,11 @@ export interface CloudSync {
   recover(email: string): Promise<void>;
   signOut(): Promise<void>;
   syncNow(): Promise<void>;
+  /** Placa esperando a que se confirme su QR (la app se abrió con …#vincular=<código>). */
+  pendingBoard: string | null;
+  setPendingBoard(code: string | null): void;
+  /** Conecta la placa del QR a esta cuenta. */
+  linkBoard(code: string): Promise<void>;
 }
 
 interface Data {
@@ -196,5 +203,41 @@ export function useCloudSync(d: Data): CloudSync {
     setError(null);
   }, [conn, keep]);
 
-  return { available: !!conn, session, status: session ? status : 'off', lastSync, error, signIn, signUp, recover: doRecover, signOut, syncNow: runSync };
+  // ¿Se abrió la app desde el QR de una placa? (se quita de la dirección para que no vuelva a salir al recargar)
+  const [pendingBoard, setPendingBoard] = useState<string | null>(() => {
+    try {
+      const code = boardCodeFrom(window.location.hash) ?? boardCodeFrom(window.location.search);
+      if (code) window.history.replaceState(null, '', window.location.pathname);
+      return code;
+    } catch {
+      return null;
+    }
+  });
+  const linkBoard = useCallback(
+    async (code: string) => {
+      if (!conn) throw new CloudError('La nube no está configurada');
+      let s = sessionRef.current;
+      if (!s) throw new CloudError('Entra primero con tu cuenta');
+      s = await freshSession(conn, s);
+      if (s !== sessionRef.current) keep(s);
+      await linkBoardCall(conn, s, code);
+    },
+    [conn, keep],
+  );
+
+  return {
+    available: !!conn,
+    session,
+    status: session ? status : 'off',
+    lastSync,
+    error,
+    signIn,
+    signUp,
+    recover: doRecover,
+    signOut,
+    syncNow: runSync,
+    pendingBoard,
+    setPendingBoard,
+    linkBoard,
+  };
 }

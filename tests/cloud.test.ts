@@ -155,3 +155,30 @@ describe('cuenta', () => {
     expect((seen[1].init?.headers as Record<string, string>).Prefer).toContain('resolution=merge-duplicates');
   });
 });
+
+describe('entrar en la placa con un QR', () => {
+  const CODE = 'Ab3dEf6hIj9kLm2nOp5qRs8t';
+  it('saca el código de la placa de la dirección del QR', async () => {
+    const { boardCodeFrom } = await import('../src/services/cloud');
+    expect(boardCodeFrom(`https://x.github.io/app/#vincular=${CODE}`)).toBe(CODE);
+    expect(boardCodeFrom(`?vincular=${CODE}`)).toBe(CODE);
+    expect(boardCodeFrom('https://otra.web/')).toBeNull();
+    expect(boardCodeFrom('#vincular=corto')).toBeNull();
+  });
+
+  it('pide a la función vincular-placa con la sesión del dueño', async () => {
+    const { linkBoard } = await import('../src/services/cloud');
+    const seen: { url: string; init?: RequestInit }[] = [];
+    const http = (async (url: string, init?: RequestInit) => {
+      seen.push({ url: String(url), init });
+      return new Response('{"ok":true}', { status: 200 });
+    }) as unknown as typeof fetch;
+    const s = { accessToken: 'tok', refreshToken: 'r', expiresAt: 0, userId: 'u', email: 'a@b.es' };
+    await linkBoard(conn, s, CODE, http);
+    expect(seen[0].url).toBe('https://nube.test/functions/v1/vincular-placa');
+    expect((seen[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+    expect(JSON.parse(String(seen[0].init?.body))).toEqual({ codigo: CODE });
+    const bad = (async () => new Response('{"error":"Entra primero con tu cuenta"}', { status: 401 })) as unknown as typeof fetch;
+    await expect(linkBoard(conn, s, CODE, bad)).rejects.toThrow('Entra primero con tu cuenta');
+  });
+});

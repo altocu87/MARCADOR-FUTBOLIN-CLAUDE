@@ -268,7 +268,11 @@ struct UpPlayer {
 static UpPlayer* upPlayers = nullptr;
 static int nUpPlayers = 0;
 
-enum Job : uint8_t { NONE, LOGIN, SYNC };
+enum Job : uint8_t { NONE, LOGIN, SYNC, LINK };
+// Entrar con QR: código aleatorio que enseña la placa (y su dirección de la app) y si se ha dejado de esperar.
+static const char* APP_URL = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/app/";
+static char linkCode[40] = "";
+static volatile bool linkCancel = false;
 static volatile uint8_t job = NONE;
 static char loginEmail[96], loginPass[96];
 static char access[1600];
@@ -309,6 +313,57 @@ static bool auth(const char* grant, const char* body) {
   }
   free(r.body);
   return ok;
+}
+
+// Enlace mágico de un solo uso (lo preparó la función vincular-placa) → sesión propia de la placa.
+static bool verifyHash(const char* tokenHash) {
+  char url[200], body[300];
+  snprintf(url, sizeof(url), "%s/auth/v1/verify", URL);
+  snprintf(body, sizeof(body), "{\"type\":\"magiclink\",\"token_hash\":\"%s\"}", tokenHash);
+  Resp r = http("POST", url, ANON, nullptr, body);
+  bool ok = false;
+  if (r.code == 200 && r.body) {
+    char tok[1600], ref[160], uid[48], mail[96];
+    partidos::strOf(partidos::keyIn(r.body, "access_token"), tok, sizeof(tok));
+    partidos::strOf(partidos::keyIn(r.body, "refresh_token"), ref, sizeof(ref));
+    const char* user = partidos::keyIn(r.body, "user");
+    partidos::strOf(partidos::keyIn(user, "id"), uid, sizeof(uid));
+    partidos::strOf(partidos::keyIn(user, "email"), mail, sizeof(mail));
+    if (tok[0] && ref[0]) {
+      snprintf(access, sizeof(access), "%s", tok);
+      snprintf(saved.refresh, sizeof(saved.refresh), "%s", ref);
+      snprintf(saved.userId, sizeof(saved.userId), "%s", uid);
+      snprintf(saved.email, sizeof(saved.email), "%s", mail);
+      ok = true;
+    }
+  }
+  if (!ok) snprintf(jobError, sizeof(jobError), r.code ? "El QR ha caducado: vuelve a probar" : "Sin conexión con la nube");
+  free(r.body);
+  return ok;
+}
+
+// Espera (cada 2 s, hasta 5 min o hasta que se deja de esperar) a que el móvil confirme el QR.
+static bool waitLink() {
+  char url[200], body[100];
+  snprintf(url, sizeof(url), "%s/rest/v1/rpc/vinculo_placa", URL);
+  snprintf(body, sizeof(body), "{\"p_codigo\":\"%s\"}", linkCode);
+  for (int i = 0; i < 150 && !linkCancel; i++) {
+    Resp r = http("POST", url, ANON, nullptr, body);
+    char hash[200] = "";
+    if (r.code == 200 && r.body) partidos::strOf(partidos::keyIn(r.body, "token_hash"), hash, sizeof(hash));
+    free(r.body);
+    if (hash[0]) {
+      snprintf(message, sizeof(message), "Entrando…");
+      return verifyHash(hash);
+    }
+#ifdef ARDUINO
+    for (int k = 0; k < 20 && !linkCancel; k++) vTaskDelay(pdMS_TO_TICKS(100));
+#else
+    break;  // en el PC, una sola vuelta
+#endif
+  }
+  snprintf(jobError, sizeof(jobError), "%s", linkCancel ? "" : "El QR ha caducado: vuelve a probar");
+  return false;
 }
 
 static bool post(const char* body) {
@@ -480,7 +535,10 @@ static void runJob() {
     return;
   }
   snprintf(message, sizeof(message), job == LOGIN ? "Entrando…" : "Sincronizando…");
-  if (job == LOGIN) {
+  if (job == LINK) {
+    snprintf(message, sizeof(message), "Esperando al móvil…");
+    jobOk = waitLink();
+  } else if (job == LOGIN) {
     char* e = jsonEscape(loginEmail);
     char* p = jsonEscape(loginPass);
     char body[400];
@@ -571,6 +629,26 @@ static void begin(jug::Store* s, const char* stateDir) {
   countPending();
   phase = loggedIn() ? IDLE : OFF;
 }
+
+// Entrar con QR: nuevo código (32 letras y números al azar) y a esperar al móvil.
+static void loginWithQr() {
+  if (phase == BUSY) return;
+  static const char ABC[] = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  for (int i = 0; i < 32; i++) {
+#ifdef ARDUINO
+    uint32_t r = esp_random();
+#else
+    uint32_t r = (uint32_t)rand();
+#endif
+    linkCode[i] = ABC[r % (sizeof(ABC) - 1)];
+  }
+  linkCode[32] = 0;
+  linkCancel = false;
+  startJob(LINK);
+}
+static void cancelQr() { linkCancel = true; }
+// Dirección que lleva el QR.
+static void qrUrl(char* out, size_t n) { snprintf(out, n, "%s#vincular=%s", APP_URL, linkCode); }
 
 static void login(const char* email, const char* pass) {
   if (phase == BUSY) return;
@@ -698,8 +776,9 @@ static void apply() {
   }
   if (phase != BUSY || !jobDone || applied < nChanges) return;
   // Trabajo terminado y todo aplicado.
-  if (job == LOGIN) {
+  if (job == LOGIN || job == LINK) {
     job = NONE;
+    linkCode[0] = 0;
     if (!jobOk) {
       memset(&saved, 0, sizeof(saved));
       phase = OFF;

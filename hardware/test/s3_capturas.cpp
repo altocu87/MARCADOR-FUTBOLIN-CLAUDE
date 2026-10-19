@@ -85,6 +85,7 @@ struct Row {
 };
 static std::map<std::string, Row> rows;  // «tipo:id»
 static int clock = 0, logins = 0, posts = 0;
+static bool approved = false;
 static std::string stamp() {
   char b[40];
   snprintf(b, sizeof(b), "2026-10-19T10:%02d:%02d.%06d+00:00", clock / 60, clock % 60, clock);
@@ -108,6 +109,11 @@ static nube::Resp http(const char* method, const char* url, const char* bearer, 
   }
   if (u.find("/auth/v1/token?grant_type=refresh_token") != std::string::npos)
     return reply(200, "{\"access_token\":\"acc2\",\"refresh_token\":\"ref2\",\"expires_in\":3600,\"user\":{\"id\":\"u1\",\"email\":\"dueno@mesa.test\"}}");
+  if (u.find("/rest/v1/rpc/vinculo_placa") != std::string::npos)  // el móvil ya ha confirmado el QR
+    return reply(200, approved ? "{\"token_hash\":\"h1\",\"email\":\"dueno@mesa.test\"}" : "null");
+  if (u.find("/auth/v1/verify") != std::string::npos)
+    return reply(strstr(body, "\"h1\"") ? 200 : 403,
+                 "{\"access_token\":\"acc1\",\"refresh_token\":\"ref1\",\"expires_in\":3600,\"user\":{\"id\":\"u1\",\"email\":\"dueno@mesa.test\"}}");
   if (u.find("/rest/v1/mesa_datos") == std::string::npos) return reply(404, "");
   if (strcmp(bearer, "acc1") && strcmp(bearer, "acc2")) return reply(401, "{}");
   if (!strcmp(method, "POST")) {
@@ -496,6 +502,26 @@ int main(int argc, char** argv) {
                 jugadores.count, fake::logins, (int)nube::loggedIn(), (unsigned long)alexBefore, (unsigned long)alexAfter, aid,
                 (int)jugadores.photoOk(alexAfter), jugadores.findById("p_nuria") != nullptr, matchesBefore, partidos::count, upPlayers, upMatches,
                 nube::pendingCount);
+    // Entrar con QR: se cierra la sesión y se entra otra vez sin escribir (el «móvil» confirma).
+    nube::logout();
+    tap(78, 32);
+    run(300);
+    tapBtn(ui::SETTINGS[7].r);  // CUENTA (sin sesión: el teclado)
+    run(300);
+    // La pantalla del QR, tal cual se ve mientras espera al móvil.
+    cuenta::qrMode = true;
+    nube::phase = nube::BUSY;
+    snprintf(nube::linkCode, sizeof(nube::linkCode), "Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4z");
+    cuenta::go();
+    shot("cuenta-qr", 0);  // sin dar vueltas a loop() (si no, la nube vería que no hay nada en marcha)
+    nube::phase = nube::OFF;
+    cuenta::qrMode = false;
+    cuenta::go();
+    run(200);
+    fake::approved = true;
+    tap(724, 99);   // CON QR
+    for (int i = 0; i < 40; i++) run(100);
+    std::printf("nube: con QR, sesión %d (%s)\n", (int)nube::loggedIn(), nube::saved.email);
     tap(78, 32);    // VOLVER → AJUSTES
     shot("cuenta-ajustes");
     tapBtn(ui::BACK);

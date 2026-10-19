@@ -98,3 +98,19 @@ proyecto pide confirmar el correo, la cuenta no tiene sesión hasta abrir el enl
 
 La app sincroniza al entrar, al abrirse, unos segundos después de cada cambio, cada minuto y al volver la
 conexión. Probado con una nube simulada en `tests/cloud.test.ts`.
+
+## Entrar en la placa con un QR
+
+1. En la placa: AJUSTES → CUENTA → **CON QR**. Enseña un QR con `…/app/#vincular=<código>` (32 letras y números
+   al azar; no se puede adivinar) y espera.
+2. Con el móvil: la cámara abre esa dirección en la app (o en la app: Ajustes → Cuenta → «Conectar una placa
+   (QR)», que lee el QR con la cámara). Con la sesión del dueño, la app pregunta «¿Conectar la placa?» y llama a
+   `POST <URL>/functions/v1/vincular-placa` con `{"codigo": "…"}`.
+3. La función (`supabase/functions/vincular-placa`, con permisos de servidor) prepara un enlace mágico de un solo
+   uso para esa cuenta (sin mandar correo) y lo deja en `vinculos_placa` bajo ese código.
+4. La placa pregunta cada 2 s `POST <URL>/rest/v1/rpc/vinculo_placa` con `{"p_codigo": "…"}`; cuando hay algo se
+   lo lleva (y se borra) y abre su propia sesión con
+   `POST <URL>/auth/v1/verify` y `{"type":"magiclink","token_hash":"…"}`. Cada vínculo vale 5 minutos y una vez.
+
+La contraseña nunca pasa por la placa. La función se publica sola al subir a `main` (workflow «Base de datos»).
+
