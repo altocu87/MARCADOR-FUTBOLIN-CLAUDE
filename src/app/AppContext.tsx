@@ -57,6 +57,7 @@ import {
 } from '../services/events';
 import { applyCatalogIcons } from './catalogIcons';
 import { useProfileSync } from './profileSync';
+import { useCloudSync, type CloudSync } from './cloudSync';
 import { credentialsFor, profileUrl } from '../services/profiles';
 import type { Route } from './routes';
 
@@ -112,6 +113,8 @@ interface AppContextValue {
    * conexión con el servidor configurada. Al pedirlo se sube en el momento si hace falta.
    */
   profileLink(playerId: string): { url: string; online: boolean; publish(): Promise<boolean> };
+  /** Cuenta del dueño de la mesa y sincronización con la nube (Ajustes → Cuenta). */
+  cloud: CloudSync;
 }
 
 const Ctx = createContext<AppContextValue | null>(null);
@@ -426,6 +429,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [catalog, matches, tournaments, progression, visitDays],
   );
 
+  const cloud = useCloudSync({ enabled: !injected && !demoMode, store, repos, players, matches, tournaments, prefs, loaded, refresh });
   const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards });
   const profileLink = useCallback(
     (playerId: string) => {
@@ -496,6 +500,7 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     rewards,
     visitDays,
     profileLink,
+    cloud,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

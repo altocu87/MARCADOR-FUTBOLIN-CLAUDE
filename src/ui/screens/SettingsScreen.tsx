@@ -23,6 +23,7 @@ import { Crest } from '../components/Crest';
 import { saveClub, type Club } from '../../services/clubs';
 import { ConnectionsTab } from './ConnectionsTab';
 import { SoundsTab } from './SoundsTab';
+import { AccountTab } from './AccountTab';
 import { WEB_URL } from '../../services/profiles';
 
 export const APP_VERSION = '0.3.0';
@@ -42,6 +43,7 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
           { id: 'sounds', label: 'Sonidos' },
           { id: 'table', label: 'Mesa' },
           { id: 'data', label: 'Datos' },
+          { id: 'account', label: 'Cuenta' },
         ]}
       />
       <div className="scroll settings-body">
@@ -50,6 +52,7 @@ export function SettingsScreen({ tab: initialTab }: { tab?: SettingsTab }) {
         {tab === 'sounds' && <SoundsTab />}
         {tab === 'table' && <ConnectionsTab />}
         {tab === 'data' && <DataTab />}
+        {tab === 'account' && <AccountTab />}
       </div>
     </ScreenFrame>
   );

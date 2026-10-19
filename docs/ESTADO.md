@@ -42,6 +42,15 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
   1 en juego). Lo que se juegue o añada en modo prueba también se guarda ahí (`mfv3:v1:demo:`). Al desactivarlo se
   borra todo lo de prueba y vuelven los datos reales intactos. Las preferencias son comunes a ambos modos.
 
+## Cuenta del dueño de la mesa en la nube (19/10/2026, rama `pantalla-lvgl`)
+
+- Ajustes → Cuenta en la app web: entrar, crear cuenta y «he olvidado la contraseña» (Supabase Auth con correo y
+  contraseña). La cuenta es del dueño de la mesa: sus jugadores (con foto), partidos, torneos y ajustes se guardan
+  en la tabla `mesa_datos` y se sincronizan solos (al entrar, al abrir, tras cada cambio, cada minuto). Sin cuenta
+  o en modo prueba, todo sigue en local. Peticiones para la placa: docs/NUBE.md.
+- Pendiente: aplicar la migración `20261019120000_mesa_datos.sql` en Supabase (se aplica al unir con `main` o a mano
+  desde Actions → «Base de datos»), y el login en la placa (fase 3).
+
 ## Sonidos propios (fases 1 y 3 hechas, 16/10/2026; la 2, en la nube, no se hace por ahora)
 
 - **Ajustes → Sonidos**: subir sonidos de la mesa (mp3, wav, ogg, m4a…), escucharlos con ▶ y borrarlos. Al subirlos la
