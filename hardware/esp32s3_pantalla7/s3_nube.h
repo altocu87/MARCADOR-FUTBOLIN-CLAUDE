@@ -169,41 +169,35 @@ static size_t base64Encode(const uint8_t* in, size_t n, char* out) {
 
 // Foto de un jugador (120 × 120 RGB565 de la placa) → «data:image/bmp;base64,…» (el navegador la enseña igual).
 static char* photoDataUrl(const uint16_t* px) {
+  if (!px) return nullptr;
   const int S = 120, row = S * 3;
-  size_t bmpLen = 54 + (size_t)row * S;
-  uint8_t* bmp = (uint8_t*)calloc(1, bmpLen);
-  char* out = (char*)malloc(24 + (bmpLen + 2) / 3 * 4 + 1);
-  if (!bmp || !out) {
-    free(bmp);
-    free(out);
-    return nullptr;
-  }
+  const size_t bmpLen = 54 + (size_t)row * S;
+  static const char prefix[] = "data:image/bmp;base64,";
+  char* out = (char*)malloc(sizeof(prefix) + (bmpLen + 2) / 3 * 4);
+  if (!out) return nullptr;
+  // Cabecera y fila son múltiplos de tres: se concatenan sus bloques base64 sin relleno intermedio.
+  uint8_t header[54] = {}, pixels[row];
   auto le32 = [&](int at, uint32_t v) {
-    for (int i = 0; i < 4; i++) bmp[at + i] = (uint8_t)(v >> (8 * i));
+    for (int i = 0; i < 4; i++) header[at + i] = (uint8_t)(v >> (8 * i));
   };
-  bmp[0] = 'B';
-  bmp[1] = 'M';
+  header[0] = 'B'; header[1] = 'M';
   le32(2, (uint32_t)bmpLen);
-  le32(10, 54);
-  le32(14, 40);
-  le32(18, S);
-  le32(22, S);
-  bmp[26] = 1;
-  bmp[28] = 24;
+  le32(10, 54); le32(14, 40);
+  le32(18, S); le32(22, S);
+  header[26] = 1; header[28] = 24;
   le32(34, (uint32_t)(row * S));
-  for (int y = 0; y < S; y++) {
-    uint8_t* d = bmp + 54 + (size_t)(S - 1 - y) * row;  // de abajo arriba
-    for (int x = 0; x < S; x++) {
+  memcpy(out, prefix, sizeof(prefix) - 1);
+  size_t k = sizeof(prefix) - 1;
+  k += base64Encode(header, sizeof(header), out + k);
+  for (int y = S - 1; y >= 0; --y) {  // BMP conserva el orden de abajo arriba
+    for (int x = 0; x < S; ++x) {
       uint16_t c = px[y * S + x];
-      uint8_t r = (uint8_t)((c >> 11) << 3), g = (uint8_t)(((c >> 5) & 63) << 2), b = (uint8_t)((c & 31) << 3);
-      d[x * 3] = b;
-      d[x * 3 + 1] = g;
-      d[x * 3 + 2] = r;
+      pixels[x * 3] = (uint8_t)((c & 31) << 3);
+      pixels[x * 3 + 1] = (uint8_t)(((c >> 5) & 63) << 2);
+      pixels[x * 3 + 2] = (uint8_t)((c >> 11) << 3);
     }
+    k += base64Encode(pixels, sizeof(pixels), out + k);
   }
-  strcpy(out, "data:image/bmp;base64,");
-  base64Encode(bmp, bmpLen, out + strlen(out));
-  free(bmp);
   return out;
 }
 

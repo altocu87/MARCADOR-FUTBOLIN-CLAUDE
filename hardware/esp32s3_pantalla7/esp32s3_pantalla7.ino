@@ -333,21 +333,25 @@ static Snapshot takeSnapshot() {
   return Snapshot{eng.phase(), eng.period(), s.white, s.blue, eng.kickCount(), eng.suddenDeath()};
 }
 
-// Goles seguidos (sin anulados) del equipo que marcó el último.
+// La racha se invalida con los eventos del motor, nunca por el paso de un fotograma.
+static bool streakDirty = true, matchFixedDirty = true;
+static uint8_t streakCount = 0, streakTeam = 0;
 static uint8_t lastStreak() {
-  uint8_t n = 0;
-  int team = -1;
+  if (!streakDirty) return streakCount;
+  streakDirty = false;
+  streakCount = streakTeam = 0;
   for (int i = (int)eng.goalCount() - 1; i >= 0; i--) {
     const mfv3::Goal& g = eng.goalAt((uint8_t)i);
     if (g.annulled) continue;
-    if (team < 0) team = (int)g.team;
-    else if ((int)g.team != team) break;
-    n++;
+    if (!streakCount) streakTeam = (uint8_t)g.team;
+    else if ((uint8_t)g.team != streakTeam) break;
+    ++streakCount;
   }
-  return n;
+  return streakCount;
 }
 
 static void afterChange(bool goalAccepted, Team goalTeam) {
+  streakDirty = true;  // incluye anular, deshacer y los goles especiales de Partido Loco
   Snapshot now = takeSnapshot();
   char buf[32];
   if (now.phase != snap.phase) {
@@ -434,6 +438,7 @@ static void startMatch() {
   hcIntroUntil = 0;
   hcIntroSeq = 0;
   if (!eng.start(cfg, millis())) return;
+  matchFixedDirty = streakDirty = true;
   matchStartEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
   inMatch = true;
   confirmAbandon = false;
@@ -1358,38 +1363,17 @@ static void formatClock(char* out, size_t n, uint32_t ms) {
   snprintf(out, n, "%02lu:%02lu", (unsigned long)(s / 60), (unsigned long)(s % 60));
 }
 
-// Lo que enseña la pantalla del partido, sacado del motor (mismos textos y colores que MatchScreen.tsx).
-static void hcName(uint8_t team, int8_t idx, char* out, size_t n);
-static void matchView(partido::View& v, uint32_t now) {
-  memset(&v, 0, sizeof(v));
-  mfv3::Score s = eng.score();
+// Copia de presentación sin temporizadores: textos, reglas y fichas se preparan al iniciar,
+// al cambiar de parte o cuando la app actualiza un jugador. No conserva punteros al almacén.
+static partido::View matchFixed;
+static void prepareMatchFixed() {
+  memset(&matchFixed, 0, sizeof(matchFixed));
+  partido::View& v = matchFixed;
   const mfv3::Config& c = eng.config();
   v.mode = chosenMode;
-  v.phase = (uint8_t)eng.phase();
   v.period = (uint8_t)eng.period();
-  v.white = s.white;
-  v.blue = s.blue;
-  mfv3::Score ps = eng.periodScore(eng.period());
-  bool canCorrect = eng.phase() == Phase::Playing || eng.phase() == Phase::Paused;
-  v.annulWhite = canCorrect && ps.white > 0;
-  v.annulBlue = canCorrect && ps.blue > 0;
   v.singlePeriod = c.endCondition == mfv3::EndCondition::Goals;
-  uint32_t ms = eng.clockMs(now);
-  // El reloj que cuenta hacia atrás redondea hacia arriba (como la app): 4:59,2 se ve 05:00 hasta llegar a 4:59.
-  formatClock(v.clock, sizeof(v.clock), eng.clockCountsDown() ? ms + 999 : ms);
   bool overtime = eng.period() == Period::Overtime;
-  v.clockColor = overtime ? 0x7dffd8 : eng.clockCountsDown() && ms <= 20000 ? 0xff4d5e
-                 : eng.clockCountsDown() && ms <= 60000 ? 0xffd43b : 0x3dff7a;
-  v.lockMs = eng.phase() == Phase::Playing ? eng.lockRemaining(now) : 0;
-  v.matchPoint = overtime ? 0 : eng.matchPoint();
-  // Racha (goalStreak de la app): goles seguidos del último equipo que marcó, sin contar los anulados.
-  for (int i = (int)eng.goalCount() - 1; i >= 0; i--) {
-    const mfv3::Goal& g = eng.goalAt((uint8_t)i);
-    if (g.annulled) continue;
-    if (!v.streak) v.streakTeam = (uint8_t)g.team;
-    else if ((uint8_t)g.team != v.streakTeam) break;
-    v.streak++;
-  }
   char g[16];
   goalsText(g, sizeof(g), c.goalsPerPeriod);
   bool showPeriod = !(v.singlePeriod && eng.period() == Period::First);
@@ -1399,13 +1383,52 @@ static void matchView(partido::View& v, uint32_t now) {
   if (c.endCondition == mfv3::EndCondition::Goals) snprintf(v.cond, sizeof(v.cond), "Gana quien llegue a %s", g);
   else if (c.endCondition == mfv3::EndCondition::Time) snprintf(v.cond, sizeof(v.cond), "2 partes de %u min", c.minutesPerPeriod);
   else snprintf(v.cond, sizeof(v.cond), "A %s o 2 partes de %u min", g, c.minutesPerPeriod);
+  snprintf(v.countdownTitle, sizeof(v.countdownTitle), "%s%s",
+           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()],
+           overtime ? " · GOL DE ORO · 60 s" : "");
+  // Fichas de los jugadores elegidos (con su foto si la app la pasó).
+  for (int t = 0; haveTeams && t < 2; t++) {
+    for (uint8_t i = 0; i < chosenTeams.n[t] && v.nPlayers[t] < 4; i++) {
+      const jug::Player* p = jugadores.find(chosenTeams.code[t][i]);
+      if (!p) continue;
+      partido::View::Card& c = v.cards[t][v.nPlayers[t]++];
+      c.code = p->code;
+      snprintf(c.name, sizeof(c.name), "%s", p->name);
+      snprintf(c.meta, sizeof(c.meta), "%s", p->meta);
+      snprintf(c.title, sizeof(c.title), "%s", p->title);
+      if (!jugadores.photoRel(p->code, c.photo, sizeof(c.photo))) c.photo[0] = 0;
+    }
+  }
+  matchFixedDirty = false;
+}
+
+// Lo que enseña la pantalla del partido, sacado del motor (mismos textos y colores que MatchScreen.tsx).
+static void hcName(uint8_t team, int8_t idx, char* out, size_t n);
+static void matchView(partido::View& v, uint32_t now) {
+  if (matchFixedDirty || matchFixed.period != (uint8_t)eng.period()) prepareMatchFixed();
+  v = matchFixed;
+  mfv3::Score s = eng.score();
+  v.phase = (uint8_t)eng.phase();
+  v.white = s.white;
+  v.blue = s.blue;
+  mfv3::Score ps = eng.periodScore(eng.period());
+  bool canCorrect = eng.phase() == Phase::Playing || eng.phase() == Phase::Paused;
+  v.annulWhite = canCorrect && ps.white > 0;
+  v.annulBlue = canCorrect && ps.blue > 0;
+  uint32_t ms = eng.clockMs(now);
+  // El reloj que cuenta hacia atrás redondea hacia arriba (como la app): 4:59,2 se ve 05:00 hasta llegar a 4:59.
+  formatClock(v.clock, sizeof(v.clock), eng.clockCountsDown() ? ms + 999 : ms);
+  bool overtime = eng.period() == Period::Overtime;
+  v.clockColor = overtime ? 0x7dffd8 : eng.clockCountsDown() && ms <= 20000 ? 0xff4d5e
+                 : eng.clockCountsDown() && ms <= 60000 ? 0xffd43b : 0x3dff7a;
+  v.lockMs = eng.phase() == Phase::Playing ? eng.lockRemaining(now) : 0;
+  v.matchPoint = overtime ? 0 : eng.matchPoint();
+  v.streak = lastStreak();
+  v.streakTeam = streakTeam;
   // Cuenta atrás: cifra 3-2-1 y anillo que se vacía.
   uint32_t rem = eng.countdownRemaining(now);
   v.countdownN = (uint8_t)(rem == 0 ? 1 : (rem + 999) / 1000);
   v.countdownPermille = (uint16_t)(rem * 1000 / Engine::COUNTDOWN_MS);
-  snprintf(v.countdownTitle, sizeof(v.countdownTitle), "%s%s",
-           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()],
-           overtime ? " · GOL DE ORO · 60 s" : "");
   // Final de parte (el motor sigue en la parte que acaba de terminar).
   if (eng.phase() == Phase::PeriodEnd) {
     bool byTime = eng.clockCountsDown() && eng.clockMs(now) == 0;
@@ -1430,19 +1453,6 @@ static void matchView(partido::View& v, uint32_t now) {
     v.endBlue = s.blue;
   }
   v.confirmAbandon = confirmAbandon;
-  // Fichas de los jugadores elegidos (con su foto si la app la pasó).
-  for (int t = 0; haveTeams && t < 2; t++) {
-    for (uint8_t i = 0; i < chosenTeams.n[t] && v.nPlayers[t] < 4; i++) {
-      const jug::Player* p = jugadores.find(chosenTeams.code[t][i]);
-      if (!p) continue;
-      partido::View::Card& c = v.cards[t][v.nPlayers[t]++];
-      c.code = p->code;
-      snprintf(c.name, sizeof(c.name), "%s", p->name);
-      snprintf(c.meta, sizeof(c.meta), "%s", p->meta);
-      snprintf(c.title, sizeof(c.title), "%s", p->title);
-      if (!jugadores.photoRel(p->code, c.photo, sizeof(c.photo))) c.photo[0] = 0;
-    }
-  }
   // Partido Loco
   mfv3::HStage st = eng.handicapStage();
   v.hcStage = (uint8_t)st;
@@ -1601,7 +1611,7 @@ static void render() {
     char warn[32];
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
-    inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr);
+    inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr, nube::loggedIn() ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2014,6 +2024,7 @@ void loop() {
   // La app ha pasado jugadores o fotos y no se está eligiendo: se preparan ya sus fichas (eligiendo, se rehace
   // la pantalla en render()).
   if (jugadores.changed && !elegir::active()) {
+    matchFixedDirty = true;
     elegir::prewarm(&jugadores);
     historial::prewarm(&jugadores);
     jugadores.changed = false;

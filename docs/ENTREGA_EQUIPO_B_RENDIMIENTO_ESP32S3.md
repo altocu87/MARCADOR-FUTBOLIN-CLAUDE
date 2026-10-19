@@ -2,7 +2,9 @@
 
 Fecha: 19/10/2026. Estado: **pendiente de revisión y validación física por el equipo A**.
 Rama: `equipo-b/rendimiento-esp32s3`.
-Código y pruebas: commit `0f4323b872d889b67aee92c35b035947b8b4e117`.
+**Ampliación posterior autorizada:** [cinco mejoras ligeras, costes, pruebas y captura](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md). Este documento describe la primera entrega; consultar también la ampliación antes de aprobar la rama.
+
+Código y pruebas de la primera entrega: commit `0f4323b872d889b67aee92c35b035947b8b4e117`.
 Base: `origin/main`, commit `cc064e00612fe1f6099b680db9f8d3990e99c418`.
 No se autoriza la fusión automática: el usuario quiere revisar esta entrega antes de incorporar a `main`.
 

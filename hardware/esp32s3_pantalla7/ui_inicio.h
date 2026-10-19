@@ -30,6 +30,8 @@ static const uint32_t PRESS_FEEDBACK_MS = 180;
 static lv_obj_t* scr = nullptr;
 static lv_obj_t *sel[3], *pul[3], *pulMenu[3], *help[3], *helpCloser;
 static lv_obj_t *dot = nullptr, *warn = nullptr, *warnText = nullptr;
+static lv_obj_t* pendingText = nullptr;
+static int shownPending = -1;
 static int8_t selected = -1;
 static bool pressing = false;
 static lv_timer_t* selTimer = nullptr;
@@ -160,6 +162,12 @@ static void build() {
   lv_obj_set_style_text_letter_space(warnText, 1, 0);
   lv_obj_center(warnText);
   lv_obj_add_flag(warn, LV_OBJ_FLAG_HIDDEN);
+  pendingText = ui::text(scr, "", 700, 12, ui::color::TEXT2);
+  lv_obj_set_pos(pendingText, 20, 464);
+  lv_obj_set_size(pendingText, 270, 16);
+  lv_obj_remove_flag(pendingText, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(pendingText, LV_OBJ_FLAG_HIDDEN);
+  shownPending = -1;
   helpCloser = ui::hotspot(scr, 0, 0, 800, 480, onHelpClose);
   lv_obj_add_flag(helpCloser, LV_OBJ_FLAG_HIDDEN);
   selected = -1;
@@ -176,8 +184,18 @@ static void show() {
 static bool active() { return scr && lv_screen_active() == scr; }
 
 // Mando conectado / versión nueva / aviso (nullptr = ninguno).
-static void setStatus(bool mandoLinked, bool update, const char* warning) {
+static void setStatus(bool mandoLinked, bool update, const char* warning, int pending = 0) {
   if (!active()) return;
+  if (pending < 0) pending = 0;
+  if (pending != shownPending) {
+    shownPending = pending;
+    if (pending) {
+      char text[48];
+      snprintf(text, sizeof(text), "%d %s por subir", pending, pending == 1 ? "cambio" : "cambios");
+      lv_label_set_text(pendingText, text);
+    }
+    ui::setVisible(pendingText, pending > 0);
+  }
   // Se llama en cada vuelta: solo se toca lo que cambia (cambiar un color, aunque sea al mismo, lo repinta).
   if (mandoLinked || update) {
     lv_color_t c = ui::hex(update ? ui::color::RANKED : ui::color::OK);

@@ -140,6 +140,31 @@ int main() {
   assert(!strcmp(nube::saved.lastPull, "2026-10-19T00:00:00Z") && !nube::changes);
   holdGet = false;
 
+  // Conversión por filas: mismos bytes BMP que antes (cabecera, colores y orientación).
+  assert(nube::photoDataUrl(nullptr) == nullptr);
+  std::vector<uint16_t> photo(120 * 120);
+  for (int pattern = 0; pattern < 3; ++pattern) {
+    for (size_t i = 0; i < photo.size(); ++i)
+      photo[i] = pattern == 0 ? 0 : pattern == 1 ? 0xffff : (uint16_t)(i * 157 + i / 120);
+    char* url = nube::photoDataUrl(photo.data()); assert(url);
+    const char* b64 = strchr(url, ',') + 1;
+    std::vector<uint8_t> bmp(54 + 120 * 120 * 3 + 3);
+    int n = mfv3snd::base64Decode(b64, strlen(b64), bmp.data(), bmp.size());
+    assert(n == 43254 && bmp[0] == 'B' && bmp[1] == 'M');
+    const uint8_t header[54] = {66,77,246,168,0,0,0,0,0,0,54,0,0,0,40,0,0,0,
+      120,0,0,0,120,0,0,0,1,0,24,0,0,0,0,0,192,168,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    assert(!memcmp(bmp.data(), header, 54));
+    for (int y = 0; y < 120; ++y) for (int x = 0; x < 120; ++x) {
+      uint16_t c = photo[(119 - y) * 120 + x];
+      const uint8_t* pixel = bmp.data() + 54 + (y * 120 + x) * 3;
+      assert(pixel[0] == (c & 31) * 8 && pixel[1] == ((c >> 5) & 63) * 4 && pixel[2] == (c >> 11) * 8);
+    }
+    std::vector<uint16_t> roundTrip(photo.size());
+    assert(nube::photoFromDataUrl(url, strlen(url), roundTrip.data()) && roundTrip == photo);
+    free(url);
+  }
+  printf("Equipo B: foto BMP/base64 identica, orientacion y vuelta a RGB565 OK\n");
+
   // Foto inválida y archivo incompleto: no confirmar una descarga que se ha perdido.
   assert(!nube::takeRow(R"({"tipo":"player","id":"bad","datos":{"photo":"data:image/jpeg;base64,AAAA"}})"));
   assert(!nube::takeRow(R"({"tipo":"match","id":"bad","datos":{)"));

@@ -30,6 +30,7 @@ g++ -std=c++17 -Wall -Wno-unused-variable -Itest/mock_s3 -Imando_pulsadores -x c
 # (con LVGL de verdad, compilada para el PC por test/lvgl_lib.sh)
 for b in 4 1 2; do sh test/s3_build.sh $b || exit 1; done
 sh test/s3_build.sh 4 test/s3_performance_test.cpp
+sh test/s3_build.sh 4 test/s3_lightweight_test.cpp
 LV=test/.lvgl/lvgl-v9.5.0
 sh test/lvgl_lib.sh > /dev/null
 LVLIB=test/.lvgl/liblvgl-v9.5.0.a  # ruta relativa: la carpeta del proyecto puede tener espacios

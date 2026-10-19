@@ -1334,7 +1334,8 @@ static void go(bool d) {
 
 static bool active() { return scr && lv_screen_active() == scr; }
 
-// Al entrar desde Inicio (RANKING): la lista sin filtros. `fresh` = falso al volver del reposo (se queda donde estaba).
+// Al entrar desde Inicio se actualizan los datos y se conserva la pestaña, filtros y página en RAM.
+// `fresh` = falso al volver del reposo: también se conserva el detalle abierto.
 static void show(jug::Store* s, bool fresh) {
   store = s;
   if (fresh) {
@@ -1343,12 +1344,8 @@ static void show(jug::Store* s, bool fresh) {
     for (int k = 0; k < s->count; k++) codes[k] = s->list[k].code;
     progresion::refresh(codes, s->count);
     progresion::refreshSeason(codes, s->count, hooks.nowUtc ? hooks.nowUtc() : 0);
-    tab = STANDINGS;
-    seasonScope = true;
-    modeFilter = 0;
-    whoFilter = 0;
-    page = 0;
-    inDetail = false;
+    if (whoFilter && !store->find(whoFilter)) { whoFilter = 0; page = 0; }
+    inDetail = false;  // regresar a la lista; no reabrir un partido antiguo por sorpresa
   }
   go(inDetail);
 }

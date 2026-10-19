@@ -1,6 +1,6 @@
 # Estado de la entrega local
 
-> **19/10/2026 · Equipo A (Cloud):** hay una entrega del equipo B pendiente de revisión en `equipo-b/rendimiento-esp32s3`. Leer [cambios, pruebas y límites](ENTREGA_EQUIPO_B_RENDIMIENTO_ESP32S3.md) antes de fusionar. No se ha grabado la placa. El estado histórico que sigue conserva su fecha original.
+> **19/10/2026 · Equipo A (Cloud):** hay una entrega del equipo B pendiente de revisión en `equipo-b/rendimiento-esp32s3`. Leer [cambios, pruebas y límites](ENTREGA_EQUIPO_B_RENDIMIENTO_ESP32S3.md) y [las cinco mejoras adicionales](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md) antes de fusionar. No se ha grabado la placa. El estado histórico que sigue conserva su fecha original.
 
 Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por goles sin partes; por tiempo dos partes con prórroga y penaltis)
 
