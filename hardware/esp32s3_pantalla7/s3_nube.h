@@ -57,13 +57,49 @@ struct Saved {
 static Saved saved;
 static Saved jobSaved;  // copia privada de la tarea; se publica al terminar
 
-static void saveState() {
-  FILE* f = fopen(stateFile, "wb");
-  if (!f) return;
-  fprintf(f, "%s\n%s\n%s\n%s\n", saved.email, saved.userId, saved.refresh, saved.lastPull);
-  fclose(f);
+// Preferencia local, independiente de la copia de trabajo de la tarea. Las cuatro líneas antiguas
+// siguen siendo legibles; la quinta es opcional. Sin recordar, el permiso solo vive en RAM.
+static bool rememberSession = true;
+static void recoverState() {
+  char backup[104]; snprintf(backup, sizeof(backup), "%s.bak", stateFile);
+  FILE* f = fopen(stateFile, "rb");
+  if (f) { fclose(f); ::remove(backup); }
+  else if (errno == ENOENT) rename(backup, stateFile);
+}
+static bool saveState() {
+  recoverState();
+  char tmp[104], backup[104];
+  snprintf(tmp, sizeof(tmp), "%s.tmp", stateFile);
+  snprintf(backup, sizeof(backup), "%s.bak", stateFile);
+  FILE* f = fopen(tmp, "wb");
+  if (!f) return false;
+  bool ok = fprintf(f, "%s\n%s\n%s\n%s\n%d\n", saved.email, saved.userId,
+                    rememberSession ? saved.refresh : "", saved.lastPull, rememberSession ? 1 : 0) >= 0;
+  ok = fclose(f) == 0 && ok;
+  bool hadOriginal = false;
+  if (ok) {
+    hadOriginal = rename(stateFile, backup) == 0;
+    if (!hadOriginal && errno != ENOENT) ok = false;
+  }
+  if (ok) {
+    if (rename(tmp, stateFile) != 0) {
+      if (hadOriginal) rename(backup, stateFile);
+      ok = false;
+    } else ::remove(backup);
+  }
+  if (!ok) ::remove(tmp);
+  return ok;
+}
+static bool setRememberSession(bool remember) {
+  bool old = rememberSession;
+  rememberSession = remember;
+  if (saveState()) return true;
+  rememberSession = old;
+  return false;
 }
 static void loadState() {
+  rememberSession = true;
+  recoverState();
   memset(&saved, 0, sizeof(saved));
   FILE* f = fopen(stateFile, "rb");
   if (!f) return;
@@ -73,6 +109,9 @@ static void loadState() {
     if (!fgets(fields[i], (int)sizes[i], f)) break;
     fields[i][strcspn(fields[i], "\r\n")] = 0;
   }
+  char remember[8];
+  if (fgets(remember, sizeof(remember), f)) rememberSession = remember[0] != '0';
+  if (!rememberSession) saved.refresh[0] = 0;
   fclose(f);
 }
 static bool loggedIn() { return saved.refresh[0] != 0; }
@@ -747,12 +786,16 @@ static void sync() {
   startJob(SYNC);
 }
 
-static void logout() {
-  if (phase == BUSY) return;
+static bool logout() {
+  if (phase == BUSY) return false;
+  Saved before = saved;
   memset(&saved, 0, sizeof(saved));
-  saveState();
+  if (!saveState()) { saved = before; return false; }
+  memset(&jobSaved, 0, sizeof(jobSaved));
+  memset(access, 0, sizeof(access));
   phase = OFF;
   message[0] = 0;
+  return true;
 }
 
 // Ganchos para lo que hay que hacer en la placa con lo que llega (los pone el sketch).

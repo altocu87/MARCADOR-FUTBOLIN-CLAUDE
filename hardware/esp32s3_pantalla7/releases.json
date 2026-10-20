@@ -1,7 +1,18 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.2",
+      "date": "2026-10-20",
+      "title": "Pantalla sin esperas del USB y acceso recordado",
+      "changes": [
+        "La pantalla sigue respondiendo aunque el ordenador deje de recoger los mensajes por USB.",
+        "Al desactivar las mediciones dejan de enviarse los avisos de dibujo.",
+        "Puedes elegir recordar la cuenta al apagar y encender, o entrar solo hasta apagar la placa.",
+        "La sesión guardada se conserva con una copia de recuperación al renovarla."
+      ]
+    },
     {
       "version": "0.1",
       "date": "2026-10-19",

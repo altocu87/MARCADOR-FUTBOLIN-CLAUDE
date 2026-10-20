@@ -247,6 +247,16 @@ static void sendLine(const char* line) {
   }
 }
 
+// Notificaciones espontáneas: si nadie lee el USB, se omiten sin detener el juego.
+// Las respuestas a órdenes (sendLine) y las capturas mantienen su transporte normal.
+static void sendEvent(const char* line) {
+  uiport::diagnostic(line, true);
+  if (AUX_UART_RX >= 0) {
+    AuxSerial.print(line);
+    AuxSerial.print('\n');
+  }
+}
+
 static const char* phaseName(Phase p) {
   switch (p) {
     case Phase::Countdown: return "countdown";
@@ -293,7 +303,7 @@ static void enterTest() {
   test = TestState();
   test.active = true;
   test.lastX = test.lastY = -1;
-  sendLine("STATE test");
+  sendEvent("STATE test");
 }
 
 static void leaveTest();
@@ -357,7 +367,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   char buf[32];
   if (now.phase != snap.phase) {
     snprintf(buf, sizeof(buf), "STATE %s", phaseName(now.phase));
-    sendLine(buf);
+    sendEvent(buf);
     // Carteles de la app al empezar cada parte y la tanda de penaltis.
     if (now.phase == Phase::Playing && snap.phase == Phase::Countdown) {
       bool single = eng.config().endCondition == mfv3::EndCondition::Goals;
@@ -376,8 +386,8 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       const mfv3::Goal& g = eng.goalAt((uint8_t)(eng.goalCount() - 1));
       partido::celebrate((uint8_t)goalTeam, lastStreak(), now.w == now.b, (uint8_t)g.bonus);
     }
-    sendLine(goalTeam == Team::White ? "GOAL BLANCO" : "GOAL AZUL");
-    sendLine("LOCK 3000");
+    sendEvent(goalTeam == Team::White ? "GOAL BLANCO" : "GOAL AZUL");
+    sendEvent("LOCK 3000");
     flashTeam = goalTeam;
     flashUntil = millis() + 900;
     beep(90);
@@ -410,10 +420,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     partido::annulled(now.w < snap.w ? 0 : 1);
   if (now.w != snap.w || now.b != snap.b) {
     snprintf(buf, sizeof(buf), "SCORE %u %u", now.w, now.b);
-    sendLine(buf);
+    sendEvent(buf);
   }
   if (now.phase == Phase::Finished && snap.phase != Phase::Finished) {
-    sendLine(eng.winner() == Team::White ? "WIN BLANCO" : "WIN AZUL");
+    sendEvent(eng.winner() == Team::White ? "WIN BLANCO" : "WIN AZUL");
     saveResult();
     beep(400);
   }
@@ -445,8 +455,8 @@ static void startMatch() {
   confirmAbandon = false;
   snap = takeSnapshot();
   sndBefore = mfv3snd::before(eng);
-  sendLine("STATE countdown");
-  sendLine("SCORE 0 0");
+  sendEvent("STATE countdown");
+  sendEvent("SCORE 0 0");
   lastKey = 0xFFFFFFFF;
 }
 
@@ -456,7 +466,7 @@ static void goHome() {
   choosingPlayers = false;
   screen = Screen::Home;
   confirmAbandon = false;
-  sendLine("STATE idle");
+  sendEvent("STATE idle");
   lastKey = 0xFFFFFFFF;
 }
 
@@ -1859,6 +1869,9 @@ void setup() {
   // perdían letras mientras la pantalla pintaba. 8 KB caben de sobra.
   Serial.setRxBufferSize(8192);
   Serial.begin(115200);
+#if defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
+  Serial.setTxTimeoutMs(uiport::USB_PROTOCOL_TIMEOUT_MS);
+#endif
 #ifdef ESP_PLATFORM
   // LVGL pide miles de trozos pequeños (cada objeto, estilo y letra) y por defecto van a la memoria interna del chip,
   // que es poca: con las fichas de jugadores se acababa y la placa se reiniciaba al abrir un fichero. Todo lo que
@@ -1973,7 +1986,7 @@ void setup() {
   historial::prewarm(&jugadores);               // sus fotos en los tamaños del ranking
   cargando::finish();
   sendHello();
-  sendLine("STATE idle");
+  sendEvent("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba
 }
 

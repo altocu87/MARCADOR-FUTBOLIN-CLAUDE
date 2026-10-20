@@ -5,6 +5,9 @@ import {
   fingerprint,
   freshSession,
   readSession,
+  readRememberSession,
+  REMEMBER_KEY,
+  signOut,
   restApi,
   signIn,
   signUp,
@@ -124,6 +127,49 @@ describe('cuenta', () => {
     const renewed = await freshSession(conn, s, http, s.expiresAt - 30_000);
     expect(renewed.accessToken).toBe('t2');
     expect(calls[1]).toContain('grant_type=refresh_token');
+  });
+
+  it('recuerda las sesiones antiguas y permite elegir no recordar en este aparato', () => {
+    const store = createMemoryStore();
+    expect(readRememberSession(store)).toBe(true);
+    store.setItem(REMEMBER_KEY, '0');
+    expect(readRememberSession(store)).toBe(false);
+    store.setItem(REMEMBER_KEY, '1');
+    expect(readRememberSession(store)).toBe(true);
+  });
+
+  it('renueva tras meses sin abrir y guarda el nuevo permiso, sin ampliar la vida del JWT', async () => {
+    const store = createMemoryStore();
+    const old = { accessToken: 'viejo', refreshToken: 'permiso', expiresAt: 1000, userId: 'u1', email: 'a@b.es' };
+    writeSession(store, old);
+    const now = 180 * 24 * 60 * 60 * 1000;
+    const http = (async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(String(init.body))).toEqual({ refresh_token: 'permiso' });
+      return reply(200, { access_token: 'nuevo', refresh_token: 'rotado', expires_in: 3600 });
+    }) as unknown as typeof fetch;
+    const next = await freshSession(conn, readSession(store)!, http, now);
+    writeSession(store, next);
+    expect(readSession(store)).toMatchObject({ refreshToken: 'rotado', userId: 'u1', expiresAt: now + 3600_000 });
+  });
+
+  it('solo cierra la sesión de este aparato y borra el acceso local también sin red', async () => {
+    const s = { accessToken: 't', refreshToken: 'r', expiresAt: 1000, userId: 'u', email: 'a@b.es' };
+    const http = (async (url: string) => {
+      expect(url).toBe('https://nube.test/auth/v1/logout?scope=local');
+      throw new TypeError('sin red');
+    }) as unknown as typeof fetch;
+    await expect(signOut(conn, s, http)).resolves.toBeUndefined();
+    const store = createMemoryStore(); writeSession(store, s); writeSession(store, null);
+    expect(readSession(store)).toBeNull();
+  });
+
+  it('un permiso revocado pide entrar de nuevo; un fallo de red conserva el permiso', async () => {
+    const s = { accessToken: 't', refreshToken: 'r', expiresAt: 0, userId: 'u', email: 'a@b.es' };
+    const rejected = (async () => reply(400, { error_code: 'refresh_token_not_found' })) as unknown as typeof fetch;
+    await expect(freshSession(conn, s, rejected)).rejects.toMatchObject({ code: 'session_expired' });
+    const offline = (async () => { throw new TypeError('sin red'); }) as unknown as typeof fetch;
+    await expect(freshSession(conn, s, offline)).rejects.toMatchObject({ code: 'offline' });
+    expect(s.refreshToken).toBe('r');
   });
 
   it('los errores salen en español', async () => {

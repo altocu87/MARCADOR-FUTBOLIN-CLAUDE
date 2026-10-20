@@ -32,6 +32,8 @@ for b in 4 1 2; do sh test/s3_build.sh $b || exit 1; done
 sh test/s3_build.sh 4 test/s3_performance_test.cpp
 sh test/s3_build.sh 4 test/s3_lightweight_test.cpp
 sh test/s3_build.sh 4 test/s3_updates_test.cpp
+sh test/s3_build.sh 4 test/s3_usb_diagnostics_test.cpp
+g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_session_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_session_test && /tmp/mfv3_session_test
 LV=test/.lvgl/lvgl-v9.5.0
 sh test/lvgl_lib.sh > /dev/null
 LVLIB=test/.lvgl/liblvgl-v9.5.0.a  # ruta relativa: la carpeta del proyecto puede tener espacios

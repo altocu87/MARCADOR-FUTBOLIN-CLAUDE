@@ -27,6 +27,17 @@ static lv_obj_t* keys[4][11];
 static char email[96] = "", pass[96] = "";
 static bool editingPass = false, showPass = false, caps = false, symbols = false;
 static lv_obj_t* confirmOut = nullptr;
+static void onRemember(lv_event_t*);
+static lv_obj_t* rememberButton = nullptr;
+static const char* rememberLabel() { return nube::rememberSession ? "RECORDAR SESIÓN: SÍ" : "RECORDAR SESIÓN: NO"; }
+static void refreshRememberLabel() {
+  if (rememberButton) lv_label_set_text(lv_obj_get_child(rememberButton, 0), rememberLabel());
+}
+static void onRemember(lv_event_t*) {
+  if (!nube::setRememberSession(!nube::rememberSession)) return ui::toast("No se pudo guardar la opción");
+  refreshRememberLabel();
+  ui::toast(nube::rememberSession ? "Seguirás dentro al apagar y encender" : "Al apagar tendrás que volver a entrar");
+}
 static lv_obj_t *qrObj = nullptr, *qrStatus = nullptr;
 static bool qrMode = false;  // enseñando el QR (esperando al móvil)
 static uint32_t shownKey = 0;
@@ -209,6 +220,7 @@ static void buildQr() {
   }
   qrStatus = ui::text(scr, "", 800, 17, ui::color::ACCENT);
   lv_obj_set_pos(qrStatus, 410, 380);
+  rememberButton = fichas::btn(scr, 410, 428, 374, 44, rememberLabel(), 17, fichas::Kind::Normal, onRemember);
   shownKey = 0;
 }
 
@@ -237,7 +249,8 @@ static void onOutNo(lv_event_t*) {
   if (confirmOut) lv_obj_add_flag(confirmOut, LV_OBJ_FLAG_HIDDEN);
 }
 static void onOutYes(lv_event_t*) {
-  nube::logout();
+  if (nube::busy()) return ui::toast("Espera a que termine la sincronización");
+  if (!nube::logout()) return ui::toast("No se pudo guardar el cierre; vuelve a intentarlo");
   ui::toast("Sesión cerrada");
   go();
 }
@@ -259,6 +272,7 @@ static void buildAccount() {
   if (!nube::loggedIn()) return;  // entrando: solo el aviso (los botones, cuando ya hay cuenta)
   fichas::btn(scr, 16, 290, 380, 76, "SINCRONIZAR AHORA", 18, fichas::Kind::Primary, onSync);
   fichas::btn(scr, 404, 290, 380, 76, "CERRAR SESIÓN", 18, fichas::Kind::Danger, onOutAsk);
+  rememberButton = fichas::btn(scr, 16, 384, 768, 64, rememberLabel(), 18, fichas::Kind::Normal, onRemember);
   confirmOut = ui::box(scr, 0, 0, 800, 480);
   lv_obj_set_style_bg_color(confirmOut, ui::hex(0x03070d), 0);
   lv_obj_set_style_bg_opa(confirmOut, LV_OPA_COVER, 0);
@@ -276,7 +290,7 @@ static void buildAccount() {
 static void onDelete(lv_event_t*) {
   scr = nullptr;
   mailBox = passBox = mailText = passText = status = pending = confirmOut = nullptr;
-  qrObj = qrStatus = nullptr;
+  qrObj = qrStatus = rememberButton = nullptr;
   memset(keys, 0, sizeof(keys));
 }
 
@@ -289,7 +303,7 @@ static void go() {
   ui::gradient(scr, 0x0f2140, 0x05090f);
   mailBox = passBox = mailText = passText = status = pending = confirmOut = nullptr;
   memset(keys, 0, sizeof(keys));
-  qrObj = qrStatus = nullptr;
+  qrObj = qrStatus = rememberButton = nullptr;
   if (qrMode && !nube::loggedIn() && nube::phase == nube::BUSY) {
     inAccount = true;  // esperando al móvil
     buildQr();

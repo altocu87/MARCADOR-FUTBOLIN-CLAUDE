@@ -235,3 +235,8 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
 - ESP32-S3 7": versión nativa activa en `hardware/esp32s3_pantalla7/` (motor C++ + LovyanGFX), probada en PC
   con simulación y compilada en GitHub; sin probar en la placa real. Configurada para la Waveshare ESP32-S3-Touch-LCD-7C (sensores en DI0/DI1) y mando inalámbrico de 2 pulsadores (ESP-NOW: toque corto = gol, largo = anular).
 - Fotos de jugador guardadas como imagen reducida (160×160) dentro del almacenamiento local.
+
+
+## Entrega B · bloqueo USB y sesiones (20/10/2026)
+
+Corrección y verificación en la rama de B: [USB, QR y sesiones 0.2](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md). Main autorizado por el propietario; aceptación de Cloud pendiente. QR en Ajustes de la web comprobado con nube ficticia; login real con placa pendiente. Se conserva 0.x. Esta entrega no modifica tablas, RLS ni datos de partidas.

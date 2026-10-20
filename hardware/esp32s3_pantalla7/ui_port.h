@@ -52,7 +52,27 @@ static void injectDrag(int16_t x, int16_t y, int16_t x2, int16_t y2, uint32_t ms
 
 static uint32_t tickCb() { return millis(); }
 
-static void logCb(lv_log_level_t, const char* buf) { Serial.print(buf); }
+// Los avisos son prescindibles: nunca deben esperar al lector USB. Solo loop() escribe en Serial;
+// las tareas de red/radio entregan sus resultados mediante colas. El protocolo y CAPTURA conservan
+// su escritura normal. No añadir Serial.print desde otra tarea sin separar antes ambos canales.
+static const uint32_t USB_PROTOCOL_TIMEOUT_MS = 100;  // valor de HWCDC del núcleo ESP32
+static void diagnostic(const char* text, bool newline = false) {
+  if (!text) return;
+  char line[256];
+  size_t n = strnlen(text, sizeof(line) - 2);
+  memcpy(line, text, n);
+  if (newline) line[n++] = '\n';
+  // En USB nativo, también la toma del mutex y la escritura deben ser sin espera. En UART
+  // se comprueba el espacio; no hay otros escritores en esta tarea.
+#if !defined(ESP_PLATFORM) || (defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT)
+  Serial.setTxTimeoutMs(0);
+#endif
+  if (Serial.availableForWrite() >= (int)n) Serial.write((const uint8_t*)line, n);
+#if !defined(ESP_PLATFORM) || (defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT)
+  Serial.setTxTimeoutMs(USB_PROTOCOL_TIMEOUT_MS);
+#endif
+}
+static void logCb(lv_log_level_t, const char* buf) { diagnostic(buf); }
 
 // Contadores de «RENDIMIENTO» (ver step()).
 static uint32_t perfWaitFrame = 0, perfT0 = 0, perfFrames = 0, perfDrawUs = 0, perfDrawMax = 0, perfWaitUs = 0, perfLvUs = 0, perfLvMax = 0,
@@ -274,12 +294,13 @@ static bool perfOn = false;
 static lv_area_t perfInv = {0, 0, -1, -1};
 static bool perfZones = false;  // «RENDIMIENTO 2»: además, cada zona que se marca para repintar
 static void perfInvalidate(lv_event_t* e) {
+  if (!perfOn) return;
   const lv_area_t* a = (const lv_area_t*)lv_event_get_param(e);
   if (!a) return;
   if (perfZones) {
     char b[64];
     snprintf(b, sizeof(b), "ZONA %ld,%ld %ldx%ld", (long)a->x1, (long)a->y1, (long)lv_area_get_width(a), (long)lv_area_get_height(a));
-    Serial.println(b);
+    diagnostic(b, true);
   }
   if (perfInv.x2 < perfInv.x1) perfInv = *a;
   else {
@@ -290,6 +311,7 @@ static void perfInvalidate(lv_event_t* e) {
   }
 }
 static void perfRender(lv_event_t* e) {
+  if (!perfOn) return;
   if (lv_event_get_code(e) == LV_EVENT_RENDER_START) perfRenderStart = micros();
   else {
     uint32_t d = micros() - perfRenderStart - perfWaitFrame;  // sin la espera al retorno vertical
@@ -298,7 +320,7 @@ static void perfRender(lv_event_t* e) {
       char b[96];
       snprintf(b, sizeof(b), "RENDIMIENTO lenta %lu ms: zona %ld,%ld %ldx%ld", (unsigned long)(d / 1000), (long)perfInv.x1,
                (long)perfInv.y1, (long)lv_area_get_width(&perfInv), (long)lv_area_get_height(&perfInv));
-      Serial.println(b);
+      diagnostic(b, true);
     }
     perfInv = {0, 0, -1, -1};
     perfFrames++;
@@ -312,6 +334,8 @@ static void perfEnable(int mode) {
   perfOn = on;
   perfT0 = millis();
   perfFrames = perfDrawUs = perfDrawMax = perfWaitUs = perfLvUs = perfLvMax = perfGapMax = 0;
+  perfLast = perfRenderStart = perfWaitFrame = 0;
+  perfInv = {0, 0, -1, -1};
   static bool hooked = false;
   if (on && !hooked && display) {
     hooked = true;
@@ -343,7 +367,7 @@ static void step() {
              (unsigned long)perfFrames, (unsigned long)(perfFrames ? perfDrawUs / perfFrames / 1000 : 0), (unsigned long)(perfDrawMax / 1000),
              (unsigned long)(perfWaitUs / 1000), (unsigned long)(perfLvUs / 1000), (unsigned long)(perfLvMax / 1000),
              (unsigned long)(perfGapMax / 1000));
-    Serial.println(b);
+    diagnostic(b, true);
     perfEnable(perfZones ? 2 : 1);
   }
 }

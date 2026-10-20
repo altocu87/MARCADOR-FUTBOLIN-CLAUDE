@@ -18,5 +18,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # Chrome ya viene en la imagen ubuntu-latest; no descarga ni instala navegadores.
+      - name: QR y sesiones con navegador aislado (nube ficticia)
+        env:
+          QR_BROWSER_CHANNEL: chrome
+        run: |
+          node scripts/test-qr-browser.mjs
+          node scripts/test-session-browser.mjs
       - name: Firmware simulado (g++)
         run: npm run test:hardware

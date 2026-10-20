@@ -12,6 +12,9 @@ import {
   CloudError,
   freshSession,
   readSession,
+  readRememberSession,
+  REMEMBER_KEY,
+  SESSION_KEY,
   readState,
   recover,
   restApi,
@@ -30,6 +33,8 @@ export interface CloudSync {
   /** ¿Hay nube configurada en esta versión de la app? */
   available: boolean;
   session: Session | null;
+  rememberSession: boolean;
+  setRememberSession(remember: boolean): void;
   status: CloudStatus;
   /** Última sincronización correcta (epoch ms). */
   lastSync: number | null;
@@ -65,7 +70,16 @@ const EVERY_MS = 60_000;
 
 export function useCloudSync(d: Data): CloudSync {
   const conn = useMemo(() => supabaseConn(), []);
-  const [session, setSession] = useState<Session | null>(() => (conn ? readSession(d.store) : null));
+  // Desactivado: sessionStorage conserva el acceso al recargar esta pestaña, hasta cerrarla.
+  // Nunca copiar esta preferencia a los datos de la mesa en la nube.
+  const temporary = useMemo(() => {
+    try { return window.sessionStorage; } catch { return null; }
+  }, []);
+  const [rememberSession, setRemember] = useState(() => readRememberSession(d.store));
+  const rememberRef = useRef(rememberSession);
+  const [session, setSession] = useState<Session | null>(() =>
+    conn ? readSession(rememberSession ? d.store : temporary ?? { getItem: () => null }) : null);
+  const generation = useRef(0);
   const [status, setStatus] = useState<CloudStatus>(session ? 'idle' : 'off');
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +92,65 @@ export function useCloudSync(d: Data): CloudSync {
 
   const keep = useCallback(
     (s: Session | null) => {
-      writeSession(latest.current.store, s);
+      if (rememberRef.current) {
+        writeSession(latest.current.store, s);
+        if (temporary) writeSession(temporary, null);
+      } else {
+        writeSession(latest.current.store, null);
+        if (temporary) writeSession(temporary, s);
+      }
       setSession(s);
       sessionRef.current = s;
     },
-    [],
+    [temporary],
   );
+
+  const setRememberSession = useCallback((remember: boolean) => {
+    rememberRef.current = remember;
+    try { latest.current.store.setItem(REMEMBER_KEY, remember ? '1' : '0'); } catch { /* sesión en memoria */ }
+    keep(sessionRef.current);
+    setRemember(remember);
+  }, [keep]);
+
+  // Un único intercambio del token por pestaña; Web Locks evita renovaciones simultáneas entre pestañas.
+  const refreshing = useRef<Promise<Session> | null>(null);
+  const currentSession = useCallback(async (): Promise<Session> => {
+    if (refreshing.current) return refreshing.current;
+    const version = generation.current;
+    const renew = async () => {
+      let s = sessionRef.current;
+      if (!s || version !== generation.current) throw new CloudError('La cuenta ha cambiado', 'session_changed');
+      const stored = readSession(rememberRef.current ? latest.current.store : temporary ?? { getItem: () => null });
+      if (stored && stored.userId === s.userId) s = stored;
+      const next = await freshSession(conn!, s);
+      if (version !== generation.current || !sessionRef.current) throw new CloudError('La cuenta ha cambiado', 'session_changed');
+      if (next !== sessionRef.current) keep(next);
+      return next;
+    };
+    const job = typeof navigator !== 'undefined' && navigator.locks
+      ? navigator.locks.request('mfv3:auth:refresh', renew) : renew();
+    refreshing.current = job;
+    try { return await job; } finally { if (refreshing.current === job) refreshing.current = null; }
+  }, [conn, keep, temporary]);
+
+  useEffect(() => {
+    const changed = (e: StorageEvent) => {
+      if (e.key !== SESSION_KEY && e.key !== REMEMBER_KEY && e.key !== null) return;
+      if (e.storageArea !== window.localStorage) return;
+      const remember = readRememberSession(latest.current.store);
+      const s = readSession(remember ? latest.current.store : temporary ?? { getItem: () => null });
+      if (!s || s.userId !== sessionRef.current?.userId) {
+        ++generation.current;
+        refreshing.current = null;
+      }
+      rememberRef.current = remember;
+      setRemember(remember);
+      sessionRef.current = s;
+      setSession(s);
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, [temporary]);
 
   const runSync = useCallback(async (): Promise<void> => {
     const cur = latest.current;
@@ -93,17 +160,18 @@ export function useCloudSync(d: Data): CloudSync {
       return running.current;
     }
     const job = (async () => {
+      const version = generation.current;
       setStatus('syncing');
       try {
         let s = sessionRef.current!;
         const api = restApi(conn, async () => {
-          s = await freshSession(conn, s);
-          if (s !== sessionRef.current) keep(s);
+          s = await currentSession();
           return s.accessToken;
         });
         const userId = s.userId;
         const local = latest.current;
         const r = await syncOnce(api, { players: local.players, matches: local.matches, tournaments: local.tournaments, prefs: local.prefs }, readState(local.store, userId));
+        if (version !== generation.current) return;
         if (r.data) {
           // Lo que llega de la nube se guarda aquí y se vuelve a cargar todo (ELO, XP… se recalculan solos).
           await local.repos.players.saveAll(r.data.players);
@@ -112,13 +180,15 @@ export function useCloudSync(d: Data): CloudSync {
           await local.repos.preferences.save(r.data.prefs);
           await local.refresh();
         }
+        if (version !== generation.current) return;
         writeState(local.store, userId, r.state);
         setLastSync(Date.now());
         setError(null);
         setStatus('ok');
       } catch (err) {
+        if (version !== generation.current) return;
         const msg = err instanceof Error ? err.message : 'No se pudo sincronizar';
-        if (err instanceof CloudError && (err.code === '401' || err.code === '403')) {
+        if (err instanceof CloudError && (err.code === '401' || err.code === 'session_expired')) {
           keep(null);  // la sesión ya no vale: hay que volver a entrar
           setStatus('off');
           setError('La sesión ha caducado: vuelve a entrar');
@@ -138,7 +208,7 @@ export function useCloudSync(d: Data): CloudSync {
         void runSync();
       }
     }
-  }, [conn, keep]);
+  }, [conn, keep, currentSession]);
 
   // Al abrir (con la sesión guardada) y cada vez que cambian los datos de la mesa (un rato después).
   const { players, matches, tournaments, prefs, loaded, enabled } = d;
@@ -166,6 +236,8 @@ export function useCloudSync(d: Data): CloudSync {
     async (email: string, password: string) => {
       if (!conn) throw new CloudError('La nube no está configurada');
       const s = await cloudSignIn(conn, email, password);
+      ++generation.current;
+      refreshing.current = null;
       keep(s);
       setStatus('idle');
       setError(null);
@@ -178,6 +250,8 @@ export function useCloudSync(d: Data): CloudSync {
       if (!conn) throw new CloudError('La nube no está configurada');
       const r = await cloudSignUp(conn, email, password);
       if (r.session) {
+        ++generation.current;
+        refreshing.current = null;
         keep(r.session);
         setStatus('idle');
       }
@@ -196,11 +270,14 @@ export function useCloudSync(d: Data): CloudSync {
 
   const signOut = useCallback(async () => {
     const s = sessionRef.current;
-    if (conn && s) await cloudSignOut(conn, s);
+    ++generation.current;
+    refreshing.current = null;
     keep(null);
     setStatus('off');
     setLastSync(null);
     setError(null);
+    // Borrar primero aquí: una petición de renovación que llegue tarde no puede reabrir la cuenta.
+    if (conn && s) await cloudSignOut(conn, s);
   }, [conn, keep]);
 
   // ¿Se abrió la app desde el QR de una placa? (se quita de la dirección para que no vuelva a salir al recargar)
@@ -216,18 +293,18 @@ export function useCloudSync(d: Data): CloudSync {
   const linkBoard = useCallback(
     async (code: string) => {
       if (!conn) throw new CloudError('La nube no está configurada');
-      let s = sessionRef.current;
-      if (!s) throw new CloudError('Entra primero con tu cuenta');
-      s = await freshSession(conn, s);
-      if (s !== sessionRef.current) keep(s);
+      if (!sessionRef.current) throw new CloudError('Entra primero con tu cuenta');
+      const s = await currentSession();
       await linkBoardCall(conn, s, code);
     },
-    [conn, keep],
+    [conn, currentSession],
   );
 
   return {
     available: !!conn,
     session,
+    rememberSession,
+    setRememberSession,
     status: session ? status : 'off',
     lastSync,
     error,

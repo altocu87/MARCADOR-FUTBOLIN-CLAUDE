@@ -48,7 +48,12 @@ async function call(conn: SupabaseConn, path: string, body: object, http: Http, 
     throw new CloudError('Sin conexión con la nube', 'offline');
   }
   const text = await res.text().catch(() => '');
-  if (!res.ok) throw new CloudError(friendlyError(res.status, text), String(res.status));
+  if (!res.ok) {
+    if (path === 'token?grant_type=refresh_token' && (res.status === 400 || res.status === 401 || res.status === 403)) {
+      throw new CloudError('La sesión ha caducado: vuelve a entrar', 'session_expired');
+    }
+    throw new CloudError(friendlyError(res.status, text), String(res.status));
+  }
   try {
     return text ? JSON.parse(text) : {};
   } catch {
@@ -94,11 +99,17 @@ export async function refreshSession(conn: SupabaseConn, s: Session, http: Http 
 }
 
 export async function signOut(conn: SupabaseConn, s: Session, http: Http = defaultHttp): Promise<void> {
-  await call(conn, 'logout', {}, http, s.accessToken).catch(() => undefined);  // sin conexión: se cierra igual aquí
+  await call(conn, 'logout?scope=local', {}, http, s.accessToken).catch(() => undefined);  // sin conexión: se cierra igual aquí
 }
 
 // ---------------------------------------------------------------- sesión guardada en este aparato
 export const SESSION_KEY = 'mfv3:nube:sesion';
+export const REMEMBER_KEY = 'mfv3:nube:recordar';
+
+/** Es una preferencia del aparato: no se sincroniza con la cuenta. Las sesiones antiguas se conservan. */
+export function readRememberSession(store: Pick<Storage, 'getItem'>): boolean {
+  try { return store.getItem(REMEMBER_KEY) !== '0'; } catch { return true; }
+}
 
 export function readSession(store: Pick<Storage, 'getItem'>): Session | null {
   try {

@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { useApp } from '../../app/AppContext';
-import { Modal } from '../components/common';
+import { Modal, Toggle } from '../components/common';
 import { BoardQrScanner } from '../components/BoardLink';
 
 type Mode = 'login' | 'signup' | 'recover';
@@ -58,6 +58,10 @@ export function AccountTab() {
             Jugadores, partidos, torneos y ajustes de esta mesa se guardan en tu cuenta. En otro aparato o en la placa,
             entra con la misma cuenta y tendrás lo mismo.
           </p>
+          <div style={{ marginTop: 14 }}>
+            <Toggle checked={cloud.rememberSession} onChange={cloud.setRememberSession} label="Recordar mi sesión"
+              help="Mantiene tu acceso al cerrar y volver a abrir la app, hasta que cierres sesión. Sin marcar, dura hasta cerrar esta pestaña. La placa tiene su propia sesión y su propia opción." />
+          </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button className="btn btn-primary" disabled={demoMode || cloud.status === 'syncing'} onClick={() => void cloud.syncNow()}>
               Sincronizar ahora
@@ -97,7 +101,7 @@ export function AccountTab() {
               </>
             }
           >
-            <p style={{ margin: 0 }}>Los datos se quedan en este aparato, pero dejan de guardarse en la nube hasta que vuelvas a entrar.</p>
+            <p style={{ margin: 0 }}>Se cierra solo en este navegador. La placa y los demás aparatos siguen conectados. Los datos locales se conservan.</p>
           </Modal>
         )}
       </div>
@@ -170,6 +174,8 @@ export function AccountTab() {
             />
           </label>
         )}
+        {mode !== 'recover' && <Toggle checked={cloud.rememberSession} onChange={cloud.setRememberSession} label="Recordar mi sesión"
+          help="Mantiene tu acceso al cerrar y abrir la app, hasta que cierres sesión. Sin marcar, dura hasta cerrar esta pestaña." />}
         {msg && <p style={{ margin: 0, color: msg.ok ? 'var(--ok)' : 'var(--danger)' }}>{msg.text}</p>}
         <button className="btn btn-primary" type="submit" disabled={busy} style={{ minHeight: 56 }}>
           {busy ? 'Un momento…' : action}
