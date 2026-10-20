@@ -11,7 +11,7 @@ El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimien
 | Rendimiento y memoria de la pantalla | Implementado; pruebas automáticas y veinte ciclos físicos correctos. [Entrega](ENTREGA_EQUIPO_B_RENDIMIENTO_ESP32S3.md) | Cargas de partido/red y revisión de Cloud |
 | Cinco mejoras ligeras | Implementadas y probadas; tiempos de menús similares. [Detalle](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md) | Medición durante partido |
 | Acceso mediante QR | Móvil y función publicados en main; QR visible y cancelación probada en placa. OPTIONS 204 y POST sin sesión 401 | Confirmación autenticada desde el móvil |
-| Actualizaciones de la pantalla | Instalada 0.1 build 49; novedades, deslizamiento y guía comprobados en placa | Ensayar la barra durante OTA desde la propia pantalla |
+| Actualizaciones de la pantalla | Instalada 0.2 build 54 y reconocida como última publicada; novedades y guía disponibles. [Captura real](capturas-placa/actualizaciones-placa-0.2.png) | Ensayar la barra durante OTA desde la propia pantalla |
 | Integración en main | Entrega USB/sesiones integrada en `369e153`; pruebas, firmware 0.2 y web publicados correctamente | Revisión independiente de Cloud |
 | Instalación en la placa | 0.2 build 54 instalada con hash verificado; cinco recorridos válidos y fotos idénticas. [Informe físico](VALIDACION_PLACA_0_2_20261020.md) | Repetir con el dedo las flechas del incidente; revisar límites del diagnóstico USB |
 | Bloqueo USB y sesiones | Avisos espontáneos sin espera, diagnóstico apagado completo, recordar sesión y cierre por aparato; [entrega a Cloud](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) | Login real por QR; repetición del incidente original y diagnóstico de capturas/toque posterior |
