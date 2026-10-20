@@ -62,6 +62,8 @@ int main() {
   lv_obj_update_layout(cuenta::scr);
   assert(cuenta::rememberButton && lv_obj_get_height(cuenta::rememberButton) >= 44);
   nube::phase = nube::BUSY; cuenta::onOutYes(nullptr); assert(nube::loggedIn());
+  const bool remembered = nube::rememberSession;
+  cuenta::onRemember(nullptr); assert(nube::rememberSession == remembered);
   nube::phase = nube::OFF; memset(&nube::saved, 0, sizeof(nube::saved));
   sim::serialSaturated = false; sim::out.clear();
   handleBoardLine("HELLO");

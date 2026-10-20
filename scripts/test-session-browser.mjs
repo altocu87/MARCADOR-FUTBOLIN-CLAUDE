@@ -47,6 +47,12 @@ try {
   };
   let page = await open();
   assert.equal(await page.getByRole('switch', { name: 'Recordar mi sesión' }).getAttribute('aria-checked'), 'true');
+  // El interruptor dentro del formulario no debe enviarlo aunque las credenciales estén completas.
+  await page.getByLabel('Correo', { exact: true }).fill('prueba@example.invalid');
+  await page.getByLabel('Contraseña', { exact: true }).fill('ficticia123');
+  await page.getByRole('switch', { name: 'Recordar mi sesión' }).click();
+  await page.getByRole('switch', { name: 'Recordar mi sesión' }).click();
+  assert.equal(calls.filter(c => c.path === '/auth/v1/token').length, 0, 'Recordar no envía el formulario');
   await login(page);
   // Leer tokens ya válidos no debe provocar sincronizaciones nuevas cada tres segundos.
   await page.waitForTimeout(4500);

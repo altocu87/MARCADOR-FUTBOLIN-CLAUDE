@@ -99,7 +99,7 @@ export function Toggle({
   help?: string;
 }) {
   const sw = (
-    <button className="toggle" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}>
+    <button type="button" className="toggle" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}>
       <span className="track" />
       <strong style={{ fontSize: 16 }}>{label}</strong>
     </button>

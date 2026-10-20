@@ -34,6 +34,7 @@ static void refreshRememberLabel() {
   if (rememberButton) lv_label_set_text(lv_obj_get_child(rememberButton, 0), rememberLabel());
 }
 static void onRemember(lv_event_t*) {
+  if (nube::loggedIn() && nube::busy()) return ui::toast("Espera a que termine la sincronización");
   if (!nube::setRememberSession(!nube::rememberSession)) return ui::toast("No se pudo guardar la opción");
   refreshRememberLabel();
   ui::toast(nube::rememberSession ? "Seguirás dentro al apagar y encender" : "Al apagar tendrás que volver a entrar");
