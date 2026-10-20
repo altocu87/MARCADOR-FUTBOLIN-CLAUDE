@@ -90,13 +90,6 @@ static bool saveState() {
   if (!ok) ::remove(tmp);
   return ok;
 }
-static bool setRememberSession(bool remember) {
-  bool old = rememberSession;
-  rememberSession = remember;
-  if (saveState()) return true;
-  rememberSession = old;
-  return false;
-}
 static void loadState() {
   rememberSession = true;
   recoverState();
@@ -122,6 +115,17 @@ static uint8_t phase = OFF;
 static char message[96] = "";
 static uint32_t lastOkAt = 0;  // millis() de la última sincronización buena
 static int pendingCount = 0;   // cosas por subir
+
+static bool setRememberSession(bool remember) {
+  bool old = rememberSession;
+  rememberSession = remember;
+  // Durante QR/sincronización la tarea de red usa PSRAM y puede leer la tarjeta.
+  // Solo cambiar la intención en RAM; apply() la guarda cuando esa tarea ha terminado.
+  if (phase == BUSY) return true;
+  if (saveState()) return true;
+  rememberSession = old;
+  return false;
+}
 
 // ---------------------------------------------------------------- pendientes (los lleva loop(), no la tarea)
 static jug::Store* store = nullptr;
@@ -876,6 +880,7 @@ static void apply() {
     linkCode[0] = 0;
     if (!jobOk) {
       memset(&saved, 0, sizeof(saved));
+      saveState();  // también conservar la opción elegida si se canceló/falló el QR
       phase = OFF;
       snprintf(message, sizeof(message), "%s", jobError);
       return;

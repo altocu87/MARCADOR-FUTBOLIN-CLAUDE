@@ -43,5 +43,12 @@ int main() {
   std::filesystem::remove(std::string(path) + ".tmp");
   assert(nube::logout()); assert(!nube::loggedIn() && !nube::jobSaved.refresh[0] && !nube::access[0]);
   nube::loadState(); assert(!nube::loggedIn() && nube::rememberSession);
+  // El botón del QR no escribe mientras la tarea está activa; al cancelar se guarda la opción.
+  nube::phase = nube::BUSY; nube::job = nube::LINK; nube::jobSaved = nube::saved;
+  std::filesystem::create_directory(std::string(path) + ".tmp");
+  assert(nube::setRememberSession(false)); // no intenta abrir el fichero bloqueado
+  std::filesystem::remove(std::string(path) + ".tmp");
+  nube::jobOk = false; nube::jobDone = true; strcpy(nube::jobError, "Cancelado");
+  nube::apply(); nube::loadState(); assert(!nube::rememberSession && !nube::loggedIn());
   puts("Sesion nativa: compatibilidad, rotacion, recordar, temporal, recuperacion y cierre OK");
 }
