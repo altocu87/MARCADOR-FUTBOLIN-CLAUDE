@@ -125,3 +125,7 @@ Ver [entrega específica del acceso QR](ENTREGA_EQUIPO_B_ACCESO_QR.md), con corr
 ## Continuación: actualizaciones y versión 0.1
 
 Ver [entrega de Actualizaciones](ACTUALIZACIONES_PANTALLA.md): apartado propio en Ajustes, historial y notas en lenguaje llano, confirmación, barra sin recrear objetos y regla obligatoria de subir versión y registrar cambios antes de publicar. La pantalla permanece en 0.x hasta autorización expresa del propietario. Incluye capturas del simulador, pruebas y límites pendientes de validación física; Cloud debe revisar y valorar esta entrega por separado.
+
+## Validación física posterior · 20/10/2026
+
+Integración e instalación autorizadas y realizadas. Se comparan QR original y optimizada 0.1; se reproduce y corrige el bloqueo de Ajustes. Veinte vueltas de menús mantienen memoria y respuesta. Los tiempos de dibujo comparados son similares y hay un coste de unos 6–7 KiB internos. Ver [informe físico](VALIDACION_PLACA_20261020.md) antes de interpretar las hipótesis de rendimiento como mejoras ya medidas en partido. Revisión de Cloud pendiente.

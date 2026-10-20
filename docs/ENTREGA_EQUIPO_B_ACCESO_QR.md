@@ -51,3 +51,7 @@ La ejecución [39285672094](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE
 ## Integración automática (20/10/2026)
 
 El flujo automático compara las migraciones entre el commit anterior y el nuevo: si solo se cambia la función o su publicación, publica las funciones sin enlazar ni ejecutar SQL. Las migraciones nuevas y la ejecución manual habitual siguen requiriendo conexión a la base de datos. Un error al leer el historial detiene el flujo; no se interpreta como ausencia de migraciones. Esto evita que integrar las correcciones del móvil y del flujo vuelva a depender de la conexión IPv6 de una migración que ya está aplicada.
+
+## Prueba en la placa · 20/10/2026
+
+Se instala primero el original `cc064e0` y después la optimizada 0.1. Ambos muestran el QR y esperan al móvil; se comprueba salir y volver de la pantalla. No se ha recibido confirmación desde la cuenta del propietario: no se declara validada la autenticación completa. Main, el servicio y la web ya están publicados correctamente. Detalles en [VALIDACION_PLACA_20261020.md](VALIDACION_PLACA_20261020.md).

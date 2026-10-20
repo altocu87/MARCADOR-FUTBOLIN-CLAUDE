@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-## Entrega del equipo B · 19/10/2026
+## Entrega del equipo B · 19–20/10/2026
 
 El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimiento-esp32s3`, incluidas las mejoras del QR. La revisión independiente de Cloud sigue pendiente; no se presenta como realizada.
 
@@ -8,12 +8,14 @@ El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimien
 
 | Trabajo | Estado del código y comprobaciones | Pendiente |
 |---|---|---|
-| Rendimiento y memoria de la pantalla | Implementado; pruebas locales y compilación real correctas. [Entrega](ENTREGA_EQUIPO_B_RENDIMIENTO_ESP32S3.md) | Validación física y revisión de Cloud |
-| Cinco mejoras ligeras | Implementadas y probadas. [Detalle](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md) | Medir la mejora en la placa |
-| Acceso mediante QR | Correcciones del móvil y pruebas con API simulada completas. Función publicada: Actions 39285672094 correcto; OPTIONS 204 y POST sin sesión 401 | Recorrido autenticado móvil → Supabase → placa |
-| Actualizaciones de la pantalla | Apartado propio, novedades, instrucciones, confirmación y progreso. Versión 0.1. Compilación de GitHub 39290232605 correcta | Validación física del proceso de instalación |
-| Integración en main | Autorizada; en preparación | Resolver la prueba de simulación de GitHub antes de integrar |
-| Instalación en la placa | Autorizada el 20/10/2026; USB detectado en COM6 | Copia de seguridad e instalación secuencial QR → optimizaciones |
+| Rendimiento y memoria de la pantalla | Implementado; pruebas automáticas y veinte ciclos físicos correctos. [Entrega](ENTREGA_EQUIPO_B_RENDIMIENTO_ESP32S3.md) | Cargas de partido/red y revisión de Cloud |
+| Cinco mejoras ligeras | Implementadas y probadas; tiempos de menús similares. [Detalle](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md) | Medición durante partido |
+| Acceso mediante QR | Móvil y función publicados en main; QR visible y cancelación probada en placa. OPTIONS 204 y POST sin sesión 401 | Confirmación autenticada desde el móvil |
+| Actualizaciones de la pantalla | Instalada 0.1 build 49; novedades, deslizamiento y guía comprobados en placa | Ensayar la barra durante OTA desde la propia pantalla |
+| Integración en main | Integrada en `569098a`; pruebas, firmware, web y publicación QR correctas en GitHub | Revisión independiente de Cloud |
+| Instalación en la placa | QR original y después optimizada 0.1 instalados y verificados en COM6; queda 0.1 | Resultados y límites en la validación física del 20/10/2026 |
+
+Resultados físicos del 20/10/2026: [VALIDACION_PLACA_20261020.md](VALIDACION_PLACA_20261020.md).
 
 ## Registro histórico (conserva sus fechas)
 

@@ -75,3 +75,7 @@ Persisten avisos previos sobre conversiones en `hcIcon`, casos del motor y el en
 Cloud debe revisar el código, las notas y la regla de publicación, y dejar su dictamen. Con autorización del propietario y datos respaldados: instalar en la placa de prueba, comprobar lectura y deslizamiento con el dedo, medir memoria al buscar novedades y recorrer las tres pestañas, y ensayar actualización de pantalla/mando con conexión normal y fallo de red controlado. Comprobar que el aviso de reinicio se ve y que el mando confirma su nueva versión. No realizar estas pruebas sobre partidos reales ni cortar alimentación durante escritura sin un plan de recuperación.
 
 Revisión de Cloud: **pendiente**. Validación física: **pendiente de autorización**.
+
+## Validación física posterior · 20/10/2026
+
+La versión 0.1 se ha integrado y publicado en main por autorización expresa del propietario e instalado en su placa, después de probar el firmware QR original. Novedades, deslizamiento y guía funcionan en la pantalla real. Ver [resultados físicos, comparación y límites](VALIDACION_PLACA_20261020.md); esta prueba no acredita todavía la barra durante una actualización OTA real.
