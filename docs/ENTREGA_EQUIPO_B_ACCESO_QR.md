@@ -47,3 +47,7 @@ El firmware de la ampliación anterior (`f90562b`, run 39283316174) ya figura co
 ## Comprobación posterior de publicación (19/10/2026)
 
 La ejecución [39285672094](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39285672094) terminó correctamente. El endpoint responde OPTIONS 204 y rechaza POST sin sesión con 401. Esto sustituye el estado «queued» descrito arriba. No acredita todavía el recorrido con una cuenta real y la placa física.
+
+## Integración automática (20/10/2026)
+
+El flujo automático compara las migraciones entre el commit anterior y el nuevo: si solo se cambia la función o su publicación, publica las funciones sin enlazar ni ejecutar SQL. Las migraciones nuevas y la ejecución manual habitual siguen requiriendo conexión a la base de datos. Un error al leer el historial detiene el flujo; no se interpreta como ausencia de migraciones. Esto evita que integrar las correcciones del móvil y del flujo vuelva a depender de la conexión IPv6 de una migración que ya está aplicada.
