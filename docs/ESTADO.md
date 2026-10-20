@@ -4,7 +4,7 @@
 
 El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimiento-esp32s3`, incluidas las mejoras del QR. La revisión independiente de Cloud sigue pendiente; no se presenta como realizada.
 
-**Pantalla nativa: 0.1.** Mantener 0.x hasta autorización expresa para 1.0. La app web y el motor mantienen su numeración independiente. Ver [actualizaciones y política de versiones](ACTUALIZACIONES_PANTALLA.md).
+**Pantalla nativa publicada: 0.2 build 54. Última verificada en placa: 0.1 build 49; instalación de 0.2 pendiente de autorización.** Mantener 0.x hasta autorización expresa para 1.0. La app web y el motor mantienen su numeración independiente. Ver [actualizaciones y política de versiones](ACTUALIZACIONES_PANTALLA.md).
 
 | Trabajo | Estado del código y comprobaciones | Pendiente |
 |---|---|---|
@@ -12,8 +12,10 @@ El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimien
 | Cinco mejoras ligeras | Implementadas y probadas; tiempos de menús similares. [Detalle](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md) | Medición durante partido |
 | Acceso mediante QR | Móvil y función publicados en main; QR visible y cancelación probada en placa. OPTIONS 204 y POST sin sesión 401 | Confirmación autenticada desde el móvil |
 | Actualizaciones de la pantalla | Instalada 0.1 build 49; novedades, deslizamiento y guía comprobados en placa | Ensayar la barra durante OTA desde la propia pantalla |
-| Integración en main | Integrada en `569098a`; pruebas, firmware, web y publicación QR correctas en GitHub | Revisión independiente de Cloud |
-| Instalación en la placa | QR original y después optimizada 0.1 instalados y verificados en COM6; queda 0.1 | Resultados y límites en la validación física del 20/10/2026 |
+| Integración en main | Entrega USB/sesiones integrada en `369e153`; pruebas, firmware 0.2 y web publicados correctamente | Revisión independiente de Cloud |
+| Instalación en la placa | QR original y optimizada 0.1 instalados y verificados en COM6; 0.2 preparada sin regrabar | Autorización para instalar 0.2; después repetir el incidente físico |
+| Bloqueo USB y sesiones | Avisos espontáneos sin espera, diagnóstico apagado completo, recordar sesión y cierre por aparato; [entrega a Cloud](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) | Login real por QR y validación física de 0.2 |
+| Límites de acceso en Supabase | Consulta de solo lectura vía Actions rechazada con HTTP 403 | Añadir auth_config_read al token de GitHub y repetir; no se presupone acceso indefinido en el servidor |
 
 Resultados físicos del 20/10/2026: [VALIDACION_PLACA_20261020.md](VALIDACION_PLACA_20261020.md).
 
@@ -239,4 +241,4 @@ Fecha: 16/10/2026 · Versión 0.3.0 · Motor 1.0.0 (`reglas-partido-2`: por gole
 
 ## Entrega B · bloqueo USB y sesiones (20/10/2026)
 
-Corrección y verificación en la rama de B: [USB, QR y sesiones 0.2](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md). Main autorizado por el propietario; aceptación de Cloud pendiente. QR en Ajustes de la web comprobado con nube ficticia; login real con placa pendiente. Se conserva 0.x. Esta entrega no modifica tablas, RLS ni datos de partidas.
+Código integrado en main y firmware 0.2 build 54 publicado: [USB, QR y sesiones 0.2](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md). Main autorizado por el propietario; aceptación de Cloud pendiente. QR en Ajustes de la web comprobado con nube ficticia; login real con placa pendiente. Se conserva 0.x. Esta entrega no modifica tablas, RLS ni datos de partidas.

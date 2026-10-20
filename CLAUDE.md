@@ -26,3 +26,8 @@
 - No confundir esta numeración con la versión de la app web, la versión del protocolo MFV3, el motor o el contador interno de compilaciones. No cambiar esos protocolos por subir la versión visible.
 - Actualizaciones tiene su propio apartado en Ajustes, novedades legibles, explicación previa, confirmación de instalación y progreso real. No mostrar éxito hasta comprobar el archivo y, para el mando, recibir su confirmación.
 - Preparar y probar en la rama; no fusionar, publicar una entrega de firmware ni grabar la placa sin la autorización correspondiente del dueño. Ver `docs/ACTUALIZACIONES_PANTALLA.md` y las entregas del equipo B para Cloud.
+
+
+## Entrega pendiente de valoración por Cloud · 20/10/2026
+
+El equipo B ha integrado en main la corrección de esperas USB y las opciones de sesión (pantalla 0.2). Antes de continuar, consultar [la entrega a equipo A](docs/ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) y el estado vigente en [ESTADO](docs/ESTADO.md). No dar por hechas la instalación física de 0.2, el login real por QR ni la lectura de límites de Supabase: su estado y pruebas están separados en esa entrega. Registrar la revisión de Cloud cuando se realice.

@@ -1,6 +1,6 @@
 # Equipo B → Equipo A (Cloud): USB, QR y sesiones · 20/10/2026
 
-Estado: preparado en `equipo-b/rendimiento-esp32s3`; integración en main autorizada por el propietario. Aceptación de Cloud pendiente. Esta entrega sustituye las observaciones anteriores sobre el apagado del diagnóstico. Firmware de producto **0.2**, manteniendo la prohibición de pasar a 1.x sin autorización.
+Estado: integrado en **main, código `369e153`**, por autorización del propietario. También conservado en `equipo-b/rendimiento-esp32s3`. Aceptación de Cloud pendiente. Esta entrega sustituye las observaciones anteriores sobre el apagado del diagnóstico. Firmware de producto **0.2**, manteniendo la prohibición de pasar a 1.x sin autorización.
 
 ## Qué notará el propietario
 
@@ -55,3 +55,15 @@ El conector MCP directo deniega el acceso al proyecto. El workflow manual «Diag
 3. Comprobar capturas por CRC, botones, reposo y memoria. Medir por separado la latencia de dibujo y la respuesta a PING; no equipararlas.
 4. Con el propietario: QR de la placa → lector de Ajustes de la web → confirmar su correo → verificar que ambos siguen conectados. Apagar/encender con recordar; cerrar la sesión de la web y verificar que la placa sigue dentro. No crear partidos de prueba en su cuenta.
 5. Para revertir código usar revert del commit de entrega, sin borrar datos. Para firmware seguir el respaldo y las particiones de VALIDACION_PLACA_20261020.md; no prometer un respaldo completo de flash que no existe. Una publicación de reversión necesita nueva versión 0.x y sus notas.
+
+
+## Cierre de publicación · 20/10/2026
+
+- Main contiene los commits de implementación `1a7313b`, `9c3ed9d`, `d42bb8c` y `369e153`.
+- [Pruebas de main 39418975813](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39418975813): correctas. Incluyen las 314 pruebas de app, dos recorridos de navegador con Chrome y la batería completa de firmware simulado.
+- [Firmware de main 39418975919](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39418975919): todas las placas compiladas y publicación correctas. **Pantalla 0.2 build 54**, aplicación de 1.866.112 bytes, MD5 `45c1c5ccbd991e26bc387fd548e86465`, SHA256 `18ea0c26733b60d74a651aa20a3f4bf1a2880c978bcad157b6b2a682dcf06f02`. El binario descargado coincide en tamaño y MD5 con el manifiesto oficial. Recursos, particiones y datos de la placa no se han grabado.
+- [Web 39418975821](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39418975821): publicada correctamente. Comprobada además la web real en un Edge nuevo: Cuenta muestra lector QR, Recordar y Cerrar sesión. Se usó una sesión ficticia local y se bloquearon todas las conexiones a Supabase; no acredita un login real.
+- [Diagnóstico de sesiones 39419034289](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39419034289): **HTTP 403**, el token de Actions no permite leer `/config/auth`; requiere `auth_config_read`. Se ha solicitado al propietario ampliar el permiso. No se han cambiado ajustes del servidor ni se da por confirmado que sus límites estén desactivados. El conector MCP también deniega acceso.
+- Comprobación extra: el ensayo de USB/táctil pasa leyendo las imágenes y fuentes reales existentes de `build/placa/fat`, sin regenerarlas ni alterarlas. El lanzador de esa comprobación adicional queda privado en la sesión de trabajo; el ensayo base y sus fixtures quedan en el repositorio.
+- Última versión **verificada en la placa física**: **0.1 build 49**, COM6. **No se ha instalado 0.2 en esta entrega**: se ha solicitado autorización específica antes de volver a grabar. La corrección publicada solo afecta a la placa cuando se instale el nuevo firmware. La reproducción física del minuto exacto y el enlace con la cuenta real siguen pendientes.
+- Revisión/aceptación por el equipo A (Cloud): pendiente; dejar constancia de su valoración al retomarlo.
