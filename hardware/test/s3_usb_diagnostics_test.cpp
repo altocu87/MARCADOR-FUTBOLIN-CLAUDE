@@ -43,9 +43,16 @@ int main() {
   uiport::perfEnable(0);
   // Volver a Inicio/Configuración/Ajustes sigue atendiendo loop con el USB lleno.
   sim::serialSaturated = true;
+  cfg.goalsPerPeriod = 5; cfg.minutesPerPeriod = 5; cfg.endCondition = mfv3::EndCondition::Both;
+  auto tap = [](int x, int y) { uiport::injectTouch(x, y); for (int i = 0; i < 110; ++i) loop(); };
   for (int i = 0; i < 20; ++i) {
     goHome(); render(); onModeChosen(inicio::QUICK); render();
-    config::step(0, 0); config::step(1, 0); onConfigBack(); render();
+    for (int frame = 0; frame < 160; ++frame) loop(); // completar la carga y liberar el táctil de la pantalla anterior
+    tap(200, 100); assert(cfg.goalsPerPeriod == 6);
+    tap(200, 370); assert(cfg.goalsPerPeriod == 5);
+    tap(590, 100); assert(cfg.minutesPerPeriod == 6);
+    tap(590, 370); assert(cfg.minutesPerPeriod == 5);
+    tap(30, 24); assert(homeCards); render();
     openSettings(); render(); uiport::step();
   }
   assert(sim::serialBlockingWrites == 0 && sim::restarts == 0 && !inMatch);

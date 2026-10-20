@@ -22,7 +22,7 @@ struct State {
 struct Hooks {
   void (*back)() = nullptr;
   void (*next)() = nullptr;
-  void (*changed)(const State&) = nullptr;   // al cambiar cualquier valor (se guarda en la NVS)
+  void (*changed)(const State&) = nullptr;   // al cambiar cualquier valor (el sketch decide cuándo guardarlo)
   void (*refused)() = nullptr;              // intento de apagar la única tarjeta encendida
 };
 static Hooks hooks;

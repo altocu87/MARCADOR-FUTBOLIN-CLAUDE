@@ -48,6 +48,11 @@ try {
   let page = await open();
   assert.equal(await page.getByRole('switch', { name: 'Recordar mi sesión' }).getAttribute('aria-checked'), 'true');
   await login(page);
+  // Leer tokens ya válidos no debe provocar sincronizaciones nuevas cada tres segundos.
+  await page.waitForTimeout(4500);
+  const syncCalls = () => calls.filter(c => c.path === '/rest/v1/mesa_datos').length;
+  const idleCalls = syncCalls(); assert.ok(idleCalls > 0);
+  await page.waitForTimeout(3500); assert.equal(syncCalls(), idleCalls, 'Sin bucle de sincronización en reposo');
   await page.reload(); await account(page);
   await page.getByText('prueba@example.invalid', { exact: true }).waitFor();
   let other = await open(); await other.getByText('prueba@example.invalid', { exact: true }).waitFor(); await other.close();

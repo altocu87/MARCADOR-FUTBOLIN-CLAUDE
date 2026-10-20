@@ -124,7 +124,11 @@ export function useCloudSync(d: Data): CloudSync {
       if (stored && stored.userId === s.userId) s = stored;
       const next = await freshSession(conn!, s);
       if (version !== generation.current || !sessionRef.current) throw new CloudError('La cuenta ha cambiado', 'session_changed');
-      if (next !== sessionRef.current) keep(next);
+      const current = sessionRef.current;
+      // readSession crea un objeto nuevo incluso si los tokens no cambian. Publicarlo otra vez
+      // reactivaría el efecto de sincronización de 3 s de forma indefinida.
+      if (next.accessToken !== current.accessToken || next.refreshToken !== current.refreshToken ||
+          next.expiresAt !== current.expiresAt || next.userId !== current.userId || next.email !== current.email) keep(next);
       return next;
     };
     const job = typeof navigator !== 'undefined' && navigator.locks
