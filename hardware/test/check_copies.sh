@@ -26,6 +26,8 @@ for t in CONFIG_IDF_TARGET_ESP32 CONFIG_IDF_TARGET_ESP32C3 CONFIG_IDF_TARGET_ESP
   g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_ESP32 -D$t=1 -Itest/mock_esp32 -Iesp32_marcador -x c++ test/esp32_sim_test.cpp -o /tmp/mfv3_esp_sim && /tmp/mfv3_esp_sim || exit 1
 done
 g++ -std=c++17 -Wall -Wno-unused-variable -Itest/mock_s3 -Imando_pulsadores -x c++ test/mando_sim_test.cpp -o /tmp/mfv3_mando_sim && /tmp/mfv3_mando_sim
+# El mismo mando con el WS2812 de la Waveshare C3-Zero (GPIO10).
+g++ -std=c++17 -Wall -Wno-unused-variable -DMFV3_MANDO_RGB_PIN=10 -Itest/mock_s3 -Imando_pulsadores -x c++ test/mando_sim_test.cpp -o /tmp/mfv3_mando_zero_sim && /tmp/mfv3_mando_zero_sim
 # Pantalla de 7": Waveshare 7C (4, por defecto), Elecrow (1) y Waveshare 7 (2)
 # (con LVGL de verdad, compilada para el PC por test/lvgl_lib.sh)
 for b in 4 1 2; do sh test/s3_build.sh $b || exit 1; done

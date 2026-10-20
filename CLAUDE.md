@@ -31,3 +31,7 @@
 ## Entrega pendiente de valoración por Cloud · 20/10/2026
 
 El equipo B ha integrado en main la corrección de esperas USB y las opciones de sesión (pantalla 0.2). Antes de continuar, consultar [la entrega a equipo A](docs/ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) y el estado vigente en [ESTADO](docs/ESTADO.md). La instalación física de 0.2 build 54 ya está autorizada y verificada: leer [su informe](docs/VALIDACION_PLACA_0_2_20261020.md), incluidos los límites e incidencias del diagnóstico USB. Siguen pendientes el login real por QR y la lectura de límites de Supabase; no darlos por realizados. Registrar la revisión de Cloud cuando se realice.
+
+## Mando físico C3-Zero · entrega en la rama del equipo B
+
+La mini real del dueño es Waveshare ESP32-C3-Zero: leer [su entrega](docs/ENTREGA_MANDO_C3_ZERO_20261020.md). Se ha instalado y comprobado el saludo por radio, pero los contactos y luces de los pulsadores siguen pendientes de cablear y probar. Revisar el perfil RGB y la selección del firmware OTA antes de publicar soporte oficial. No confundir esta adaptación local con una nueva versión de la pantalla.

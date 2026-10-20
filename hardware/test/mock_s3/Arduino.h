@@ -21,6 +21,13 @@ inline bool getLocalTime(struct tm* t, uint32_t = 5000) {
 }
 struct EspSim { void restart() { sim::restarts++; } };
 inline EspSim ESP;
+namespace sim {
+inline int rgbPin = -1;
+inline uint8_t rgbRed = 0, rgbGreen = 0, rgbBlue = 0;
+}
+inline void rgbLedWrite(uint8_t pin, uint8_t r, uint8_t g, uint8_t b) {
+  sim::rgbPin = pin; sim::rgbRed = r; sim::rgbGreen = g; sim::rgbBlue = b;
+}
 // String de Arduino (solo lo que usan los sketches de la pantalla).
 struct String {
   std::string s;

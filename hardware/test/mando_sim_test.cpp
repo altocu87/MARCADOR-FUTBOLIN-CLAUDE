@@ -39,6 +39,16 @@ struct ImgSource : mfv3::ota::Source {
 
 int main() {
   setup();
+#if MFV3_MANDO_RGB_PIN >= 0
+  assert(sim::rgbPin == 10 && sim::modes[8] != OUTPUT);
+  ledWrite(true);
+  assert(sim::rgbRed == 8 && sim::rgbGreen == 8 && sim::rgbBlue == 8);
+  ledWrite(false);
+  assert(sim::rgbRed == 0 && sim::rgbGreen == 0 && sim::rgbBlue == 0);
+#else
+  assert(sim::modes[8] == OUTPUT && sim::rgbPin == -1);
+#endif
+  assert(sim::modes[3] == INPUT_PULLUP && sim::modes[4] == INPUT_PULLUP);
   assert(cmds().size() == 3 && lastCmd() == RadioCmd::Hello && sim::wifiChannel == mfv3::RADIO_CHANNEL);
   // Con el saludo, su versión (compilado a mano: 0) y sin armar.
   assert(lastInfo().ok && lastInfo().build == MFV3_BUILD && !lastInfo().armed);

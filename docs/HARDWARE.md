@@ -245,6 +245,8 @@ emparejar. Alcance típico de decenas de metros; de sobra para una mesa.
 - **Cargar:** IDE de Arduino → placa **ESP32C3 Dev Module**, «USB CDC On Boot: Enabled» → Subir. En el monitor
   serie verás «Enviado: GOL_BLANCO button», etc.
 
+**Placa real del dueño: Waveshare ESP32-C3-Zero.** Mantiene los pulsadores en GPIO3/GPIO4, pero su LED integrado es un WS2812 en GPIO10. Usar el perfil de compilación MFV3_MANDO_RGB_PIN=10; el perfil predeterminado anterior sigue siendo Super Mini. Consultar la [entrega y cableado de la C3-Zero](ENTREGA_MANDO_C3_ZERO_20261020.md), incluidas las luces externas todavía pendientes de identificar y la limitación de actualizaciones genéricas del mando.
+
 ### 7.2 Altavoces y sonidos propios (Waveshare 7C)
 
 La 7C trae de serie el chip de sonido **ES8389** y **dos amplificadores NS4150B** (uno por altavoz), con sus

@@ -33,6 +33,12 @@
 #define MFV3_BUILD 0
 #endif
 
+// Waveshare ESP32-C3-Zero: compilar con -DMFV3_MANDO_RGB_PIN=10.
+// Sin esa opción conserva el LED azul GPIO8 de la Super Mini. Los pulsadores no cambian.
+#ifndef MFV3_MANDO_RGB_PIN
+#define MFV3_MANDO_RGB_PIN -1
+#endif
+
 // ---- Ajustes
 const uint8_t GRUPO_MESA = 1;          // MISMO número que en la pantalla (cámbialo si hay dos mesas cerca)
 const int PIN_BTN_BLANCO = 3;
@@ -58,8 +64,14 @@ static uint32_t ledNext = 0;
 static bool ledOn = false;
 
 static void ledWrite(bool on) {
+#if MFV3_MANDO_RGB_PIN >= 0
+  // WS2812 integrado: blanco tenue, sin bibliotecas adicionales ni tocar GPIO8.
+  const uint8_t brightness = on ? 8 : 0;
+  rgbLedWrite(MFV3_MANDO_RGB_PIN, brightness, brightness, brightness);
+#else
   if (PIN_LED < 0) return;
   digitalWrite(PIN_LED, (on != LED_ACTIVO_BAJO) ? HIGH : LOW);
+#endif
 }
 
 static void blink(uint8_t n) {
@@ -155,8 +167,13 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIN_BTN_BLANCO, INPUT_PULLUP);
   pinMode(PIN_BTN_AZUL, INPUT_PULLUP);
+#if MFV3_MANDO_RGB_PIN < 0
   if (PIN_LED >= 0) pinMode(PIN_LED, OUTPUT);
+#endif
   ledWrite(false);
+  char identity[96];
+  snprintf(identity, sizeof(identity), "MANDO ESP32-C3 build %lu RGB pin %d", (unsigned long)MFV3_BUILD, MFV3_MANDO_RGB_PIN);
+  Serial.println(identity);
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
