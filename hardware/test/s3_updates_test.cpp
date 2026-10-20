@@ -34,6 +34,9 @@ int main() {
   std::string huge = "{\"version\":\"0.2\",\"notes\":\"" + std::string(2000, 'x') + "\"}";
   updateInfo::parse(huge.c_str(), meta); assert(!meta.notes[0]);
 
+  // El adaptador no retiene la dirección de una pantalla destruida por LVGL.
+  openSettings(); render(); assert(gfx.active() && gfx.scr);
+  ui::show(ui::screen()); assert(gfx.scr == nullptr && !gfx.active());
   openSettings(); render(); shot("actualizaciones-ajustes");
   tapRect(ui::SETTINGS[2].r); assert(screen == Screen::Update && !canInstallUpdate());
   tapRect(ui::UPDATE[2].r); assert(screen == Screen::Update && updateTab == UpdateTab::Overview);

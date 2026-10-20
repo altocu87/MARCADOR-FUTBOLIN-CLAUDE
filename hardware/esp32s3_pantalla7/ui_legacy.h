@@ -23,6 +23,7 @@ class LegacyGfx {
     scr = ui::screen();
     lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(scr, onPress, LV_EVENT_PRESSED, this);
+    lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, this);
     ui::show(scr);
   }
   bool active() const { return scr && lv_screen_active() == scr; }
@@ -114,6 +115,13 @@ class LegacyGfx {
       lv_obj_set_style_border_color(o, col(c), 0);
       lv_obj_set_style_border_width(o, 1, 0);
     }
+  }
+
+  static void onDelete(lv_event_t* e) {
+    LegacyGfx* g = (LegacyGfx*)lv_event_get_user_data(e);
+    // LVGL libera las pantallas al sustituirlas. Su dirección puede reutilizarse:
+    // no confundir otra pantalla con la nuestra ni perder sus eventos táctiles.
+    if (lv_event_get_target_obj(e) == g->scr) g->scr = nullptr;
   }
 
   static void onPress(lv_event_t* e) {

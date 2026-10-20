@@ -1,5 +1,7 @@
 # Equipo B: cinco mejoras adicionales para revisión de Cloud
 
+> **19/10/2026 · Actualización de estado:** el propietario ha autorizado la integración completa en `main`. La revisión de Cloud y las pruebas físicas siguen pendientes. El estado actual prevalece sobre las notas históricas de esta entrega y se mantiene en [ESTADO.md](ESTADO.md).
+
 Fecha: 19/10/2026. Rama: `equipo-b/rendimiento-esp32s3`.
 Parte de la primera entrega `8c8f5c0cfe73a5e8bd5511b5e23c354028fcde6b`. El usuario ha autorizado estas cinco mejoras en la rama, **sin fusionar con main**. Continúa pendiente la aprobación del equipo A y la prueba física.
 

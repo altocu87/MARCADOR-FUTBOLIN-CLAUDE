@@ -1,5 +1,7 @@
 # Equipo B · Recuperación del acceso por QR
 
+> **19/10/2026 · Actualización de estado:** el propietario ha autorizado la integración completa en `main`. La revisión de Cloud y las pruebas físicas siguen pendientes. El estado actual prevalece sobre las notas históricas de esta entrega y se mantiene en [ESTADO.md](ESTADO.md).
+
 Fecha: 19/10/2026. Rama: `equipo-b/rendimiento-esp32s3`. Revisión y aceptación por el equipo A (Cloud): pendiente.
 
 ## Punto de partida comprobado
@@ -41,3 +43,7 @@ Código y pruebas subidos en `7b260ed`. No fusionar con main sin revisión de Cl
 Publicación solicitada con `solo_qr=true` desde esta rama: [GitHub Actions 39285672094](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39285672094). Último estado observado: **queued**, sin pasos ejecutados. No se declara la función publicada ni el login real validado. Tras finalizar, comprobar OPTIONS → 204 y POST sin sesión → 401; después realizar la prueba autenticada con permiso del dueño. La consulta directa con la CLI también devuelve 403 de permisos, por lo que la publicación depende del secreto de Actions.
 
 El firmware de la ampliación anterior (`f90562b`, run 39283316174) ya figura como compilado correctamente en GitHub. La ejecución de pruebas 39283316185 muestra un resultado global failure pero su único trabajo sigue figurando queued, sin pasos, registros ni anotaciones: no hay evidencia de un fallo del código. Las pruebas nuevas de `7b260ed` están solicitadas en 39285661464; las 304 pruebas locales y la prueba del navegador sí han pasado.
+
+## Comprobación posterior de publicación (19/10/2026)
+
+La ejecución [39285672094](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39285672094) terminó correctamente. El endpoint responde OPTIONS 204 y rechaza POST sin sesión con 401. Esto sustituye el estado «queued» descrito arriba. No acredita todavía el recorrido con una cuenta real y la placa física.

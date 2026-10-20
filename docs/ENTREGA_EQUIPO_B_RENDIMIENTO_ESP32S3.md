@@ -1,5 +1,7 @@
 # Entrega del equipo B al equipo A (Cloud)
 
+> **19/10/2026 · Actualización de estado:** el propietario ha autorizado la integración completa en `main`. La revisión de Cloud y las pruebas físicas siguen pendientes. El estado actual prevalece sobre las notas históricas de esta entrega y se mantiene en [ESTADO.md](ESTADO.md).
+
 Fecha: 19/10/2026. Estado: **pendiente de revisión y validación física por el equipo A**.
 Rama: `equipo-b/rendimiento-esp32s3`.
 **Ampliación posterior autorizada:** [cinco mejoras ligeras, costes, pruebas y captura](AMPLIACION_EQUIPO_B_MEJORAS_LIGERAS_ESP32S3.md). Este documento describe la primera entrega; consultar también la ampliación antes de aprobar la rama.

@@ -1,5 +1,7 @@
 # Actualizaciones de la pantalla ESP32-S3 · versión 0.1
 
+> **19/10/2026 · Actualización de estado:** el propietario ha autorizado la integración completa en `main`. La revisión de Cloud y las pruebas físicas siguen pendientes. El estado actual prevalece sobre las notas históricas de esta entrega y se mantiene en [ESTADO.md](ESTADO.md).
+
 Decisión del dueño del 19/10/2026: la numeración visible de la aplicación **nativa** empieza en **0.1** y continúa en **0.x**. Pasar a 1.0 requiere que él lo autorice expresamente. La app web, el protocolo y el motor tienen numeraciones independientes.
 
 ## Para quien usa el futbolín
