@@ -4,7 +4,7 @@
 
 El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimiento-esp32s3`, incluidas las mejoras del QR. La revisión independiente de Cloud sigue pendiente; no se presenta como realizada.
 
-**Pantalla nativa publicada: 0.2 build 54. Última verificada en placa: 0.1 build 49; instalación de 0.2 pendiente de autorización.** Mantener 0.x hasta autorización expresa para 1.0. La app web y el motor mantienen su numeración independiente. Ver [actualizaciones y política de versiones](ACTUALIZACIONES_PANTALLA.md).
+**Pantalla nativa publicada: 0.2 build 54. Instalada y verificada en placa: 0.2 build 54 en COM6, por autorización del propietario.** Mantener 0.x hasta autorización expresa para 1.0. La app web y el motor mantienen su numeración independiente. Ver [actualizaciones y política de versiones](ACTUALIZACIONES_PANTALLA.md).
 
 | Trabajo | Estado del código y comprobaciones | Pendiente |
 |---|---|---|
@@ -13,8 +13,8 @@ El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimien
 | Acceso mediante QR | Móvil y función publicados en main; QR visible y cancelación probada en placa. OPTIONS 204 y POST sin sesión 401 | Confirmación autenticada desde el móvil |
 | Actualizaciones de la pantalla | Instalada 0.1 build 49; novedades, deslizamiento y guía comprobados en placa | Ensayar la barra durante OTA desde la propia pantalla |
 | Integración en main | Entrega USB/sesiones integrada en `369e153`; pruebas, firmware 0.2 y web publicados correctamente | Revisión independiente de Cloud |
-| Instalación en la placa | QR original y optimizada 0.1 instalados y verificados en COM6; 0.2 preparada sin regrabar | Autorización para instalar 0.2; después repetir el incidente físico |
-| Bloqueo USB y sesiones | Avisos espontáneos sin espera, diagnóstico apagado completo, recordar sesión y cierre por aparato; [entrega a Cloud](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) | Login real por QR y validación física de 0.2 |
+| Instalación en la placa | 0.2 build 54 instalada con hash verificado; cinco recorridos válidos y fotos idénticas. [Informe físico](VALIDACION_PLACA_0_2_20261020.md) | Repetir con el dedo las flechas del incidente; revisar límites del diagnóstico USB |
+| Bloqueo USB y sesiones | Avisos espontáneos sin espera, diagnóstico apagado completo, recordar sesión y cierre por aparato; [entrega a Cloud](ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) | Login real por QR; repetición del incidente original y diagnóstico de capturas/toque posterior |
 | Límites de acceso en Supabase | Consulta de solo lectura vía Actions rechazada con HTTP 403 | Añadir auth_config_read al token de GitHub y repetir; no se presupone acceso indefinido en el servidor |
 
 Resultados físicos del 20/10/2026: [VALIDACION_PLACA_20261020.md](VALIDACION_PLACA_20261020.md).
