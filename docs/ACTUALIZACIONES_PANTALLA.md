@@ -84,3 +84,8 @@ La versión 0.1 se ha integrado y publicado en main por autorización expresa de
 ## Instalación local posterior · sonidos 0.6 · 22/10/2026
 
 El dueño autorizó la corrección conjunta e instalación local de 0.6. Código y notas en la rama B, sin fusionar main ni publicar OTA. Instalación y conservación de 61 voces/dos partidos comprobadas; medidas acústicas pendientes. Ver [entrega](ENTREGA_SONIDOS_0_6_20261022.md) y [validación física](VALIDACION_PLACA_0_6_20261022.md). Esta autorización mantiene la numeración en 0.x y no autoriza pasar a 1.0.
+
+
+## Instalación local 0.7 y paquete de 123 sonidos · 22/10/2026
+
+El dueño autorizó e instaló la variedad 70/30, bolsas por grupo y la tanda completa: 123 WAV verificados, 98 activos y 25 exclusivos de torneo guardados sin activarlos. Dos partidos y 61 WAV anteriores conservados tras reiniciar. Rama B sin fusionar main ni publicar OTA; se mantiene 0.x. [Entrega y reglas](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). Escucha/latencia y revisión independiente de A/Cloud pendientes.

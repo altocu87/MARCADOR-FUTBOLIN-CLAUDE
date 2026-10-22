@@ -1,6 +1,11 @@
 # Estado del proyecto
 
-## Corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026
+## Variedad y paquete de sonidos 0.7 · equipo B · 22/10/2026
+
+**0.7 instalada en COM6; 123 audios verificados en SD, 98 activos y 25 exclusivos de torneo reservados sin selección automática.** Rama `equipo-b/rendimiento-esp32s3`, código `642a4a0`, sin fusionar main ni publicar OTA. Reparto 70 % específico / 30 % comodín y rondas completas por grupo sin repetir entre rondas si hay alternativas. Se conservaron 61 WAV y ambos partidos; se añadieron 62 y se comprobaron tamaño/CRC completo y catálogo después de reiniciar. [Entrega para A/Cloud](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). La pantalla aún no implementa Torneos. Regresión local y GitHub correctos; pruebas acústicas y revisión independiente de Cloud pendientes. El desfase del RTC cercano a dos minutos no se reajustó.
+
+
+## Entrega anterior · corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026
 
 **Pantalla 0.6 instalada y verificada en COM6; 61 voces conservadas y dos partidos intactos tras reiniciar.** Código `8b17155`, en `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. Regresión nativa completa, 314 pruebas de app/herramientas, 21 pruebas del instalador y compilación real correctas; Pruebas y Firmware de GitHub también correctos. Dos lecturas de CRC completo por cada WAV, sin sobrescribir ninguno. [Entrega para A/Cloud](ENTREGA_SONIDOS_0_6_20261022.md) · [Validación física](VALIDACION_PLACA_0_6_20261022.md). Se mantienen seis pools y límite 1.024. Revisión independiente de Cloud y latencia acústica pendientes; persiste un desfase del RTC cercano a dos minutos, sin reajuste automático.
 

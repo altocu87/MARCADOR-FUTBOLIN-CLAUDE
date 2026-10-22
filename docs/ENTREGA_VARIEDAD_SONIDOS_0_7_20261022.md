@@ -1,6 +1,6 @@
 # Variedad y paquete de comentarios 0.7 · equipo B · 22/10/2026
 
-Rama `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. El dueño aprobó el reparto 70/30, rondas sin repetición y la subida de la tanda completa. Código y paquete preparados; la instalación física se registra al final de esta entrega cuando se complete. A/Cloud debe revisar el cambio; no se presenta como revisado por Cloud.
+Rama `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. El dueño aprobó el reparto 70/30, rondas sin repetición y la subida de la tanda completa. **Código y paquete instalados: 123 audios en SD, 98 activos y 25 reservados, catálogo y dos partidos comprobados tras reiniciar.** Ver [validación física](VALIDACION_PLACA_0_7_20261022.md). A/Cloud debe revisar el cambio; no se presenta como revisado por Cloud.
 
 ## Comportamiento de las frases
 
@@ -12,7 +12,7 @@ No se lee la SD para sortear, no se abre ningún candidato adicional ni se preca
 
 Las anulaciones usan exclusivamente su grupo, nunca frases de gol. Se mantienen silencio/sonidos personalizados, prioridad de anulación de animales y aviso único de penalti de la 0.6. Estos nuevos contextos corresponden a goles aceptados; los animales continúan con la simplificación acordada. No se altera el momento de inicio del comentario tras presentar el marcador.
 
-## Catálogo que se instalará
+## Catálogo instalado
 
 **123 archivos: 98 activos y 25 reservados.** Son los 61 anteriores y 62 nuevos, todos PCM mono 16 bits/16 kHz. Total preparado: **46.229.236 bytes**, sin duplicados exactos dentro de una misma familia. Se conservan los WAV originales. Los archivos del juego no se incorporan a GitHub; solo código, reglas y metadatos de procedencia/hash.
 
@@ -43,7 +43,7 @@ Los 17 comodines nuevos se unen a los 46 existentes; las dos tandas de seguir pe
 
 ## Cambios para A/Cloud
 
-- `s3_comentarios.h`: `Catalog::pick` aplica el reparto, `draw` agota bolsas, `goalMask` añade los tres contextos. `availableOnly` y `clear/add` reinician correctamente las bolsas al cambiar referencias. Las máscaras pasan a `PoolMask` de 32 bits y el sketch conserva ese tipo; permite declarar más grupos hasta 32 sin truncamiento. Solo están registrados los pools 0–8; añadir uno requiere reglas, herramientas, pruebas y nueva versión. El máximo sigue siendo 1.024 referencias activas, no 1.024 por grupo.
+- `s3_comentarios.h`: `Catalog::pick` aplica el reparto, `draw` agota bolsas, `goalMask` añade los tres contextos. `availableOnly` y `clear/add` reinician correctamente las bolsas al cambiar referencias. Las máscaras pasan a `PoolMask` de 32 bits y el sketch conserva ese tipo; permite declarar más grupos hasta 32 sin truncamiento. Solo están registrados los pools 0–8; añadir uno requiere reglas, herramientas, pruebas y nueva versión. El máximo sigue siendo 1.024 referencias activas, no 1.024 por grupo. El instalador limita además el paquete completo (activos más reservados) a 1.024 archivos.
 - La permutación afecta únicamente a códigos dentro de su pool en RAM; no cambia asociaciones ni rutas. `save` continúa recibiendo el catálogo nuevo sin consumir, con su CRC de filas. No persistir una permutación con una CRC antigua.
 - `preparar-comentarios.py`: clasificador explícito de los nombres recibidos; normaliza tildes para reconocer «EQUIPÒ» y conserva el original. Los números de exportación no son marcadores. Las familias exclusivas de torneo tienen `pool=null` en `reserved_files`, nunca un grupo de gol de reserva inventado.
 - `subir-comentarios.ps1` y `CommentarySdInstaller.cs`: validan todos los archivos, incluidos reservados, pero la lista de filas activas puede ser un subconjunto único del paquete. La CRC se calcula sobre esas filas; no se admiten códigos ajenos/duplicados ni grupos no registrados. Todos los datos se releen antes de activar; el total esperado del catálogo es el activo, no el almacenado. Los nuevos pools 6–8 exigen firmware >=0.7 incluso si un manifiesto declara una mínima menor. Se mantienen las comprobaciones y recuperación de ACK de 0.6.
@@ -58,3 +58,8 @@ Pruebas específicas: 200.000 sorteos para 70/30 y otros 200.000 para 30/35/35 c
 **Regresión nativa completa y compilación real correctas; 314 pruebas de app/herramientas, seis de clasificación y 29 del instalador correctas.** El instalador prueba también almacenar reservados sin activarlos, corrupción local/remota de reservados, referencia ajena y duplicado activo. No se crean partidos ni goles físicos para verificar esta entrega. La escucha y medición de latencia real con el dueño siguen pendientes.
 
 La instalación física debe conservar los dos partidos originales, los 61 WAV previos, preferencias y recursos. Se verifican versión, memoria, archivo completo por CRC y catálogo antes/después de reiniciar. Solo se graba app0, sin formatear ni escribir la imagen completa de flash. El desfase del RTC documentado en 0.6 no se reajusta por esta entrega.
+
+
+## Instalación completada
+
+0.7 instalada en COM6, 61 WAV preservados y 62 añadidos; 123 verificados, 98 activos y 25 de torneo reservados tras reiniciar. Ver el informe físico y el catálogo instalado enlazados arriba. Main permanece sin fusionar; pruebas acústicas y revisión A/Cloud pendientes.
