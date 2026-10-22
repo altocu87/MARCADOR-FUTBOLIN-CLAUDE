@@ -16,6 +16,7 @@ struct View {
   uint8_t winner;  // 0 Blanco, 1 Azul
   uint8_t white, blue;
   char facts[64];  // «Duración 00:17 · …»
+  char team[2][28];  // equipo fijo de cada lado (vacío: BLANCO / AZUL)
 };
 
 struct Hooks {
@@ -121,6 +122,15 @@ static bool active() { return scr && lv_screen_active() == scr; }
 
 // Marcador centrado en x = 400 con los huecos de la app (rótulo · cifra · guion · cifra · rótulo).
 static void layout(const View& v) {
+  for (int t = 0; t < 2; t++) {
+    lv_label_set_text(teamL[t], v.team[t][0] ? v.team[t] : (t ? "AZUL" : "BLANCO"));
+    lv_obj_set_width(teamL[t], LV_SIZE_CONTENT);
+    lv_obj_update_layout(teamL[t]);
+    if (lv_obj_get_width(teamL[t]) > 170) {
+      lv_label_set_long_mode(teamL[t], LV_LABEL_LONG_MODE_DOTS);
+      lv_obj_set_width(teamL[t], 170);
+    }
+  }
   char b[4];
   snprintf(b, sizeof(b), "%u", v.white);
   lv_label_set_text(num[0], b);
@@ -152,7 +162,8 @@ static void update(const View& v) {
     build(v.winner);
     ui::show(scr);
     layout(v);
-  } else if (v.white != shown.white || v.blue != shown.blue || strcmp(v.facts, shown.facts)) {
+  } else if (v.white != shown.white || v.blue != shown.blue || strcmp(v.facts, shown.facts) ||
+             strcmp(v.team[0], shown.team[0]) || strcmp(v.team[1], shown.team[1])) {
     layout(v);
   }
   shown = v;

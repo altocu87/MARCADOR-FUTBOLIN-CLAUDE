@@ -30,6 +30,7 @@ struct Preferences {
     sim::nvs[k] = std::vector<uint8_t>(v, v + strlen(v));
     return strlen(v);
   }
+  bool isKey(const char* k) { return sim::nvs.count(k) > 0; }
   size_t getBytes(const char* k, void* buf, size_t len) {
     auto it = sim::nvs.find(k);
     if (it == sim::nvs.end()) return 0;

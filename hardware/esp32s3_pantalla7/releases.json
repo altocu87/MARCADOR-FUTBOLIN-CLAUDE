@@ -5,12 +5,14 @@
     {
       "version": "0.8",
       "date": "2026-10-22",
-      "title": "Ajustes nuevos en la pantalla",
+      "title": "Ajustes completos en la pantalla",
       "changes": [
-        "Ajustes tiene un menú de botones grandes, con Partido, Sonido, Pantalla y Mando nuevos.",
-        "Partido: cómo se gana, goles y minutos de siempre y quién tira primero en los penaltis.",
+        "Ajustes con botones grandes: Partido, Sonido, Pantalla, Mando, Equipos y Datos nuevos.",
+        "Partido y Pantalla: cómo se gana, quién tira primero los penaltis, brillo, reposo y poner la hora.",
         "Sonido: qué suena en cada momento, con botón para oírlo, y el volumen.",
-        "Pantalla: brillo, cuándo sale el reloj de reposo (o nunca) y poner la hora con el Wi-Fi.",
+        "Equipos fijos: una pareja con nombre sale así en el marcador; con cuenta, se comparten con la app.",
+        "Cada jugador tiene su QR: con el móvil se ve su perfil, igual que desde la app.",
+        "Datos: modo prueba sin tocar tus datos y copias de seguridad en la tarjeta para restaurarlas.",
         "El mando se actualiza con el programa de su mini (Super Mini o C3-Zero); si no lo dice, se elige una vez."
       ]
     },

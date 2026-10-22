@@ -44,6 +44,7 @@ struct View {
   bool confirmAbandon;
   // Fichas de jugadores bajo cada marcador (0 = sin jugadores: la tarjeta ocupa todo el alto)
   uint8_t nPlayers[2];
+  char team[2][28];             // nombre del equipo fijo de cada lado (vacío: BLANCO / AZUL)
   struct Card {
     uint32_t code;
     char name[28], meta[40], title[32], photo[72];  // photo: ruta «A:…» de la foto o vacía (iniciales)
@@ -860,6 +861,19 @@ static void update(const View& v) {
   vis(mp[1], v.matchPoint == 2);
   vis(mp[2], v.matchPoint == 3);
   setMatchPoint(v.matchPoint);
+  // Equipo fijo: su nombre en vez de BLANCO / AZUL (si no cabe, con puntos suspensivos).
+  for (int t = 0; t < 2; t++) {
+    const char* name = v.team[t][0] ? v.team[t] : (t ? "AZUL" : "BLANCO");
+    if (!first && !strcmp(name, lv_label_get_text(teamLabel[t]))) continue;
+    lv_label_set_text(teamLabel[t], name);
+    lv_obj_set_width(teamLabel[t], LV_SIZE_CONTENT);
+    lv_obj_update_layout(teamLabel[t]);
+    if (lv_obj_get_width(teamLabel[t]) > (int32_t)PANEL_W - 28) {
+      lv_label_set_long_mode(teamLabel[t], LV_LABEL_LONG_MODE_DOTS);
+      lv_obj_set_width(teamLabel[t], (int32_t)PANEL_W - 28);
+    }
+    ui::place(teamLabel[t], PANEL_W / 2 - 3 + 1.8f, 10, 0);
+  }
   if (first || strcmp(v.info, shown.info)) {
     lv_label_set_text(info, v.info);
     ui::place(info, 400, 58.8f, 20.4f);

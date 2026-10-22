@@ -64,6 +64,7 @@
 #include "ui_cargando.h"
 #include "s3_loco.h"
 #include "s3_partidos.h"
+#include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -399,6 +400,7 @@ static Snapshot takeSnapshot() {
 
 // La racha se invalida con los eventos del motor, nunca por el paso de un fotograma.
 static bool streakDirty = true, matchFixedDirty = true;
+static bool rankingFresh = false;  // RANKING: rehacer la pantalla (datos nuevos)
 static uint8_t streakCount = 0, streakTeam = 0;
 static uint8_t lastStreak() {
   if (!streakDirty) return streakCount;
@@ -1006,7 +1008,9 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 }
 
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi y actualizar (usa lo de arriba)
-#include "s3_opciones.h"  // AJUSTES: menú, partido, sonido, pantalla y mando
+#include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
+#include "s3_perfil.h"    // el QR del perfil de cada jugador
+#include "s3_opciones.h"  // AJUSTES: menú y sus apartados
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -1411,7 +1415,6 @@ static void onConfigNext() {
 }
 // Atrás desde elegir jugadores: lo elegido se guarda por si se vuelve a CONTINUAR (como la app).
 // Inicio → RANKING (de momento, el historial de partidos; TORNEO y RETOS llegarán más adelante).
-static bool rankingFresh = false;
 static void onHomeMenu(uint8_t which) {
   if (which == inicio::RANKING) {
     screen = Screen::Ranking;
@@ -1467,6 +1470,7 @@ static bool nubeWifiDown() {
 
 // Recién entrado con la cuenta: todo lo de la placa se apunta para subir.
 static void nubeLoggedIn() {
+  if (equipos::count) equipos::save(true);  // los equipos de aquí, también (se unen con los de la cuenta)
   for (int i = 0; i < partidos::count; i++) nube::matchSaved(partidos::rows[i].id);
   for (int i = 0; i < jugadores.count; i++) nube::playerChanged(jugadores.list[i].code);
 }
@@ -1554,9 +1558,20 @@ static void formatClock(char* out, size_t n, uint32_t ms) {
 // Copia de presentación sin temporizadores: textos, reglas y fichas se preparan al iniciar,
 // al cambiar de parte o cuando la app actualiza un jugador. No conserva punteros al almacén.
 static partido::View matchFixed;
+// Nombre del equipo fijo de cada lado (s3_equipos.h), si juega una pareja guardada.
+static void clubNames(char out[2][28]) {
+  for (int t = 0; t < 2; t++) {
+    out[t][0] = 0;
+    if (!haveTeams || chosenTeams.n[t] != 2) continue;
+    const equipos::Club* c = equipos::findCodes(jugadores, chosenTeams.code[t][0], chosenTeams.code[t][1]);
+    if (c) snprintf(out[t], 28, "%s", c->name);
+  }
+}
+
 static void prepareMatchFixed() {
   memset(&matchFixed, 0, sizeof(matchFixed));
   partido::View& v = matchFixed;
+  clubNames(v.team);
   const mfv3::Config& c = eng.config();
   v.mode = chosenMode;
   v.period = (uint8_t)eng.period();
@@ -1745,6 +1760,7 @@ static void victoryView(victoria::View& v) {
   v.winner = (uint8_t)eng.winner();
   v.white = s.white;
   v.blue = s.blue;
+  clubNames(v.team);
   char d[8];
   formatClock(d, sizeof(d), eng.totalTimeMs());
   int n = snprintf(v.facts, sizeof(v.facts), "Duración %s", d);
@@ -1800,8 +1816,10 @@ static void render() {
     char warn[32];
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
     else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
-    inicio::setStatus(remoteLinked(), updateAvailable(), low || !rtc.clockOk ? warn : nullptr, nube::loggedIn() ? nube::pendingCount : 0);
+    inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
+                      nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2099,6 +2117,7 @@ void setup() {
   victoria::hooks.home = goHome;
   elegir::hooks.back = onPlayersBack;
   fichas::hooks.back = onFichasBack;
+  fichas::hooks.qr = opciones::openQr;
   fichas::hooks.changed = onFichaChanged;
   fichas::hooks.removed = onFichaRemoved;
   cuenta::hooks.back = onCuentaBack;
@@ -2141,6 +2160,18 @@ void setup() {
 #else
   nube::begin(&jugadores, "../build/placa");
 #endif
+  // Equipos fijos y datos: en la carpeta de los jugadores. Si se fue la luz a medio cambiar los datos (modo prueba o
+  // restaurar una copia), se dejan como estaban.
+  if (jugadores.ok) {
+    equipos::begin(&FFat);
+    perfil::fs_ = &FFat;
+    datos::chip = &FFat;
+    datos::recover();
+  }
+  nube::clubsOut = []() -> char* { return equipos::dirty ? equipos::toJson() : nullptr; };
+  nube::clubsGone = equipos::goneIds;
+  nube::clubsIn = [](const char* arr) { equipos::fromJson(arr); };
+  nube::clubsDone = equipos::pushed;
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();

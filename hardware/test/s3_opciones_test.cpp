@@ -71,11 +71,43 @@ static void oldMandoInfo(uint32_t build) {
   loop();
 }
 
+// Nube simulada: login, bajada con los equipos de la app en las preferencias, lectura de las preferencias, subidas
+// y el perfil público. Guarda lo que se sube.
+static std::string cloudPrefs, lastPrefsPost, lastProfile;
+static int posts = 0;
+static nube::Resp cloudReply(int code, const std::string& body) {
+  nube::Resp r;
+  r.code = code;
+  r.body = (char*)malloc(body.size() + 1);
+  memcpy(r.body, body.c_str(), body.size() + 1);
+  r.len = body.size();
+  return r;
+}
+static nube::Resp fakeCloud(const char* method, const char* url, const char*, const char*, const char* body) {
+  std::string u = url;
+  if (u.find("/auth/v1/token") != std::string::npos)
+    return cloudReply(200, "{\"access_token\":\"a\",\"refresh_token\":\"r1\",\"user\":{\"id\":\"u1\",\"email\":\"dueno@mesa.es\"}}");
+  if (u.find("rpc/publicar_perfil_jugador") != std::string::npos) {
+    lastProfile = body;
+    return cloudReply(204, "");
+  }
+  if (!strcmp(method, "GET") && u.find("select=datos&tipo=eq.prefs") != std::string::npos)
+    return cloudReply(200, "[{\"datos\":" + cloudPrefs + "}]");
+  if (!strcmp(method, "GET"))
+    return cloudReply(200, "[{\"tipo\":\"prefs\",\"id\":\"mesa\",\"borrado\":false,\"actualizado\":\"2026-10-22T10:00:00+00:00\",\"datos\":" + cloudPrefs + "}]");
+  posts++;
+  if (body && strstr(body, "\"tipo\":\"prefs\"")) lastPrefsPost = body;
+  return cloudReply(201, "");
+}
+static void keyTap(int row, int col) { tap(24 + col * 76 + 35, 150 + row * 66 + 30); }
+static void askYes() { tap(90 + 326 + 135, 100 + 190 + 34); }
+
 int main() {
   assets::setRoot(getenv("MFV3_ASSETS") ? getenv("MFV3_ASSETS") : "../build/placa/fat");
   sim::now = 1000;
   setup();
   test.active = false;
+  nube::logout();  // sin la cuenta que pudiera dejar una prueba anterior
   nube::phase = nube::OFF;
   goHome();
   run(300);
@@ -226,11 +258,180 @@ int main() {
   tap(408 + 184, 240);       // C3-ZERO: no
   assert(mandoModelChosen == mfv3::ota::MODEL_SUPER_MINI && shows("El mando dice que es una Super Mini"));
 
-  // Volver: menú y después Inicio.
+  // ---- EQUIPOS: crear una pareja con nombre; sale en el marcador; se une con los de la cuenta.
   tapBtn(ui::BACK);
+  assert(opciones::view == opciones::View::Menu && shows("EQUIPOS") && shows("DATOS"));
+  shot("ajustes-menu-completo");
+  uint32_t pa = jugadores.add("Ana", nullptr), pb = jugadores.add("Bea", nullptr), pc = jugadores.add("Carla", nullptr);
+  assert(pa && pb && pc);
+  char ida[48], idb[48], idc[48];
+  jugadores.idOf(pa, ida, sizeof(ida));
+  jugadores.idOf(pb, idb, sizeof(idb));
+  jugadores.idOf(pc, idc, sizeof(idc));
+  tapBtn(setting(ui::Btn::SetTeams));
+  assert(opciones::view == opciones::View::Teams && shows("NUEVO EQUIPO") && shows("Sin equipos"));
+  tap(400, 76 + 36);  // + NUEVO EQUIPO
+  assert(opciones::view == opciones::View::TeamName);
+  keyTap(1, 3); keyTap(2, 0); keyTap(1, 5); keyTap(1, 8);  // R a y o (tras la primera, minúsculas)
+  assert(!strcmp(opciones::teamName, "Rayo"));
+  shot("ajustes-equipo-nombre");
+  tapBtn(ui::BACK);  // SIGUIENTE
+  assert(opciones::view == opciones::View::TeamPlayers);
+  int ia = -1, ib = -1;
+  for (int i = 0; i < jugadores.count; i++) {
+    if (jugadores.list[i].code == pa) ia = i;
+    if (jugadores.list[i].code == pb) ib = i;
+  }
+  auto card = [](int i) { tap(16 + (i % 4) * 196 + 90, 76 + 4 + (i / 4) * 172 + 80); };
+  card(ia);
+  card(ib);
+  shot("ajustes-equipo-pareja");
+  tapBtn(ui::BACK);  // GUARDAR
+  assert(equipos::count == 1 && !strcmp(equipos::list[0].name, "Rayo") && equipos::dirty);
+  assert(opciones::view == opciones::View::TeamDetail && shows("Rayo") && shows("Ana") && shows("Bea"));
+  assert(FFat.exists("/jugadores/equipos.txt") && FFat.exists("/jugadores/equipos.pend"));
+  shot("ajustes-equipo");
+  // En el partido, el lado de Ana y Bea se llama «Rayo».
+  chosenTeams = elegir::Teams();
+  chosenTeams.n[0] = 2; chosenTeams.code[0][0] = pa; chosenTeams.code[0][1] = pb;
+  chosenTeams.n[1] = 1; chosenTeams.code[1][0] = pc;
+  haveTeams = true;
+  screen = Screen::Home;
+  startMatch();
+  run(400);
+  assert(inMatch && shows("Rayo") && shows("AZUL"));
+  inMatch = false;
+  haveTeams = false;
+  goHome();
+  run(200);
+  // Con cuenta: lo de la placa se sube unido a lo de la app (sin tocar el resto de sus preferencias).
+  cloudPrefs = std::string("{\"soundEvents\":{\"goal\":{\"kind\":\"none\"}},\"clubs\":[{\"id\":\"club_app\",\"name\":\"App FC\",\"logo\":\"emoji:x\",\"playerIds\":[\"") +
+               ida + "\",\"" + idc + "\"],\"createdAt\":5}]}";
+  nube::http = fakeCloud;
+  nube::wifiUp = nullptr;
+  nube::wifiDown = nullptr;
+  snprintf(nube::saved.refresh, sizeof(nube::saved.refresh), "r0");
+  nube::phase = nube::IDLE;
+  nube::sync();
+  for (int i = 0; i < 30 && nube::busy(); i++) nube::apply();
+  assert(!nube::busy() && nube::phase == nube::OK);
+  assert(lastPrefsPost.find("Rayo") != std::string::npos && lastPrefsPost.find("App FC") != std::string::npos);
+  assert(lastPrefsPost.find("soundEvents") != std::string::npos);
+  assert(equipos::count == 2 && !equipos::dirty && equipos::find(ida, idc) && !FFat.exists("/jugadores/equipos.pend"));
+  // Borrar uno aquí: al subir, la cuenta no lo devuelve.
+  equipos::removeAt(equipos::indexOf("club_app"));
+  lastPrefsPost.clear();
+  nube::sync();
+  for (int i = 0; i < 30 && nube::busy(); i++) nube::apply();
+  assert(lastPrefsPost.find("Rayo") != std::string::npos && lastPrefsPost.find("App FC") == std::string::npos);
+  assert(equipos::count == 1);
+  // Y lo que cambia en la cuenta (sin cambios aquí) llega a la placa.
+  cloudPrefs = std::string("{\"clubs\":[{\"id\":\"club_x\",\"name\":\"Nuevo\",\"logo\":\"\",\"playerIds\":[\"") + idb + "\",\"" + idc + "\"],\"createdAt\":9}]}";
+  nube::sync();
+  for (int i = 0; i < 30 && nube::busy(); i++) nube::apply();
+  assert(equipos::count == 1 && !strcmp(equipos::list[0].name, "Nuevo"));
+  equipos::put("", "Rayo", ida, idb, 1);  // otra vez el de antes, para lo que sigue
+  tap(750, 46);  // Inicio → engranaje → AJUSTES
+  assert(screen == Screen::Settings && opciones::view == opciones::View::Menu);
+
+  // ---- QR DEL PERFIL: código propio, perfil calculado en la placa y publicado.
+  opciones::openQr(pa);
+  run(800);  // la tarea termina y el texto se repasa cada medio segundo
+  assert(opciones::view == opciones::View::Qr && opciones::qrHave && strlen(opciones::qrCreds.token) == 22);
+  assert(lastProfile.find("\"p_token\":\"") != std::string::npos && lastProfile.find("\"name\":\"Ana\"") != std::string::npos);
+  assert(lastProfile.find("\"stats\":{\"general\":") != std::string::npos && lastProfile.find("\"rewards\":[]") != std::string::npos);
+  assert(shows("Listo") && FFat.exists("/jugadores/perfiles.txt"));
+  shot("ajustes-qr");
+  {
+    FILE* f = fopen("../build/perfil-placa.json", "wb");
+    if (f) { fputs(lastProfile.c_str(), f); fclose(f); }
+  }
+  perfil::Creds again;
+  assert(perfil::credsFor(pa, again) && !strcmp(again.token, opciones::qrCreds.token));  // el mismo código siempre
+  opciones::view = opciones::View::Menu;
+  opciones::go(opciones::View::Menu);
+  screen = Screen::Settings;
+
+  // ---- DATOS: modo prueba.
+  datos::removeStdioTree("../build/placa/copias");
+  int realMatches = partidos::count, realPlayers = jugadores.count;
+  tapBtn(setting(ui::Btn::SetData));
+  assert(opciones::view == opciones::View::Data && shows("MODO PRUEBA") && shows("COPIA DE SEGURIDAD"));
+  shot("ajustes-datos");
+  tap(536 + 124, 76 + 34 + 36);  // ACTIVAR
+  assert(shows("¿Activar el modo prueba?"));
+  askYes();
+  run(200);
+  assert(datos::demo && jugadores.count == 12 && partidos::count == 40 && nube::paused && equipos::count == 0);
+  assert(FFat.exists("/jugadores.real") && datos::stdioExists("../build/placa/partidos-sd.real"));
+  assert(shows("Activo"));
+  shot("ajustes-datos-prueba");
+  // El perfil de un jugador de prueba (con partidos), para compararlo con el de la app (tests/perfil-placa).
+  {
+    datos::removeStdioTree("../build/perfil-demo");
+    datos::copyStdio(partidos::dir, "../build/perfil-demo");
+    char* snap = perfil::snapshot(jugadores.list[0].code, 1792000000u);
+    assert(snap);
+    FILE* f = fopen("../build/perfil-demo/perfil.json", "wb");
+    fputs(snap, f);
+    fclose(f);
+    free(snap);
+    f = fopen("../build/perfil-demo/jugadores.json", "wb");
+    fputs("[", f);
+    for (int i = 0; i < jugadores.count; i++) {
+      char id[48];
+      jugadores.idOf(jugadores.list[i].code, id, sizeof(id));
+      fprintf(f, "%s{\"id\":\"%s\",\"name\":\"%s\"}", i ? "," : "", id, jugadores.list[i].name);
+    }
+    fputs("]", f);
+    fclose(f);
+  }
+  int postsBefore = posts;
+  nube::sync();
+  assert(!nube::busy() && posts == postsBefore);  // nada de prueba a la cuenta
+  tap(536 + 124, 76 + 160 + 36);  // HACER COPIA: no en modo prueba
+  assert(datos::copyCount == 0);
+  tap(536 + 124, 76 + 34 + 36);  // QUITAR
+  askYes();
+  run(200);
+  assert(!datos::demo && jugadores.count == realPlayers && partidos::count == realMatches && equipos::count == 2);
+  assert(!FFat.exists("/jugadores.real") && !datos::stdioExists("../build/placa/partidos-sd.real") && !nube::paused);
+
+  // ---- Copia de seguridad: hacer, cambiar cosas, restaurar y borrar.
+  tap(536 + 124, 76 + 160 + 36);  // HACER COPIA
+  run(200);
+  assert(datos::copyCount == 1 && datos::copies[0].players == realPlayers && datos::copies[0].matches == realMatches);
+  assert(shows("RESTAURAR"));
+  shot("ajustes-datos-copia");
+  jugadores.add("Dani", nullptr);
+  equipos::removeAt(0);
+  cfg.goalsPerPeriod = 3;
+  saveConfig();
+  tap(16 + 400 + 105, 76 + 250 + 8 + 32);  // RESTAURAR
+  askYes();
+  run(200);
+  assert(jugadores.count == realPlayers && equipos::count == 2 && partidos::count == realMatches && cfg.goalsPerPeriod != 3);
+  assert(!FFat.exists("/jugadores.new") && !FFat.exists("/jugadores.old"));
+  tap(16 + 618 + 71, 76 + 250 + 8 + 32);  // BORRAR la copia
+  askYes();
+  run(200);
+  assert(datos::copyCount == 0);
+
+  // ---- Corte de luz a medias: al encender, todo como estaba.
+  FFat.rename("/jugadores", "/jugadores.real");  // solo los jugadores apartados (modo prueba a medio poner)
+  datos::recover();
+  assert(!datos::demo && jugadores.count == realPlayers && FFat.exists("/jugadores") && !FFat.exists("/jugadores.real"));
+  FFat.rename("/jugadores", "/jugadores.new");  // restaurar a medias: la de verdad ya fuera, la nueva lista
+  datos::recover();
+  assert(jugadores.count == realPlayers && !FFat.exists("/jugadores.new"));
+  nube::logout();
+  tapBtn(ui::BACK);
+  assert(opciones::view == opciones::View::Menu);
+
+  // Volver: menú y después Inicio.
   assert(opciones::view == opciones::View::Menu);
   tapBtn(ui::BACK);
   assert(screen == Screen::Home && !opciones::active());
 
-  std::printf("Ajustes: menu, partido, sonido, pantalla, mando y su programa por modelo OK\n");
+  std::printf("Ajustes: menu, partido, sonido, pantalla, mando por modelo, equipos y nube, QR, modo prueba y copias OK\n");
 }

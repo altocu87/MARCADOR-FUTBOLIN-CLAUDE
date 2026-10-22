@@ -2,7 +2,7 @@
 
 ## Ajustes en la pantalla y mando por modelo · 0.8 · 22/10/2026
 
-Rama `claude/ajustes-placa`, **sin fusionar, sin publicar y sin grabar**. Nuevo menú de AJUSTES en la pantalla (Partido, Sonido, Pantalla, Mando, más los apartados que ya había). El mando se actualiza con el programa de su mini: Super Mini o C3-Zero. Si no dice su modelo, no se le ofrece nada hasta elegirlo en AJUSTES → MANDO. Pruebas simuladas correctas en las tres placas. Falta la prueba física. [Entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md).
+Rama `claude/ajustes-placa`, **sin fusionar, sin publicar y sin grabar**. Nuevo menú de AJUSTES en la pantalla: Partido, Sonido, Pantalla, Mando, Equipos fijos, Datos (modo prueba y copias de seguridad), QR del perfil de cada jugador y los apartados que ya había. El mando se actualiza con el programa de su mini: Super Mini o C3-Zero. Si no dice su modelo, no se le ofrece nada hasta elegirlo en AJUSTES → MANDO. Pruebas simuladas correctas en las tres placas. Falta la prueba física. [Entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md).
 
 ## Revisión de Cloud y fusión en main · 22/10/2026
 

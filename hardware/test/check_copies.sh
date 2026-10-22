@@ -39,6 +39,8 @@ sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_opciones_test.cpp
+# El perfil del QR calculado en la placa = el de la app (con los partidos de prueba que deja la anterior).
+(cd .. && TZ=Europe/Madrid MFV3_PERFIL_PLACA=1 npx vitest run tests/perfil-placa.test.ts)
 sh test/s3_build.sh 4 test/s3_sound_safety_test.cpp
 sh test/s3_build.sh 4 test/s3_sound_chaos_test.cpp
 g++ -std=c++17 -Wall -Wextra -Werror=misleading-indentation -DMFV3_BOARD=4 -Itest/mock_s3 -Iesp32s3_pantalla7 test/s3_audio_resilience_test.cpp -o /tmp/mfv3_audio_resilience && /tmp/mfv3_audio_resilience

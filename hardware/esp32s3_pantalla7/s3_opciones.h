@@ -14,7 +14,7 @@
 
 namespace opciones {
 
-enum class View : uint8_t { Menu, Match, Sound, Display, Mando };
+enum class View : uint8_t { Menu, Match, Sound, Display, Mando, Teams, TeamDetail, TeamName, TeamPlayers, Data, Qr };
 static View view = View::Menu;
 static lv_obj_t* scr = nullptr;
 static lv_obj_t* help = nullptr;  // explicación de una «?» (encima de todo)
@@ -33,7 +33,7 @@ struct Val {
   int arg;
   uint32_t color, shownColor;
 };
-static Opt opts[48];
+static Opt opts[72];  // hasta 64 jugadores al elegir pareja
 static Val vals[16];
 static uint8_t optCount = 0, valCount = 0;
 static uint32_t refreshAt = 0;
@@ -163,6 +163,9 @@ static void changed() {
   lastActivity = millis();
 }
 
+static void buildMenu();
+#include "s3_opciones_datos.h"  // EQUIPOS, DATOS y el QR de un jugador
+
 // ---------------------------------------------------------------- MENÚ
 // Mismos sitios que ui::SETTINGS (las pruebas tocan ahí).
 static void fillMatch(char* b, size_t n, int) {
@@ -213,6 +216,8 @@ static void onMenu(lv_event_t* e) {
 #endif
     case ui::Btn::SetScreen: go(View::Display); break;
     case ui::Btn::SetMando: go(View::Mando); break;
+    case ui::Btn::SetTeams: go(View::Teams); break;
+    case ui::Btn::SetData: go(View::Data); break;
     case ui::Btn::SetPlayers: openPlayers(); break;
     case ui::Btn::SetAccount: openAccount(); break;
     case ui::Btn::SetWifi: openWifi(); break;
@@ -234,6 +239,7 @@ static void buildMenu() {
       {ui::Btn::SetPlayers, "JUGADORES", fillPlayers}, {ui::Btn::SetAccount, "CUENTA", fillAccount},
       {ui::Btn::SetWifi, "WI-FI", fillWifi},         {ui::Btn::SetUpdate, "ACTUALIZACIONES", fillUpdate},
       {ui::Btn::SetTest, "PRUEBA DE LA PLACA", nullptr},
+      {ui::Btn::SetTeams, "EQUIPOS", fillTeams},     {ui::Btn::SetData, "DATOS", fillData},
   };
   for (const Item& it : ITEMS) {
     const ui::Rect* r = nullptr;
@@ -241,16 +247,16 @@ static void buildMenu() {
       if (b.id == it.id) r = &b.r;
     if (!r) continue;
     // Los títulos largos, un poco más pequeños: que no se partan a media palabra.
-    uint16_t size = strlen(it.title) > 12 && !strchr(it.title, ' ') ? 20 : 23;
+    uint16_t size = strlen(it.title) > 12 && !strchr(it.title, ' ') && r->w < 300 ? 20 : 23;
     lv_obj_t* b = fichas::btn(scr, r->x, r->y, r->w, r->h, "", size, fichas::Kind::Normal, onMenu, (void*)(intptr_t)it.id);
     lv_obj_t* t = lv_obj_get_child(b, 0);
     lv_label_set_text(t, it.title);
     lv_obj_set_width(t, r->w - 20);
     lv_label_set_long_mode(t, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(t, LV_ALIGN_CENTER, 0, it.fill ? -16 : 0);
+    lv_obj_align(t, LV_ALIGN_CENTER, 0, it.fill ? -13 : 0);
     if (it.fill) {
-      lv_obj_t* v = val(b, 10, r->h - 40, r->w - 20, 400, 16, it.fill);
+      lv_obj_t* v = val(b, 10, r->h - 32, r->w - 20, 400, 16, it.fill);
       lv_obj_remove_flag(v, LV_OBJ_FLAG_CLICKABLE);
     }
   }
@@ -489,7 +495,7 @@ static void buildMando() {
 static void onDelete(lv_event_t* e) {
   if (lv_event_get_target_obj(e) == scr) {
     scr = nullptr;
-    help = nullptr;
+    help = askBox = workBox = workBar = workText = teamNameLbl = nullptr;
     optCount = valCount = 0;
   }
 }
@@ -503,7 +509,7 @@ static void go(View v) {
   scr = ui::screen();
   lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, nullptr);
   ui::gradient(scr, 0x0f2140, 0x05090f);
-  help = nullptr;
+  help = askBox = workBox = workBar = workText = teamNameLbl = nullptr;
   optCount = valCount = 0;
   switch (v) {
     case View::Menu: buildMenu(); break;
@@ -513,6 +519,12 @@ static void go(View v) {
 #endif
     case View::Display: buildDisplay(); break;
     case View::Mando: buildMando(); break;
+    case View::Teams: buildTeams(); break;
+    case View::TeamDetail: buildTeamDetail(); break;
+    case View::TeamName: buildTeamName(); break;
+    case View::TeamPlayers: buildTeamPlayers(); break;
+    case View::Data: buildData(); break;
+    case View::Qr: buildQr(); break;
     default: buildMenu(); break;
   }
   refresh();
