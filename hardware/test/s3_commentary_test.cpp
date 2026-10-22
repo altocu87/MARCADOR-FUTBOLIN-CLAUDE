@@ -27,13 +27,42 @@ int main(){
   using namespace comentarios;
   sim::sdCard=true;sim::now=1000;setup();test.active=false;nube::phase=nube::OFF;goHome();
   mfv3::Engine e;uint32_t t;fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);auto b=goal(e,t,Team::White);
-  assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Encajados3)));
+  assert(goalMask(e,b,Team::White)==(1u<<Comodin)); // marcar tu tercero no significa haber encajado tres
+  fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);goal(e,t,Team::Blue);b=goal(e,t,Team::White);
+  assert(goalMask(e,b,Team::White)&(1u<<Encajados3));
+  fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);goal(e,t,Team::White);b=goal(e,t,Team::Blue);
+  assert(goalMask(e,b,Team::Blue)&(1u<<Encajados3));
+  // Tres recibidos no tienen que ser consecutivos.
+  fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::White);goal(e,t,Team::Blue);goal(e,t,Team::White);goal(e,t,Team::Blue);b=goal(e,t,Team::White);
+  assert((goalMask(e,b,Team::White)&(1u<<Encajados3)) && !(goalMask(e,b,Team::White)&(1u<<Respuesta2)));
   fresh(e,t);goal(e,t,Team::Blue);b=goal(e,t,Team::White);assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Empate)));
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);b=goal(e,t,Team::White);assert(goalMask(e,b,Team::White)&(1u<<Respuesta2));
   // No exige ir ganando (1-2) ni basta con dos goles no consecutivos.
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::White);goal(e,t,Team::Blue);b=goal(e,t,Team::White);assert(!(goalMask(e,b,Team::White)&(1u<<Respuesta2)));
   b.phase=Phase::Penalties;assert(!goalMask(e,b,Team::White));
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);t+=3100;e.undo(t);b=goal(e,t,Team::White);assert(!(goalMask(e,b,Team::White)&(1u<<Respuesta2)));
+  // Empate con DOS goles previos dentro de una ventana inclusiva de 60 s de juego.
+  for(unsigned finalAt:{70000u,70001u}){
+    fresh(e,t);
+    for(auto at:{7000u,10000u,20000u}){e.tick(at);assert(e.goal(at==10000?Team::Blue:Team::White,at)==mfv3::Result::Accepted);}
+    e.tick(finalAt);b=mfv3snd::before(e);assert(e.goal(Team::Blue,finalAt)==mfv3::Result::Accepted);
+    uint8_t mask=goalMask(e,b,Team::Blue);
+    assert(mask&(1u<<Empate));assert(bool(mask&(1u<<EmpateMovido))==(finalAt==70000));
+  }
+  fresh(e,t);goal(e,t,Team::White);b=goal(e,t,Team::Blue);
+  assert(!(goalMask(e,b,Team::Blue)&(1u<<EmpateMovido))); // empate actual no cuenta como previo
+  // El registro de un gol anulado no completa los dos anteriores válidos.
+  fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::Blue);t+=3100;assert(e.undo(t)==mfv3::Result::Accepted);
+  b=goal(e,t,Team::Blue);assert(!(goalMask(e,b,Team::Blue)&(1u<<EmpateMovido)));
+  fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::Blue);b=goal(e,t,Team::White);
+  assert(!(goalMask(e,b,Team::White)&(1u<<EmpateMovido))); // los goles rápidos sin empate no bastan
+  // Las pausas no consumen la ventana; sí se suman las partes cerradas.
+  fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::Blue);goal(e,t,Team::White);
+  e.pause(t);t+=120000;e.resume(t);b=goal(e,t,Team::Blue);assert(goalMask(e,b,Team::Blue)&(1u<<EmpateMovido));
+  mfv3::Config one;one.endCondition=mfv3::EndCondition::Time;one.minutesPerPeriod=1;t=1000;e.start(one,t);e.tick(4000);
+  e.tick(40000);e.goal(Team::White,40000);e.tick(50000);e.goal(Team::Blue,50000);e.tick(60000);e.goal(Team::White,60000);
+  e.tick(64000);assert(e.phase()==Phase::PeriodEnd);e.next(65000);e.tick(69000);
+  b=mfv3snd::before(e);assert(e.goal(Team::Blue,72000)==mfv3::Result::Accepted);assert(goalMask(e,b,Team::Blue)&(1u<<EmpateMovido));
   Catalog c;
   for(unsigned p=0;p<4;p++)for(unsigned i=0;i<200;i++)assert(c.add(p,1+p*200+i));
   assert(c.n==800);std::set<unsigned> seen;uint32_t random=123;
@@ -94,6 +123,12 @@ int main(){
   }
   crc=putCatalog(many);commit(crc);assert(catalog.n==800 && replies.back()=="COMENTARIOS_GUARDADO");
   catalog.clear();load(sndStore);assert(catalog.n==800 && catalog.counts[0]==200 && catalog.counts[3]==200);
+  // Pool añadido al final: persistencia y consulta conservan el índice 4 de anulación.
+  SD_MMC.disk.files["/sonidos/00001003.wav"]=wav(3333);
+  crc=putCatalog({{5,0x1003}});commit(crc);assert(replies.back()=="COMENTARIOS_GUARDADO");
+  catalog.clear();load(sndStore);assert(catalog.n==1 && catalog.counts[5]==1 && !catalog.counts[4]);
+  assert(catalog.pick(1u<<EmpateMovido,0,0)==0x1003);
+  command("COMENTARIOS?");assert(replies.back().find("grupos=0,0,0,0,0,1")!=std::string::npos);
   player.play({false,0x1001,{nullptr,0}},false);player.pump(millis());sim::failI2sStop=true;
   player.play({false,0x1002,{nullptr,0}},false);assert(!player.ok && !(sim::exioOut&(1u<<exio::SPEAKER_AMP)));
   sim::failI2sStop=false;

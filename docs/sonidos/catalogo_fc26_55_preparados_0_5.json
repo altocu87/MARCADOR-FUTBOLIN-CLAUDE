@@ -1391,7 +1391,9 @@
     "group4_consecutive": true,
     "group4_requires_leading": false,
     "group2_threshold": 3,
-    "group2_interpretation_pending": true,
-    "annul_audio_received": false
-  }
+    "group2_interpretation_pending": false,
+    "annul_audio_received": false,
+    "group2_scoring_team_previously_conceded": true
+  },
+  "snapshot_status": "Previous 55-file package; superseded by catalogo_fc26_61_preparados_0_5.json. Rules corrected after owner clarification; no new device installation."
 }

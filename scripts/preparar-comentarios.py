@@ -23,6 +23,7 @@ GROUPS = {
     4: (3, 'respuesta2', 'respuesta_tras_dos_o_mas_seguidos'),
     5: (0, 'comodin2', 'gol_comodin'),
     6: (0, 'comodin3', 'gol_comodin'),
+    7: (5, 'empate_movido_60s', 'empate_con_dos_previos_en_60s'),
 }
 
 def code_for(identifier):
@@ -35,11 +36,16 @@ def code_for(identifier):
 def prepare(source, output, ffmpeg):
     files = []
     used = set()
-    for path in sorted(source.glob('GOL_*.wav')):
+    for path in sorted(source.rglob('GOL_*.wav')):
         match = re.match(r'^GOL_([1-6])_.*_([0-9]+)_([0-9]+)[.]wav$', path.name)
         if not match:
-            continue
-        group, variant, repeated = map(int, match.groups())
+            match = re.match(r'^GOL_EMPATE TRAS ULTIMO MINUTO CON MAS DE 2 GOLES_([0-9]+)_([0-9]+)[.]wav$', path.name)
+            if not match:
+                continue
+            group = 7
+            variant, repeated = map(int, match.groups())
+        else:
+            group, variant, repeated = map(int, match.groups())
         if variant != repeated:
             raise ValueError('Índice de variante ambiguo: ' + path.name)
         pool, suffix, label = GROUPS[group]
@@ -118,7 +124,9 @@ def prepare(source, output, ffmpeg):
                     total_bytes=sum(f['prepared_bytes'] for f in files),
                     rules=dict(generic_with_specific=True, group4_consecutive=True,
                                group4_requires_leading=False, group2_threshold=3,
-                               group2_interpretation_pending=True, annul_audio_received=False))
+                               group2_interpretation_pending=False, group2_scoring_team_previously_conceded=True,
+                               equalizer_recent_window_ms=60000, equalizer_recent_other_goals=2,
+                               equalizer_recent_uses_play_time=True, annul_audio_received=False))
     (output / 'catalogo.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print('TOTAL', len(files), manifest['total_bytes'], 'bytes')
 

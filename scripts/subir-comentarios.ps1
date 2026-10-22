@@ -9,7 +9,7 @@ if($m.schema -ne 2 -or $m.files.Count -lt 1 -or $m.files.Count -gt 1024){throw '
 if($m.catalog_crc32 -notmatch '^[0-9a-f]{8}$'){throw 'CRC del catálogo inválido'}
 $paths=@();$codes=@();$crcs=@();$hashes=@();$verified=@()
 foreach($f in $m.files){
-  if($f.pool -notin @(0,1,2,3,4)){throw 'Grupo inválido'}
+  if($f.pool -notin @(0,1,2,3,4,5)){throw 'Grupo inválido'}
   if($f.code -notmatch '^[0-9a-f]{8}$' -or $f.crc32 -notmatch '^[0-9a-f]{8}$' -or $f.sha256 -notmatch '^[0-9a-f]{64}$'){throw 'Hashes inválidos'}
   $resolved=[IO.Path]::GetFullPath((Join-Path $root $f.package_path))
   if(-not $resolved.StartsWith($root+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Ruta fuera del paquete'}

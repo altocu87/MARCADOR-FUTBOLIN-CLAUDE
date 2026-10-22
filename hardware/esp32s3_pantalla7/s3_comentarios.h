@@ -4,11 +4,11 @@
 #include <new>
 namespace comentarios {
 static const uint16_t MAX_FILES = 1024;
-enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, PoolCount };
+enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, PoolCount };
 struct Catalog {
   uint32_t codes[MAX_FILES] = {};
   uint16_t counts[PoolCount] = {}, n = 0;
-  uint16_t previous[PoolCount] = {65535,65535,65535,65535,65535};
+  uint16_t previous[PoolCount] = {65535,65535,65535,65535,65535,65535};
   void clear(){
     n=0;
     memset(counts,0,sizeof counts);
@@ -31,11 +31,32 @@ struct Catalog {
     previous[p]=at;return codes[offset(p)+at];
   }
 };
+inline uint32_t goalTime(const mfv3::Engine& e,const mfv3::Goal& g){
+  uint32_t time=g.periodTimeMs;
+  for(uint8_t p=0;p<(uint8_t)g.period && p<3;p++)time+=e.periodDuration((mfv3::Period)p);
+  return time;
+}
+inline bool twoRecentGoals(const mfv3::Engine& e){
+  int current=(int)e.goalCount()-1;
+  while(current>=0 && e.goalAt((uint8_t)current).annulled)current--;
+  if(current<0)return false;
+  uint32_t at=goalTime(e,e.goalAt((uint8_t)current));
+  unsigned count=0;
+  for(int i=current-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);
+    if(g.annulled || !g.value)continue;
+    uint32_t previous=goalTime(e,g);
+    if(previous<=at && at-previous<=60000 && ++count>=2)return true;
+  }
+  return false;
+}
 inline uint8_t goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Team t) {
   auto s=e.score();if(b.phase==mfv3::Phase::Penalties || e.phase()==mfv3::Phase::Penalties || s.of(t)<=b.score.of(t))return 0;
   uint8_t mask=1u<<Comodin;
-  if(s.of(t)>=3)mask|=1u<<Encajados3; // el receptor ya lleva >=3 encajados, incluido el actual
-  if(s.white==s.blue)mask|=1u<<Empate;
+  if(b.score.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White)>=3)mask|=1u<<Encajados3; // marca quien ya había encajado al menos tres
+  if(s.white==s.blue){
+    mask|=1u<<Empate;
+    if(twoRecentGoals(e))mask|=1u<<EmpateMovido;
+  }
   int streak=0;bool skipCurrent=true;
   for(int i=(int)e.goalCount()-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);if(g.annulled)continue;
     if(skipCurrent){skipCurrent=false;continue;}if(g.team==t)break;if(++streak>=2){mask|=1u<<Respuesta2;break;}}
@@ -102,7 +123,7 @@ static bool save(audio::FsStore& store,const Catalog& c,uint32_t crc){
 static bool handle(const char* line,audio::FsStore& store,bool busy,mfv3snd::ReplyFn reply){
   if(strncmp(line,"COMENTARIOS",11))return false;
   char buf[160];
-  if(!strcmp(line,"COMENTARIOS?")){snprintf(buf,sizeof buf,"COMENTARIOS total=%u limite=%u grupos=%u,%u,%u,%u,%u",catalog.n,MAX_FILES,catalog.counts[0],catalog.counts[1],catalog.counts[2],catalog.counts[3],catalog.counts[4]);reply(buf);return true;}
+  if(!strcmp(line,"COMENTARIOS?")){snprintf(buf,sizeof buf,"COMENTARIOS total=%u limite=%u grupos=%u,%u,%u,%u,%u,%u",catalog.n,MAX_FILES,catalog.counts[0],catalog.counts[1],catalog.counts[2],catalog.counts[3],catalog.counts[4],catalog.counts[5]);reply(buf);return true;}
   if(busy || !store.sdOk){reply("COMENTARIOS_ERROR ocupado_o_sin_sd");return true;}
   if(!strncmp(line,"COMENTARIOS_INICIO ",19)){
     unsigned count=0;char tail=0;if(sscanf(line+19,"%u %c",&count,&tail)!=1 || !count || count>MAX_FILES){reply("COMENTARIOS_ERROR cantidad");return true;}
