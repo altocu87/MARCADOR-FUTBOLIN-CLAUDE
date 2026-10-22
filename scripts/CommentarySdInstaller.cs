@@ -115,22 +115,28 @@ public sealed class CommentarySdInstaller {
       throw new Exception("SD no disponible, hay partido activo o capacidad incoherente");
     return free;
   }
-  static long[] ValidatePackage(string[] paths,string[] codes,string[] crcs,string[] hashes,string[] commands) {
-    int count=paths==null?0:paths.Length;
-    if(count<1 || count>1024 || codes==null || crcs==null || hashes==null || codes.Length!=count || crcs.Length!=count || hashes.Length!=count || commands==null || commands.Length!=count+2)
+  static long[] ValidatePackage(string[] paths,string[] codes,string[] crcs,string[] hashes,string[] commands,out int activeCount) {
+    activeCount=0;int count=paths==null?0:paths.Length;
+    if(count<1 || count>1024 || codes==null || crcs==null || hashes==null || codes.Length!=count || crcs.Length!=count || hashes.Length!=count || commands==null || commands.Length<3 || commands.Length>count+2)
       throw new Exception("Paquete de comentarios invalido");
-    if(commands[0]!="COMENTARIOS_INICIO "+count)throw new Exception("Cantidad de catalogo incorrecta");
-    var unique=new HashSet<string>();var rows=new byte[count*5];var sizes=new long[count];int previousPool=-1;
+    var header=Regex.Match(commands[0]??"","^COMENTARIOS_INICIO ([0-9]+)$");
+    if(!header.Success || !int.TryParse(header.Groups[1].Value,out activeCount) || activeCount<1 || activeCount>count || commands.Length!=activeCount+2)
+      throw new Exception("Cantidad de catalogo incorrecta");
+    var unique=new HashSet<string>();var sizes=new long[count];
     for(int i=0;i<count;i++) {
       if(codes[i]==null || !Regex.IsMatch(codes[i],"^[0-9a-f]{8}$") || codes[i]=="00000000" || !unique.Add(codes[i]) || crcs[i]==null || !Regex.IsMatch(crcs[i],"^[0-9a-f]{8}$") || hashes[i]==null || !Regex.IsMatch(hashes[i],"^[0-9a-f]{64}$"))
         throw new Exception("Codigo, duplicado o hash invalido");
-      var item=Regex.Match(commands[i+1],"^COMENTARIOS_ITEM ([0-5]) "+codes[i]+"$");
-      if(!item.Success)throw new Exception("Fila de catalogo incorrecta");
-      int pool=int.Parse(item.Groups[1].Value);if(pool<previousPool)throw new Exception("Catalogo no ordenado por grupo");previousPool=pool;
-      rows[i*5]=(byte)pool;uint code=Convert.ToUInt32(codes[i],16);for(int j=0;j<4;j++)rows[i*5+j+1]=(byte)(code>>(j*8));
       sizes[i]=LocalFile(paths[i],crcs[i],hashes[i]).LongLength;
     }
-    if(commands[count+1]!="COMENTARIOS_FIN "+Crc(rows).ToString("x8"))throw new Exception("CRC del catalogo incorrecta");
+    // Archivos reservados también se verifican/suben, pero nunca se añaden al catálogo activo.
+    var rows=new byte[activeCount*5];var active=new HashSet<string>();int previousPool=-1;
+    for(int i=0;i<activeCount;i++) {
+      var item=Regex.Match(commands[i+1]??"","^COMENTARIOS_ITEM ([0-8]) ([0-9a-f]{8})$");
+      if(!item.Success || !unique.Contains(item.Groups[2].Value) || !active.Add(item.Groups[2].Value))throw new Exception("Fila de catalogo incorrecta");
+      int pool=int.Parse(item.Groups[1].Value);if(pool<previousPool)throw new Exception("Catalogo no ordenado por grupo");previousPool=pool;
+      rows[i*5]=(byte)pool;uint code=Convert.ToUInt32(item.Groups[2].Value,16);for(int j=0;j<4;j++)rows[i*5+j+1]=(byte)(code>>(j*8));
+    }
+    if(commands[activeCount+1]!="COMENTARIOS_FIN "+Crc(rows).ToString("x8"))throw new Exception("CRC del catalogo incorrecta");
     return sizes;
   }
   void Transfer(string path,string code,string crc,string hash,long size,ulong expectedTotal) {
@@ -173,8 +179,8 @@ public sealed class CommentarySdInstaller {
   }
   public void Run(string port,string package,string[] paths,string[] codes,string[] crcs,string[] hashes,bool[] verified,string[] catalogCommands,string minimumFirmware="0.6") {
     // verified y los diarios anteriores son solo historial; nunca autorizan saltarse la lectura remota.
-    long[] sizes=ValidatePackage(paths,codes,crcs,hashes,catalogCommands);
-    Version minimum=VersionOf(minimumFirmware),protocolMinimum=VersionOf("0.6");if(minimum<protocolMinimum)minimum=protocolMinimum;
+    int activeCount;long[] sizes=ValidatePackage(paths,codes,crcs,hashes,catalogCommands,out activeCount);
+    Version minimum=VersionOf(minimumFirmware),protocolMinimum=VersionOf(catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM [6-8] "))?"0.7":"0.6");if(minimum<protocolMinimum)minimum=protocolMinimum;
     if(!Directory.Exists(package))throw new Exception("Paquete inexistente");
     log=null;pendingLog.Clear();connection=createTransport(port);
     try {
@@ -213,8 +219,8 @@ public sealed class CommentarySdInstaller {
         string result=Exchange(command,expected,60);if(result!=expected)throw new Exception("Confirmacion de catalogo incorrecta");
       }
       string status=Exchange("COMENTARIOS?","COMENTARIOS ");Record(status);
-      if(!Regex.IsMatch(status,"^COMENTARIOS total="+codes.Length+@" limite=1024(?: |$)"))throw new Exception("Cantidad activa inesperada");
-      Record("CATALOGO_ACTIVO "+codes.Length);Console.WriteLine("INSTALACION_DATOS_VERIFICADA "+codes.Length);
+      if(!Regex.IsMatch(status,"^COMENTARIOS total="+activeCount+@" limite=1024(?: |$)"))throw new Exception("Cantidad activa inesperada");
+      Record("CATALOGO_ACTIVO "+activeCount);Record("DATOS_VERIFICADOS total="+codes.Length+" activos="+activeCount+" reservados="+(codes.Length-activeCount));Console.WriteLine("INSTALACION_DATOS_VERIFICADA "+codes.Length+" activos="+activeCount+" reservados="+(codes.Length-activeCount));
     }finally {
       if(connection!=null){if(connection.IsOpen)connection.Close();connection.Dispose();connection=null;}
     }

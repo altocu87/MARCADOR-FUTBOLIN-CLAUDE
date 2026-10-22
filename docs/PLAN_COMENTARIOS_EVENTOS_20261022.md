@@ -28,3 +28,10 @@ Medir el tiempo hasta el altavoz, interrupciones, lecturas de SD y memoria en la
 ## Corrección 0.6 autorizada posteriormente
 
 El dueño simplifica por ahora los animales: suma→gol comodín, resta→anulación; en transferencia simultánea, una única anulación tiene prioridad. El penalti de hándicap avisa al señalarse una vez, sin otro comentario de gol al resolverlo. Se ha añadido `PenaltyAwarded` al final de las preferencias anteriores; conserva los índices. No confundirlo con una narración completa de la tanda ni con voces nuevas recibidas. Ver [entrega 0.6](ENTREGA_SONIDOS_0_6_20261022.md). No se amplía CMT1 silenciosamente ni se implementa todavía ambiente/inactividad.
+
+
+## Tanda y variedad 0.7 · 22/10/2026
+
+El dueño aprueba 70 % específico / 30 % comodín y bolsas por grupo hasta agotar variantes, sin repetición entre rondas si hay alternativas. Nuevos pools: 6 seguir perdiendo, 7 ventaja de DOS o más, 8 más de OCHO (desde nueve). Se amplían máscaras a 32 bits; CMT1 conserva índices anteriores. Nueve pools declarados, límite 1.024 referencias en total. No añadir categorías sin actualizar la clasificación, mínimos de firmware y pruebas.
+
+Tanda preparada: 98 voces activas y 25 de torneo reservadas en SD sin catálogo automático. La placa aún no implementa torneos ni su contexto. No activar esas voces por analogía con un partido rápido ni afirmar que ya hay finales/avances de ronda nativos. Ver [entrega 0.7 y desglose completo](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md). Al implementar torneos, resolver agregado/desempates del rival que necesita dos y precisar «ir ganando» en últimos 20 segundos.

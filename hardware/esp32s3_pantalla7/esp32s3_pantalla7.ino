@@ -498,7 +498,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       if(code){queueCommentary(code);commentaryFallback=mfv3snd::Event::GoalAnnulled;spoken=true;}
     }
   }else if((goalAccepted || animalUp) && automaticAllowed && sndChoices.c[(uint8_t)mfv3snd::Event::Goal].kind==mfv3snd::Kind::Default){
-    uint8_t mask=animalUp?(1u<<comentarios::Comodin):comentarios::goalMask(eng,sndBefore,goalTeam);
+    comentarios::PoolMask mask=animalUp?(1u<<comentarios::Comodin):comentarios::goalMask(eng,sndBefore,goalTeam);
     if(mask)queueCommentary(0);
     uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random());
     if(code){player.stop();queueCommentary(code);spoken=true;}

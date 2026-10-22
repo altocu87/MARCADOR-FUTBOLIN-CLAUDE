@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepara los WAV exportados por el dueño. No toca originales ni conecta con la placa.
 Uso: python scripts/preparar-comentarios.py <carpeta-originales> <paquete-salida>
-Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.6 (verificación remota del instalador).
+Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.7 (verificación remota del instalador).
 """
 import argparse
 import array
@@ -14,6 +14,7 @@ import struct
 import subprocess
 import wave
 import zlib
+import unicodedata
 from pathlib import Path
 
 GROUPS = {
@@ -24,7 +25,49 @@ GROUPS = {
     5: (0, 'comodin2', 'gol_comodin'),
     6: (0, 'comodin3', 'gol_comodin'),
     7: (5, 'empate_movido_60s', 'empate_con_dos_previos_en_60s'),
+    8: (6, 'sigue_perdiendo', 'gol_y_sigue_perdiendo'),
+    9: (7, 'ventaja2', 'gol_y_ventaja_dos_o_mas'),
+    10: (0, 'comodin_extra3', 'gol_comodin'),
+    11: (0, 'comodin_extra4', 'gol_comodin'),
+    12: (0, 'comodin_extra5', 'gol_comodin'),
+    13: (None, 'torneo/rival_necesita_dos', 'solo_torneo_rival_necesita_dos'),
+    14: (8, 'mas_de_ocho', 'equipo_marca_mas_de_ocho'),
+    15: (None, 'torneo/mas_de_ocho', 'solo_torneo_mas_de_ocho'),
+    16: (6, 'sigue_perdiendo_extra', 'gol_y_sigue_perdiendo'),
+    17: (None, 'torneo/final_empate', 'solo_final_torneo_empate'),
+    18: (None, 'torneo/final_empate_20s', 'solo_final_torneo_empate_ultimos_20s'),
+    19: (None, 'torneo/final_delante_20s', 'solo_final_torneo_delante_ultimos_20s'),
+    20: (None, 'torneo/final_ventaja2', 'solo_final_torneo_ventaja_dos_o_mas'),
 }
+
+def classify(name):
+    # Solo patrones acordados. Normalizar tildes admite EQUIPÒ sin cambiar el original.
+    name = ''.join(c for c in unicodedata.normalize('NFD', name) if not unicodedata.combining(c))
+    match = re.fullmatch(r'GOL_([1-6])_.*_([0-9]+)_([0-9]+)[.]wav', name)
+    if match:
+        return tuple(map(int, match.groups()))
+    for group, prefix in (
+        (7, 'GOL_EMPATE TRAS ULTIMO MINUTO CON MAS DE 2 GOLES'),
+        (8, 'GOL_ GOL PERO EL EQUIPO SIGUE PERDIENDO'),
+        (9, 'GOL_ GOL Y EL EQUIPO VA GANANDO DE MAS DE 2 GOLES'),
+        (13, 'GOL_EQUIPO QUE RECIBE EL GOL NECESITA 2 GOLES PARA PASAR DE RONDA'),
+        (14, 'GOL_EQUIPO QUE HA MARCADO LLEVA MAS DE 8 GOLES'),
+        (15, 'GOL_ SOLO EN TORNEOS, EQUIPO LLEVA MAS DE 8 GOLES EN EL PARTIDO'),
+        (16, 'GOL_ EQUIPO QUE MARCA EL GOL SIGUE PERDIENDO'),
+        (17, 'GOL EMPATE'),
+        (18, 'GOL EMPATE ULTUIMO SEGUNDO FINAL'),
+        (19, 'GOL FINAL GANANDO ULTIMOS MINUTOS'),
+        (20, 'GOL FINAL CON VENTAJA'),
+    ):
+        match = re.fullmatch(re.escape(prefix) + r'_([0-9]+)_([0-9]+)[.]wav', name)
+        if match:
+            return (group, *map(int, match.groups()))
+    match = re.fullmatch(r'GOL COMODIN ([3-5])_([0-9]+)_([0-9]+)[.]wav', name)
+    if match:
+        batch, variant, repeated = map(int, match.groups())
+        return (batch + 7, variant, repeated)
+    return None
+
 
 def code_for(identifier):
     code = 2166136261
@@ -36,16 +79,11 @@ def code_for(identifier):
 def prepare(source, output, ffmpeg):
     files = []
     used = set()
-    for path in sorted(source.rglob('GOL_*.wav')):
-        match = re.match(r'^GOL_([1-6])_.*_([0-9]+)_([0-9]+)[.]wav$', path.name)
-        if not match:
-            match = re.match(r'^GOL_EMPATE TRAS ULTIMO MINUTO CON MAS DE 2 GOLES_([0-9]+)_([0-9]+)[.]wav$', path.name)
-            if not match:
-                continue
-            group = 7
-            variant, repeated = map(int, match.groups())
-        else:
-            group, variant, repeated = map(int, match.groups())
+    for path in sorted(source.rglob('GOL*.wav')):
+        match = classify(path.name)
+        if match is None:
+            continue
+        group, variant, repeated = match
         if variant != repeated:
             raise ValueError('Índice de variante ambiguo: ' + path.name)
         pool, suffix, label = GROUPS[group]
@@ -110,7 +148,9 @@ def prepare(source, output, ffmpeg):
             automatic_selection_active=False, upload_verified=False,
         ))
         print(group, variant, code, len(data), 'bytes', flush=True)
-    if not files or len(files) > 1024:
+    reserved = [f for f in files if f['pool'] is None]
+    files = [f for f in files if f['pool'] is not None]
+    if (not files and not reserved) or len(files) > 1024:
         raise ValueError('El catálogo debe contener de 1 a 1024 archivos')
     files.sort(key=lambda f: (f['pool'], f['id']))
     binary_rows = b''.join(struct.pack('<BI', f['pool'], int(f['code'], 16)) for f in files)
@@ -120,13 +160,17 @@ def prepare(source, output, ffmpeg):
     commands += [f"COMENTARIOS_ITEM {f['pool']} {f['code']}" for f in files]
     commands += [f'COMENTARIOS_FIN {crc:08x}']
     (output / 'catalogo-comandos.txt').write_text('\n'.join(commands) + '\n', encoding='ascii')
-    manifest = dict(schema=2, minimum_firmware='0.6', files=files, catalog_crc32=f'{crc:08x}',
+    manifest = dict(reserved_files=reserved, reserved_total_bytes=sum(f['prepared_bytes'] for f in reserved),
+                    schema=2, minimum_firmware='0.7', files=files, catalog_crc32=f'{crc:08x}',
                     total_bytes=sum(f['prepared_bytes'] for f in files),
                     rules=dict(generic_with_specific=True, group4_consecutive=True,
                                group4_requires_leading=False, group2_threshold=3,
                                group2_interpretation_pending=False, group2_scoring_team_previously_conceded=True,
                                equalizer_recent_window_ms=60000, equalizer_recent_other_goals=2,
-                               equalizer_recent_uses_play_time=True, annul_audio_received=False))
+                               equalizer_recent_uses_play_time=True, annul_audio_received=False,
+                               specific_percent=70, wildcard_percent=30, shuffle_without_replacement=True,
+                               still_losing_after_goal=True, lead_at_least_two_after_goal=True,
+                               scoring_team_more_than_eight_after_goal=True))
     (output / 'catalogo.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print('TOTAL', len(files), manifest['total_bytes'], 'bytes')
 

@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.6";
+static const char VERSION[] = "0.7";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.7", "2026-10-22", "Comentarios con más variedad\n\n• Cuando corresponde una frase específica, se elige ese tipo el 70 % de las veces y un comodín el 30 %.\n\n• Cada grupo utiliza todas sus frases antes de repetir y evita repetir al empezar otra ronda si tiene alternativas.\n\n• La selección se hace en memoria, sin abrir más audios ni añadir una precarga al inicio del partido.\n\n• Nuevas frases para seguir perdiendo, ganar por dos o más goles y superar ocho goles.\n\n• Las voces exclusivas de torneo se guardan en la SD y quedan reservadas hasta que la pantalla disponga de ese modo."},
   {"0.6", "2026-10-22", "Sonidos más rápidos y actualizaciones más seguras\n\n• Se evita que una pulsación al continuar o reanudar termine una parte por error.\n\n• Los comentarios abren menos veces la SD y el gol ganador se muestra antes de completar el guardado.\n\n• Los archivos dañados se rechazan y los sonidos anteriores se conservan si falla una sustitución.\n\n• Las cargas comprueban el contenido real de cada audio y se bloquean durante el partido.\n\n• En Partido Loco, los cambios de marcador de animales usan gol o anulación y el penalti avisa al señalarse."},
   {"0.5", "2026-10-22", "Comentarios de gol según lo que ocurre\n\n• La pantalla elige frases de gol por la situación del partido y las alterna con comentarios comodín.\n\n• El catálogo admite hasta 1.024 sonidos en la SD sin cargar todas las voces en memoria.\n\n• El comentario empieza tras actualizar el marcador; al anular se corta la frase anterior y se usa el sonido de anulación disponible.\n\n• Las nuevas voces se organizan en carpetas pequeñas y las transferencias evitan falsos tiempos de espera."},
   {"0.4", "2026-10-22", "Fechas más fiables y resumen completo\n\n• El reloj conserva y avanza la hora conocida aunque falle una lectura, evitando perder la fecha de nuevos partidos.\n\n• El resumen incluye TODOS para consultar también partidos antiguos sin fecha, sin mezclarlos con los últimos días.\n\n• Los partidos rápidos sin jugadores muestran sus totales y explican por qué no hay estadísticas individuales."},

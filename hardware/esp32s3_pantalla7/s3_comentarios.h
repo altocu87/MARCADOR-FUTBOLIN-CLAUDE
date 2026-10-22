@@ -4,31 +4,56 @@
 #include <new>
 namespace comentarios {
 static const uint16_t MAX_FILES = 1024;
-enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, PoolCount };
+enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, SiguePerdiendo, Ventaja2, MasDe8, PoolCount };
+using PoolMask=uint32_t;
+static_assert(PoolCount<=32,"Ampliar las mascaras antes de añadir otro grupo");
 struct Catalog {
   uint32_t codes[MAX_FILES] = {};
   uint16_t counts[PoolCount] = {}, n = 0;
-  uint16_t previous[PoolCount] = {65535,65535,65535,65535,65535,65535};
+  // Fisher-Yates incremental: solo códigos en RAM, sin otro vector ni lecturas SD.
+  uint16_t remaining[PoolCount] = {};
+  PoolMask started = 0;
   void clear(){
     n=0;
     memset(counts,0,sizeof counts);
-    for(uint8_t p=0;p<PoolCount;p++)previous[p]=65535;
+    memset(remaining,0,sizeof remaining);started=0;
   }
   uint16_t offset(uint8_t p) const { uint16_t o=0; for(uint8_t i=0;i<p;i++)o+=counts[i];return o; }
   bool add(uint8_t p,uint32_t code) {
     if(p>=PoolCount || !code || n>=MAX_FILES)return false;
     for(uint8_t i=p+1;i<PoolCount;i++)if(counts[i])return false; // transferencia ordenada por grupo
     for(uint16_t i=0;i<n;i++)if(codes[i]==code)return false;
-    codes[n++]=code;counts[p]++;return true;
+    codes[n++]=code;counts[p]++;remaining[p]=0;started&=~(1u<<p);return true;
   }
-  uint32_t pick(uint8_t mask,uint32_t poolRandom,uint32_t clipRandom) {
+  // Escalado de 32 bits: reparto equilibrado sin divisiones ni reintentos de azar.
+  static uint16_t index(uint32_t random,uint16_t bound){return (uint16_t)(((uint64_t)random*bound)>>32);}
+  uint32_t draw(uint8_t p,uint32_t random){
+    uint16_t count=counts[p],at;
+    if(!remaining[p]){
+      remaining[p]=count;
+      // Al agotar una ronda, su última frase está en la posición 0.
+      // Excluirla del primer sorteo nuevo evita la repetición entre rondas.
+      at=(started&(1u<<p)) && count>1 ? 1+index(random,count-1) : index(random,count);
+      started|=(1u<<p);
+    }else at=index(random,remaining[p]);
+    uint16_t base=offset(p),last=--remaining[p];uint32_t code=codes[base+at];
+    codes[base+at]=codes[base+last];codes[base+last]=code;
+    return code;
+  }
+  uint32_t pick(PoolMask mask,uint32_t poolRandom,uint32_t clipRandom) {
+    // Anulación nunca se mezcla con voces de gol, incluso ante una máscara errónea.
+    if(mask&(1u<<Anulado))return counts[Anulado]?draw(Anulado,clipRandom):0;
     uint8_t pools[PoolCount],k=0;
-    for(uint8_t p=0;p<PoolCount;p++)if((mask&(1u<<p)) && counts[p])pools[k++]=p;
-    if(!k)return 0;
-    uint8_t p=pools[poolRandom%k];uint16_t count=counts[p],at;
-    if(count>1 && previous[p]<count){at=clipRandom%(count-1);if(at>=previous[p])at++;}
-    else at=clipRandom%count;
-    previous[p]=at;return codes[offset(p)+at];
+    for(uint8_t p=1;p<PoolCount;p++)if((mask&(1u<<p)) && counts[p])pools[k++]=p;
+    bool generic=(mask&(1u<<Comodin)) && counts[Comodin];
+    if(!k)return generic?draw(Comodin,clipRandom):0;
+    uint8_t p;
+    if(generic){
+      // 7*k casillas específicas y 3*k comodín: 70/30 total, también con varios contextos.
+      uint16_t ticket=index(poolRandom,10*k);
+      p=ticket<7*k?pools[ticket%k]:(uint8_t)Comodin;
+    }else p=pools[index(poolRandom,k)];
+    return draw(p,clipRandom);
   }
 };
 inline uint32_t goalTime(const mfv3::Engine& e,const mfv3::Goal& g){
@@ -49,9 +74,14 @@ inline bool twoRecentGoals(const mfv3::Engine& e){
   }
   return false;
 }
-inline uint8_t goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Team t) {
+inline PoolMask goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Team t) {
   auto s=e.score();if(b.phase==mfv3::Phase::Penalties || e.phase()==mfv3::Phase::Penalties || s.of(t)<=b.score.of(t))return 0;
-  uint8_t mask=1u<<Comodin;
+  PoolMask mask=1u<<Comodin;
+  uint16_t own=s.of(t),other=s.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White);
+  if(own<other)mask|=1u<<SiguePerdiendo;
+  if(own>8)mask|=1u<<MasDe8;
+  if(own>=other+2)mask|=1u<<Ventaja2; // criterio del dueño: DOS o más, tras sumar el gol
+
   if(b.score.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White)>=3)mask|=1u<<Encajados3; // marca quien ya había encajado al menos tres
   if(s.white==s.blue){
     mask|=1u<<Empate;
@@ -91,10 +121,10 @@ static bool readCatalog(audio::FsStore& store,const char* path,Catalog& out) {
 }
 static void availableOnly(audio::FsStore& store,Catalog& c) {
   uint16_t write=0;
-  uint16_t read=0;
+  uint16_t read=0;c.started=0;
   for(uint8_t p=0;p<PoolCount;p++){uint16_t old=c.counts[p],kept=0;
     for(uint16_t i=0;i<old;i++){uint32_t code=c.codes[read++];if(validAudio(store,code)){c.codes[write++]=code;kept++;}if((i&15u)==15u)delay(1);}
-    c.counts[p]=kept;c.previous[p]=65535;}
+    c.counts[p]=kept;c.remaining[p]=0;}
   c.n=write;
 }
 static void load(audio::FsStore& store){
@@ -124,7 +154,11 @@ static bool save(audio::FsStore& store,const Catalog& c,uint32_t crc){
 static bool handle(const char* line,audio::FsStore& store,bool busy,mfv3snd::ReplyFn reply){
   if(strncmp(line,"COMENTARIOS",11))return false;
   char buf[160];
-  if(!strcmp(line,"COMENTARIOS?")){snprintf(buf,sizeof buf,"COMENTARIOS total=%u limite=%u grupos=%u,%u,%u,%u,%u,%u",catalog.n,MAX_FILES,catalog.counts[0],catalog.counts[1],catalog.counts[2],catalog.counts[3],catalog.counts[4],catalog.counts[5]);reply(buf);return true;}
+  if(!strcmp(line,"COMENTARIOS?")){
+    int at=snprintf(buf,sizeof buf,"COMENTARIOS total=%u limite=%u grupos=",catalog.n,MAX_FILES);
+    for(uint8_t p=0;p<PoolCount;p++)at+=snprintf(buf+at,sizeof buf-at,"%s%u",p?",":"",catalog.counts[p]);
+    reply(buf);return true;
+  }
   if(busy || !store.sdOk){reply("COMENTARIOS_ERROR ocupado_o_sin_sd");return true;}
   if(!strncmp(line,"COMENTARIOS_INICIO ",19)){
     unsigned count=0;char tail=0;if(sscanf(line+19,"%u %c",&count,&tail)!=1 || !count || count>MAX_FILES){reply("COMENTARIOS_ERROR cantidad");return true;}

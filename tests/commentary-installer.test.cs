@@ -95,9 +95,23 @@ public sealed class CommentaryFixture : IDisposable {
     }
     Catalog[count+1]="COMENTARIOS_FIN "+CommentarySdInstaller.Crc(rows).ToString("x8");
   }
-  public void Install(CommentaryFakeTransport fake,bool verified=false,string minimum="0.6"){
+  public void SetPool(byte pool){
+    if(Codes.Length!=1)throw new Exception("Fixture de un solo archivo requerida");
+    Catalog[1]="COMENTARIOS_ITEM "+pool+" "+Codes[0];byte[] row=new byte[5];row[0]=pool;
+    uint code=Convert.ToUInt32(Codes[0],16);for(int j=0;j<4;j++)row[j+1]=(byte)(code>>(8*j));
+    Catalog[2]="COMENTARIOS_FIN "+CommentarySdInstaller.Crc(row).ToString("x8");
+  }
+  public string[] SubsetCatalog(params int[] indexes){
+    var commands=new List<string>{"COMENTARIOS_INICIO "+indexes.Length};var rows=new byte[indexes.Length*5];
+    for(int i=0;i<indexes.Length;i++){
+      string code=Codes[indexes[i]];commands.Add("COMENTARIOS_ITEM 0 "+code);
+      uint value=Convert.ToUInt32(code,16);for(int j=0;j<4;j++)rows[i*5+j+1]=(byte)(value>>(8*j));
+    }
+    commands.Add("COMENTARIOS_FIN "+CommentarySdInstaller.Crc(rows).ToString("x8"));return commands.ToArray();
+  }
+  public void Install(CommentaryFakeTransport fake,bool verified=false,string minimum="0.6",string[] commands=null){
     var installer=new CommentarySdInstaller(port=>fake,()=>fake.Now){BootWaitMilliseconds=0};
-    installer.Run("TRANSPORTE_FALSO",Root,Paths,Codes,Crcs,Hashes,Enumerable.Repeat(verified,Codes.Length).ToArray(),Catalog,minimum);
+    installer.Run("TRANSPORTE_FALSO",Root,Paths,Codes,Crcs,Hashes,Enumerable.Repeat(verified,Codes.Length).ToArray(),commands??Catalog,minimum);
   }
   public void Dispose(){
     // Solo borra la carpeta temporal aleatoria creada por esta misma fixture.
@@ -134,6 +148,14 @@ public static class CommentaryInstallerTests {
     Test("archivo local alterado falla antes de abrir transporte",()=>{using(var f=new CommentaryFixture()){var t=new CommentaryFakeTransport();File.WriteAllBytes(f.Paths[0],new byte[]{1,2,3});Throws(()=>f.Install(t),"Archivo local alterado");Check(!t.Opened,"Se abrio el puerto antes de validar");}});
     Test("CRC de catalogo alterada falla antes de abrir",()=>{using(var f=new CommentaryFixture()){var t=new CommentaryFakeTransport();f.Catalog[f.Catalog.Length-1]="COMENTARIOS_FIN 00000000";Throws(()=>f.Install(t),"CRC del catalogo");Check(!t.Opened,"Se abrio antes de validar catalogo");}});
     Test("mas de1024 referencias se rechaza antes de abrir",()=>{using(var f=new CommentaryFixture()){var t=new CommentaryFakeTransport();var installer=new CommentarySdInstaller(p=>t,()=>t.Now);Throws(()=>installer.Run("FALSO",f.Root,new string[1025],new string[1025],new string[1025],new string[1025],new bool[1025],new string[1027]),"Paquete de comentarios invalido");Check(!t.Opened,"Se abrio con exceso de referencias");}});
+    Test("pools6a8 requieren0.7 aunque el manifiesto diga0.6",()=>{foreach(byte pool in new byte[]{6,7,8})using(var f=new CommentaryFixture()){f.SetPool(pool);var t=new CommentaryFakeTransport{Firmware="0.6"};Throws(()=>f.Install(t,false,"0.6"),"firmware >= 0.7");Check(t.UploadStarts==0&&t.InfoQueries==0&&t.CatalogWrites==0,"Se envio pool nuevo a firmware antiguo");}});
+    Test("pools6a8 se instalan y verifican con0.7",()=>{foreach(byte pool in new byte[]{6,7,8})using(var f=new CommentaryFixture()){f.SetPool(pool);var t=new CommentaryFakeTransport{Firmware="0.7"};f.Install(t,false,"0.7");Check(t.CatalogWrites==1&&t.Files[f.Codes[0]].SequenceEqual(f.Data[0]),"Nuevo pool no compatible");}});
+    Test("pool9 aun no registrado y se rechaza sin abrir",()=>{using(var f=new CommentaryFixture()){f.SetPool(9);var t=new CommentaryFakeTransport{Firmware="0.7"};Throws(()=>f.Install(t,false,"0.7"),"Fila de catalogo");Check(!t.Opened,"Se acepto pool fuera de limite");}});
+    Test("reservados se guardan y verifican sin activar sus codigos",()=>{using(var f=new CommentaryFixture(3)){var t=new CommentaryFakeTransport{Firmware="0.7"};f.Install(t,commands:f.SubsetCatalog(0));Check(t.Files.Count==3&&t.CatalogWrites==1,"No se guardaron todos los audios");Check(t.Commands.Count(c=>c.StartsWith("COMENTARIOS_ITEM "))==1&&!t.Commands.Contains("COMENTARIOS_ITEM 0 "+f.Codes[1])&&!t.Commands.Contains("COMENTARIOS_ITEM 0 "+f.Codes[2]),"Se activaron reservados");Check(t.InfoQueries>=12,"No se verificaron los reservados");}});
+    Test("reservado local corrupto falla antes de abrir",()=>{using(var f=new CommentaryFixture(2)){File.WriteAllBytes(f.Paths[1],new byte[]{1});var t=new CommentaryFakeTransport();Throws(()=>f.Install(t,commands:f.SubsetCatalog(0)),"Archivo local alterado");Check(!t.Opened,"No se valido el reservado antes de abrir");}});
+    Test("catalogo no puede referir archivos ajenos al paquete",()=>{using(var f=new CommentaryFixture(2)){var commands=f.SubsetCatalog(0);commands[1]="COMENTARIOS_ITEM 0 ffffffff";var t=new CommentaryFakeTransport();Throws(()=>f.Install(t,commands:commands),"Fila de catalogo");Check(!t.Opened,"Se abrio con referencia ajena");}});
+    Test("duplicado activo se rechaza incluso con reservados",()=>{using(var f=new CommentaryFixture(3)){var t=new CommentaryFakeTransport();Throws(()=>f.Install(t,commands:f.SubsetCatalog(0,0)),"Fila de catalogo");Check(!t.Opened,"Se abrio con duplicado activo");}});
+    Test("corrupcion de reservado impide activar el nuevo catalogo",()=>{using(var f=new CommentaryFixture(2)){var t=new CommentaryFakeTransport{Firmware="0.7",CorruptCommit=true};t.Files[f.Codes[0]]=f.Data[0].ToArray();Throws(()=>f.Install(t,commands:f.SubsetCatalog(0)),"no coincide al releerlo");Check(t.CatalogWrites==0,"Se dio por completo un paquete con reservado corrupto");}});
     Console.WriteLine("INSTALADOR_PRUEBAS_OK "+passed+" casos, sin puertos reales");
   }
 }

@@ -1,7 +1,19 @@
 {
-  "version": "0.6",
+  "version": "0.7",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.7",
+      "date": "2026-10-22",
+      "title": "Comentarios con más variedad",
+      "changes": [
+        "Cuando corresponde una frase específica, se elige ese tipo el 70 % de las veces y un comodín el 30 %.",
+        "Cada grupo utiliza todas sus frases antes de repetir y evita repetir al empezar otra ronda si tiene alternativas.",
+        "La selección se hace en memoria, sin abrir más audios ni añadir una precarga al inicio del partido.",
+        "Nuevas frases para seguir perdiendo, ganar por dos o más goles y superar ocho goles.",
+        "Las voces exclusivas de torneo se guardan en la SD y quedan reservadas hasta que la pantalla disponga de ese modo."
+      ]
+    },
     {
       "version": "0.6",
       "date": "2026-10-22",
