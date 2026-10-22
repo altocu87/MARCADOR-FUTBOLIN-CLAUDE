@@ -671,7 +671,7 @@ static void handleBoardLine(const char* line) {
 #if HAS_AUDIO
   if(comentarios::handle(line,sndStore,inMatch || sndCmd.receiving(),sendLine))return;
   if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[140];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt);sendLine(b);return;}
-  if(!strcmp(line,"SDINFO?")){char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)sndStore.sdOk,(unsigned)inMatch,(unsigned long long)SD_MMC.totalBytes(),(unsigned long long)SD_MMC.usedBytes(),(unsigned long long)(SD_MMC.totalBytes()-SD_MMC.usedBytes()));sendLine(b);return;}
+  if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
   if (jugadores.handle(line, sendLine)) {  // ni al pasar jugadores y fotos

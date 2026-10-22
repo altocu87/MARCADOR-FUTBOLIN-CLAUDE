@@ -26,6 +26,17 @@ static void commit(uint32_t crc){char line[60];snprintf(line,sizeof line,"COMENT
 int main(){
   using namespace comentarios;
   sim::sdCard=true;sim::now=1000;setup();test.active=false;nube::phase=nube::OFF;goHome();
+  // Capacidad por el volumen de SD, no por el disco 0 (FFat). Preservar más de 4 GB.
+  sim::sdFatTotal=32ull<<30;sim::sdFatFree=(32ull<<30)-123456;
+  uint64_t total,free;assert(sndStore.sdSpace(total,free));assert(total==(32ull<<30) && free==(32ull<<30)-123456);
+  assert(sim::sdFatPath=="/sdcard" && total!=SD_MMC.totalBytes());
+  assert(sndStore.freeKB(mfv3snd::Place::Sd)==free/1024);
+  sim::out.clear();handleBoardLine("SDINFO?");assert(sim::out.find("total=34359738368 usado=123456 libre=34359614912")!=std::string::npos);
+  sim::sdFatInfoOk=false;assert(!sndStore.sdSpace(total,free) && !total && !free);
+  sim::out.clear();handleBoardLine("SDINFO?");assert(sim::out.find("disponible=0")!=std::string::npos);
+  assert(!sndStore.freeKB(mfv3snd::Place::Sd));sim::sdFatInfoOk=true;
+  sim::sdFatFree=sim::sdFatTotal+1;assert(!sndStore.sdSpace(total,free));
+  sim::sdFatTotal=8ull<<30;sim::sdFatFree=(8ull<<30)-(1ull<<20);
   mfv3::Engine e;uint32_t t;fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);auto b=goal(e,t,Team::White);
   assert(goalMask(e,b,Team::White)==(1u<<Comodin)); // marcar tu tercero no significa haber encajado tres
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);goal(e,t,Team::Blue);b=goal(e,t,Team::White);

@@ -22,6 +22,7 @@
 #include <FS.h>
 #include <FFat.h>
 #include <SD_MMC.h>
+#include <esp_vfs_fat.h>
 #include <driver/i2s_std.h>
 #else
 #define HAS_AUDIO 0
@@ -59,10 +60,19 @@ class FsStore : public mfv3snd::Store {
 
   bool available(Place p) override { return p == Place::Sd ? sdOk : chipOk && SOUNDS_ON_CHIP; }
 
+  bool sdSpace(uint64_t& total,uint64_t& free) {
+    total=free=0;
+    // Arduino 3.3.12 consulta "0:" en SD_MMC.totalBytes/usedBytes. Con FFat primero,
+    // ese disco es la flash interna. Consultar explícitamente el volumen de la SD.
+    if(!sdOk || esp_vfs_fat_info("/sdcard",&total,&free)!=ESP_OK || !total || free>total){total=free=0;return false;}
+    return true;
+  }
+
   uint32_t freeKB(Place p) override {
     if (!available(p)) return 0;
     if (p == Place::Chip) return (uint32_t)(FFat.freeBytes() / 1024);
-    return (uint32_t)((SD_MMC.totalBytes() - SD_MMC.usedBytes()) / 1024);
+    uint64_t total,free;
+    return sdSpace(total,free) ? (uint32_t)(free/1024) : 0;
   }
 
   bool begin(Place p, uint32_t code) override {
