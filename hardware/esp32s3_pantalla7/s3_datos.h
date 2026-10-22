@@ -45,6 +45,19 @@ static bool stdioMkdir(const char* p) {
 #endif
 }
 
+// Crea la carpeta y las que le falten por encima.
+static bool stdioMkdirs(const char* p) {
+  char b[160];
+  snprintf(b, sizeof(b), "%s", p);
+  for (char* q = b + 1; *q; q++)
+    if (*q == '/') {
+      *q = 0;
+      stdioMkdir(b);
+      *q = '/';
+    }
+  return stdioMkdir(b);
+}
+
 // Nombres de lo que hay en una carpeta (en la PSRAM). Devuelve cuántos; isDir[i] dice si es carpeta.
 struct Names {
   char (*name)[64] = nullptr;
@@ -351,6 +364,8 @@ static bool setDemo(bool on, uint32_t nowUtc) {
     toCopy = DEMO_PLAYERS + DEMO_MATCHES;
     // Lo de verdad, aparte (y la última partida de Inicio, que vuelve al quitarlo).
     if (chip->exists(rp) || stdioExists(rm)) { lastError = "Quedan datos de un modo prueba anterior"; return false; }
+    stdioMkdirs(partidos::dir);  // sin ningún partido aún, la carpeta podría no estar
+    chip->mkdir(PLAYERS);
     if (!chip->rename(PLAYERS, rp)) { lastError = "No se pudieron apartar los jugadores"; return false; }
     if (rename(partidos::dir, rm) != 0) {
       chip->rename(rp, PLAYERS);
@@ -466,7 +481,7 @@ static bool makeCopy(const reloj::Clock* clock) {
   char root[96], dir[160], sub[200];
   if (demo) { lastError = "Quita antes el modo prueba"; return false; }
   if (!chip || !backupRoot(root, sizeof(root))) { lastError = "Necesita la tarjeta SD"; return false; }
-  stdioMkdir(root);
+  stdioMkdirs(root);
   if (clock) snprintf(dir, sizeof(dir), "%s/%04u%02u%02u-%02u%02u%02u", root, clock->year, clock->month, clock->day, clock->hour, clock->minute, clock->second);
   else {
     scanCopies();  // sin hora: «00000000-000001», «…02»… (siguen ordenadas)
