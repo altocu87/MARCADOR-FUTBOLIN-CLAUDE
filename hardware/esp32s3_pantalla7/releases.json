@@ -1,7 +1,17 @@
 {
-  "version": "0.2",
+  "version": "0.3",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.3",
+      "date": "2026-10-22",
+      "title": "Continúa el partido desde los pulsadores",
+      "changes": [
+        "Al terminar cada parte, una pulsación corta de cualquiera de los dos botones permite continuar.",
+        "También puedes pasar a la prórroga y a los penaltis sin tocar la pantalla.",
+        "La pulsación que permite continuar no suma un gol ni cuenta como el primer penalti."
+      ]
+    },
     {
       "version": "0.2",
       "date": "2026-10-20",

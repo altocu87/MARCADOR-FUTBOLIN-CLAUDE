@@ -35,3 +35,7 @@ El equipo B ha integrado en main la corrección de esperas USB y las opciones de
 ## Mando físico C3-Zero · entrega en la rama del equipo B
 
 La mini real del dueño es Waveshare ESP32-C3-Zero: leer [su entrega](docs/ENTREGA_MANDO_C3_ZERO_20261020.md). Se ha instalado y comprobado el saludo por radio, pero los contactos y luces de los pulsadores siguen pendientes de cablear y probar. Revisar el perfil RGB y la selección del firmware OTA antes de publicar soporte oficial. No confundir esta adaptación local con una nueva versión de la pantalla.
+
+## Pantalla 0.3 · continuar desde el mando · rama del equipo B
+
+Consultar [la entrega 0.3](docs/ENTREGA_TRANSICIONES_PULSADORES_0_3_20261022.md): permite continuar primera/segunda parte y entrar en penaltis con cualquiera de los pulsadores. Contiene pruebas y estado físico, además de los colores reales del cableado corregidos por el dueño. Actualiza la indicación anterior: ya se han probado un gol y una anulación por equipo en placa con resultado correcto; el fallo intermitente inicial no se reprodujo. La aceptación por Cloud y la publicación oficial siguen pendientes.

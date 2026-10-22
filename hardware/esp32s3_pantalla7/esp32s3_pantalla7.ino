@@ -504,6 +504,20 @@ static void inputGoal(Team t) {
   afterChange(r == mfv3::Result::Accepted, t);
 }
 
+// Pulsación corta manual (mando, USB o UART). Los sensores siguen usando inputGoal:
+// un balón no debe confirmar una pantalla de final de parte.
+static void inputButtonGoal(Team t) {
+  if (!inMatch) return;
+  uint32_t now = millis();
+  eng.tick(now);  // también si el botón coincide exactamente con el fin del tiempo
+  if (eng.phase() == Phase::PeriodEnd) {
+    eng.next(now);
+    afterChange(false, t);
+    return;  // esta pulsación solo continúa: ni gol ni primer penalti
+  }
+  inputGoal(t);
+}
+
 // Pulsación larga del mando: anular el último gol de ese equipo (en penaltis, deshacer el último lanzamiento).
 static void inputAnnul(Team t) {
   if (!inMatch) return;
@@ -662,8 +676,8 @@ static void handleBoardLine(const char* line) {
     word[i] = (char)toupper((unsigned char)line[i]);
     i++;
   }
-  if (!strcmp(word, "GOL_BLANCO") || !strcmp(word, "GB")) inputGoal(Team::White);
-  else if (!strcmp(word, "GOL_AZUL") || !strcmp(word, "GA")) inputGoal(Team::Blue);
+  if (!strcmp(word, "GOL_BLANCO") || !strcmp(word, "GB")) inputButtonGoal(Team::White);
+  else if (!strcmp(word, "GOL_AZUL") || !strcmp(word, "GA")) inputButtonGoal(Team::Blue);
   else if (!strcmp(word, "ANULAR_BLANCO") || !strcmp(word, "AB")) inputAnnul(Team::White);
   else if (!strcmp(word, "ANULAR_AZUL") || !strcmp(word, "AA")) inputAnnul(Team::Blue);
   else if (!strcmp(word, "PAUSA")) inputPause();
@@ -1447,14 +1461,15 @@ static void matchView(partido::View& v, uint32_t now) {
     if (eng.period() == Period::Second) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 2ª PARTE #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PRÓRROGA");
-      snprintf(v.endNote, sizeof(v.endNote), "Empate: prórroga de 60 segundos con gol de oro.");
+      snprintf(v.endNote, sizeof(v.endNote), "Empate: 60 s con gol de oro. Pulsa cualquier pulsador.");
     } else if (overtime) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FIN DE LA PRÓRROGA #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PENALTIS");
-      snprintf(v.endNote, sizeof(v.endNote), "Sin gol en la prórroga: tanda de penaltis.");
+      snprintf(v.endNote, sizeof(v.endNote), "Sin gol: vamos a penaltis. Pulsa cualquier pulsador.");
     } else {
       snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 1ª PARTE #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "CONTINUAR 2ª PARTE");
+      snprintf(v.endNote, sizeof(v.endNote), "Pulsa cualquier pulsador o CONTINUAR.");
     }
     char d[8], lower[16];
     formatClock(d, sizeof(d), eng.periodElapsed(now));
