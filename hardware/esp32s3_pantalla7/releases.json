@@ -1,7 +1,19 @@
 {
-  "version": "0.7",
+  "version": "0.8",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.8",
+      "date": "2026-10-22",
+      "title": "Ajustes nuevos en la pantalla",
+      "changes": [
+        "Ajustes tiene un menú de botones grandes, con Partido, Sonido, Pantalla y Mando nuevos.",
+        "Partido: cómo se gana, goles y minutos de siempre y quién tira primero en los penaltis.",
+        "Sonido: qué suena en cada momento, con botón para oírlo, y el volumen.",
+        "Pantalla: brillo, cuándo sale el reloj de reposo (o nunca) y poner la hora con el Wi-Fi.",
+        "El mando se actualiza con el programa de su mini (Super Mini o C3-Zero); si no lo dice, se elige una vez."
+      ]
+    },
     {
       "version": "0.7",
       "date": "2026-10-22",

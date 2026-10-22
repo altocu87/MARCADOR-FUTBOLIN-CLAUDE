@@ -439,6 +439,37 @@
       }
     },
     {
+      "id": "mando-c3zero",
+      "name": "Mando inalámbrico (Waveshare ESP32-C3-Zero)",
+      "aka": "Mando de 2 pulsadores por radio",
+      "role": "mando",
+      "level": 3,
+      "chip": "ESP32-C3",
+      "voltage": "3,3 V",
+      "links": [
+        "radio"
+      ],
+      "sketch": "mando_pulsadores",
+      "ideBoard": "ESP32C3 Dev Module («USB CDC On Boot: Enabled») con -DMFV3_MANDO_RGB_PIN=10",
+      "core": "esp32 de Espressif (Gestor de placas)",
+      "price": "≈ 4–7 € + pulsadores",
+      "status": "simulada",
+      "pins": {
+        "btnBlanco": "GPIO 3",
+        "btnAzul": "GPIO 4"
+      },
+      "notes": [
+        "El mismo mando, en la mini Waveshare ESP32-C3-Zero: su LED es el RGB integrado (GPIO 10).",
+        "La pantalla le pasa las actualizaciones de este modelo: lo reconoce sola o se elige en AJUSTES → MANDO.",
+        "Mismo «GRUPO_MESA» en el mando y en la pantalla."
+      ],
+      "build": {
+        "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+        "chipFamily": "ESP32-C3",
+        "defines": "-DMFV3_MANDO_RGB_PIN=10"
+      }
+    },
+    {
       "id": "waveshare-7c",
       "name": "Waveshare ESP32-S3-Touch-LCD-7C",
       "aka": "«ESP32-S3 7inch AI Voice Touch Display», 7C-BOX",

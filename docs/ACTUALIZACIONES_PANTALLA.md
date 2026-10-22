@@ -89,3 +89,8 @@ El dueño autorizó la corrección conjunta e instalación local de 0.6. Código
 ## Instalación local 0.7 y paquete de 123 sonidos · 22/10/2026
 
 El dueño autorizó e instaló la variedad 70/30, bolsas por grupo y la tanda completa: 123 WAV verificados, 98 activos y 25 exclusivos de torneo guardados sin activarlos. Dos partidos y 61 WAV anteriores conservados tras reiniciar. Rama B sin fusionar main ni publicar OTA; se mantiene 0.x. [Entrega y reglas](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). Escucha/latencia y revisión independiente de A/Cloud pendientes.
+
+
+## Mando por modelo · 0.8 · 22/10/2026
+
+Se publican dos programas del mando: `mando-c3` (Super Mini) y `mando-c3zero` (Waveshare C3-Zero, LED RGB en GPIO10). El mando dice su modelo en el saludo de radio y la pantalla descarga el suyo. Los mandos anteriores no lo dicen: hasta elegir el modelo en AJUSTES → MANDO, la pantalla no les ofrece actualización. [Entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md).

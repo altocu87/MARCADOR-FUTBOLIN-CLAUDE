@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Ajustes en la pantalla y mando por modelo · 0.8 · 22/10/2026
+
+Rama `claude/ajustes-placa`, **sin fusionar, sin publicar y sin grabar**. Nuevo menú de AJUSTES en la pantalla (Partido, Sonido, Pantalla, Mando, más los apartados que ya había). El mando se actualiza con el programa de su mini: Super Mini o C3-Zero. Si no dice su modelo, no se le ofrece nada hasta elegirlo en AJUSTES → MANDO. Pruebas simuladas correctas en las tres placas. Falta la prueba física. [Entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md).
+
 ## Revisión de Cloud y fusión en main · 22/10/2026
 
 **Main contiene la pantalla 0.7** (entregas 0.3–0.7 del equipo B), revisada por Cloud y fusionada con autorización del dueño. GitHub la publica como actualización oficial; la placa del dueño ya la tenía instalada. [Revisión de Cloud](REVISION_CLOUD_0_3_A_0_7_20261022.md). Siguen pendientes: prueba audible jugando, desfase del RTC, voces de anulación, torneos en la pantalla, login real por QR y límites de Supabase.

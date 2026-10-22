@@ -104,6 +104,7 @@ static void drawUpdate() {
     updateText(gfx.scr, "MANDO", 36, 248, 200, 24, ui::color::TEXT);
     const char* status = mandoUpd() == MandoUpd::Unknown ? "Pulsa un botón del mando para comprobarlo" :
       mandoUpd() == MandoUpd::NeedsCable ? "Necesita una primera actualización por cable" :
+      mandoUpd() == MandoUpd::NeedsModel ? "Elige su modelo en Ajustes > Mando para poder actualizarlo" :
       mandoUpd() == MandoUpd::Outdated ? "Hay una actualización disponible" :
       pubMando.ok() ? "Al día" : "Todavía no se ha podido consultar";
     updateText(gfx.scr, status, 36, 284, 720);

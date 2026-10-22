@@ -82,9 +82,9 @@ struct MemFlash : mfv3::ota::Flash {
   void abort() override { data.clear(); }
 };
 static const uint8_t MANDO_MAC[6] = {0xAA, 1, 2, 3, 4, 5};
-static void mandoInfo(uint32_t build) {
+static void mandoInfo(uint32_t build, uint8_t model = mfv3::ota::MODEL_SUPER_MINI) {
   uint8_t pk[mfv3::ota::MAX_PACKET];
-  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, build, false);
+  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, build, false, model);
   sim::radioDeliver(MANDO_MAC, std::vector<uint8_t>(pk, pk + n));
   loop();
 }
@@ -465,6 +465,7 @@ int main() {
     assert(!inMatch && screen == Screen::Home);
     tap(750, 46);  // engranaje → AJUSTES
     tapBtn(ui::SETTINGS[1].r);  // WI-FI: se dibuja «buscando» y, en la vuelta siguiente, busca y enseña la lista
+    run(300);                   // los botones del menú actúan al levantar el dedo
     assert(sim::scans == 1 && netCount == 3 && shows("CasaPepe") && shows("abierta") && sim::wifiChannel == mfv3::RADIO_CHANNEL);
     tapBtn(ui::WIFI[1].r);  // CasaPepe → teclado
     assert(screen == Screen::Keyboard && shows("Clave de CasaPepe") && shows("CONECTAR"));
@@ -488,12 +489,17 @@ int main() {
     run(400);
     // Conecta, guarda la red, mira las versiones y se desconecta (la radio vuelve a su canal).
     assert(screen == Screen::Update && !strcmp(wifiSsid, "CasaPepe") && sim::nvs.count("wssid") && sim::nvs.count("wpass"));
-    assert(checkState == CheckState::Ok && pubScreen.build == 60 && pubMando.build == 61 && !sim::wifiUp);
+    // Del mando se mira lo publicado de cada modelo; aún no se sabe cuál es este (no ha dicho nada).
+    assert(checkState == CheckState::Ok && pubScreen.build == 60 && pubMandoBy[mfv3::ota::MODEL_SUPER_MINI].build == 61 && !sim::wifiUp);
+    assert(!pubMando.ok() && !pubMandoBy[mfv3::ota::MODEL_C3_ZERO].ok());
     assert(sim::wifiChannel == mfv3::RADIO_CHANNEL && !sim::insecure);
     assert(shows("PANTALLA") && shows("Disponible: nueva actualización") && shows("CONTINUAR"));
     // El mando dice su versión (10): también hay nueva para él. En Inicio sale ACTUALIZAR.
     mandoInfo(10);
-    assert(mandoBuild == 10 && mandoUpd() == MandoUpd::Outdated && shows("Hay una actualización disponible"));
+    assert(mandoBuild == 10 && mandoModel() == mfv3::ota::MODEL_SUPER_MINI && pubMando.build == 61);
+    assert(mandoUpd() == MandoUpd::Outdated && sim::nvs.count("mmod"));
+    loop();
+    assert(shows("Hay una actualización disponible"));
     tapBtn(ui::BACK);
     tapBtn(ui::BACK);
     assert(screen == Screen::Home && inicio::dotShown());  // punto dorado en el engranaje

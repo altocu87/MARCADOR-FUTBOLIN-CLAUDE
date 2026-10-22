@@ -57,3 +57,7 @@ Próximos sonidos anunciados por el dueño: leer [el plan para A/Cloud](docs/PLA
 ## Revisión de Cloud y fusión · 22/10/2026
 
 Cloud (equipo A) ha revisado las entregas 0.3–0.7 y el dueño ha autorizado fusionarlas: main contiene la pantalla **0.7** y GitHub la publica como actualización oficial. Leer [la revisión](docs/REVISION_CLOUD_0_3_A_0_7_20261022.md). Las secciones anteriores que dicen «rama del equipo B» describen su origen; el código ya está en main. No instalar desde la pantalla el firmware publicado del mando en el C3-Zero hasta que exista una variante con LED RGB.
+
+## Ajustes de la pantalla y mando por modelo · 0.8 · rama `claude/ajustes-placa`
+
+Leer [la entrega](docs/ENTREGA_AJUSTES_PLACA_0_8_20261022.md). Menú de AJUSTES en `s3_opciones.h`; los sitios de los botones están en `ui::SETTINGS`. Usar solo letras de `fuentes.txt`: una actualización por Wi-Fi no lleva letras nuevas. El mando anuncia su modelo en INFO (`MODEL_*`) y la pantalla descarga `mando-c3` o `mando-c3zero`. Un mando sin modelo no recibe actualizaciones hasta elegirlo en AJUSTES → MANDO. Antes de actualizar el C3-Zero del dueño, elegir C3-ZERO.

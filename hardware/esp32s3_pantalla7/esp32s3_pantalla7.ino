@@ -157,17 +157,28 @@ static char wifiSsid[33] = "", wifiPass[65] = "";
 // Brillo elegido desde la app (orden «BRILLO 0–100»); se guarda y se recupera al despertar del reposo.
 static uint8_t userBrightness = 100;
 static uint8_t backlightLevel() { return (uint8_t)(10 + (uint16_t)userBrightness * 245 / 100); }
+// Minutos sin usarla hasta el reloj de reposo (AJUSTES → PANTALLA). 0 = nunca.
+static uint8_t sleepMinutes = (uint8_t)(SLEEP_AFTER_MS / 60000UL);
+static uint32_t sleepAfterMs() { return sleepMinutes ? sleepMinutes * 60000UL : 0; }
+// Mando: modelo de su mini (mfv3_ota.h, MODEL_*), para descargar su programa al actualizarlo.
+static volatile uint8_t mandoModelSaid = 0;  // el que dice el mando (0: no lo dice, programa anterior)
+static uint8_t mandoModelChosen = 0;         // el último conocido o elegido en AJUSTES → MANDO (se guarda)
 
 static void loadPrefs() {
   prefs.begin("mfv3", false);
   cfg.endCondition = (mfv3::EndCondition)prefs.getUChar("cond", 0);
   cfg.goalsPerPeriod = prefs.getUChar("goals", 5);
   cfg.minutesPerPeriod = prefs.getUChar("mins", 5);
+  cfg.penaltyFirst = prefs.getUChar("pfirst", 0) ? Team::Blue : Team::White;
   if (!cfg.valid()) cfg = mfv3::Config();
   matchesPlayed = prefs.getULong("played", 0);
   historyCount = prefs.getBytes("hist2", history, sizeof(history)) / sizeof(LastResult);  // «hist2»: con fecha
   userBrightness = prefs.getUChar("bri", 100);
   if (userBrightness > 100) userBrightness = 100;
+  sleepMinutes = prefs.getUChar("slp", sleepMinutes);
+  if (sleepMinutes > 60) sleepMinutes = (uint8_t)(SLEEP_AFTER_MS / 60000UL);
+  mandoModelChosen = prefs.getUChar("mmod", 0);
+  if (mandoModelChosen > mfv3::ota::MODEL_C3_ZERO) mandoModelChosen = 0;
   sndVolume = prefs.getUChar("vol", 80);
   if (sndVolume > 100) sndVolume = 100;
   char text[mfv3snd::EVENT_COUNT*64+1] = {0};
@@ -256,6 +267,7 @@ static void saveConfig() {
   prefs.putUChar("cond", (uint8_t)cfg.endCondition);
   prefs.putUChar("goals", cfg.goalsPerPeriod);
   prefs.putUChar("mins", cfg.minutesPerPeriod);
+  prefs.putUChar("pfirst", cfg.penaltyFirst == Team::Blue ? 1 : 0);
 }
 
 static void saveMatchFile();
@@ -847,7 +859,7 @@ static void handleBoardLine(const char* line) {
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
   else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i));
-  else if (!strcmp(word, "REPOSO")) lastActivity = millis() - SLEEP_AFTER_MS - 1;  // a reposo ya (para probarlo)
+  else if (!strcmp(word, "REPOSO")) lastActivity = millis() - sleepAfterMs() - 1;  // a reposo ya (para probarlo)
   else if (!strcmp(word, "PERFIL")) {  // «PERFIL» (pantalla entera) o «PERFIL x y ancho alto» (solo esa zona)
     int x = 0, y = 0, w = 0, h = 0;
     lv_area_t a;
@@ -893,6 +905,7 @@ static void otaPush(const uint8_t* data, int len) {
   if (in.ok) {
     uint32_t t = millis();
     mandoBuild = in.build;
+    mandoModelSaid = in.model;
     mandoInfoAt = t ? t : 1;  // 0 = «nunca»
     lastRadioAt = t;
     return;
@@ -992,7 +1005,8 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
   gfx.drawFastHLine(0, 44, ui::W, C_LINE);
 }
 
-#include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
+#include "s3_ajustes.h"  // AJUSTES: Wi-Fi y actualizar (usa lo de arriba)
+#include "s3_opciones.h"  // AJUSTES: menú, partido, sonido, pantalla y mando
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -1810,6 +1824,13 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Settings && !sleepClock()) {
+    if (!opciones::active() || opcionesFresh) opciones::show(opcionesFresh);
+    opcionesFresh = false;
+    opciones::tick();
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Account && !sleepClock()) {
     if (!cuenta::active() || cuentaFresh) cuenta::show(cuentaFresh);
     cuentaFresh = false;
@@ -2204,7 +2225,7 @@ void loop() {
 
   // Atenuar la pantalla tras inactividad fuera de un partido en juego.
   bool idleScreen = (!inMatch && screen != Screen::Install) || (inMatch && eng.phase() == Phase::Finished);
-  if (idleScreen && !dimmed && now - lastActivity > SLEEP_AFTER_MS) {
+  if (idleScreen && !dimmed && sleepAfterMs() && now - lastActivity > sleepAfterMs()) {
     dimmed = true;
     lcd.backlight(16);
   }

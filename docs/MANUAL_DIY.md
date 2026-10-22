@@ -149,6 +149,7 @@ para el LED. No hacen falta resistencias: la placa usa las suyas internas.
 | [ESP32-S3 DevKit](#esp32-s3-devkit) | Pulsadores y sensores | 3,3 V | USB, Wi-Fi, Bluetooth | ≈ 8–15 € | 🧪 Probada en simulador |
 | [ESP32-S2 Mini](#esp32-s2-mini) | Pulsadores y sensores | 3,3 V | USB, Wi-Fi | ≈ 4–8 € | 🧪 Probada en simulador |
 | [Mando inalámbrico (ESP32-C3 Super Mini)](#mando-inalámbrico-esp32-c3-super-mini) | Mando inalámbrico | 3,3 V | Radio | ≈ 3–6 € + pulsadores | 🧪 Probada en simulador |
+| [Mando inalámbrico (Waveshare ESP32-C3-Zero)](#mando-inalámbrico-waveshare-esp32-c3-zero) | Mando inalámbrico | 3,3 V | Radio | ≈ 4–7 € + pulsadores | 🧪 Probada en simulador |
 | [Waveshare ESP32-S3-Touch-LCD-7C](#waveshare-esp32-s3-touch-lcd-7c) | Pantalla de mesa | Entradas aisladas (consulta la wiki de Waveshare) | USB, Radio | ≈ 50–70 € | 🧪 Probada en simulador |
 | [Elecrow CrowPanel 7.0" ESP32-S3](#elecrow-crowpanel-70-esp32-s3) | Pantalla de mesa | 3,3 V | USB, Radio | ≈ 40–60 € | 🧪 Probada en simulador |
 | [Waveshare ESP32-S3-Touch-LCD-7](#waveshare-esp32-s3-touch-lcd-7) | Pantalla de mesa | 3,3 V | USB, Radio | ≈ 40–60 € | 🧪 Probada en simulador |
@@ -422,6 +423,28 @@ radio y protocolo). Cuando alguien la pruebe en una placa real, pasará a «Prob
 2. Prepara el IDE: esp32 de Espressif (Gestor de placas).
 3. Abre el programa hardware/mando_pulsadores/mando_pulsadores.ino de este proyecto (la carpeta entera, con sus archivos .h).
 4. Herramientas → Placa: «ESP32C3 Dev Module («USB CDC On Boot: Enabled»)». Herramientas → Puerto: el de tu placa.
+5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
+6. En la pantalla de mesa aparecerá «MANDO CONECTADO».
+
+### Mando inalámbrico (Waveshare ESP32-C3-Zero)
+
+*Mando de 2 pulsadores por radio* · ESP32-C3 · 3,3 V · 🧪 Probada en simulador
+
+- El mismo mando, en la mini Waveshare ESP32-C3-Zero: su LED es el RGB integrado (GPIO 10).
+- La pantalla le pasa las actualizaciones de este modelo: lo reconoce sola o se elige en AJUSTES → MANDO.
+- Mismo «GRUPO_MESA» en el mando y en la pantalla.
+
+| Qué | Pin de la placa | El otro cable |
+|---|---|---|
+| **Pulsador BLANCO** — Toque corto = gol · toque largo (0,8 s) = anular | `GPIO 3` | GND |
+| **Pulsador AZUL** — Toque corto = gol · toque largo (0,8 s) = anular | `GPIO 4` | GND |
+
+**Instalación**
+
+1. Instala el IDE de Arduino (arduino.cc/en/software) en tu PC.
+2. Prepara el IDE: esp32 de Espressif (Gestor de placas).
+3. Abre el programa hardware/mando_pulsadores/mando_pulsadores.ino de este proyecto (la carpeta entera, con sus archivos .h).
+4. Herramientas → Placa: «ESP32C3 Dev Module («USB CDC On Boot: Enabled») con -DMFV3_MANDO_RGB_PIN=10». Herramientas → Puerto: el de tu placa.
 5. Pulsa «Subir» (la flecha). Al terminar, la placa arranca sola.
 6. En la pantalla de mesa aparecerá «MANDO CONECTADO».
 

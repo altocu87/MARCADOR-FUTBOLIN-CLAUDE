@@ -38,6 +38,8 @@
 #ifndef MFV3_MANDO_RGB_PIN
 #define MFV3_MANDO_RGB_PIN -1
 #endif
+// Lo dice en cada saludo: la pantalla descarga el programa de este modelo («mando-c3zero» o «mando-c3»).
+#define MFV3_MANDO_MODEL (MFV3_MANDO_RGB_PIN >= 0 ? mfv3::ota::MODEL_C3_ZERO : mfv3::ota::MODEL_SUPER_MINI)
 
 // ---- Ajustes
 const uint8_t GRUPO_MESA = 1;          // MISMO número que en la pantalla (cámbialo si hay dos mesas cerca)
@@ -130,7 +132,7 @@ static void onRadio(const uint8_t*, const uint8_t* data, int len) { rxPush(data,
 
 static void sendInfo() {
   uint8_t pk[mfv3::ota::MAX_PACKET];
-  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, MFV3_BUILD, otaRx.armed(millis()));
+  uint8_t n = mfv3::ota::encodeInfo(pk, GRUPO_MESA, MFV3_BUILD, otaRx.armed(millis()), MFV3_MANDO_MODEL);
   esp_now_send(BROADCAST, pk, n);
 }
 
