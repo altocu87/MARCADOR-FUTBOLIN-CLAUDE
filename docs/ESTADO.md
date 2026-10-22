@@ -2,14 +2,14 @@
 
 ## Corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026
 
-Código 0.6 corregido por tres equipos y revisión cruzada, en `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. Regresión nativa completa, 314 pruebas de app/herramientas, 21 pruebas del instalador y compilación real correctas. Instalación autorizada por el dueño, en comprobación; el informe físico distinguirá lo grabado de lo simulado. [Entrega para A/Cloud](ENTREGA_SONIDOS_0_6_20261022.md). Se mantienen 61 voces, seis pools y límite 1.024. La revisión independiente de Cloud y las medidas acústicas siguen pendientes.
+**Pantalla 0.6 instalada y verificada en COM6; 61 voces conservadas y dos partidos intactos tras reiniciar.** Código `8b17155`, en `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. Regresión nativa completa, 314 pruebas de app/herramientas, 21 pruebas del instalador y compilación real correctas; Pruebas y Firmware de GitHub también correctos. Dos lecturas de CRC completo por cada WAV, sin sobrescribir ninguno. [Entrega para A/Cloud](ENTREGA_SONIDOS_0_6_20261022.md) · [Validación física](VALIDACION_PLACA_0_6_20261022.md). Se mantienen seis pools y límite 1.024. Revisión independiente de Cloud y latencia acústica pendientes; persiste un desfase del RTC cercano a dos minutos, sin reajuste automático.
 
 
-## Instalación de la rama B · comentarios 0.5 · 22/10/2026
+## Instalación anterior de la rama B · comentarios 0.5 · 22/10/2026
 
 **Instalada y verificada localmente: pantalla 0.5 en COM6, con 61 voces y catálogo activo tras reiniciar.** Selector nativo hasta 1.024 referencias, mezcla contextual con comodines y sustitución al anular. Corregida la consulta que confundía la capacidad SD con FFat: la tarjeta real es de unos 8 GB y tiene espacio suficiente. [Validación física y catálogo instalado](VALIDACION_PLACA_0_5_20261022.md) · [Entrega técnica](ENTREGA_COMENTARIOS_0_5_20261022.md) · [Próximas familias, aún sin implementar](PLAN_COMENTARIOS_EVENTOS_20261022.md). Main sigue en 0.2, sin fusionar. No se iniciaron partidos ni se reprodujeron frases automáticamente; pendiente prueba acústica y de latencia con el dueño. RELOJ? declara válido, pero se midieron unos 123 s de retraso frente al PC después de grabar: investigar sin suponer la causa, ver informe físico; no se reajustó la hora.
 
-## Estado vigente de la placa · 22/10/2026 · equipo B
+## Estado anterior de la placa · 22/10/2026 · equipo B
 
 **Instalada localmente: pantalla 0.5, build base 54, COM6. Publicada en main: 0.2 build 54.** Las entregas 0.3, 0.4 y 0.5 siguen en la rama `equipo-b/rendimiento-esp32s3`, pendientes de revisión de Cloud y sin fusionar. El dueño confirmó varios partidos correctos con 0.3. Con 0.4 se ha puesto el reloj en hora y verificado el Resumen real (2 partidos / 27 goles), conservando los dos originales sin fecha. Recuperar esas fechas aproximadas y comprobar un nuevo guardado en placa siguen pendientes. [Entrega de código](ENTREGA_FECHAS_RESUMEN_0_4_20261022.md) · [Validación física](VALIDACION_PLACA_0_4_20261022.md).
 

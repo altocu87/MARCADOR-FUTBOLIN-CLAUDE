@@ -79,3 +79,8 @@ Revisión de Cloud: **pendiente**. Validación física: **pendiente de autorizac
 ## Validación física posterior · 20/10/2026
 
 La versión 0.1 se ha integrado y publicado en main por autorización expresa del propietario e instalado en su placa, después de probar el firmware QR original. Novedades, deslizamiento y guía funcionan en la pantalla real. Ver [resultados físicos, comparación y límites](VALIDACION_PLACA_20261020.md); esta prueba no acredita todavía la barra durante una actualización OTA real.
+
+
+## Instalación local posterior · sonidos 0.6 · 22/10/2026
+
+El dueño autorizó la corrección conjunta e instalación local de 0.6. Código y notas en la rama B, sin fusionar main ni publicar OTA. Instalación y conservación de 61 voces/dos partidos comprobadas; medidas acústicas pendientes. Ver [entrega](ENTREGA_SONIDOS_0_6_20261022.md) y [validación física](VALIDACION_PLACA_0_6_20261022.md). Esta autorización mantiene la numeración en 0.x y no autoriza pasar a 1.0.

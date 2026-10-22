@@ -1,6 +1,6 @@
 # Sonidos nativos 0.6 · corrección conjunta de tres equipos · 22/10/2026
 
-Entrega del equipo B para A/Cloud. Rama `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. El propietario ha autorizado implementar y grabar esta corrección. La comprobación de instalación y sus límites se registra en [VALIDACION_PLACA_0_6_20261022.md](VALIDACION_PLACA_0_6_20261022.md); este documento no sustituye una prueba acústica.
+Entrega del equipo B para A/Cloud. Rama `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. El propietario ha autorizado implementar y grabar esta corrección; 0.6 instalada y 61 voces/dos partidos conservados tras reiniciar. La comprobación de instalación y sus límites se registra en [VALIDACION_PLACA_0_6_20261022.md](VALIDACION_PLACA_0_6_20261022.md); este documento no sustituye una prueba acústica.
 
 ## Qué mejora para el dueño
 
