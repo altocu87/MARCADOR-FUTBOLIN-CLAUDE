@@ -311,7 +311,7 @@ int main() {
     }
     snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
     usb(l);
-    assert(sent("SONIDO_GUARDADO 0000abcd") && SD_MMC.disk.files["/sonidos/0000abcd.wav"] == wav);
+    assert(sent("SONIDO_GUARDADO 0000abcd") && SD_MMC.disk.files["/sonidos/00/0000abcd.wav"] == wav);
     assert(!SD_MMC.disk.files.count("/sonidos/subida.tmp") && FFat.disk.files.empty());
     usb("SONIDOS?");
     assert(sent("SONIDOS chip=- sd=8387584 0000abcd@s"));
@@ -334,7 +334,7 @@ int main() {
     sim::heard.clear();
     usb("GB");
     run(100);
-    assert(sim::heard.size() >= 1580 && sim::heard.size() <= 1610);
+    assert(sim::heard.size() >= 1980 && sim::heard.size() <= 2010); // 1600 muestras + silencio hasta los 125 ms del DMA inicial
     assert(sim::heard[800] == 8000);
     assert(sim::exioOut & (1u << exio::SPEAKER_AMP));  // amplificadores encendidos al sonar
     sim::heard.clear();
@@ -354,7 +354,7 @@ int main() {
 
     // Borrado: el gol vuelve al de siempre (660 ms de notas).
     usb("SONIDO_BORRAR 0000abcd");
-    assert(sent("SONIDO_BORRADO 0000abcd") && !SD_MMC.disk.files.count("/sonidos/0000abcd.wav"));
+    assert(sent("SONIDO_BORRADO 0000abcd") && !SD_MMC.disk.files.count("/sonidos/0000abcd.wav") && !SD_MMC.disk.files.count("/sonidos/00/0000abcd.wav"));
     run(3000);
     sim::heard.clear();
     usb("GA");
@@ -369,7 +369,7 @@ int main() {
     for (size_t i = 0; i < wav.size(); i += 192) usb(("SONIDO_DATOS " + b64(&wav[i], std::min<size_t>(192, wav.size() - i))).c_str());
     snprintf(l, sizeof(l), "SONIDO_FIN %08lx", (unsigned long)mfv3snd::crc32Update(0, wav.data(), wav.size()));
     usb(l);
-    assert(sent("SONIDO_GUARDADO 0000beef") && SD_MMC.disk.files.count("/sonidos/0000beef.wav"));
+    assert(sent("SONIDO_GUARDADO 0000beef") && SD_MMC.disk.files.count("/sonidos/00/0000beef.wav"));
     usb("SONIDOS?");
     assert(sent(" 0000beef@s"));
     sim::heard.clear();

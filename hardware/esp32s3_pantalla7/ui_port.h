@@ -23,6 +23,7 @@ const int W = 800, H = 480;
 static volatile int16_t fakeX = 0, fakeY = 0;
 static volatile uint32_t fakeUntil = 0;
 static uint32_t lastTouchAt = 0;  // último toque real o simulado (para el reposo)
+static uint32_t presented = 0;
 static uint16_t* shown = nullptr;  // la imagen de pantalla que se está viendo ahora
 // Al empezar cada toque: si devuelve true, el toque entero se ignora (p. ej. el que despierta la pantalla).
 static bool (*touchDownHook)() = nullptr;
@@ -108,6 +109,7 @@ static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t* px) {
     perfWaitFrame = micros() - w0;
     perfWaitUs += perfWaitFrame;
     shown = (uint16_t*)px;
+    presented++;
   }
   lv_display_flush_ready(disp);
 }
@@ -220,7 +222,7 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
 #else  // ---------------------------------------------------------------- PC
 
 static uint16_t* pcFb = nullptr;
-static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t*) { lv_display_flush_ready(disp); }
+static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t*) { if(lv_display_flush_is_last(disp))presented++;lv_display_flush_ready(disp); }
 static void resyncPanel() {}
 static bool readTouch(int16_t& x, int16_t& y) {
   x = (int16_t)sim::touchX;

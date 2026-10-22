@@ -1,7 +1,18 @@
 {
-  "version": "0.4",
+  "version": "0.5",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.5",
+      "date": "2026-10-22",
+      "title": "Comentarios de gol según lo que ocurre",
+      "changes": [
+        "La pantalla elige frases de gol por la situación del partido y las alterna con comentarios comodín.",
+        "El catálogo admite hasta 1.024 sonidos en la SD sin cargar todas las voces en memoria.",
+        "El comentario empieza tras actualizar el marcador; al anular se corta la frase anterior y se usa el sonido de anulación disponible.",
+        "Las nuevas voces se organizan en carpetas pequeñas y las transferencias evitan falsos tiempos de espera."
+      ]
+    },
     {
       "version": "0.4",
       "date": "2026-10-22",

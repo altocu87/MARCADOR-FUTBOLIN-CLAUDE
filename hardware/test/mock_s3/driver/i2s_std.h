@@ -23,10 +23,15 @@ namespace sim {
 inline std::vector<int16_t> heard;   // muestras del canal izquierdo enviadas a los altavoces
 inline size_t i2sRoom = 4000;        // tramas que caben ahora en el colchón
 inline uint32_t i2sRate = 0;
+inline std::vector<int16_t> preload;
+inline unsigned i2sStops=0;
+inline bool failI2sStop=false;
 }
 inline esp_err_t i2s_new_channel(const i2s_chan_config_t*, i2s_chan_handle_t* tx, i2s_chan_handle_t*) { *tx = (void*)1; return ESP_OK; }
 inline esp_err_t i2s_channel_init_std_mode(i2s_chan_handle_t, const i2s_std_config_t* c) { sim::i2sRate = c->clk_cfg.sample_rate_hz; return ESP_OK; }
-inline esp_err_t i2s_channel_enable(i2s_chan_handle_t) { return ESP_OK; }
+inline esp_err_t i2s_channel_enable(i2s_chan_handle_t) {sim::heard.insert(sim::heard.end(),sim::preload.begin(),sim::preload.end());sim::preload.clear();return ESP_OK;}
+inline esp_err_t i2s_channel_disable(i2s_chan_handle_t){if(sim::failI2sStop)return -1;sim::preload.clear();sim::i2sStops++;return ESP_OK;}
+inline esp_err_t i2s_channel_preload_data(i2s_chan_handle_t,const void* src,size_t bytes,size_t* loaded){const int16_t* s=(const int16_t*)src;for(size_t i=0;i<bytes/4;i++)sim::preload.push_back(s[2*i]);*loaded=bytes;return ESP_OK;}
 inline esp_err_t i2s_channel_write(i2s_chan_handle_t, const void* src, size_t bytes, size_t* written, uint32_t) {
   size_t frames = bytes / 4;
   if (frames > sim::i2sRoom) frames = sim::i2sRoom;

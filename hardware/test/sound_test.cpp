@@ -336,6 +336,12 @@ static void testCommands() {
   cmd.tick(9000, reply);
   assert(replies.back() == "SONIDO_ERROR 00001234 tiempo" && !cmd.receiving());
 
+  // Un timestamp anterior del bucle no debe cancelar una recepción recién actualizada.
+  cmd.handle("SONIDO_SUBIR sd 00001234 3",100,reply,act);
+  cmd.tick(99,reply);assert(cmd.receiving());
+  cmd.handle("SONIDO_DATOS YWJj",101,reply,act);cmd.tick(100,reply);assert(cmd.receiving());
+  cmd.tick(9102,reply);assert(!cmd.receiving());
+
   // Demasiado grande o sin espacio.
   cmd.handle("SONIDO_SUBIR chip 00001234 5000000", 0, reply, act);
   assert(replies.back() == "SONIDO_ERROR 00001234 tamano");

@@ -12,6 +12,7 @@
 #ifndef MFV3_SOUND_H
 #define MFV3_SOUND_H
 
+#include <new>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -464,7 +465,7 @@ class Commands {
 
   // Cancela una recepción a medias si la app deja de mandar datos.
   void tick(uint32_t now, ReplyFn reply) {
-    if (receiving_ && now - lastData_ > UPLOAD_TIMEOUT_MS) fail(reply, "tiempo");
+    if (receiving_ && (int32_t)(now - lastData_) > (int32_t)UPLOAD_TIMEOUT_MS) fail(reply, "tiempo");
   }
 
   // Devuelve true si la línea era una orden de sonido.
@@ -476,6 +477,16 @@ class Commands {
     char buf[160];
     if (is(line, wl, "SONIDOS?")) {
       listReply(reply);
+    } else if (is(line, wl, "SONIDOS_PAGINA")) {
+      unsigned page=0;char tail;
+      if(sscanf(args,"%u %c",&page,&tail)!=1 || page>=32){reply("SONIDOS_ERROR pagina");return true;}
+      // 32 códigos por respuesta; hasta 1024 sin un búfer gigante ni modificar clientes antiguos.
+      uint32_t* codes=new(std::nothrow) uint32_t[1024];Place* places=new(std::nothrow) Place[1024];
+      if(!codes || !places){delete[] codes;delete[] places;reply("SONIDOS_ERROR memoria");return true;}
+      size_t n=store_.list(codes,places,1024),start=(size_t)page*32,end=start+32<n?start+32:n;
+      char pageBuf[440];int k=snprintf(pageBuf,sizeof pageBuf,"SONIDOS_PAGINA %u total=%u",page,(unsigned)n);
+      for(size_t i=start;i<end;i++)k+=snprintf(pageBuf+k,sizeof pageBuf-k," %08lx@%c",(unsigned long)codes[i],places[i]==Place::Sd?'s':'c');
+      delete[] codes;delete[] places;reply(pageBuf);
     } else if (is(line, wl, "SONIDO_SUBIR")) {
       char where[8] = {0}, code[16] = {0};
       unsigned long size = 0;

@@ -41,6 +41,7 @@
 #include "s3_release.h"
 #include "mfv3_sound.h"
 #include "mfv3_audio.h"
+#include "s3_comentarios.h"
 #include "s3_reloj.h"
 #include "ui_layout.h"
 #include "ui_port.h"
@@ -186,6 +187,11 @@ static void saveChoices() {
 #endif
 
 // Toca los momentos de un cambio: el primero ya (corta lo que sonara) y los demás, en cola.
+static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
+static uint32_t commentaryStartedAt = 0, commentaryQueuedAt = 0, commentaryWaitMs = 0, commentaryLastCode = 0;
+static mfv3snd::Event commentaryFallback = mfv3snd::Event::Goal;
+static void queueCommentary(uint32_t code) { pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
+
 static void playEvents(const mfv3snd::EventList& list) {
 #if HAS_AUDIO
   for (uint8_t i = 0; i < list.n; i++) {
@@ -429,7 +435,29 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   }
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
   snap = now;
-  playEvents(mfv3snd::detect(eng, sndBefore, goalAccepted));
+  auto sounds=mfv3snd::detect(eng,sndBefore,goalAccepted);
+#if HAS_AUDIO
+  bool spoken=false,automaticAllowed=true;
+  for(uint8_t i=0;i<sounds.n;i++){
+    if(sounds.ev[i]!=mfv3snd::Event::MatchPoint && sndChoices.c[(uint8_t)sounds.ev[i]].kind!=mfv3snd::Kind::Default)
+      automaticAllowed=false;
+  }
+  if(sounds.has(mfv3snd::Event::GoalAnnulled) && !goalAccepted){
+    queueCommentary(0);player.stop();
+    if(sndChoices.c[(uint8_t)mfv3snd::Event::GoalAnnulled].kind==mfv3snd::Kind::Default){
+      uint32_t code=comentarios::catalog.pick(1u<<comentarios::Anulado,esp_random(),esp_random());
+      if(code){queueCommentary(code);commentaryFallback=mfv3snd::Event::GoalAnnulled;spoken=true;}
+    }
+  }else if(goalAccepted && automaticAllowed && sndChoices.c[(uint8_t)mfv3snd::Event::Goal].kind==mfv3snd::Kind::Default){
+    uint8_t mask=comentarios::goalMask(eng,sndBefore,goalTeam);
+    if(mask)queueCommentary(0);
+    uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random());
+    if(code){player.stop();queueCommentary(code);spoken=true;}
+  }
+  if(!spoken)playEvents(sounds); // sin catálogo/audio contextual: comportamiento anterior
+#else
+  playEvents(sounds);
+#endif
   sndBefore = mfv3snd::before(eng);
 }
 
@@ -441,6 +469,7 @@ static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (so
 static uint16_t hcIntroSeq = 0;
 static void prepareMatchNetwork();
 static void startMatch() {
+  queueCommentary(0);
   if (nube::busy() || s3net::scanning) { ui::toast("Espera a que termine la conexión"); return; }
   prepareMatchNetwork();
   // Partido Loco: hándicaps y visitas; algunos dependen de cuántos juegan en cada equipo.
@@ -464,6 +493,7 @@ static void startMatch() {
 }
 
 static void goHome() {
+  queueCommentary(0);
   inMatch = false;
   homeCards = true;
   choosingPlayers = false;
@@ -638,6 +668,11 @@ static void sdPhotoCmd(const char* line) {
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
+#if HAS_AUDIO
+  if(comentarios::handle(line,sndStore,inMatch || sndCmd.receiving(),sendLine))return;
+  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[140];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt);sendLine(b);return;}
+  if(!strcmp(line,"SDINFO?")){char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)sndStore.sdOk,(unsigned)inMatch,(unsigned long long)SD_MMC.totalBytes(),(unsigned long long)SD_MMC.usedBytes(),(unsigned long long)(SD_MMC.totalBytes()-SD_MMC.usedBytes()));sendLine(b);return;}
+#endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
   if (jugadores.handle(line, sendLine)) {  // ni al pasar jugadores y fotos
     uiport::needResync = true;
@@ -1988,6 +2023,7 @@ void setup() {
 #if HAS_AUDIO
   sndStore.begin();
   player.begin(lcd, sndStore, sndVolume);
+  comentarios::load(sndStore);
 #endif
 #if HAS_AUDIO
   partidos::begin(sndStore.sdOk);  // todos los partidos, en la tarjeta (sin ella, en el chip)
@@ -2049,7 +2085,8 @@ void loop() {
   radioPoll();
   rtc.poll(now);
 #if HAS_AUDIO
-  sndCmd.tick(now, sendLine);
+  comentarios::tick(millis(),inMatch);
+  sndCmd.tick(millis(), sendLine);
   player.pump(now);
 #endif
 #if HAS_ISOLATED_IO
@@ -2089,7 +2126,16 @@ void loop() {
     historial::prewarm(&jugadores);
     jugadores.changed = false;
   }
+  uint32_t generationBeforeRender=commentaryGeneration,frameBefore=uiport::presented;
   render();
   uiport::step();
+#if HAS_AUDIO
+  if(pendingCommentary && generationBeforeRender==commentaryGeneration && uiport::presented!=frameBefore){
+    uint32_t code=pendingCommentary;pendingCommentary=0;
+    player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},false);
+    if(!player.busy())player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},false);
+    player.pump(millis());commentaryStartedAt=millis();commentaryWaitMs=commentaryStartedAt-commentaryQueuedAt;commentaryLastCode=code;
+  }
+#endif
   delay(2);
 }

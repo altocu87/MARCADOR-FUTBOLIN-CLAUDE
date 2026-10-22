@@ -47,3 +47,7 @@ Consultar [la entrega 0.4](docs/ENTREGA_FECHAS_RESUMEN_0_4_20261022.md). Corrige
 ## Sonidos FC26 · grupo 1 y requisitos de sincronización
 
 Leer [la entrega de sonidos](docs/ENTREGA_SONIDOS_FC26_COMODIN_20261022.md) y [el catálogo](docs/sonidos/catalogo_fc26_gol_comodin_01.json). Seis WAV comodín guardados y confirmados en SD, firmware 0.4; no están aún asignados automáticamente (selector actual limitado a cuatro). Los grupos específicos deben poder alternar con comodines. Última instrucción: iniciar audio al subir el gol al marcador visible; al anular, cortar comentario y sustituir por sonido de anulación (aún no entregado). No confundir requisitos con implementación ni activar solo cuatro de los seis. No publicar los WAV del dueño en el repositorio.
+
+## Pantalla 0.5 · selector de comentarios y paquete de 55 voces
+
+Consultar [la entrega 0.5](docs/ENTREGA_COMENTARIOS_0_5_20261022.md). Código en rama B, catálogo nativo hasta 1.024, selección por situaciones con comodines, sustitución al anular y sincronización tras el frame. No está instalado: placa 0.4 y solo seis voces confirmadas. Paquete de 55 preparado; comprobar capacidad SD antes de añadir los otros 49. Grupo 4 confirmado: dos o más goles SEGUIDOS del rival, sin exigir ir ganando. Grupo 2 pendiente de aclarar quién recibe/marca: consta la interpretación provisional y su prueba. No afirmar latencia física ni instalación total a partir de las simulaciones. Mantener main sin fusionar y 0.x.

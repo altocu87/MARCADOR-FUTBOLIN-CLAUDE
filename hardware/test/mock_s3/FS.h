@@ -11,6 +11,7 @@ namespace fs {
 struct Disk {
   std::map<std::string, std::vector<uint8_t>> files;
   std::map<std::string, bool> dirs;
+  std::string failRenameTo;
 };
 class File {
  public:
@@ -19,7 +20,8 @@ class File {
     st_->disk = d; st_->path = p; st_->write = w; st_->dir = dir;
     if (dir) {
       for (auto& f : d->files)
-        if (f.first.rfind(p + "/", 0) == 0) st_->entries.push_back(f.first);
+        if (f.first.rfind(p + "/", 0) == 0 && f.first.find('/',p.size()+1)==std::string::npos) st_->entries.push_back(f.first);
+      for(auto& entry:d->dirs)if(entry.first.rfind(p+"/",0)==0 && entry.first.find('/',p.size()+1)==std::string::npos)st_->entries.push_back(entry.first);
     } else if (w) {
       d->files[p].clear();
     }
@@ -52,7 +54,7 @@ class File {
   const char* name() { return st_->path.c_str() + st_->path.rfind('/') + 1; }
   File openNextFile() {
     if (!st_ || st_->next >= st_->entries.size()) return File();
-    return File(st_->disk, st_->entries[st_->next++], false, false);
+    auto name=st_->entries[st_->next++];return File(st_->disk,name,false,st_->disk->dirs.count(name)>0);
   }
  private:
   struct St {
@@ -71,6 +73,7 @@ class FS {
   bool remove(const char* p) { return disk.files.erase(p) > 0; }
   bool mkdir(const char* p) { disk.dirs[p] = true; return true; }
   bool rename(const char* a, const char* b) {
+    if(disk.failRenameTo==b)return false;
     auto it = disk.files.find(a);
     if (it == disk.files.end()) return false;
     disk.files[b] = it->second;

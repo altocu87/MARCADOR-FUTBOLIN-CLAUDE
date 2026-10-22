@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Candidato de la rama B · comentarios 0.5 · 22/10/2026
+
+Selector implementado hasta 1.024 sonidos y paquete de 55 voces preparado, sin instalar todavía. La placa sigue en 0.4 con seis WAV en SD; el espacio que declara actualmente no alcanza para los 49 nuevos y debe verificarse. [Entrega técnica, catálogo y plan de instalación](ENTREGA_COMENTARIOS_0_5_20261022.md). Main sigue sin fusionar. Las simulaciones no son una validación acústica en placa.
+
 ## Estado vigente de la placa · 22/10/2026 · equipo B
 
 **Instalada localmente: pantalla 0.4, build base 54, COM6. Publicada en main: 0.2 build 54.** Las entregas 0.3 y 0.4 siguen en la rama `equipo-b/rendimiento-esp32s3`, pendientes de revisión de Cloud y sin fusionar. El dueño confirmó varios partidos correctos con 0.3. Con 0.4 se ha puesto el reloj en hora y verificado el Resumen real (2 partidos / 27 goles), conservando los dos originales sin fecha. Recuperar esas fechas aproximadas y comprobar un nuevo guardado en placa siguen pendientes. [Entrega de código](ENTREGA_FECHAS_RESUMEN_0_4_20261022.md) · [Validación física](VALIDACION_PLACA_0_4_20261022.md).

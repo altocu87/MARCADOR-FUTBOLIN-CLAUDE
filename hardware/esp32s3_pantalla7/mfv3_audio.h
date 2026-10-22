@@ -8,7 +8,7 @@
 //   - Memoria del chip: partición FAT de 19,9 MB (partitions.csv), con la biblioteca FFat. Queda para imágenes:
 //     los sonidos van solo a la tarjeta SD (SOUNDS_ON_CHIP).
 // Los sonidos se guardan como /sonidos/<código>.wav y suenan siempre a 16 kHz (se cambia la frecuencia al vuelo).
-// El audio se va entregando en cada vuelta de loop() (250 ms de colchón), sin tareas aparte.
+// Audio por bloques desde loop(), con 125 ms de DMA; cada sustitución descarta la pista anterior.
 
 #ifndef MFV3_AUDIO_H
 #define MFV3_AUDIO_H
@@ -18,6 +18,7 @@
 
 #if MFV3_BOARD == BOARD_WAVESHARE_7C
 #define HAS_AUDIO 1
+#include <ctype.h>
 #include <FS.h>
 #include <FFat.h>
 #include <SD_MMC.h>
@@ -54,6 +55,8 @@ class FsStore : public mfv3snd::Store {
 
   static void path(uint32_t code, char* buf, size_t cap) { snprintf(buf, cap, "%s/%08lx.wav", DIR, (unsigned long)code); }
 
+  static void bucketPath(uint32_t code,char* buf,size_t cap){snprintf(buf,cap,"%s/%02lx/%08lx.wav",DIR,(unsigned long)(code>>24),(unsigned long)code);}
+
   bool available(Place p) override { return p == Place::Sd ? sdOk : chipOk && SOUNDS_ON_CHIP; }
 
   uint32_t freeKB(Place p) override {
@@ -66,6 +69,8 @@ class FsStore : public mfv3snd::Store {
     abort();
     place_ = p;
     code_ = code;
+    char bucket[24];snprintf(bucket,sizeof bucket,"%s/%02lx",DIR,(unsigned long)(code>>24));
+    if(!fsOf(p).exists(bucket) && !fsOf(p).mkdir(bucket))return false;
     file_ = fsOf(p).open(TMP, FILE_WRITE);
     return (bool)file_;
   }
@@ -77,7 +82,7 @@ class FsStore : public mfv3snd::Store {
     file_.close();
     remove(code_);  // un sonido solo vive en un sitio
     char p[40];
-    path(code_, p, sizeof(p));
+    bucketPath(code_, p, sizeof(p));
     return fsOf(place_).rename(TMP, p);
   }
 
@@ -94,11 +99,17 @@ class FsStore : public mfv3snd::Store {
     bool any = false;
     if (sdOk && SD_MMC.exists(p)) any = SD_MMC.remove(p) || any;
     if (available(Place::Chip) && FFat.exists(p)) any = FFat.remove(p) || any;
+    bucketPath(code,p,sizeof(p));
+    if(sdOk && SD_MMC.exists(p))any=SD_MMC.remove(p)||any;
+    if(available(Place::Chip) && FFat.exists(p))any=FFat.remove(p)||any;
     return any;
   }
 
   bool find(uint32_t code, Place& where) override {
     char p[40];
+    bucketPath(code,p,sizeof(p));
+    if(sdOk && SD_MMC.exists(p)){where=Place::Sd;return true;}
+    if(available(Place::Chip) && FFat.exists(p)){where=Place::Chip;return true;}
     path(code, p, sizeof(p));
     if (sdOk && SD_MMC.exists(p)) {
       where = Place::Sd;
@@ -120,23 +131,30 @@ class FsStore : public mfv3snd::Store {
     Place where;
     if (!find(code, where)) return fs::File();
     char p[40];
-    path(code, p, sizeof(p));
-    return fsOf(where).open(p, FILE_READ);
+    bucketPath(code,p,sizeof(p));
+    if(fsOf(where).exists(p))return fsOf(where).open(p,FILE_READ);
+    path(code,p,sizeof(p));return fsOf(where).open(p,FILE_READ);
   }
 
  private:
   size_t listIn(Place pl, uint32_t* codes, Place* places, size_t cap, size_t n) {
     if (!available(pl)) return n;
-    fs::File dir = fsOf(pl).open(DIR);
-    if (!dir || !dir.isDirectory()) return n;
-    for (fs::File f = dir.openNextFile(); f && n < cap; f = dir.openNextFile()) {
-      const char* name = f.name();
-      const char* slash = strrchr(name, '/');
-      if (slash) name = slash + 1;
-      uint32_t code;
-      if (strlen(name) == 12 && !strcmp(name + 8, ".wav") && mfv3snd::parseCode(name, 8, code)) {
-        codes[n] = code;
-        places[n++] = pl;
+    return listDir(pl,DIR,codes,places,cap,n,0);
+  }
+  size_t listDir(Place pl,const char* folder,uint32_t* codes,Place* places,size_t cap,size_t n,unsigned depth){
+    auto dir=fsOf(pl).open(folder);if(!dir || !dir.isDirectory())return n;
+    for(auto f=dir.openNextFile();f && n<cap;f=dir.openNextFile()){
+      const char* name=f.name();const char* slash=strrchr(name,'/');if(slash)name=slash+1;
+      if(f.isDirectory()){
+        if(depth==0 && strlen(name)==2 && isxdigit((unsigned char)name[0]) && isxdigit((unsigned char)name[1])){
+          char child[32];snprintf(child,sizeof child,"%s/%s",DIR,name);n=listDir(pl,child,codes,places,cap,n,1);
+        }
+        continue;
+      }
+      uint32_t code;if(strlen(name)==12 && !strcmp(name+8,".wav") && mfv3snd::parseCode(name,8,code)){
+        bool duplicate=false;for(size_t i=0;i<n;i++)if(codes[i]==code){duplicate=true;break;}
+        if(!duplicate){codes[n]=code;places[n++]=pl;}
+        if((n&15u)==0)delay(1);
       }
     }
     return n;
@@ -217,6 +235,7 @@ class Player {
     sc.gpio_cfg.dout = GPIO_NUM_15;
     sc.gpio_cfg.din = I2S_GPIO_UNUSED;
     if (i2s_channel_init_std_mode(tx_, &sc) != ESP_OK || i2s_channel_enable(tx_) != ESP_OK) return false;
+    txRunning_ = true;
     ok = codecInit();
     setVolume(volume);
     return ok;
@@ -237,6 +256,7 @@ class Player {
     if (!ok || volume_ == 0) return;
     if (!queue) {
       stop();
+      if(!ok)return;
       start(it);
     } else if (!playing_) start(it);
     else if (qn_ < 3) q_[qn_++] = it;
@@ -247,6 +267,12 @@ class Player {
     playing_ = false;
     pendingFrames_ = pendingAt_ = 0;
     qn_ = 0;
+    // Parar DMA evita que continúe sonando la frase anulada. La siguiente pista
+    // rellena TODOS los descriptores antes de habilitarla, sin muestras antiguas.
+    if (txRunning_ && tx_) {
+      if(i2s_channel_disable(tx_)!=ESP_OK){ok=false;amp(false);}
+      txRunning_=false;
+    }
   }
 
   // En cada vuelta de loop(): rellena el colchón de audio con lo que quepa.
@@ -254,6 +280,19 @@ class Player {
     if (!ok) return;
     if (playing_ || pendingFrames_) quietSince_ = now;
     else if (ampOn_ && now - quietSince_ > 800) amp(false);  // amplificadores apagados en reposo (sin soplido)
+    if(!txRunning_ && playing_){
+      // 8 descriptores de 250 tramas. Leer como máximo 4 KB de PCM mono
+      // antes del arranque; se reutilizan buffers existentes, sin heap por gol.
+      for(unsigned d=0;d<8;d++){
+        size_t n=playing_?fill(mono_,250):0;
+        if(n<250)playing_=false;
+        for(size_t i=0;i<250;i++)stereo_[2*i]=stereo_[2*i+1]=i<n?mono_[i]:0;
+        size_t loaded=0;
+        if(i2s_channel_preload_data(tx_,stereo_,1000,&loaded)!=ESP_OK || loaded!=1000){ok=false;amp(false);return;}
+      }
+      if(i2s_channel_enable(tx_)!=ESP_OK){ok=false;amp(false);return;}
+      txRunning_=true;quietSince_=now;
+    }
     for (int guard = 0; guard < 16; guard++) {
       if (pendingAt_ >= pendingFrames_) {
         pendingFrames_ = pendingAt_ = 0;
@@ -350,7 +389,7 @@ class Player {
   FsStore* store_ = nullptr;
   i2s_chan_handle_t tx_ = nullptr;
   uint8_t volume_ = 80;
-  bool playing_ = false, fromFile_ = false, ampOn_ = false;
+  bool playing_ = false, fromFile_ = false, ampOn_ = false, txRunning_ = false;
   uint32_t quietSince_ = 0;
   Item q_[3];
   uint8_t qn_ = 0;
