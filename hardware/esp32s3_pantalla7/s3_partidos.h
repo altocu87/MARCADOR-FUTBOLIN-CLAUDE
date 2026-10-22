@@ -504,7 +504,9 @@ static const char* PERIOD[4] = {"first", "second", "overtime", "shootout"};
 
 
 // Guarda el partido que acaba de terminar. Devuelve false si no se pudo escribir.
-static bool save(const mfv3::Engine& e, const Match& m) {
+static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullptr) {
+  auto cooperate=[&](){if(service)service();};
+  cooperate();
   using mfv3::Period;
   using mfv3::Team;
   char id[37];
@@ -534,6 +536,7 @@ static bool save(const mfv3::Engine& e, const Match& m) {
       jstr(f, m.who[t][i].name);
       fputc('}', f);
       first = false;
+      cooperate();
     }
   fprintf(f, "],\"createdAt\":%llu,\"startedAt\":%llu,\"finishedAt\":%llu,", (unsigned long long)t0, (unsigned long long)t0,
           (unsigned long long)t1);
@@ -569,6 +572,7 @@ static bool save(const mfv3::Engine& e, const Match& m) {
   int seq = 0;
   int sw = 0, sb = 0;
   auto ev = [&](const char* type, int team, int period, uint32_t ptime, const char* extra) {
+    cooperate();
     seq++;
     uint32_t total = before[period < 3 ? period : 2] + ptime;
     fprintf(f, "%s{\"id\":\"e%d\",\"seq\":%d,\"type\":\"%s\",", seq > 1 ? "," : "", seq, seq, type);
@@ -680,12 +684,16 @@ static bool save(const mfv3::Engine& e, const Match& m) {
     fputc('}', f);
   }
   fputs("}\n", f);
+  cooperate();
   bool ok = fclose(f) == 0;
+  cooperate();
   if (!ok) return false;
   // Índice: la fila sale del JSON recién escrito (igual que con los partidos que lleguen de la app).
   Row r;
   if (!rowFromJson(path, r)) return false;
+  cooperate();
   appendIndex(r);
+  cooperate();
   push(r);
   return true;
 }

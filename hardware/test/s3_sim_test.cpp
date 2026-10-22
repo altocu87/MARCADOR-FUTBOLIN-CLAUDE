@@ -344,7 +344,10 @@ int main() {
     run(1000);
     assert(!(sim::exioOut & (1u << exio::SPEAKER_AMP)));  // y apagados en reposo
 
-    // La app toca un sonido de la placa (en un partido de la app) y cambia el volumen.
+    // La gestión de sonidos requiere reposo, nunca interrumpe un partido local.
+    usb("SONIDO 0000abcd");assert(sent("SONIDO_ERROR - ocupado"));
+    tap(400, 314); tap(400, 376); tap(588, 284);assert(!inMatch);
+    // La app prueba un sonido y cambia el volumen en reposo.
     sim::heard.clear();
     usb("SONIDO 0000abcd");
     run(50);
@@ -357,6 +360,7 @@ int main() {
     assert(sent("SONIDO_BORRADO 0000abcd") && !SD_MMC.disk.files.count("/sonidos/0000abcd.wav") && !SD_MMC.disk.files.count("/sonidos/00/0000abcd.wav"));
     run(3000);
     sim::heard.clear();
+    toConfig();tap(400, 443);tap(400, 240);run(3500);sim::heard.clear();
     usb("GA");
     run(100);
     assert(sim::heard.size() > 10000 && sim::heard.size() < 10700);

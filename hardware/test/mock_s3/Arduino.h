@@ -19,7 +19,7 @@ inline bool getLocalTime(struct tm* t, uint32_t = 5000) {
   *t = sim::ntpTime;
   return true;
 }
-struct EspSim { void restart() { sim::restarts++; } };
+struct EspSim { void restart() { sim::restarts++; } uint64_t getEfuseMac() const {return 0x80456b625a24ull;} };
 inline EspSim ESP;
 namespace sim {
 inline int rgbPin = -1;

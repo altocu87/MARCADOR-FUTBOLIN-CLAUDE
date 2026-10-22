@@ -1,7 +1,19 @@
 {
-  "version": "0.5",
+  "version": "0.6",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.6",
+      "date": "2026-10-22",
+      "title": "Sonidos más rápidos y actualizaciones más seguras",
+      "changes": [
+        "Se evita que una pulsación al continuar o reanudar termine una parte por error.",
+        "Los comentarios abren menos veces la SD y el gol ganador se muestra antes de completar el guardado.",
+        "Los archivos dañados se rechazan y los sonidos anteriores se conservan si falla una sustitución.",
+        "Las cargas comprueban el contenido real de cada audio y se bloquean durante el partido.",
+        "En Partido Loco, los cambios de marcador de animales usan gol o anulación y el penalti avisa al señalarse."
+      ]
+    },
     {
       "version": "0.5",
       "date": "2026-10-22",

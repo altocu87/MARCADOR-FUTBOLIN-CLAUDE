@@ -27,3 +27,16 @@ jobs:
           node scripts/test-session-browser.mjs
       - name: Firmware simulado (g++)
         run: npm run test:hardware
+
+  instalador-sonidos:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalador USB con transporte ficticio (sin placa)
+        shell: pwsh
+        run: |
+          ./tests/commentary-installer.test.ps1
+      - name: Compilar instalador sin abrir puertos
+        shell: pwsh
+        run: |
+          ./scripts/subir-comentarios.ps1 -CompileOnly

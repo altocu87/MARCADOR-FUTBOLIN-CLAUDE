@@ -24,6 +24,7 @@ static volatile int16_t fakeX = 0, fakeY = 0;
 static volatile uint32_t fakeUntil = 0;
 static uint32_t lastTouchAt = 0;  // último toque real o simulado (para el reposo)
 static uint32_t presented = 0;
+static uint32_t presentFailures=0,vsyncTimeouts=0;
 static uint16_t* shown = nullptr;  // la imagen de pantalla que se está viendo ahora
 // Al empezar cada toque: si devuelve true, el toque entero se ignora (p. ej. el que despierta la pantalla).
 static bool (*touchDownHook)() = nullptr;
@@ -103,13 +104,14 @@ static bool IRAM_ATTR onVsync(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_ev
 static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t* px) {
   if (lv_display_flush_is_last(disp)) {
     xSemaphoreTake(vsyncSem, 0);
-    esp_lcd_panel_draw_bitmap(panel, 0, 0, W, H, px);
+    esp_err_t drawn=esp_lcd_panel_draw_bitmap(panel, 0, 0, W, H, px);
     uint32_t w0 = micros();
-    xSemaphoreTake(vsyncSem, pdMS_TO_TICKS(60));
+    bool synced=drawn==ESP_OK && xSemaphoreTake(vsyncSem, pdMS_TO_TICKS(60))==pdTRUE;
     perfWaitFrame = micros() - w0;
     perfWaitUs += perfWaitFrame;
-    shown = (uint16_t*)px;
-    presented++;
+    if(drawn!=ESP_OK)presentFailures++;
+    else if(!synced)vsyncTimeouts++;
+    else {shown=(uint16_t*)px;presented++;}
   }
   lv_display_flush_ready(disp);
 }

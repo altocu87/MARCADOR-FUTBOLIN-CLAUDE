@@ -132,6 +132,49 @@ static void testDetect() {
   assert(eq(p.apply(false, pb), {Event::PenaltyMissed}));
 }
 
+static Sim chaosWith(mfv3::HKind kind, const char* previous) {
+  for (uint32_t seed = 1; seed < 5000; seed++) {
+    Config c; c.endCondition = EndCondition::Time; c.minutesPerPeriod = 10; c.goalsPerPeriod = 20; c.chaos = true;
+    Sim s(c); s.start(); s.goals(previous); s.e.seed(seed);
+    s.t = 50000; s.e.tick(s.t);
+    if (s.e.phase() != Phase::Handicap || s.e.handicap().kind != kind) continue;
+    assert(s.e.handicapGo(s.t) == mfv3::Result::Accepted);
+    return s;
+  }
+  assert(false); return Sim(Config());
+}
+
+static void testSpecialGoalValues() {
+  // El empate real con un gol doble respeta el evento/preferencia de empate.
+  Sim d = chaosWith(mfv3::HKind::DoubleAll, "WW");
+  assert(eq(d.goal(Team::Blue), {Event::Equalizer}));
+  assert(d.e.score().white == 2 && d.e.score().blue == 2);
+  // Un triple remonta directamente una desventaja de dos; no es un gol unitario.
+  Sim t = chaosWith(mfv3::HKind::TripleNext, "BB");
+  assert(eq(t.goal(Team::White), {Event::Comeback}));
+  assert(t.e.score().white == 3 && t.e.score().blue == 2);
+  // Robo de un gol aceptado: el descenso del rival no es una anulación separada.
+  Sim steal = chaosWith(mfv3::HKind::Steal, "BB");
+  assert(steal.e.handicap().team == 0);
+  auto events = steal.goal(Team::White);
+  assert(eq(events, {Event::Equalizer}));
+  assert(steal.e.score().white == 1 && steal.e.score().blue == 1);
+  // Intentos congelados no rompen ni aumentan la racha de goles que sí sumaron.
+  Sim f = chaosWith(mfv3::HKind::FreezeScore, "WW");
+  f.goal(Team::Blue); f.goal(Team::White);
+  assert(f.e.score().white == 2 && f.e.score().blue == 0);
+  f.t = 65000; f.e.tick(f.t); assert(f.e.phase() == Phase::Handicap);
+  assert(f.e.handicapGo(f.t) == mfv3::Result::Accepted);
+  assert(eq(f.goal(Team::White), {Event::Streak3}));
+  // Ampliación aditiva: nombres/índices antiguos no se desplazan.
+  assert((uint8_t)Event::Rout == 12 && (uint8_t)Event::PenaltyAwarded == 13);
+  assert(eventFromName("penaltyAwarded", 14) == (int)Event::PenaltyAwarded);
+  auto tune = defaultTune(Event::PenaltyAwarded);
+  assert(tune.n == 3 && tune.notes != defaultTune(Event::Goal).notes);
+  Choices choices; assert(choices.set("penaltyAwarded no"));
+  assert(choices.c[(int)Event::PenaltyAwarded].kind == Kind::None);
+}
+
 static void testChoices() {
   Choices ch;
   assert(ch.set("goal 1a2b3c4d,0000beef"));
@@ -228,7 +271,7 @@ static void testWavAndResample() {
   size_t used = 0;
   int16_t a[4] = {1, 2, 3, 4}, b[8];
   size_t n = rs.process(a, 4, b, 8, used);
-  assert(n == 3 && b[0] == 1 && b[2] == 3);
+  assert(n == 4 && used == 4 && b[0] == 1 && b[3] == 4);
 
   // Notas: duran lo que deben y suenan.
   ToneGen tg;
@@ -243,6 +286,48 @@ static void testWavAndResample() {
     if (!k) break;
   }
   assert(total > 16000 * 600 / 1000 && total < 16000 * 700 / 1000 && peak > 3000);
+}
+
+static void testMalformedWavAndSampleExtremes() {
+  auto put32 = [](std::vector<uint8_t>& d, size_t p, uint32_t value) { for (unsigned i = 0; i < 4; i++) d[p+i] = (uint8_t)(value >> (8*i)); };
+  WavInfo info;
+  auto w = wav16(16000, 1, 1000);
+  // El reproductor lee solo los primeros bytes; el payload no tiene que caber aquí.
+  assert(parseWav(w.data(), 44, info) && info.dataBytes == 2000);
+  for (size_t n = 0; n < 44; n++) assert(!parseWav(w.data(), n, info));
+  assert(!parseWav(nullptr, 44, info));
+  auto bad = w; put32(bad, 16, 4); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; put32(bad, 16, UINT32_MAX); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; memcpy(bad.data()+12, "JUNK", 4); put32(bad, 16, UINT32_MAX);
+  assert(!parseWav(bad.data(), bad.size(), info)); // antes podía desbordar al avanzar el cursor
+  bad = w; put32(bad, 4, 20); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; put32(bad, 40, UINT32_MAX); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; put32(bad, 40, 1999); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; bad[32] = 4; assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; put32(bad, 28, 1); assert(!parseWav(bad.data(), bad.size(), info));
+  bad = w; put32(bad, 40, 0); assert(!parseWav(bad.data(), bad.size(), info));
+  auto stereo = wav16(16000, 2, 10); put32(stereo, 40, 38);
+  assert(!parseWav(stereo.data(), stereo.size(), info)); // dos bytes no forman una trama estéreo
+  // PCM con fmt de 18 bytes (cbSize=0), admitido sin confundirlo con un fmt corto.
+  auto extended = w; extended.insert(extended.begin()+36, {0,0}); put32(extended,16,18); put32(extended,4,(uint32_t)extended.size()-8);
+  assert(parseWav(extended.data(),46,info) && info.dataOffset == 46);
+  // JUNK impar con su byte de relleno, seguido de data válido.
+  w.insert(w.begin()+36, {'J','U','N','K',1,0,0,0,42,0}); put32(w,4,(uint32_t)w.size()-8);
+  assert(parseWav(w.data(), 54, info) && info.dataOffset == 54 && info.rate == 16000);
+  // Cabeceras adversas no dejan una configuración parcial utilizable.
+  bad = w; bad[0] = 0; assert(!parseWav(bad.data(),bad.size(),info) && info.rate == 0 && info.dataBytes == 0);
+  // Interpolación de extremos: el producto necesita más de 32 bits firmados.
+  Resampler rs; rs.begin(8000,16000);
+  int16_t in[] = {32767,-32768,32767,-32768}, out[16]; size_t used = 0;
+  size_t n = rs.process(in,4,out,16,used);
+  assert(n == 6 && used == 4);
+  int16_t expected[] = {32767,0,-32768,0,32767,0};
+  for (size_t i=0;i<n;i++) assert(out[i] == expected[i]);
+  // Misma frecuencia por bloques pequeños: conserva también la última muestra.
+  rs.begin(16000,16000); size_t pos=0; std::vector<int16_t> copied;
+  while(pos<4){n=rs.process(in+pos,4-pos,out,1,used);assert(n==1 && used==1);copied.push_back(out[0]);pos+=used;}
+  assert(copied == std::vector<int16_t>(in,in+4));
+  rs.begin(16000,0);assert(!rs.process(in,4,out,16,used) && !used);
 }
 
 // ---------------------------------------------------------------- recepción por el protocolo
@@ -364,9 +449,11 @@ static void testCommands() {
 
 int main() {
   testDetect();
+  testSpecialGoalValues();
   testChoices();
   testCodec();
   testWavAndResample();
+  testMalformedWavAndSampleExtremes();
   testCommands();
   printf("sonidos de la placa: OK\n");
   return 0;

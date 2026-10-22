@@ -30,12 +30,12 @@ using mfv3::Team;
 // ---------------------------------------------------------------- momentos
 enum class Event : uint8_t {
   Goal, GoalAnnulled, Streak3, Comeback, Equalizer, MatchPoint, GoldenGoal, PenaltyScored, PenaltyMissed,
-  MatchStart, PeriodEnd, Victory, Rout, Count
+  MatchStart, PeriodEnd, Victory, Rout, PenaltyAwarded, Count
 };
 static const uint8_t EVENT_COUNT = (uint8_t)Event::Count;
 static const char* const EVENT_NAMES[EVENT_COUNT] = {
     "goal",          "goalAnnulled",  "streak3",    "comeback",  "equalizer", "matchPoint", "goldenGoal",
-    "penaltyScored", "penaltyMissed", "matchStart", "periodEnd", "victory",   "rout"};
+    "penaltyScored", "penaltyMissed", "matchStart", "periodEnd", "victory",   "rout", "penaltyAwarded"};
 
 inline int eventFromName(const char* s, size_t len) {
   for (uint8_t i = 0; i < EVENT_COUNT; i++)
@@ -75,37 +75,44 @@ inline bool isRout(const Engine& e) {
 }
 
 // Sonido del último gol válido cuando no termina el partido: el momento más especial gana
-// (remontada > 3 seguidos > empate > gol), igual que en la app.
-inline Event goalEvent(const Engine& e) {
+// (remontada > 3 seguidos > empate > gol), conservando la prioridad anterior.
+inline Event goalEvent(const Engine& e, const Before& b) {
   int last = -1;
   for (uint8_t i = 0; i < e.goalCount(); i++)
-    if (!e.goalAt(i).annulled) last = i;
+    if (!e.goalAt(i).annulled && e.goalAt(i).value) last = i;
   if (last < 0) return Event::Goal;
   Team team = e.goalAt((uint8_t)last).team;
-  int sw = 0, sb = 0, worstW = 0, worstB = 0, beforeT = 0, beforeO = 0, worst = 0;
-  for (int i = 0; i <= last; i++) {
+  Score after = e.score();
+  // Clasificar el cambio real, incluidos dobles, triples, robos y visitas previas.
+  if (after.of(team) <= b.score.of(team)) return Event::Goal;
+  int sw = 0, sb = 0, worstW = 0, worstB = 0;
+  for (int i = 0; i < last; i++) {
     const mfv3::Goal& g = e.goalAt((uint8_t)i);
-    if (g.annulled) continue;
-    if (i == last) {
-      beforeT = team == Team::White ? sw : sb;
-      beforeO = team == Team::White ? sb : sw;
-      worst = team == Team::White ? worstW : worstB;
-    }
-    (g.team == Team::White ? sw : sb)++;
-    if (sb - sw > worstW) worstW = sb - sw;
-    if (sw - sb > worstB) worstB = sw - sb;
+    if (g.annulled || !g.value) continue;
+    (g.team == Team::White ? sw : sb) += g.value;
+    if (g.steal) (g.team == Team::White ? sb : sw)--;
+    // Como Engine::scoreOf: acumular primero; limitar solo la vista de cada prefijo.
+    int visibleW = sw < 0 ? 0 : sw > 255 ? 255 : sw;
+    int visibleB = sb < 0 ? 0 : sb > 255 ? 255 : sb;
+    if (visibleB - visibleW > worstW) worstW = visibleB - visibleW;
+    if (visibleW - visibleB > worstB) worstB = visibleW - visibleB;
   }
-  int afterT = beforeT + 1, afterO = beforeO;
-  if (beforeT <= beforeO && afterT > afterO && worst >= 2) return Event::Comeback;
+  Team opponent = mfv3::other(team);
+  int deficit = (int)b.score.of(opponent) - b.score.of(team);
+  int worst = team == Team::White ? worstW : worstB;
+  if (deficit > worst) worst = deficit;
+  // VisitMark no guarda el instante: no inventar una remontada histórica tras animales.
+  if (!e.visitMarkCount() && b.score.of(team) <= b.score.of(opponent) &&
+      after.of(team) > after.of(opponent) && worst >= 2) return Event::Comeback;
   int streak = 0;
   for (int i = last; i >= 0; i--) {
     const mfv3::Goal& g = e.goalAt((uint8_t)i);
-    if (g.annulled) continue;
+    if (g.annulled || !g.value) continue;
     if (g.team != team) break;
     streak++;
   }
   if (streak == 3) return Event::Streak3;
-  if (afterT == afterO && afterT > 0) return Event::Equalizer;
+  if (after.white == after.blue && after.white > 0) return Event::Equalizer;
   return Event::Goal;
 }
 
@@ -116,12 +123,12 @@ inline EventList detect(const Engine& e, const Before& b, bool goalAccepted) {
   Phase ph = e.phase();
   bool finished = ph == Phase::Finished && b.phase != Phase::Finished;
   bool scoreChanged = s.white != b.score.white || s.blue != b.score.blue;
-  if (b.period == e.period() && (s.white < b.score.white || s.blue < b.score.blue)) out.add(Event::GoalAnnulled);
+  if (!goalAccepted && b.period == e.period() && (s.white < b.score.white || s.blue < b.score.blue)) out.add(Event::GoalAnnulled);
   if (b.phase == Phase::Countdown && b.period == Period::First && ph != Phase::Countdown) out.add(Event::MatchStart);
   if (ph == Phase::PeriodEnd && b.phase != Phase::PeriodEnd) out.add(Event::PeriodEnd);
   if (e.kickCount() > b.kicks) out.add(e.kick((uint8_t)(e.kickCount() - 1)).scored ? Event::PenaltyScored : Event::PenaltyMissed);
   if (goalAccepted) {
-    if (!finished) out.add(goalEvent(e));
+    if (!finished) out.add(goalEvent(e, b));
     else if (b.period == Period::Overtime) out.add(Event::GoldenGoal);
   }
   if (finished) out.add(isRout(e) ? Event::Rout : Event::Victory);
@@ -277,26 +284,40 @@ struct WavInfo {
 
 // Lee la cabecera de un WAV PCM de 16 bits (en los primeros bytes del archivo).
 inline bool parseWav(const uint8_t* d, size_t len, WavInfo& out) {
-  if (len < 12 || memcmp(d, "RIFF", 4) || memcmp(d + 8, "WAVE", 4)) return false;
+  out = WavInfo();
+  if (!d || len < 12 || memcmp(d, "RIFF", 4) || memcmp(d + 8, "WAVE", 4)) return false;
+  const uint32_t riffSize = (uint32_t)d[4] | ((uint32_t)d[5] << 8) | ((uint32_t)d[6] << 16) | ((uint32_t)d[7] << 24);
+  const uint64_t riffEnd = (uint64_t)riffSize + 8;
+  if (riffSize < 4) return false;
   size_t p = 12;
   bool fmt = false;
-  while (p + 8 <= len) {
+  WavInfo parsed;
+  while (p <= len && len - p >= 8) {
+    if ((uint64_t)p > riffEnd || riffEnd - p < 8) return false;
     uint32_t sz = (uint32_t)d[p + 4] | ((uint32_t)d[p + 5] << 8) | ((uint32_t)d[p + 6] << 16) | ((uint32_t)d[p + 7] << 24);
+    size_t payload = p + 8;  // comprobado por len - p >= 8, sin suma que desborde
+    if ((uint64_t)sz > riffEnd - payload) return false;
     if (!memcmp(d + p, "fmt ", 4)) {
-      if (p + 24 > len) return false;
-      uint16_t format = (uint16_t)(d[p + 8] | (d[p + 9] << 8));
-      out.channels = (uint16_t)(d[p + 10] | (d[p + 11] << 8));
-      out.rate = (uint32_t)d[p + 12] | ((uint32_t)d[p + 13] << 8) | ((uint32_t)d[p + 14] << 16) | ((uint32_t)d[p + 15] << 24);
-      uint16_t bits = (uint16_t)(d[p + 22] | (d[p + 23] << 8));
-      if (format != 1 || bits != 16 || out.channels < 1 || out.channels > 2 || out.rate < 4000 || out.rate > 48000) return false;
+      if (fmt || sz < 16 || (uint64_t)sz > len - payload) return false;
+      uint16_t format = (uint16_t)(d[payload] | (d[payload + 1] << 8));
+      parsed.channels = (uint16_t)(d[payload + 2] | (d[payload + 3] << 8));
+      parsed.rate = (uint32_t)d[payload + 4] | ((uint32_t)d[payload + 5] << 8) | ((uint32_t)d[payload + 6] << 16) | ((uint32_t)d[payload + 7] << 24);
+      uint32_t byteRate = (uint32_t)d[payload + 8] | ((uint32_t)d[payload + 9] << 8) | ((uint32_t)d[payload + 10] << 16) | ((uint32_t)d[payload + 11] << 24);
+      uint16_t align = (uint16_t)(d[payload + 12] | (d[payload + 13] << 8));
+      uint16_t bits = (uint16_t)(d[payload + 14] | (d[payload + 15] << 8));
+      if (format != 1 || bits != 16 || parsed.channels < 1 || parsed.channels > 2 || parsed.rate < 4000 || parsed.rate > 48000 ||
+          align != parsed.channels * 2 || byteRate != parsed.rate * align) return false;
       fmt = true;
     } else if (!memcmp(d + p, "data", 4)) {
-      if (!fmt) return false;
-      out.dataOffset = (uint32_t)(p + 8);
-      out.dataBytes = sz;
-      return true;
+      if (!fmt || !sz || sz % (parsed.channels * 2) || (uint64_t)payload > UINT32_MAX) return false;
+      parsed.dataOffset = (uint32_t)payload;
+      parsed.dataBytes = sz;
+      out = parsed;
+      return true;  // se puede leer solo la cabecera; el llamador valida tamaño real del archivo
     }
-    p += 8 + sz + (sz & 1);
+    uint64_t padded = (uint64_t)sz + (sz & 1u);
+    if (padded > len - payload || padded > riffEnd - payload) return false;
+    p = payload + (size_t)padded;
   }
   return false;
 }
@@ -305,7 +326,9 @@ inline bool parseWav(const uint8_t* d, size_t len, WavInfo& out) {
 class Resampler {
  public:
   void begin(uint32_t from, uint32_t to) {
-    step_ = (uint32_t)(((uint64_t)from << 16) / to);
+    uint64_t step = from && to ? ((uint64_t)from << 16) / to : 0;
+    step_ = step <= UINT32_MAX ? (uint32_t)step : 0;
+    sameRate_ = from && from == to;
     pos_ = 0;
     prev_ = 0;
     primed_ = false;
@@ -314,6 +337,12 @@ class Resampler {
   size_t process(const int16_t* in, size_t n, int16_t* out, size_t cap, size_t& used) {
     size_t w = 0;
     used = 0;
+    if (!step_) return 0;
+    if (sameRate_) {
+      used = n < cap ? n : cap;
+      if (used) memcpy(out, in, used * sizeof(int16_t));
+      return used;
+    }
     if (!primed_ && n) {
       prev_ = in[0];
       primed_ = true;
@@ -328,7 +357,8 @@ class Resampler {
       }
       if (used >= n) return w;
       int32_t next = in[used];
-      out[w++] = (int16_t)(prev_ + (((next - prev_) * (int32_t)pos_) >> 16));
+      int64_t value = (int64_t)prev_ * 65536 + (int64_t)(next - prev_) * pos_;
+      out[w++] = (int16_t)(value / 65536);
       pos_ += step_;
     }
     return w;
@@ -337,7 +367,7 @@ class Resampler {
  private:
   uint32_t step_ = 0x10000u, pos_ = 0;
   int32_t prev_ = 0;
-  bool primed_ = false;
+  bool primed_ = false, sameRate_ = false;
 };
 
 // ---------------------------------------------------------------- sonidos «de siempre» (notas)
@@ -351,6 +381,7 @@ static const Note TONE_ERROR[] = {{200, 80}, {150, 90}};
 static const Note TONE_MATCH_POINT[] = {{880, 120}, {0, 60}, {880, 120}};
 static const Note TONE_START[] = {{1320, 300}};
 static const Note TONE_PERIOD_END[] = {{880, 250}, {0, 50}, {660, 450}};
+static const Note TONE_PENALTY_AWARDED[] = {{1568, 100}, {0, 80}, {1568, 250}};
 static const Note TONE_VICTORY[] = {{523, 180}, {659, 180}, {784, 180}, {1047, 600}};
 
 struct Tune {
@@ -366,6 +397,7 @@ inline Tune defaultTune(Event e) {
     case Event::MatchPoint: return Tune{TONE_MATCH_POINT, 3};
     case Event::MatchStart: return Tune{TONE_START, 1};
     case Event::PeriodEnd: return Tune{TONE_PERIOD_END, 3};
+    case Event::PenaltyAwarded: return Tune{TONE_PENALTY_AWARDED, 3};
     case Event::Victory:
     case Event::Rout: return Tune{TONE_VICTORY, 4};
     default: return Tune{TONE_GOAL, 4};
@@ -481,10 +513,10 @@ class Commands {
       unsigned page=0;char tail;
       if(sscanf(args,"%u %c",&page,&tail)!=1 || page>=32){reply("SONIDOS_ERROR pagina");return true;}
       // 32 códigos por respuesta; hasta 1024 sin un búfer gigante ni modificar clientes antiguos.
-      uint32_t* codes=new(std::nothrow) uint32_t[1024];Place* places=new(std::nothrow) Place[1024];
+      uint32_t* codes=new(std::nothrow) uint32_t[1025];Place* places=new(std::nothrow) Place[1025];
       if(!codes || !places){delete[] codes;delete[] places;reply("SONIDOS_ERROR memoria");return true;}
-      size_t n=store_.list(codes,places,1024),start=(size_t)page*32,end=start+32<n?start+32:n;
-      char pageBuf[440];int k=snprintf(pageBuf,sizeof pageBuf,"SONIDOS_PAGINA %u total=%u",page,(unsigned)n);
+      size_t found=store_.list(codes,places,1025),n=found>1024?1024:found,start=(size_t)page*32,end=start+32<n?start+32:n;
+      char pageBuf[440];int k=snprintf(pageBuf,sizeof pageBuf,"SONIDOS_PAGINA %u total=%u truncado=%u",page,(unsigned)n,(unsigned)(found>1024));
       for(size_t i=start;i<end;i++)k+=snprintf(pageBuf+k,sizeof pageBuf-k," %08lx@%c",(unsigned long)codes[i],places[i]==Place::Sd?'s':'c');
       delete[] codes;delete[] places;reply(pageBuf);
     } else if (is(line, wl, "SONIDO_SUBIR")) {

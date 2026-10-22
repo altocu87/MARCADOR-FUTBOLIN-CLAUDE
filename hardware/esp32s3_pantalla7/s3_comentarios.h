@@ -58,7 +58,7 @@ inline uint8_t goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Tea
     if(twoRecentGoals(e))mask|=1u<<EmpateMovido;
   }
   int streak=0;bool skipCurrent=true;
-  for(int i=(int)e.goalCount()-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);if(g.annulled)continue;
+  for(int i=(int)e.goalCount()-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);if(g.annulled || !g.value)continue;
     if(skipCurrent){skipCurrent=false;continue;}if(g.team==t)break;if(++streak>=2){mask|=1u<<Respuesta2;break;}}
   return mask;
 }
@@ -73,8 +73,8 @@ static const char* BAK="/sonidos/catalogo.bak";
 static const char* TEMP="/sonidos/catalogo.tmp";
 static void row(uint8_t p,uint32_t code,uint8_t* b){b[0]=p;for(int i=0;i<4;i++)b[i+1]=(uint8_t)(code>>(8*i));}
 static bool validAudio(audio::FsStore& store,uint32_t code) {
-  auto f=store.open(code);if(!f)return false;uint8_t h[256];size_t n=f.read(h,sizeof h);mfv3snd::WavInfo w;
-  return mfv3snd::parseWav(h,n,w) && w.dataBytes && (uint64_t)w.dataOffset+w.dataBytes<=f.size();
+  auto f=store.open(code);mfv3snd::WavInfo w;
+  return audio::validWavFile(f,w); // mismo criterio de formato/tamaño que al reproducir
 }
 static bool readCatalog(audio::FsStore& store,const char* path,Catalog& out) {
   auto f=store.fsOf(mfv3snd::Place::Sd).open(path,FILE_READ);uint8_t head[10];
@@ -118,7 +118,8 @@ static bool save(audio::FsStore& store,const Catalog& c,uint32_t crc){
     if(previousValid){fs.remove(BAK);if(!fs.rename(CAT,BAK))return false;}
     else if(!fs.remove(CAT))return false; // preservar BAK si el principal estaba corrupto
   }
-  if(!fs.rename(TEMP,CAT)){if(fs.exists(BAK))fs.rename(BAK,CAT);return false;}return true;
+  if(!fs.rename(TEMP,CAT))return false; // BAK permanece intacto; load() lo recupera sin consumirlo
+  return true;
 }
 static bool handle(const char* line,audio::FsStore& store,bool busy,mfv3snd::ReplyFn reply){
   if(strncmp(line,"COMENTARIOS",11))return false;

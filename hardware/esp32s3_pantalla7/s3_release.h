@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.5";
+static const char VERSION[] = "0.6";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.6", "2026-10-22", "Sonidos más rápidos y actualizaciones más seguras\n\n• Se evita que una pulsación al continuar o reanudar termine una parte por error.\n\n• Los comentarios abren menos veces la SD y el gol ganador se muestra antes de completar el guardado.\n\n• Los archivos dañados se rechazan y los sonidos anteriores se conservan si falla una sustitución.\n\n• Las cargas comprueban el contenido real de cada audio y se bloquean durante el partido.\n\n• En Partido Loco, los cambios de marcador de animales usan gol o anulación y el penalti avisa al señalarse."},
   {"0.5", "2026-10-22", "Comentarios de gol según lo que ocurre\n\n• La pantalla elige frases de gol por la situación del partido y las alterna con comentarios comodín.\n\n• El catálogo admite hasta 1.024 sonidos en la SD sin cargar todas las voces en memoria.\n\n• El comentario empieza tras actualizar el marcador; al anular se corta la frase anterior y se usa el sonido de anulación disponible.\n\n• Las nuevas voces se organizan en carpetas pequeñas y las transferencias evitan falsos tiempos de espera."},
   {"0.4", "2026-10-22", "Fechas más fiables y resumen completo\n\n• El reloj conserva y avanza la hora conocida aunque falle una lectura, evitando perder la fecha de nuevos partidos.\n\n• El resumen incluye TODOS para consultar también partidos antiguos sin fecha, sin mezclarlos con los últimos días.\n\n• Los partidos rápidos sin jugadores muestran sus totales y explican por qué no hay estadísticas individuales."},
   {"0.3", "2026-10-22", "Continúa el partido desde los pulsadores\n\n• Al terminar cada parte, una pulsación corta de cualquiera de los dos botones permite continuar.\n\n• También puedes pasar a la prórroga y a los penaltis sin tocar la pantalla.\n\n• La pulsación que permite continuar no suma un gol ni cuenta como el primer penalti."},

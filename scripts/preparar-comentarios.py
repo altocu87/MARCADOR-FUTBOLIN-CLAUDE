@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepara los WAV exportados por el dueño. No toca originales ni conecta con la placa.
 Uso: python scripts/preparar-comentarios.py <carpeta-originales> <paquete-salida>
-Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.5.
+Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.6 (verificación remota del instalador).
 """
 import argparse
 import array
@@ -120,7 +120,7 @@ def prepare(source, output, ffmpeg):
     commands += [f"COMENTARIOS_ITEM {f['pool']} {f['code']}" for f in files]
     commands += [f'COMENTARIOS_FIN {crc:08x}']
     (output / 'catalogo-comandos.txt').write_text('\n'.join(commands) + '\n', encoding='ascii')
-    manifest = dict(schema=2, minimum_firmware='0.5', files=files, catalog_crc32=f'{crc:08x}',
+    manifest = dict(schema=2, minimum_firmware='0.6', files=files, catalog_crc32=f'{crc:08x}',
                     total_bytes=sum(f['prepared_bytes'] for f in files),
                     rules=dict(generic_with_specific=True, group4_consecutive=True,
                                group4_requires_leading=False, group2_threshold=3,

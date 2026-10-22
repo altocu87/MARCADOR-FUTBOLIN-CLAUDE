@@ -7,7 +7,7 @@
 //   - Ranura micro SD en modo SD_MMC de 1 bit: CLK GPIO12, CMD GPIO11, D0 GPIO13 (ejemplo oficial 05_SD).
 //   - Memoria del chip: partición FAT de 19,9 MB (partitions.csv), con la biblioteca FFat. Queda para imágenes:
 //     los sonidos van solo a la tarjeta SD (SOUNDS_ON_CHIP).
-// Los sonidos se guardan como /sonidos/<código>.wav y suenan siempre a 16 kHz (se cambia la frecuencia al vuelo).
+// Sonidos en rutas planas heredadas o /sonidos/ab/<código>.wav; salida siempre a 16 kHz.
 // Audio por bloques desde loop(), con 125 ms de DMA; cada sustitución descarta la pista anterior.
 
 #ifndef MFV3_AUDIO_H
@@ -41,115 +41,194 @@ static const char* TMP = "/sonidos/subida.tmp";
 static const bool SOUNDS_ON_CHIP = false;  // la memoria del chip se reserva para imágenes
 
 // ---------------------------------------------------------------- almacén: tarjeta SD (y memoria del chip, FFat)
+// Valida la pista completa declarada por la cabecera, sin leer el PCM entero.
+inline bool validWavFile(fs::File& f,mfv3snd::WavInfo& w){
+  if(!f || f.isDirectory())return false;
+  uint8_t h[256];size_t n=f.read(h,sizeof h);
+  if(!mfv3snd::parseWav(h,n,w) || !w.dataBytes || !w.channels)return false;
+  uint64_t riff=8ull+(uint32_t)(h[4]|((uint32_t)h[5]<<8)|((uint32_t)h[6]<<16)|((uint32_t)h[7]<<24));
+  uint64_t end=(uint64_t)w.dataOffset+w.dataBytes;
+  return riff<=f.size() && end<=riff && end<=f.size() && !(w.dataBytes%(2u*w.channels)) && f.seek(w.dataOffset);
+}
+
 class FsStore : public mfv3snd::Store {
  public:
-  bool chipOk = false, sdOk = false;
-
-  void begin() {
-    chipOk = FFat.begin(true);
-    if (chipOk && SOUNDS_ON_CHIP && !FFat.exists(DIR)) FFat.mkdir(DIR);
-    sdOk = SD_MMC.setPins(12, 11, 13) && SD_MMC.begin("/sdcard", true) && SD_MMC.cardType() != CARD_NONE;
-    if (sdOk && !SD_MMC.exists(DIR)) SD_MMC.mkdir(DIR);
+  bool chipOk=false,sdOk=false;
+  void begin(){
+    chipOk=FFat.begin(false); // un fallo de montaje nunca autoriza formatear fotos/datos
+    if(chipOk && SOUNDS_ON_CHIP && !FFat.exists(DIR))FFat.mkdir(DIR);
+    sdOk=SD_MMC.setPins(12,11,13) && SD_MMC.begin("/sdcard",true) && SD_MMC.cardType()!=CARD_NONE;
+    if(sdOk && !SD_MMC.exists(DIR))SD_MMC.mkdir(DIR);
+    recoveryOk_=true;
+    if(sdOk && !recover(Place::Sd))recoveryOk_=false;
+    if(available(Place::Chip) && !recover(Place::Chip))recoveryOk_=false;
   }
-
-  fs::FS& fsOf(Place p) { return p == Place::Sd ? (fs::FS&)SD_MMC : (fs::FS&)FFat; }
-
-  static void path(uint32_t code, char* buf, size_t cap) { snprintf(buf, cap, "%s/%08lx.wav", DIR, (unsigned long)code); }
-
+  fs::FS& fsOf(Place p){return p==Place::Sd?(fs::FS&)SD_MMC:(fs::FS&)FFat;}
+  static void path(uint32_t code,char* buf,size_t cap){snprintf(buf,cap,"%s/%08lx.wav",DIR,(unsigned long)code);}
   static void bucketPath(uint32_t code,char* buf,size_t cap){snprintf(buf,cap,"%s/%02lx/%08lx.wav",DIR,(unsigned long)(code>>24),(unsigned long)code);}
-
-  bool available(Place p) override { return p == Place::Sd ? sdOk : chipOk && SOUNDS_ON_CHIP; }
-
-  bool sdSpace(uint64_t& total,uint64_t& free) {
+  bool available(Place p) override{return p==Place::Sd?sdOk:chipOk && SOUNDS_ON_CHIP;}
+  bool recoveryOk() const{return recoveryOk_;}
+  bool sdSpace(uint64_t& total,uint64_t& free){
     total=free=0;
-    // Arduino 3.3.12 consulta "0:" en SD_MMC.totalBytes/usedBytes. Con FFat primero,
-    // ese disco es la flash interna. Consultar explícitamente el volumen de la SD.
     if(!sdOk || esp_vfs_fat_info("/sdcard",&total,&free)!=ESP_OK || !total || free>total){total=free=0;return false;}
     return true;
   }
-
-  uint32_t freeKB(Place p) override {
-    if (!available(p)) return 0;
-    if (p == Place::Chip) return (uint32_t)(FFat.freeBytes() / 1024);
-    uint64_t total,free;
-    return sdSpace(total,free) ? (uint32_t)(free/1024) : 0;
+  uint32_t freeKB(Place p) override{
+    if(!available(p))return 0;
+    if(p==Place::Chip)return (uint32_t)(FFat.freeBytes()/1024);
+    uint64_t total,free;return sdSpace(total,free)?(uint32_t)(free/1024):0;
   }
-
-  bool begin(Place p, uint32_t code) override {
+  bool begin(Place p,uint32_t code) override{
     abort();
-    place_ = p;
-    code_ = code;
+    if(!available(p) || !code)return false;
+    if(!recover(p)){recoveryOk_=false;return false;}
+    recoveryOk_=true;place_=p;code_=code;received_=receivedCrc_=0;
     char bucket[24];snprintf(bucket,sizeof bucket,"%s/%02lx",DIR,(unsigned long)(code>>24));
     if(!fsOf(p).exists(bucket) && !fsOf(p).mkdir(bucket))return false;
-    file_ = fsOf(p).open(TMP, FILE_WRITE);
-    return (bool)file_;
+    file_=fsOf(p).open(TMP,FILE_WRITE);return (bool)file_;
   }
-
-  bool write(const uint8_t* d, size_t n) override { return file_ && file_.write(d, n) == n; }
-
-  bool commit() override {
-    if (!file_) return false;
-    file_.close();
-    remove(code_);  // un sonido solo vive en un sitio
-    char p[40];
-    bucketPath(code_, p, sizeof(p));
-    return fsOf(place_).rename(TMP, p);
+  bool write(const uint8_t* d,size_t n) override{
+    if(!file_ || n>mfv3snd::MAX_SOUND_BYTES-received_ || file_.write(d,n)!=n)return false;
+    receivedCrc_=mfv3snd::crc32Update(receivedCrc_,d,n);received_+=(uint32_t)n;return true;
   }
-
-  void abort() override {
-    if (file_) {
-      file_.close();
-      fsOf(place_).remove(TMP);
+  bool commit() override{
+    if(!file_)return false;
+    file_.close();auto& fs=fsOf(place_);
+    if(!matches(fs,TMP,received_,receivedCrc_)){eraseIfPresent(fs,TMP);return false;}
+    char dest[40],old[40];bucketPath(code_,dest,sizeof dest);path(code_,old,sizeof old);
+    uint8_t kind=fs.exists(dest)?2:fs.exists(old)?1:0;
+    if(kind==2)snprintf(old,sizeof old,"%s",dest);
+    // El marcador se verifica antes de mover el anterior. Siempre hay una copia recuperable.
+    if(!writeTxn(fs,code_,kind,received_,receivedCrc_))return false;
+    if(kind && !fs.rename(old,BAK)){
+      eraseIfPresent(fs,TXN);eraseIfPresent(fs,TMP);return false;
     }
+    if(!fs.rename(TMP,dest)){
+      bool restored=!kind || fs.rename(BAK,old);
+      if(restored){eraseIfPresent(fs,TXN);eraseIfPresent(fs,TMP);}
+      else recoveryOk_=false;
+      return false;
+    }
+    // Confirmar la nueva cabecera/tamaño antes de retirar respaldo o ruta plana.
+    if(!matches(fs,dest,received_,receivedCrc_)){
+      if(kind && eraseIfPresent(fs,dest) && fs.rename(BAK,old)){
+        eraseIfPresent(fs,TXN);eraseIfPresent(fs,TMP);
+      }else recoveryOk_=false;
+      return false;
+    }
+    // CRC completo confirmado: ahora se puede retirar el respaldo. Un fallo de
+    // limpieza conserva el marcador para reintentarlo fuera del juego.
+    recoveryOk_=cleanupConfirmed(fs,code_);return recoveryOk_;
   }
-
-  bool remove(uint32_t code) override {
-    char p[40];
-    path(code, p, sizeof(p));
-    bool any = false;
-    if (sdOk && SD_MMC.exists(p)) any = SD_MMC.remove(p) || any;
-    if (available(Place::Chip) && FFat.exists(p)) any = FFat.remove(p) || any;
-    bucketPath(code,p,sizeof(p));
+  void abort() override{
+    if(file_){file_.close();fsOf(place_).remove(TMP);}
+  }
+  bool remove(uint32_t code) override{
+    char p[40];path(code,p,sizeof p);bool any=false;
+    if(sdOk && SD_MMC.exists(p))any=SD_MMC.remove(p)||any;
+    if(available(Place::Chip) && FFat.exists(p))any=FFat.remove(p)||any;
+    bucketPath(code,p,sizeof p);
     if(sdOk && SD_MMC.exists(p))any=SD_MMC.remove(p)||any;
     if(available(Place::Chip) && FFat.exists(p))any=FFat.remove(p)||any;
     return any;
   }
-
-  bool find(uint32_t code, Place& where) override {
-    char p[40];
-    bucketPath(code,p,sizeof(p));
+  bool find(uint32_t code,Place& where) override{
+    char p[40];bucketPath(code,p,sizeof p);
     if(sdOk && SD_MMC.exists(p)){where=Place::Sd;return true;}
     if(available(Place::Chip) && FFat.exists(p)){where=Place::Chip;return true;}
-    path(code, p, sizeof(p));
-    if (sdOk && SD_MMC.exists(p)) {
-      where = Place::Sd;
-      return true;
-    }
-    if (available(Place::Chip) && FFat.exists(p)) {
-      where = Place::Chip;
-      return true;
-    }
+    path(code,p,sizeof p);
+    if(sdOk && SD_MMC.exists(p)){where=Place::Sd;return true;}
+    if(available(Place::Chip) && FFat.exists(p)){where=Place::Chip;return true;}
     return false;
   }
-
-  size_t list(uint32_t* codes, Place* places, size_t cap) override {
-    size_t n = listIn(Place::Sd, codes, places, cap, 0);
-    return listIn(Place::Chip, codes, places, cap, n);
+  fs::File open(uint32_t code){
+    // Una recuperación ambigua conserva las copias, pero ninguna ruta se ofrece
+    // a reproducción o inspección como si fuera una pista confirmada.
+    if(!recoveryOk_)return fs::File();
+    char p[40];bucketPath(code,p,sizeof p);
+    if(sdOk){auto f=SD_MMC.open(p,FILE_READ);if(f && !f.isDirectory())return f;}
+    if(available(Place::Chip)){auto f=FFat.open(p,FILE_READ);if(f && !f.isDirectory())return f;}
+    path(code,p,sizeof p);
+    if(sdOk){auto f=SD_MMC.open(p,FILE_READ);if(f && !f.isDirectory())return f;}
+    if(available(Place::Chip)){auto f=FFat.open(p,FILE_READ);if(f && !f.isDirectory())return f;}
+    return fs::File();
   }
-
-  fs::File open(uint32_t code) {
-    Place where;
-    if (!find(code, where)) return fs::File();
-    char p[40];
-    bucketPath(code,p,sizeof(p));
-    if(fsOf(where).exists(p))return fsOf(where).open(p,FILE_READ);
-    path(code,p,sizeof(p));return fsOf(where).open(p,FILE_READ);
+  size_t list(uint32_t* codes,Place* places,size_t cap) override{
+    size_t n=listIn(Place::Sd,codes,places,cap,0);return listIn(Place::Chip,codes,places,cap,n);
   }
-
  private:
-  size_t listIn(Place pl, uint32_t* codes, Place* places, size_t cap, size_t n) {
-    if (!available(pl)) return n;
-    return listDir(pl,DIR,codes,places,cap,n,0);
+  static constexpr const char* TXN="/sonidos/subida.txn";
+  static constexpr const char* BAK="/sonidos/subida.bak";
+  static bool eraseIfPresent(fs::FS& fs,const char* p){return !fs.exists(p) || fs.remove(p);}
+  static bool validAt(fs::FS& fs,const char* p){auto f=fs.open(p,FILE_READ);mfv3snd::WavInfo w;return validWavFile(f,w);}
+  static bool matches(fs::FS& fs,const char* path,uint32_t bytes,uint32_t crc){
+    auto f=fs.open(path,FILE_READ);mfv3snd::WavInfo w;
+    if(bytes<44 || bytes>mfv3snd::MAX_SOUND_BYTES || !validWavFile(f,w) || f.size()!=bytes || !f.seek(0))return false;
+    uint8_t block[1024];uint32_t count=0,actual=0;
+    while(count<bytes){
+      size_t want=bytes-count<sizeof block?bytes-count:sizeof block;
+      size_t got=f.read(block,want);if(!got || got>want)return false;
+      actual=mfv3snd::crc32Update(actual,block,got);count+=(uint32_t)got;
+      if(!(count&16383u))delay(1);
+    }
+    return actual==crc;
+  }
+  static bool cleanupConfirmed(fs::FS& fs,uint32_t code){
+    char flat[40];path(code,flat,sizeof flat);
+    if(!eraseIfPresent(fs,flat) || !eraseIfPresent(fs,TMP) || !eraseIfPresent(fs,BAK))return false;
+    return eraseIfPresent(fs,TXN);
+  }
+  static bool writeTxn(fs::FS& fs,uint32_t code,uint8_t kind,uint32_t bytes,uint32_t audioCrc){
+    uint8_t b[24]={'W','A','V','2',0,0,0,0,kind,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    for(unsigned i=0;i<4;i++){
+      b[4+i]=(uint8_t)(code>>(i*8));b[12+i]=(uint8_t)(bytes>>(i*8));b[16+i]=(uint8_t)(audioCrc>>(i*8));
+    }
+    uint32_t crc=mfv3snd::crc32Update(0,b,20);for(unsigned i=0;i<4;i++)b[20+i]=(uint8_t)(crc>>(i*8));
+    auto f=fs.open(TXN,FILE_WRITE);if(!f)return false;bool ok=f.write(b,sizeof b)==sizeof b;f.close();
+    uint32_t checkCode,checkBytes,checkCrc;uint8_t checkKind;
+    return ok && readTxn(fs,checkCode,checkKind,checkBytes,checkCrc) && checkCode==code && checkKind==kind && checkBytes==bytes && checkCrc==audioCrc;
+  }
+  static bool readTxn(fs::FS& fs,uint32_t& code,uint8_t& kind,uint32_t& bytes,uint32_t& audioCrc){
+    auto f=fs.open(TXN,FILE_READ);uint8_t b[24];
+    if(!f || f.size()!=24 || f.read(b,24)!=24 || memcmp(b,"WAV2",4))return false;
+    code=bytes=audioCrc=0;uint32_t crc=0;
+    for(unsigned i=0;i<4;i++){
+      code|=(uint32_t)b[4+i]<<(i*8);bytes|=(uint32_t)b[12+i]<<(i*8);
+      audioCrc|=(uint32_t)b[16+i]<<(i*8);crc|=(uint32_t)b[20+i]<<(i*8);
+    }
+    kind=b[8];
+    return code && kind<=2 && !b[9] && !b[10] && !b[11] && bytes>=44 && bytes<=mfv3snd::MAX_SOUND_BYTES && crc==mfv3snd::crc32Update(0,b,20);
+  }
+  bool recover(Place place){
+    auto& fs=fsOf(place);
+    if(!fs.exists(TXN)){
+      // No se borra un respaldo huérfano cuyo código no se puede determinar.
+      if(fs.exists(BAK))return false;
+      return eraseIfPresent(fs,TMP);
+    }
+    uint32_t code,bytes,crc;uint8_t kind;if(!readTxn(fs,code,kind,bytes,crc))return false;
+    char dest[40],old[40];bucketPath(code,dest,sizeof dest);
+    if(kind==2)snprintf(old,sizeof old,"%s",dest);else path(code,old,sizeof old);
+    if(matches(fs,dest,bytes,crc))return cleanupConfirmed(fs,code);
+    if(kind && validAt(fs,BAK)){
+      if(!eraseIfPresent(fs,dest) || !fs.rename(BAK,old))return false;
+      if(!eraseIfPresent(fs,TMP))return false;
+      return eraseIfPresent(fs,TXN);
+    }
+    // Corte antes de mover el fichero antiguo: conservarlo si aún es válido.
+    if(kind && validAt(fs,old) && !fs.exists(BAK)){
+      if(!eraseIfPresent(fs,TMP))return false;
+      return eraseIfPresent(fs,TXN);
+    }
+    // Primer archivo, sin anterior: descartar únicamente su temporal interrumpido.
+    if(!kind && !fs.exists(BAK) && !fs.exists(dest)){
+      if(!eraseIfPresent(fs,TMP))return false;
+      return eraseIfPresent(fs,TXN);
+    }
+    return false; // ambiguo/corrupto: guardar las copias para diagnóstico, no adivinar
+  }
+  size_t listIn(Place pl,uint32_t* codes,Place* places,size_t cap,size_t n){
+    return available(pl)?listDir(pl,DIR,codes,places,cap,n,0):n;
   }
   size_t listDir(Place pl,const char* folder,uint32_t* codes,Place* places,size_t cap,size_t n,unsigned depth){
     auto dir=fsOf(pl).open(folder);if(!dir || !dir.isDirectory())return n;
@@ -158,21 +237,18 @@ class FsStore : public mfv3snd::Store {
       if(f.isDirectory()){
         if(depth==0 && strlen(name)==2 && isxdigit((unsigned char)name[0]) && isxdigit((unsigned char)name[1])){
           char child[32];snprintf(child,sizeof child,"%s/%s",DIR,name);n=listDir(pl,child,codes,places,cap,n,1);
-        }
-        continue;
+        }continue;
       }
       uint32_t code;if(strlen(name)==12 && !strcmp(name+8,".wav") && mfv3snd::parseCode(name,8,code)){
         bool duplicate=false;for(size_t i=0;i<n;i++)if(codes[i]==code){duplicate=true;break;}
-        if(!duplicate){codes[n]=code;places[n++]=pl;}
-        if((n&15u)==0)delay(1);
+        if(!duplicate){codes[n]=code;places[n++]=pl;}if((n&15u)==0)delay(1);
       }
-    }
-    return n;
+    }return n;
   }
-
   fs::File file_;
-  Place place_ = Place::Sd;
-  uint32_t code_ = 0;
+  Place place_=Place::Sd;
+  uint32_t code_=0,received_=0,receivedCrc_=0;
+  bool recoveryOk_=true;
 };
 
 // ---------------------------------------------------------------- chip de sonido ES8389 (solo salida)
@@ -225,197 +301,189 @@ struct Item {
 
 class Player {
  public:
-  bool ok = false;
-
-  bool begin(LGFX& lcd, FsStore& store, uint8_t volume) {
-    lcd_ = &lcd;
-    store_ = &store;
-    i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
-    cc.auto_clear = true;  // sin datos, silencio
-    cc.dma_desc_num = 8;
-    cc.dma_frame_num = 250;  // 8 × 250 tramas = 125 ms a 16 kHz (búferes en la memoria interna: el Wi-Fi la necesita)
-    if (i2s_new_channel(&cc, &tx_, nullptr) != ESP_OK) return false;
-    i2s_std_config_t sc;
-    memset(&sc, 0, sizeof(sc));
-    sc.clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(RATE);
-    sc.slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
-    sc.gpio_cfg.mclk = GPIO_NUM_6;
-    sc.gpio_cfg.bclk = GPIO_NUM_44;
-    sc.gpio_cfg.ws = GPIO_NUM_16;
-    sc.gpio_cfg.dout = GPIO_NUM_15;
-    sc.gpio_cfg.din = I2S_GPIO_UNUSED;
-    if (i2s_channel_init_std_mode(tx_, &sc) != ESP_OK || i2s_channel_enable(tx_) != ESP_OK) return false;
-    txRunning_ = true;
-    ok = codecInit();
-    setVolume(volume);
+  enum class State : uint8_t { Idle,Preparing,Playing,Error };
+  enum class Failure : uint8_t { None,Muted,NoStore,NotFound,BadWav,ReadError,CodecInit,CodecWrite,I2SInit,I2SDisable,I2SPreload,I2SEnable,I2SWrite,QueueFull };
+  bool ok=false;
+  State state() const{return state_;}
+  Failure failure() const{return failure_;}
+  esp_err_t lastError() const{return lastError_;}
+  uint32_t errorCount() const{return errorCount_;}
+  uint32_t writeTimeoutCount() const{return writeTimeoutCount_;}
+  bool lastStartSucceeded() const{return lastStartSucceeded_;}
+  bool requestAccepted() const{return requestAccepted_;}
+  const char* statusName() const{
+    switch(state_){case State::Preparing:return "preparing";case State::Playing:return "playing";case State::Error:return "error";default:return "idle";}
+  }
+  const char* failureName() const{
+    switch(failure_){
+      case Failure::Muted:return "muted";case Failure::NoStore:return "no_store";
+      case Failure::NotFound:return "not_found";case Failure::BadWav:return "bad_wav";
+      case Failure::ReadError:return "read_error";case Failure::CodecInit:return "codec_init";
+      case Failure::CodecWrite:return "codec_write";case Failure::I2SInit:return "i2s_init";
+      case Failure::I2SDisable:return "i2s_disable";case Failure::I2SPreload:return "i2s_preload";
+      case Failure::I2SEnable:return "i2s_enable";case Failure::I2SWrite:return "i2s_write";
+      case Failure::QueueFull:return "queue_full";default:return "none";
+    }
+  }
+  bool begin(LGFX& lcd,FsStore& store,uint8_t volume){
+    lcd_=&lcd;store_=&store;
+    if(tx_)return false; // no reinicializar un canal vivo desde el partido
+    i2s_chan_config_t cc=I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1,I2S_ROLE_MASTER);
+    cc.auto_clear=true;cc.dma_desc_num=8;cc.dma_frame_num=250;
+    esp_err_t err=i2s_new_channel(&cc,&tx_,nullptr);
+    if(err!=ESP_OK){fail(Failure::I2SInit,err,true);return false;}
+    i2s_std_config_t sc;memset(&sc,0,sizeof sc);
+    sc.clk_cfg=I2S_STD_CLK_DEFAULT_CONFIG(RATE);
+    sc.slot_cfg=I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT,I2S_SLOT_MODE_STEREO);
+    sc.gpio_cfg.mclk=GPIO_NUM_6;sc.gpio_cfg.bclk=GPIO_NUM_44;sc.gpio_cfg.ws=GPIO_NUM_16;
+    sc.gpio_cfg.dout=GPIO_NUM_15;sc.gpio_cfg.din=I2S_GPIO_UNUSED;
+    err=i2s_channel_init_std_mode(tx_,&sc);
+    if(err==ESP_OK)err=i2s_channel_enable(tx_);
+    if(err!=ESP_OK){fail(Failure::I2SInit,err,true);releaseFailedInit();return false;}
+    txRunning_=true;
+    if(!codecInit()){fail(Failure::CodecInit,ESP_FAIL,true);releaseFailedInit();return false;}
+    ok=true;state_=State::Idle;setVolume(volume);
+    if(!ok)releaseFailedInit();
     return ok;
   }
-
-  void setVolume(uint8_t v) {
-    volume_ = v;
-    if (!ok) return;
-    codecWrite(0x46, volumeReg(v));
-    codecWrite(0x47, volumeReg(v));
+  void setVolume(uint8_t v){
+    volume_=v>100?100:v;
+    if(!ok)return;
+    if(!codecWrite(0x46,volumeReg(volume_)) || !codecWrite(0x47,volumeReg(volume_)))fail(Failure::CodecWrite,ESP_FAIL,true);
   }
-  uint8_t volume() const { return volume_; }
-
-  bool busy() const { return playing_ || qn_; }
-
-  // `queue`: espera a que termine lo que suena; si no, lo corta.
-  void play(const Item& it, bool queue) {
-    if (!ok || volume_ == 0) return;
-    if (!queue) {
-      stop();
-      if(!ok)return;
-      start(it);
-    } else if (!playing_) start(it);
-    else if (qn_ < 3) q_[qn_++] = it;
+  uint8_t volume() const{return volume_;}
+  // Estado del productor, NO confirmación de que el último descriptor DMA ya sonó.
+  bool busy() const{return playing_ || qn_ || pendingFrames_>pendingAt_;}
+  void play(const Item& it,bool queue){
+    requestAccepted_=lastStartSucceeded_=false;
+    if(!ok)return;
+    if(!volume_){failure_=Failure::Muted;lastError_=ESP_OK;return;}
+    if(!queue){stop();if(ok)start(it);}
+    else if(!playing_)start(it);
+    else if(qn_<3){q_[qn_++]=it;requestAccepted_=true;}
+    else{failure_=Failure::QueueFull;lastError_=ESP_FAIL;errorCount_++;}
   }
-
-  void stop() {
-    if (file_) file_.close();
-    playing_ = false;
-    pendingFrames_ = pendingAt_ = 0;
-    qn_ = 0;
-    // Parar DMA evita que continúe sonando la frase anulada. La siguiente pista
-    // rellena TODOS los descriptores antes de habilitarla, sin muestras antiguas.
-    if (txRunning_ && tx_) {
-      if(i2s_channel_disable(tx_)!=ESP_OK){ok=false;amp(false);}
-      txRunning_=false;
+  void stop(){
+    if(file_)file_.close();
+    playing_=false;pendingFrames_=pendingAt_=0;qn_=0;
+    requestAccepted_=lastStartSucceeded_=false;
+    if(txRunning_ && tx_){
+      esp_err_t err=i2s_channel_disable(tx_);txRunning_=false;
+      if(err!=ESP_OK){fail(Failure::I2SDisable,err,true);return;}
     }
+    state_=ok?State::Idle:State::Error;
   }
-
-  // En cada vuelta de loop(): rellena el colchón de audio con lo que quepa.
-  void pump(uint32_t now) {
-    if (!ok) return;
-    if (playing_ || pendingFrames_) quietSince_ = now;
-    else if (ampOn_ && now - quietSince_ > 800) amp(false);  // amplificadores apagados en reposo (sin soplido)
+  void pump(uint32_t now){
+    if(!ok)return;
+    if(playing_ || pendingFrames_)quietSince_=now;
+    else if(ampOn_ && now-quietSince_>800)amp(false);
     if(!txRunning_ && playing_){
-      // 8 descriptores de 250 tramas. Leer como máximo 4 KB de PCM mono
-      // antes del arranque; se reutilizan buffers existentes, sin heap por gol.
+      // 8×250 tramas: conservar 125 ms de DMA y reutilizar los buffers DSP.
       for(unsigned d=0;d<8;d++){
         size_t n=playing_?fill(mono_,250):0;
+        if(state_==State::Error)return;
         if(n<250)playing_=false;
         for(size_t i=0;i<250;i++)stereo_[2*i]=stereo_[2*i+1]=i<n?mono_[i]:0;
-        size_t loaded=0;
-        if(i2s_channel_preload_data(tx_,stereo_,1000,&loaded)!=ESP_OK || loaded!=1000){ok=false;amp(false);return;}
+        size_t loaded=0;esp_err_t err=i2s_channel_preload_data(tx_,stereo_,1000,&loaded);
+        if(err!=ESP_OK || loaded!=1000){fail(Failure::I2SPreload,err==ESP_OK?ESP_FAIL:err,true);return;}
       }
-      if(i2s_channel_enable(tx_)!=ESP_OK){ok=false;amp(false);return;}
-      txRunning_=true;quietSince_=now;
+      esp_err_t err=i2s_channel_enable(tx_);
+      if(err!=ESP_OK){fail(Failure::I2SEnable,err,true);return;}
+      txRunning_=true;lastStartSucceeded_=true;state_=State::Playing;quietSince_=now;
     }
-    for (int guard = 0; guard < 16; guard++) {
-      if (pendingAt_ >= pendingFrames_) {
-        pendingFrames_ = pendingAt_ = 0;
-        if (!playing_ && !next()) return;
-        size_t n = fill(mono_, BLOCK);
-        if (!n) {
-          playing_ = false;
-          continue;
+    for(int guard=0;guard<16;guard++){
+      if(pendingAt_>=pendingFrames_){
+        pendingFrames_=pendingAt_=0;
+        if(!playing_ && !next()){
+          // Puede seguir quedando audio en DMA aunque el productor esté libre.
+          if(state_!=State::Error)state_=State::Idle;
+          return;
         }
-        for (size_t i = 0; i < n; i++) stereo_[2 * i] = stereo_[2 * i + 1] = mono_[i];
-        pendingFrames_ = n;
+        size_t n=fill(mono_,BLOCK);if(state_==State::Error)return;
+        if(!n){playing_=false;continue;}
+        for(size_t i=0;i<n;i++)stereo_[2*i]=stereo_[2*i+1]=mono_[i];
+        pendingFrames_=n;
       }
-      size_t bytes = (pendingFrames_ - pendingAt_) * 4, written = 0;
-      i2s_channel_write(tx_, stereo_ + pendingAt_ * 2, bytes, &written, 0);
-      pendingAt_ += written / 4;
-      if (written < bytes) return;  // colchón lleno: el resto en la próxima vuelta
+      size_t bytes=(pendingFrames_-pendingAt_)*4,written=0;
+      esp_err_t err=i2s_channel_write(tx_,stereo_+pendingAt_*2,bytes,&written,0);
+      if(err!=ESP_OK && err!=ESP_ERR_TIMEOUT){fail(Failure::I2SWrite,err,true);return;}
+      if(written>bytes || written%4){fail(Failure::I2SWrite,ESP_FAIL,true);return;}
+      pendingAt_+=written/4;
+      if(written){lastStartSucceeded_=true;state_=State::Playing;}
+      if(err==ESP_ERR_TIMEOUT)writeTimeoutCount_++;
+      if(written<bytes)return; // timeout/colchón lleno no equivale a fallo permanente
     }
   }
-
  private:
-  static const size_t BLOCK = 256;
-
-  void amp(bool on) {
-    ampOn_ = on;
-    lcd_->exioWrite(exio::SPEAKER_AMP, on);
-  }
-
-  bool next() {
-    if (!qn_) return false;
-    Item it = q_[0];
-    for (uint8_t i = 1; i < qn_; i++) q_[i - 1] = q_[i];
-    qn_--;
-    start(it);
-    return playing_;
-  }
-
-  void start(const Item& it) {
-    playing_ = false;
-    if (!ampOn_) amp(true);
-    if (it.tune) {
-      tone_.start(it.notes, RATE);
-      fromFile_ = false;
-      playing_ = true;
-      return;
+  static const size_t BLOCK=256;
+  void amp(bool on){ampOn_=on;if(lcd_)lcd_->exioWrite(exio::SPEAKER_AMP,on);}
+  void fail(Failure why,esp_err_t error,bool hardware){
+    if(file_)file_.close();
+    playing_=false;qn_=0;pendingFrames_=pendingAt_=0;
+    if(txRunning_ && tx_){
+      esp_err_t stopped=i2s_channel_disable(tx_);txRunning_=false;
+      if(stopped!=ESP_OK){why=Failure::I2SDisable;error=stopped;hardware=true;}
     }
-    if (!store_) return;
-    file_ = store_->open(it.code);
-    if (!file_) return;
-    uint8_t head[256];
-    size_t got = file_.read(head, sizeof(head));
-    if (!mfv3snd::parseWav(head, got, wav_) || !file_.seek(wav_.dataOffset)) {
-      file_.close();
-      return;
-    }
-    left_ = wav_.dataBytes;
-    rs_.begin(wav_.rate, RATE);
-    inAt_ = inLen_ = 0;
-    fromFile_ = true;
-    playing_ = true;
+    failure_=why;lastError_=error;errorCount_++;state_=State::Error;
+    lastStartSucceeded_=requestAccepted_=false;
+    if(hardware)ok=false;
+    amp(false);
   }
-
-  // Muestras de una pista a 16 kHz del sonido en curso.
-  size_t fill(int16_t* out, size_t cap) {
-    if (!fromFile_) return tone_.render(out, cap);
-    size_t w = 0;
-    while (w < cap) {
-      if (inAt_ >= inLen_) {
-        if (!left_ || !file_) break;
-        uint8_t raw[BLOCK * 4];
-        size_t want = left_ < sizeof(raw) ? left_ : sizeof(raw);
-        size_t got = file_.read(raw, want);
-        if (!got) break;
-        left_ -= (uint32_t)got;
-        size_t frames = got / (2 * wav_.channels);
-        for (size_t i = 0; i < frames; i++) {
-          const uint8_t* s = raw + i * 2 * wav_.channels;
-          int32_t v = (int16_t)(s[0] | (s[1] << 8));
-          if (wav_.channels == 2) v = (v + (int16_t)(s[2] | (s[3] << 8))) / 2;
-          in_[i] = (int16_t)v;
+  void releaseFailedInit(){
+    if(tx_ && i2s_del_channel(tx_)==ESP_OK)tx_=nullptr;
+  }
+  bool next(){
+    if(!qn_)return false;
+    Item it=q_[0];for(uint8_t i=1;i<qn_;i++)q_[i-1]=q_[i];qn_--;
+    start(it);return playing_;
+  }
+  void start(const Item& it){
+    playing_=false;requestAccepted_=lastStartSucceeded_=false;
+    failure_=Failure::None;lastError_=ESP_OK;state_=State::Preparing;
+    if(it.tune){tone_.start(it.notes,RATE);fromFile_=false;playing_=true;requestAccepted_=true;amp(true);return;}
+    if(!store_){fail(Failure::NoStore,ESP_FAIL,false);return;}
+    file_=store_->open(it.code);
+    if(!file_){fail(Failure::NotFound,ESP_FAIL,false);return;}
+    if(!validWavFile(file_,wav_)){fail(Failure::BadWav,ESP_FAIL,false);return;}
+    left_=wav_.dataBytes;rs_.begin(wav_.rate,RATE);inAt_=inLen_=0;
+    fromFile_=true;playing_=requestAccepted_=true;amp(true);
+  }
+  size_t fill(int16_t* out,size_t cap){
+    if(!fromFile_)return tone_.render(out,cap);
+    size_t w=0;
+    while(w<cap){
+      if(inAt_>=inLen_){
+        if(!left_ || !file_)break;
+        uint8_t raw[BLOCK*4];size_t want=left_<sizeof raw?left_:sizeof raw;
+        size_t got=file_.read(raw,want);
+        if(!got || got>want || got%(2u*wav_.channels)){fail(Failure::ReadError,ESP_FAIL,false);return 0;}
+        left_-=(uint32_t)got;size_t frames=got/(2u*wav_.channels);
+        for(size_t i=0;i<frames;i++){
+          const uint8_t* s=raw+i*2*wav_.channels;int32_t v=(int16_t)(s[0]|(s[1]<<8));
+          if(wav_.channels==2)v=(v+(int16_t)(s[2]|(s[3]<<8)))/2;
+          in_[i]=(int16_t)v;
         }
-        inAt_ = 0;
-        inLen_ = frames;
+        inAt_=0;inLen_=frames;
       }
-      size_t used = 0;
-      w += rs_.process(in_ + inAt_, inLen_ - inAt_, out + w, cap - w, used);
-      inAt_ += used;
-      if (!used && inAt_ < inLen_) break;
+      size_t used=0;w+=rs_.process(in_+inAt_,inLen_-inAt_,out+w,cap-w,used);inAt_+=used;
+      if(!used && inAt_<inLen_)break;
     }
-    if (!w && file_) file_.close();
+    if(!w && file_)file_.close();
     return w;
   }
-
-  LGFX* lcd_ = nullptr;
-  FsStore* store_ = nullptr;
-  i2s_chan_handle_t tx_ = nullptr;
-  uint8_t volume_ = 80;
-  bool playing_ = false, fromFile_ = false, ampOn_ = false, txRunning_ = false;
-  uint32_t quietSince_ = 0;
-  Item q_[3];
-  uint8_t qn_ = 0;
-  mfv3snd::ToneGen tone_;
-  mfv3snd::Resampler rs_;
-  mfv3snd::WavInfo wav_;
-  fs::File file_;
-  uint32_t left_ = 0;
-  int16_t in_[BLOCK * 2];
-  size_t inAt_ = 0, inLen_ = 0;
-  int16_t mono_[BLOCK];
-  int16_t stereo_[BLOCK * 2];
-  size_t pendingFrames_ = 0, pendingAt_ = 0;
+  LGFX* lcd_=nullptr;FsStore* store_=nullptr;i2s_chan_handle_t tx_=nullptr;
+  uint8_t volume_=80;
+  bool playing_=false,fromFile_=false,ampOn_=false,txRunning_=false;
+  bool lastStartSucceeded_=false,requestAccepted_=false;
+  State state_=State::Idle;Failure failure_=Failure::None;
+  esp_err_t lastError_=ESP_OK;uint32_t errorCount_=0,writeTimeoutCount_=0,quietSince_=0;
+  Item q_[3];uint8_t qn_=0;
+  mfv3snd::ToneGen tone_;mfv3snd::Resampler rs_;mfv3snd::WavInfo wav_;
+  fs::File file_;uint32_t left_=0;
+  int16_t in_[BLOCK*2],mono_[BLOCK],stereo_[BLOCK*2];
+  size_t inAt_=0,inLen_=0,pendingFrames_=0,pendingAt_=0;
 };
 
-}  // namespace audio
-
-#endif  // HAS_AUDIO
-#endif  // MFV3_AUDIO_H
+} // namespace audio
+#endif // HAS_AUDIO
+#endif // MFV3_AUDIO_H

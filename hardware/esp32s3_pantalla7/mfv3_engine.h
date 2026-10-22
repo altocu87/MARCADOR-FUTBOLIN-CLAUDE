@@ -180,7 +180,8 @@ class Engine {
   uint8_t goalTarget() const { return (uint8_t)(cfg_.goalsPerPeriod + targetAdjust_); }
 
   uint32_t periodElapsed(uint32_t now) const {
-    uint32_t e = elapsedMs_ + (running_ ? now - runningSince_ : 0);
+    uint32_t since = now - runningSince_;
+    uint32_t e = elapsedMs_ + (running_ && (int32_t)since >= 0 ? since : 0);
     uint32_t lim = periodLimitMs();
     return (lim && e > lim) ? lim : e;
   }
@@ -195,13 +196,13 @@ class Engine {
 
   uint32_t countdownRemaining(uint32_t now) const {
     if (phase_ != Phase::Countdown) return 0;
-    return now >= countdownEnds_ ? 0 : countdownEnds_ - now;
+    return (int32_t)(now - countdownEnds_) >= 0 ? 0 : countdownEnds_ - now;
   }
 
   uint32_t lockRemaining(uint32_t now) const {
     if (!hasLastGoal_) return 0;
     uint32_t since = now - lastGoalAt_;
-    return since >= LOCK_MS ? 0 : LOCK_MS - since;
+    return (int32_t)since < 0 ? LOCK_MS : since >= LOCK_MS ? 0 : LOCK_MS - since;
   }
 
   bool canUndo() const { return undoCount_ > 0 && (phase_ == Phase::Playing || phase_ == Phase::Paused); }
@@ -251,7 +252,7 @@ class Engine {
   // «Vuelta a la normalidad»: lo que falta para seguir solo.
   uint32_t endingRemaining(uint32_t now) const {
     if (hStage_ != HStage::Ending) return 0;
-    return now >= hResumeAt_ ? 0 : hResumeAt_ - now;
+    return (int32_t)(now - hResumeAt_) >= 0 ? 0 : hResumeAt_ - now;
   }
   // Último hándicap terminado y por qué (para los avisos).
   HEnd lastEnd() const { return lastEnd_; }
@@ -272,15 +273,18 @@ class Engine {
   // ---------------------------------------------------------------- avance del reloj
   // Devuelve true si cambió el estado (fin de cuenta atrás o de periodo por tiempo).
   bool tick(uint32_t now) {
+    // Una hora capturada antes de reanudar no equivale a días transcurridos.
+    // Diferencias firmadas conservan el rollover de millis dentro de 2^31 ms.
+    if (running_ && (int32_t)(now - runningSince_) < 0) return false;
     bool changed = false;
     for (int guard = 0; guard < 6; guard++) {
-      if (phase_ == Phase::Countdown && now >= countdownEnds_) {
+      if (phase_ == Phase::Countdown && (int32_t)(now - countdownEnds_) >= 0) {
         startClock(countdownEnds_);
         changed = true;
         continue;
       }
       // «Vuelta a la normalidad»: se sigue jugando solo tras la pausa breve.
-      if (phase_ == Phase::Handicap && hStage_ == HStage::Ending && now >= hResumeAt_) {
+      if (phase_ == Phase::Handicap && hStage_ == HStage::Ending && (int32_t)(now - hResumeAt_) >= 0) {
         resumeAt(hResumeAt_);
         hStage_ = HStage::None;
         changed = true;
@@ -288,11 +292,11 @@ class Engine {
       }
       // Visita: la travesura a su tiempo y luego se sigue jugando.
       if (phase_ == Phase::Visit) {
-        if (!visitApplied_ && now >= visitAt_ + visitApplyMs()) {
+        if (!visitApplied_ && (int32_t)(now - (visitAt_ + visitApplyMs())) >= 0) {
           applyVisit();
           changed = true;
         }
-        if (now >= visitAt_ + visitEndMs()) {
+        if ((int32_t)(now - (visitAt_ + visitEndMs())) >= 0) {
           uint32_t at = visitAt_ + visitEndMs();
           resumeAt(at);
           checkGoalEnd(at);

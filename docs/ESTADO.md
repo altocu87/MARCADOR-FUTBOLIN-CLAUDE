@@ -1,5 +1,10 @@
 # Estado del proyecto
 
+## Corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026
+
+Código 0.6 corregido por tres equipos y revisión cruzada, en `equipo-b/rendimiento-esp32s3`, sin fusionar main ni publicar OTA. Regresión nativa completa, 314 pruebas de app/herramientas, 21 pruebas del instalador y compilación real correctas. Instalación autorizada por el dueño, en comprobación; el informe físico distinguirá lo grabado de lo simulado. [Entrega para A/Cloud](ENTREGA_SONIDOS_0_6_20261022.md). Se mantienen 61 voces, seis pools y límite 1.024. La revisión independiente de Cloud y las medidas acústicas siguen pendientes.
+
+
 ## Instalación de la rama B · comentarios 0.5 · 22/10/2026
 
 **Instalada y verificada localmente: pantalla 0.5 en COM6, con 61 voces y catálogo activo tras reiniciar.** Selector nativo hasta 1.024 referencias, mezcla contextual con comodines y sustitución al anular. Corregida la consulta que confundía la capacidad SD con FFat: la tarjeta real es de unos 8 GB y tiene espacio suficiente. [Validación física y catálogo instalado](VALIDACION_PLACA_0_5_20261022.md) · [Entrega técnica](ENTREGA_COMENTARIOS_0_5_20261022.md) · [Próximas familias, aún sin implementar](PLAN_COMENTARIOS_EVENTOS_20261022.md). Main sigue en 0.2, sin fusionar. No se iniciaron partidos ni se reprodujeron frases automáticamente; pendiente prueba acústica y de latencia con el dueño. RELOJ? declara válido, pero se midieron unos 123 s de retraso frente al PC después de grabar: investigar sin suponer la causa, ver informe físico; no se reajustó la hora.

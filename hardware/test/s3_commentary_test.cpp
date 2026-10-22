@@ -88,6 +88,20 @@ int main(){
   SD_MMC.mkdir("/sonidos/00");SD_MMC.disk.files["/sonidos/00/00001002.wav"]=wav(2222);
   auto crc=putCatalog({{0,0x1001},{2,0x1002}});commit(crc);assert(replies.back()=="COMENTARIOS_GUARDADO" && catalog.n==2);
   auto original=SD_MMC.disk.files[CAT];catalog=Catalog();load(sndStore);assert(catalog.n==2 && catalog.counts[2]==1);
+  // El bloque data cabe, pero RIFF declara bytes inexistentes: el reproductor lo rechaza.
+  // Catálogo e instalación deben aplicar exactamente la misma validación.
+  auto validSecond=SD_MMC.disk.files["/sonidos/00/00001002.wav"];
+  auto oversizedRiff=validSecond;uint32_t declared=(uint32_t)oversizedRiff.size()+100;
+  for(unsigned i=0;i<4;i++)oversizedRiff[4+i]=(uint8_t)(declared>>(8*i));
+  mfv3snd::WavInfo parsed;assert(mfv3snd::parseWav(oversizedRiff.data(),256,parsed));
+  assert((uint64_t)parsed.dataOffset+parsed.dataBytes<=oversizedRiff.size());
+  SD_MMC.disk.files["/sonidos/00/00001002.wav"]=oversizedRiff;
+  assert(!validAudio(sndStore,0x1002));
+  crc=putCatalog({{0,0x1002}});commit(crc);
+  assert(replies.back().find("ERROR")!=std::string::npos && catalog.n==2 && SD_MMC.disk.files[CAT]==original);
+  catalog.clear();load(sndStore);assert(catalog.n==1 && !catalog.counts[2]);
+  SD_MMC.disk.files["/sonidos/00/00001002.wav"]=validSecond;
+  catalog.clear();load(sndStore);assert(catalog.n==2 && catalog.counts[2]==1);
   crc=putCatalog({{0,0x1001}});commit(crc^1);assert(replies.back().find("ERROR")!=std::string::npos && catalog.n==2 && SD_MMC.disk.files[CAT]==original);
   command("COMENTARIOS_INICIO 1025");assert(replies.back()=="COMENTARIOS_ERROR cantidad");
   command("COMENTARIOS_INICIO 2");command("COMENTARIOS_ITEM 0 00001001");command("COMENTARIOS_ITEM 0 00001001");assert(replies.back()=="COMENTARIOS_ERROR item");command("COMENTARIOS_CANCELAR");

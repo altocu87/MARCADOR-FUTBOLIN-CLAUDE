@@ -170,7 +170,7 @@ static void loadPrefs() {
   if (userBrightness > 100) userBrightness = 100;
   sndVolume = prefs.getUChar("vol", 80);
   if (sndVolume > 100) sndVolume = 100;
-  char text[700] = {0};
+  char text[mfv3snd::EVENT_COUNT*64+1] = {0};
   size_t n = prefs.getBytes("snd", text, sizeof(text) - 1);
   text[n] = 0;
   sndChoices.parse(text);
@@ -180,7 +180,7 @@ static void loadPrefs() {
 
 #if HAS_AUDIO
 static void saveChoices() {
-  char text[700];
+  char text[mfv3snd::EVENT_COUNT*64+1];
   size_t n = sndChoices.serialize(text, sizeof(text));
   prefs.putBytes("snd", text, n);
 }
@@ -190,6 +190,37 @@ static void saveChoices() {
 static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
 static uint32_t commentaryStartedAt = 0, commentaryQueuedAt = 0, commentaryWaitMs = 0, commentaryLastCode = 0;
 static mfv3snd::Event commentaryFallback = mfv3snd::Event::Goal;
+static const char* commentaryOutcome="idle";
+static uint32_t commentaryRequestedCode=0;
+static bool resultPending=false,resultSaving=false;
+static uint32_t resultFrame=0,resultQueuedAt=0,resultEndMs=0,resultEndEpoch=0,resultStamp=0;
+static void serviceAudio(){
+#if HAS_AUDIO
+  player.pump(millis());
+#endif
+}
+#if HAS_AUDIO
+static void sendLine(const char* line);
+struct SoundInspection {
+  fs::File file;
+  uint32_t code=0,bytes=0,size=0,crc=0,at=0;
+  bool active=false;
+};
+static SoundInspection soundInspection;
+static void inspectSoundTick(){
+  if(!soundInspection.active)return;
+  static uint8_t block[2048];
+  auto& q=soundInspection;
+  size_t n=q.file.read(block,sizeof block);
+  if(n){q.crc=mfv3snd::crc32Update(q.crc,block,n);q.bytes+=(uint32_t)n;}
+  if(n && q.bytes<q.size && (int32_t)(millis()-q.at)<60000)return;
+  char b[150];
+  if(q.bytes==q.size)snprintf(b,sizeof b,"SONIDO_INFO %08lx tam=%lu crc32=%08lx",(unsigned long)q.code,(unsigned long)q.size,(unsigned long)q.crc);
+  else snprintf(b,sizeof b,"SONIDO_ERROR %08lx lectura",(unsigned long)q.code);
+  q.file.close();q.active=false;sendLine(b);
+}
+static bool soundManagementBusy(){return sndCmd.receiving() || comentarios::staging || soundInspection.active;}
+#endif
 static void queueCommentary(uint32_t code) { pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
 
 static void playEvents(const mfv3snd::EventList& list) {
@@ -230,17 +261,21 @@ static void saveConfig() {
 static void saveMatchFile();
 static uint32_t nextCloudSync = 20000;  // la primera, al poco de encender
 static void saveResult() {
+  serviceAudio();
   saveMatchFile();
+  serviceAudio();
   nextCloudSync = millis() + 8000;  // al volver a Inicio, se sube
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
-                  rtc.clockOk ? reloj::stamp(rtc.now) : 0};
+                  resultSaving ? resultStamp : (rtc.clockOk ? reloj::stamp(rtc.now) : 0)};
   for (int i = 7; i > 0; i--) history[i] = history[i - 1];
   history[0] = r;
   if (historyCount < 8) historyCount++;
   matchesPlayed++;
   prefs.putBytes("hist2", history, historyCount * sizeof(LastResult));
+  serviceAudio();
   prefs.putULong("played", matchesPlayed);
+  serviceAudio();
 }
 
 // ---------------------------------------------------------------- salida hacia placas auxiliares
@@ -367,6 +402,7 @@ static uint8_t lastStreak() {
   return streakCount;
 }
 
+static uint16_t hcSoundSeq=0;
 static void afterChange(bool goalAccepted, Team goalTeam) {
   streakDirty = true;  // incluye anular, deshacer y los goles especiales de Partido Loco
   Snapshot now = takeSnapshot();
@@ -430,12 +466,25 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   }
   if (now.phase == Phase::Finished && snap.phase != Phase::Finished) {
     sendEvent(eng.winner() == Team::White ? "WIN BLANCO" : "WIN AZUL");
-    saveResult();
+    resultPending=true;resultFrame=uiport::presented;resultQueuedAt=millis();
+    resultEndMs=millis();resultEndEpoch=rtc.clockOk?partidos::epoch(rtc.now):0;
+    resultStamp=rtc.clockOk?reloj::stamp(rtc.now):0;
     beep(400);
   }
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
   snap = now;
   auto sounds=mfv3snd::detect(eng,sndBefore,goalAccepted);
+  bool penaltyAwarded=eng.phase()==Phase::Handicap && eng.handicapStage()==mfv3::HStage::Announce &&
+      eng.handicap().kind==mfv3::HKind::Penalty &&
+      (sndBefore.phase!=Phase::Handicap || eng.handicap().seq!=hcSoundSeq);
+  hcSoundSeq=eng.handicap().seq;
+  if(penaltyAwarded){sounds=mfv3snd::EventList();sounds.add(mfv3snd::Event::PenaltyAwarded);}
+  // Simplificación acordada: animales que suman/restan usan gol/anulación.
+  bool animalScore=!goalAccepted && (sndBefore.phase==Phase::Visit || eng.phase()==Phase::Visit) &&
+      (now.w!=sndBefore.score.white || now.b!=sndBefore.score.blue);
+  bool animalUp=animalScore && !sounds.has(mfv3snd::Event::GoalAnnulled) &&
+      (now.w>sndBefore.score.white || now.b>sndBefore.score.blue);
+  if(animalUp){sounds=mfv3snd::EventList();sounds.add(mfv3snd::Event::Goal);}
 #if HAS_AUDIO
   bool spoken=false,automaticAllowed=true;
   for(uint8_t i=0;i<sounds.n;i++){
@@ -448,8 +497,8 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       uint32_t code=comentarios::catalog.pick(1u<<comentarios::Anulado,esp_random(),esp_random());
       if(code){queueCommentary(code);commentaryFallback=mfv3snd::Event::GoalAnnulled;spoken=true;}
     }
-  }else if(goalAccepted && automaticAllowed && sndChoices.c[(uint8_t)mfv3snd::Event::Goal].kind==mfv3snd::Kind::Default){
-    uint8_t mask=comentarios::goalMask(eng,sndBefore,goalTeam);
+  }else if((goalAccepted || animalUp) && automaticAllowed && sndChoices.c[(uint8_t)mfv3snd::Event::Goal].kind==mfv3snd::Kind::Default){
+    uint8_t mask=animalUp?(1u<<comentarios::Comodin):comentarios::goalMask(eng,sndBefore,goalTeam);
     if(mask)queueCommentary(0);
     uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random());
     if(code){player.stop();queueCommentary(code);spoken=true;}
@@ -469,6 +518,10 @@ static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (so
 static uint16_t hcIntroSeq = 0;
 static void prepareMatchNetwork();
 static void startMatch() {
+  if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+#if HAS_AUDIO
+  if(soundManagementBusy()){ui::toast("Espera a que terminen los sonidos");return;}
+#endif
   queueCommentary(0);
   if (nube::busy() || s3net::scanning) { ui::toast("Espera a que termine la conexión"); return; }
   prepareMatchNetwork();
@@ -478,6 +531,7 @@ static void startMatch() {
   cfg.players[1] = haveTeams && chosenTeams.n[1] ? chosenTeams.n[1] : 1;
   hcIntroUntil = 0;
   hcIntroSeq = 0;
+  hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
   matchStartMs = startedAt;
@@ -493,6 +547,7 @@ static void startMatch() {
 }
 
 static void goHome() {
+  if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
   queueCommentary(0);
   inMatch = false;
   homeCards = true;
@@ -578,10 +633,10 @@ static void saveMatchFile() {
   m.mode = chosenMode == inicio::CHAOS ? 'c' : chosenMode == inicio::RANKED ? 'r' : 'q';
   m.cfg = eng.config();
   m.startEpoch = matchStartEpoch;
-  m.endEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
+  m.endEpoch = resultSaving ? resultEndEpoch : (rtc.clockOk ? partidos::epoch(rtc.now) : 0);
   // Si Internet puso la hora durante el partido, recuperar su inicio con tiempo real,
   // no con tiempo de juego (que omite pausas). Nunca inventar fecha si no hubo hora conocida.
-  uint32_t wallSeconds = (uint32_t)(millis() - matchStartMs) / 1000u;
+  uint32_t wallSeconds = (uint32_t)((resultSaving?resultEndMs:millis()) - matchStartMs) / 1000u;
   if (!m.startEpoch && m.endEpoch >= wallSeconds && m.endEpoch) m.startEpoch = m.endEpoch - wallSeconds;
   if (!m.endEpoch && m.startEpoch) m.endEpoch = m.startEpoch + wallSeconds;
   m.buildId = (uint32_t)MFV3_BUILD;
@@ -594,7 +649,7 @@ static void saveMatchFile() {
       jugadores.idOf(p->code, w.id, sizeof(w.id));
       snprintf(w.name, sizeof(w.name), "%s", p->name);
     }
-  if (!partidos::save(eng, m)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+  if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
   else if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
 }
 
@@ -665,12 +720,40 @@ static void sdPhotoCmd(const char* line) {
   }
 }
 
+// Compara solo la palabra de orden: los argumentos/base64 conservan sus bytes.
+static bool boardCommand(const char* line,const char* command){
+  size_t i=0;for(;command[i];i++)if(!line[i] || toupper((unsigned char)line[i])!=command[i])return false;
+  return line[i]==0 || line[i]==' ';
+}
+
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
 #if HAS_AUDIO
-  if(comentarios::handle(line,sndStore,inMatch || sndCmd.receiving(),sendLine))return;
-  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[140];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt);sendLine(b);return;}
+  if(comentarios::handle(line,sndStore,inMatch || sndCmd.receiving() || soundInspection.active,sendLine))return;
+  if(!strcmp(line,"SD_IDENTIDAD?")){
+    uint64_t total,free;sndStore.sdSpace(total,free);uint64_t mac=ESP.getEfuseMac();char b[150];
+    snprintf(b,sizeof b,"SD_IDENTIDAD placa=%012llx volumen=%llu",(unsigned long long)mac,(unsigned long long)total);sendLine(b);return;
+  }
+  if(boardCommand(line,"SONIDO_INFO") && line[11]==' '){
+    uint32_t code;
+    if(!mfv3snd::parseCode(line+12,strlen(line+12),code)){sendLine("SONIDO_ERROR - orden");return;}
+    if(inMatch || soundManagementBusy()){sendLine("SONIDO_ERROR - ocupado");return;}
+    if(!sndStore.sdOk){sendLine("SONIDO_ERROR - sin_sd");return;}
+    if(!sndStore.recoveryOk()){sendLine("SONIDO_ERROR - recuperacion");return;}
+    auto file=sndStore.open(code);char b[100];
+    if(!file){snprintf(b,sizeof b,"SONIDO_INFO %08lx ausente=1",(unsigned long)code);sendLine(b);return;}
+    if(file.size()>mfv3snd::MAX_SOUND_BYTES){sendLine("SONIDO_ERROR - tamano");return;}
+    soundInspection.file=file;soundInspection.code=code;soundInspection.bytes=0;soundInspection.crc=0;
+    soundInspection.size=(uint32_t)file.size();soundInspection.at=millis();soundInspection.active=true;return;
+  }
+  bool soundMutation=boardCommand(line,"SONIDO_SUBIR") || boardCommand(line,"SONIDO_DATOS") || boardCommand(line,"SONIDO_FIN") || boardCommand(line,"SONIDO_BORRAR");
+  bool soundScan=boardCommand(line,"SONIDOS?") || boardCommand(line,"SONIDOS_PAGINA");
+  bool soundPreview=boardCommand(line,"SONIDO") || boardCommand(line,"MOMENTO") || boardCommand(line,"VOLUMEN");
+  if((inMatch && (soundMutation || soundScan || soundPreview)) ||
+     (soundInspection.active && (soundMutation || soundScan || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
+  if((comentarios::staging && (soundMutation || soundPreview)) || (sndCmd.receiving() && (boardCommand(line,"SONIDO_BORRAR") || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
+  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[310];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts);sendLine(b);return;}
   if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
@@ -678,6 +761,7 @@ static void handleBoardLine(const char* line) {
     uiport::needResync = true;
     return;
   }
+  if(inMatch && (boardCommand(line,"CAPTURA") || boardCommand(line,"PERFIL") || !strncmp(line,"FOTOSD",6))){sendLine("DIAGNOSTICO_ERROR ocupado");return;}
   if (!strcmp(line, "CAPTURA")) { uiport::sendCapture(); return; }  // lo que se ve, por el USB (scripts/placa.py)
   // «TOQUE x y»: un toque simulado desde el PC (para recorrer las pantallas y capturarlas sin tocar la placa).
   if (!strncmp(line, "DESLIZA ", 8)) {  // «DESLIZA x y x2 y2 ms»: arrastre simulado
@@ -1967,7 +2051,7 @@ void setup() {
 #endif
   lcd.detectTouchAddress();  // GT911 en 0x5D o 0x14 (la 7C ya lo fija al arrancar el expansor)
   // Capas de la app y letras (scripts/placa_recursos.py), jugadores y fotos; también la usa el sonido.
-  if (FFat.begin(true)) jugadores.begin(&FFat);
+  if (FFat.begin(false)) jugadores.begin(&FFat);
   uiport::begin(lcd);
   uiport::touchDownHook = onTouchDown;
   gfx.tapCb = onTap;
@@ -2076,28 +2160,35 @@ void loop() {
   uint32_t now = millis();
 
   // Entradas de placas auxiliares (UART) y del USB.
-  while (Serial.available() > 0)
+  for(unsigned bytes=0;bytes<512 && Serial.available()>0;bytes++)
     if (usbRx.push((char)Serial.read())) handleBoardLine(usbRx.line());
   if (AUX_UART_RX >= 0)
-    while (AuxSerial.available() > 0)
+    for(unsigned bytes=0;bytes<512 && AuxSerial.available()>0;bytes++)
       if (auxRx.push((char)AuxSerial.read())) handleBoardLine(auxRx.line());
 
   radioPoll();
+  now=millis();
   rtc.poll(now);
 #if HAS_AUDIO
   comentarios::tick(millis(),inMatch);
   sndCmd.tick(millis(), sendLine);
-  player.pump(now);
+  player.pump(millis());
+  inspectSoundTick();
 #endif
 #if HAS_ISOLATED_IO
   pollIsolatedInputs(now);
 #endif
 
+  now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
   // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
-  bool calm = !inMatch && !test.active &&
+  bool managementBusy=false;
+#if HAS_AUDIO
+  managementBusy=soundManagementBusy();
+#endif
+  bool calm = !inMatch && !test.active && !managementBusy &&
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
   if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
@@ -2127,15 +2218,36 @@ void loop() {
     jugadores.changed = false;
   }
   uint32_t generationBeforeRender=commentaryGeneration,frameBefore=uiport::presented;
+  bool resultBeforeRender=resultPending;
   render();
   uiport::step();
 #if HAS_AUDIO
   if(pendingCommentary && generationBeforeRender==commentaryGeneration && uiport::presented!=frameBefore){
     uint32_t code=pendingCommentary;pendingCommentary=0;
-    player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},false);
-    if(!player.busy())player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},false);
-    player.pump(millis());commentaryStartedAt=millis();commentaryWaitMs=commentaryStartedAt-commentaryQueuedAt;commentaryLastCode=code;
+    commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
+    if(player.volume()==0)commentaryOutcome="silencio";
+    else {
+      player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},false);
+      bool fallback=!player.requestAccepted();
+      if(fallback && player.ok)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},false);
+      player.pump(millis());
+      bool started=player.lastStartSucceeded();
+      commentaryOutcome=started?(fallback?"respaldo":"iniciado"):"fallo";
+      if(started){commentaryStartedAt=millis();if(!fallback)commentaryLastCode=code;}
+    }
+    commentaryWaitMs=millis()-commentaryQueuedAt;
   }
 #endif
+#if HAS_AUDIO
+  if(pendingCommentary && (uint32_t)(millis()-commentaryQueuedAt)>500){
+    commentaryRequestedCode=pendingCommentary;pendingCommentary=0;
+    commentaryLastCode=commentaryStartedAt=0;commentaryOutcome="frame_timeout";
+    commentaryWaitMs=millis()-commentaryQueuedAt;
+  }
+#endif
+  // Primero el fotograma y el arranque del audio; después guardar sin sustituir el motor.
+  if(resultPending && ((resultBeforeRender && !pendingCommentary && uiport::presented!=resultFrame) || (uint32_t)(millis()-resultQueuedAt)>=250)){
+    resultSaving=true;saveResult();resultSaving=false;resultPending=false;
+  }
   delay(2);
 }

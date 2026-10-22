@@ -23,3 +23,8 @@ La 0.5 usa CMT1 con seis pools (0–5) y una máscara de 8 bits para contextos d
 Mantener comodines elegibles junto con grupos específicos cuando corresponda, no repetir inmediatamente una variante si hay alternativas y respetar las preferencias explícitas de silencio/sonido. Nunca dejar una cola de narraciones atrasadas. Un futuro comentario ambiente debe ceder inmediatamente ante gol, anulación o cambio de fase y no sonar durante pausa, menús o reposo; definir ese comportamiento y su tiempo con el dueño antes de implementarlo. El ejemplo de 90 s no constituye una configuración instalada.
 
 Medir el tiempo hasta el altavoz, interrupciones, lecturas de SD y memoria en la placa real con todas las familias. Las pruebas del selector actual en PC no validan acústica ni carga de 800 archivos físicos. Seguir en 0.x, registrar las novedades legibles de cada publicación y conservar una entrega verificable para A/Cloud.
+
+
+## Corrección 0.6 autorizada posteriormente
+
+El dueño simplifica por ahora los animales: suma→gol comodín, resta→anulación; en transferencia simultánea, una única anulación tiene prioridad. El penalti de hándicap avisa al señalarse una vez, sin otro comentario de gol al resolverlo. Se ha añadido `PenaltyAwarded` al final de las preferencias anteriores; conserva los índices. No confundirlo con una narración completa de la tanda ni con voces nuevas recibidas. Ver [entrega 0.6](ENTREGA_SONIDOS_0_6_20261022.md). No se amplía CMT1 silenciosamente ni se implementa todavía ambiente/inactividad.

@@ -312,7 +312,34 @@ static void chaos_visits() {
   }
 }
 
+static void stale_time_and_rollover() {
+  Config c = cfg(EndCondition::Time, 20, 1);
+  Engine e; assert(e.start(c,1000)); assert(e.skipCountdown(1001) == R::Accepted);
+  assert(!e.tick(1000)); assert(e.phase() == Phase::Playing && e.periodElapsed(1000) == 0);
+  assert(!e.tick(1002)); assert(e.periodElapsed(1002) == 1);
+  assert(e.pause(2001) == R::Accepted); assert(e.resume(5001) == R::Accepted);
+  assert(!e.tick(5000)); assert(e.phase() == Phase::Playing && e.periodElapsed(5000) == 1000);
+  assert(!e.tick(6001)); assert(e.periodElapsed(6001) == 2000);
+  assert(e.goal(Team::White,7001) == R::Accepted);
+  assert(e.lockRemaining(7000) == Engine::LOCK_MS); // una hora anterior no elude el bloqueo
+  // Cuenta atrás que termina después del rollover.
+  uint32_t start = UINT32_MAX - 1000;
+  assert(e.start(c,start)); assert(e.countdownRemaining(start) == Engine::COUNTDOWN_MS);
+  assert(!e.tick(start+2999u)); assert(e.phase() == Phase::Countdown);
+  assert(e.tick(start+3000u)); assert(e.phase() == Phase::Playing);
+  assert(e.periodElapsed(start+4000u) == 1000);
+  // Juego y pausa que cruzan el rollover: la protección no descarta tiempo legítimo.
+  start = UINT32_MAX - 10000;
+  assert(e.start(c,start)); assert(e.skipCountdown(start) == R::Accepted);
+  assert(e.goal(Team::White,start+5000u) == R::Accepted);
+  assert(e.pause(start+7000u) == R::Accepted); assert(e.resume(start+15000u) == R::Accepted);
+  assert(!e.tick(start+14999u)); assert(e.periodElapsed(start+14999u) == 7000);
+  assert(!e.tick(start+16000u)); assert(e.periodElapsed(start+16000u) == 8000);
+  assert(e.tick(start+68000u)); assert(e.phase() == Phase::PeriodEnd && e.periodDuration(Period::First) == 60000);
+}
+
 int main() {
+  stale_time_and_rollover();
   a01_full_match();
   a02_invalid_config();
   a03_a04_goals_and_time();

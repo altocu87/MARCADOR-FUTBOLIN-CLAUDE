@@ -7,6 +7,9 @@ $root=(Resolve-Path -LiteralPath $Package).Path
 $m=Get-Content (Join-Path $root 'catalogo.json') -Raw | ConvertFrom-Json
 if($m.schema -ne 2 -or $m.files.Count -lt 1 -or $m.files.Count -gt 1024){throw 'Catálogo inválido'}
 if($m.catalog_crc32 -notmatch '^[0-9a-f]{8}$'){throw 'CRC del catálogo inválido'}
+$minimum=[string]$m.minimum_firmware
+if($minimum -notmatch '^[0-9]+(?:\.[0-9]+){1,3}$'){throw 'Falta minimum_firmware válido en el catálogo'}
+# El instalador exige además >=0.6 por SONIDO_INFO. upload_verified es solo histórico.
 $paths=@();$codes=@();$crcs=@();$hashes=@();$verified=@()
 foreach($f in $m.files){
   if($f.pool -notin @(0,1,2,3,4,5)){throw 'Grupo inválido'}
@@ -18,4 +21,4 @@ foreach($f in $m.files){
 $commands=@('COMENTARIOS_INICIO '+$m.files.Count)
 foreach($f in $m.files){$commands+=('COMENTARIOS_ITEM '+$f.pool+' '+$f.code)}
 $commands+=('COMENTARIOS_FIN '+$m.catalog_crc32)
-[CommentarySdInstaller]::new().Run($Port,$root,[string[]]$paths,[string[]]$codes,[string[]]$crcs,[string[]]$hashes,[bool[]]$verified,[string[]]$commands)
+[CommentarySdInstaller]::new().Run($Port,$root,[string[]]$paths,[string[]]$codes,[string[]]$crcs,[string[]]$hashes,[bool[]]$verified,[string[]]$commands,$minimum)

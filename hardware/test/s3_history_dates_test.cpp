@@ -83,7 +83,9 @@ int main(){
   sim::now+=10000;loop();inputPause();
   assert(rtc.set({2026,10,22,18,0,15}));
   sim::now+=2000;loop();inputButtonGoal(Team::White);
-  assert(eng.phase()==Phase::Finished);
+  assert(eng.phase()==Phase::Finished && resultPending);
+  for(int i=0;i<150 && resultPending;i++){sim::now+=3;loop();}
+  assert(!resultPending);
   snprintf(path,sizeof(path),"%s/%s.json",dir.string().c_str(),partidos::rows[partidos::count-1].id);
   char* json=partidos::readAll(path);assert(json);
   uint32_t started=(uint32_t)(partidos::numOf(partidos::keyIn(json,"startedAt"))/1000.0);
