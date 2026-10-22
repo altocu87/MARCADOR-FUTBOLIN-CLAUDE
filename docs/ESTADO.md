@@ -1,8 +1,12 @@
 # Estado del proyecto
 
+## Revisión de Cloud y fusión en main · 22/10/2026
+
+**Main contiene la pantalla 0.7** (entregas 0.3–0.7 del equipo B), revisada por Cloud y fusionada con autorización del dueño. GitHub la publica como actualización oficial; la placa del dueño ya la tenía instalada. [Revisión de Cloud](REVISION_CLOUD_0_3_A_0_7_20261022.md). Siguen pendientes: prueba audible jugando, desfase del RTC, voces de anulación, torneos en la pantalla, login real por QR y límites de Supabase.
+
 ## Variedad y paquete de sonidos 0.7 · equipo B · 22/10/2026
 
-**0.7 instalada en COM6; 123 audios verificados en SD, 98 activos y 25 exclusivos de torneo reservados sin selección automática.** Rama `equipo-b/rendimiento-esp32s3`, código `642a4a0`, sin fusionar main ni publicar OTA. Reparto 70 % específico / 30 % comodín y rondas completas por grupo sin repetir entre rondas si hay alternativas. Se conservaron 61 WAV y ambos partidos; se añadieron 62 y se comprobaron tamaño/CRC completo y catálogo después de reiniciar. [Entrega para A/Cloud](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). La pantalla aún no implementa Torneos. Regresión local y GitHub correctos; pruebas acústicas y revisión independiente de Cloud pendientes. El desfase del RTC cercano a dos minutos no se reajustó.
+**0.7 instalada en COM6; 123 audios verificados en SD, 98 activos y 25 exclusivos de torneo reservados sin selección automática.** Rama `equipo-b/rendimiento-esp32s3`, código `642a4a0`; fusionada en main el 22/10/2026 tras la revisión de Cloud. Reparto 70 % específico / 30 % comodín y rondas completas por grupo sin repetir entre rondas si hay alternativas. Se conservaron 61 WAV y ambos partidos; se añadieron 62 y se comprobaron tamaño/CRC completo y catálogo después de reiniciar. [Entrega para A/Cloud](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). La pantalla aún no implementa Torneos. Regresión local y GitHub correctos; pruebas acústicas pendientes; revisión de Cloud hecha. El desfase del RTC cercano a dos minutos no se reajustó.
 
 
 ## Entrega anterior · corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026
