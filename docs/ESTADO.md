@@ -1,5 +1,11 @@
 # Estado del proyecto
 
+## Estado vigente de la placa · 22/10/2026 · equipo B
+
+**Instalada localmente: pantalla 0.4, build base 54, COM6. Publicada en main: 0.2 build 54.** Las entregas 0.3 y 0.4 siguen en la rama `equipo-b/rendimiento-esp32s3`, pendientes de revisión de Cloud y sin fusionar. El dueño confirmó varios partidos correctos con 0.3. Con 0.4 se ha puesto el reloj en hora y verificado el Resumen real (2 partidos / 27 goles), conservando los dos originales sin fecha. Recuperar esas fechas aproximadas y comprobar un nuevo guardado en placa siguen pendientes. [Entrega de código](ENTREGA_FECHAS_RESUMEN_0_4_20261022.md) · [Validación física](VALIDACION_PLACA_0_4_20261022.md).
+
+La sección siguiente conserva el estado histórico del 19–20 de octubre.
+
 ## Entrega del equipo B · 19–20/10/2026
 
 El propietario ha autorizado integrar en `main` toda la rama `equipo-b/rendimiento-esp32s3`, incluidas las mejoras del QR. La revisión independiente de Cloud sigue pendiente; no se presenta como realizada.

@@ -18,7 +18,7 @@ Confirmado en código y reproducido en PC:
 - `finishVersions` descartaba una hora de Internet ya obtenida si se había cancelado la búsqueda de versiones al iniciar el partido.
 - `historial::buildDigest` solo aceptaba registros con fecha dentro de los últimos 7/30 días y exigía tener hora actual. Por tanto, dos registros con `fin=0` producían un resumen vacío. Los partidos rápidos sin participantes también dejaban sin contenido las tarjetas de estadísticas individuales.
 
-Pendiente en la placa del dueño: leer el estado concreto del reloj y los campos de los dos partidos. No se ha probado si falta una pila, si se perdió la hora al desconectar, si ocurrió un fallo I2C o si no se llegó a sincronizar. No atribuirlo a una avería de hardware sin medirlo. La 0.3 continúa instalada mientras no se autorice instalar esta entrega.
+Verificación física posterior: 0.4 está instalada por autorización del dueño. Los dos registros reales tienen fin=0 y el resumen ya los incluye (2 partidos / 27 goles). El reloj se ha puesto en hora y devuelve valida=1 rtc=1. Véase el [informe físico](VALIDACION_PLACA_0_4_20261022.md). Sigue sin probarse si originalmente faltó sincronización, se perdió la hora al desconectar o hubo un fallo I2C; no atribuirlo a una avería de hardware sin medirlo.
 
 ## Cambios
 
@@ -59,13 +59,13 @@ Nueva `hardware/test/s3_history_dates_test.cpp`, añadida a `check_copies.sh`:
 - Filtros de 7/30 días con datos mixtos: no incluyen registros sin fecha; TODOS sí.
 - Consultas de diagnóstico sin modificar los registros.
 
-La regresión nativa completa pasó antes de añadir el último caso de inicio recuperado; se repite completa para el estado final. Las seis pruebas del registro de versiones también pasan. Durante la ampliación del test se corrigió una variable local que ocultaba la configuración del sketch; no se modificó el producto para ocultar una aserción.
+La regresión nativa completa se repitió y pasó para el estado final, incluido el último caso de inicio recuperado. Las seis pruebas del registro de versiones también pasan. Durante la ampliación del test se corrigió una variable local que ocultaba la configuración del sketch; no se modificó el producto para ocultar una aserción.
 
-## Estado y pendientes de instalación
+## Estado de instalación y pendientes
 
-La compilación de 0.4 y la validación final se registrarán al completarse. No se ha grabado 0.4 ni puesto el reloj de la placa. La escritura de firmware y el cambio de hora se consultan antes de realizarlos, conforme al límite inicial del dueño.
+La compilación final, las pruebas y la instalación física de 0.4 están completadas. El dueño autorizó expresamente instalar y poner la hora mediante «sí, hazlo». Se conservan los dos partidos; las fechas históricas no se han corregido automáticamente.
 
-Tras autorizar: instalar solo la aplicación conservando NVS, FFat, SD e historial; consultar HELLO/RELOJ?/HISTORIAL?; poner la hora actual de España desde una fuente fiable si falta; comprobar los dos registros reales y la pestaña Resumen. No generar partidos extra ni alterar sus fechas automáticamente. Recuperar las fechas antiguas requiere distinguir la información aproximada del dueño y las marcas reales, preservando copia de los originales.
+Se escribió solo app0 y se consultaron HELLO/RELOJ?/HISTORIAL?, se puso la hora actual de España y se revisaron capturas completas del historial y Resumen. No se generaron partidos extra ni se alteraron sus fechas. Recuperar las fechas antiguas requiere distinguir la información aproximada del dueño y las marcas reales, preservando copia de los originales.
 
 Revisión y aceptación por el equipo A / Cloud pendientes. No fusionar esta entrega con main por iniciativa propia.
 
@@ -73,8 +73,8 @@ Revisión y aceptación por el equipo A / Cloud pendientes. No fusionar esta ent
 
 La regresión nativa final completa termina correctamente, incluyendo el caso de inicio recuperado con pausas. La compilación real de Waveshare 7C con Arduino-ESP32 3.3.12 también pasa: aplicación 1.870.064 bytes, variables globales 123.672 bytes (24 bytes más que 0.3). Los máximos que muestra Arduino no sustituyen la tabla real de particiones: la aplicación sigue cabiendo en su partición de 6 MB.
 
-Binario local 0.4, build base 54: SHA256 `2b446096cda1f889cc0361a5a3088b706cb942dc477f92de7d072d3ee6933df9`, MD5 `462594b3030888bcd42636de852d9156`. Cabecera ESP32-S3 y presencia de versión verificadas. No está instalado.
+Binario local 0.4, build base 54: SHA256 `2b446096cda1f889cc0361a5a3088b706cb942dc477f92de7d072d3ee6933df9`, MD5 `462594b3030888bcd42636de852d9156`. Cabecera ESP32-S3 y presencia de versión verificadas. Instalado y verificado en COM6; véase el informe físico enlazado.
 
 Se ha renderizado y revisado el resumen con los recursos gráficos reales, a 800×480. La [vista previa](capturas-placa/resumen-0.4-simulado.png) usa **dos partidos ficticios 5–2** para comprobar diseño, 2 partidos / 14 goles y aviso de fechas; no representa los resultados del dueño. El programa auxiliar de la primera vista previa se descartó porque renombrar y llamar al main de la prueba dejaba un retorno indefinido; la vista definitiva usa un escenario independiente. No fue un fallo del firmware.
 
-Se conserva la distinción: validación local aprobada, instalación física y diagnóstico de los dos registros pendientes de autorización. No afirmar que se han recuperado fechas antiguas ni que el resumen de la placa ya ha sido comprobado con 0.4.
+Estado final: validación local y física aprobadas para el alcance medido; Resumen real comprobado con 0.4. No afirmar que se han recuperado fechas antiguas, comprobado la retención del reloj sin alimentación o probado un guardado nuevo en placa: esas comprobaciones siguen pendientes.
