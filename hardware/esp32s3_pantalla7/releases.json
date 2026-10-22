@@ -1,7 +1,17 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.4",
+      "date": "2026-10-22",
+      "title": "Fechas más fiables y resumen completo",
+      "changes": [
+        "El reloj conserva y avanza la hora conocida aunque falle una lectura, evitando perder la fecha de nuevos partidos.",
+        "El resumen incluye TODOS para consultar también partidos antiguos sin fecha, sin mezclarlos con los últimos días.",
+        "Los partidos rápidos sin jugadores muestran sus totales y explican por qué no hay estadísticas individuales."
+      ]
+    },
     {
       "version": "0.3",
       "date": "2026-10-22",

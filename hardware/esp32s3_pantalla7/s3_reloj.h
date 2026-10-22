@@ -45,8 +45,11 @@ inline uint8_t dec(uint8_t v) { return (uint8_t)((v >> 4) * 10 + (v & 0x0F)); }
 
 inline bool validClock(const Clock& c) {
   static const uint8_t DAYS[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  return c.year >= 2024 && c.year <= 2099 && c.month >= 1 && c.month <= 12 && c.day >= 1 &&
-         c.day <= DAYS[c.month - 1] && c.hour < 24 && c.minute < 60 && c.second < 60;
+  if (c.year < 2024 || c.year > 2099 || c.month < 1 || c.month > 12 || c.day < 1 ||
+      c.hour >= 24 || c.minute >= 60 || c.second >= 60) return false;
+  const bool leap = c.year % 4 == 0 && (c.year % 100 != 0 || c.year % 400 == 0);
+  const uint8_t limit = c.month == 2 && !leap ? 28 : DAYS[c.month - 1];
+  return c.day <= limit;
 }
 
 // «2026-10-17 18:42:05» → Clock. Devuelve false si no es una fecha válida.
@@ -166,14 +169,35 @@ struct State {
   Clock now{2000, 1, 1, 0, 0, 0};
   Battery bat{false, false, 0, 0};
   uint32_t clockAt = 0, batAt = 0;
+  uint32_t timeAt = 0;  // referencia monotónica de la hora conocida; tolera el wrap de millis()
+  bool rtcOk = false;   // última lectura/escritura física correcta; no equivale a clockOk
+  bool softwareTime = false;  // una puesta en hora no guardada no debe volver a una fecha vieja del RTC
   bool first = true;
+
+  void advance(uint32_t ms) {
+    if (!clockOk || (int32_t)(ms - timeAt) < 0) return;
+    uint32_t seconds = (uint32_t)(ms - timeAt) / 1000u;
+    if (!seconds) return;
+    uint32_t total = (uint32_t)now.second + seconds;
+    now = fromStamp(stamp(now) + total / 60u);
+    now.second = (uint8_t)(total % 60u);
+    timeAt += seconds * 1000u;
+    clockOk = validClock(now);
+  }
 
   void poll(uint32_t ms) {
     if (first || ms - clockAt >= 1000) {
       clockAt = ms;
       Clock c;
-      clockOk = rtcRead(c);
-      if (clockOk) now = c;
+      rtcOk = !softwareTime && rtcRead(c);
+      if (rtcOk) {
+        now = c;
+        clockOk = true;
+        timeAt = ms;
+      } else {
+        // Un fallo I2C no borra una hora válida: sigue avanzando durante este encendido.
+        advance(ms);
+      }
     }
     if (first || ms - batAt >= 10000) {
       batAt = ms;
@@ -183,9 +207,14 @@ struct State {
   }
 
   bool set(const Clock& c) {
-    if (!rtcWrite(c)) return false;
+    if (!validClock(c)) return false;
+    rtcOk = rtcWrite(c);
+    softwareTime = !rtcOk;
     now = c;
     clockOk = true;
+    timeAt = millis();
+    // La hora obtenida por USB/Internet también es válida en RAM si el RTC no responde.
+    // Eso no promete conservarla al apagar: rtcOk permite distinguirlo en el diagnóstico.
     return true;
   }
 

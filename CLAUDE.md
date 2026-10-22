@@ -39,3 +39,7 @@ La mini real del dueño es Waveshare ESP32-C3-Zero: leer [su entrega](docs/ENTRE
 ## Pantalla 0.3 · continuar desde el mando · rama del equipo B
 
 Consultar [la entrega 0.3](docs/ENTREGA_TRANSICIONES_PULSADORES_0_3_20261022.md): permite continuar primera/segunda parte y entrar en penaltis con cualquiera de los pulsadores. Contiene pruebas y estado físico, además de los colores reales del cableado corregidos por el dueño. Actualiza la indicación anterior: ya se han probado un gol y una anulación por equipo en placa con resultado correcto; el fallo intermitente inicial no se reprodujo. La aceptación por Cloud y la publicación oficial siguen pendientes.
+
+## Pantalla 0.4 · fechas y resumen · rama del equipo B
+
+Consultar [la entrega 0.4](docs/ENTREGA_FECHAS_RESUMEN_0_4_20261022.md). Corrige la continuidad del reloj y añade TODOS al resumen para incluir registros sin fecha sin inventar su día. El dueño confirma varios partidos correctos con 0.3; faltan fechas en dos rápidos y aclara que el vacío es la pestaña Resumen. Las fechas recordadas son aproximadas y constan en la entrega: no migrarlas ni atribuirles hora exacta sin verificar. No dar 0.4 por instalada ni los registros antiguos por reparados hasta documentar esas comprobaciones.

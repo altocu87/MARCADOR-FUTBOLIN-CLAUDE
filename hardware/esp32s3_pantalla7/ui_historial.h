@@ -871,25 +871,45 @@ static void buildFame() {
 }
 
 // ---------------------------------------------------------------- RESUMEN
-static bool digestMonth = false;
+enum DigestSpan : uint8_t { DIGEST_WEEK, DIGEST_MONTH, DIGEST_ALL };
+static DigestSpan digestSpan = DIGEST_WEEK;
+static bool digestSpanChosen = false;
 static void onSpan(lv_event_t* e) {
-  digestMonth = lv_event_get_user_data(e) != nullptr;
+  digestSpan = (DigestSpan)(intptr_t)lv_event_get_user_data(e);
+  digestSpanChosen = true;
   rebuildContent();
 }
 static void buildDigest() {
-  pill(host, 16, 132, 190, 46, "ÚLTIMOS 7 DÍAS", 900, 15, !digestMonth, onSpan, nullptr, ui::RADIUS_SM);
-  pill(host, 212, 132, 190, 46, "ÚLTIMOS 30 DÍAS", 900, 15, digestMonth, onSpan, (void*)1, ui::RADIUS_SM);
   uint32_t now = hooks.nowUtc ? hooks.nowUtc() : 0;
-  uint32_t from = now > (digestMonth ? 30u : 7u) * 86400u ? now - (digestMonth ? 30u : 7u) * 86400u : 0;
+  int undated = 0;
+  for (int i = 0; i < partidos::count; i++) if (!partidos::rows[i].fin) undated++;
+  // Sin una selección explícita, no esconder los partidos que carecen de fecha.
+  if (!digestSpanChosen) digestSpan = !now || undated ? DIGEST_ALL : DIGEST_WEEK;
+  pill(host, 16, 132, 190, 46, "ÚLTIMOS 7 DÍAS", 900, 15, digestSpan == DIGEST_WEEK, onSpan, nullptr, ui::RADIUS_SM);
+  pill(host, 212, 132, 190, 46, "ÚLTIMOS 30 DÍAS", 900, 15, digestSpan == DIGEST_MONTH, onSpan, (void*)1, ui::RADIUS_SM);
+  pill(host, 408, 132, 150, 46, "TODOS", 900, 15, digestSpan == DIGEST_ALL, onSpan, (void*)2, ui::RADIUS_SM);
+  if (undated) {
+    char b[60];
+    snprintf(b, sizeof(b), digestSpan == DIGEST_ALL ? "Incluye %d sin fecha" : "%d sin fecha: ver TODOS", undated);
+    lv_obj_t* hint = ui::text(host, b, 400, 13, ui::color::TEXT2);
+    lv_obj_set_pos(hint, 572, 145);
+    lv_obj_set_width(hint, 212);
+  }
+  uint32_t days = digestSpan == DIGEST_MONTH ? 30u : 7u;
+  uint32_t from = now > days * 86400u ? now - days * 86400u : 0;
   int* ord = (int*)malloc((size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
   if (!ord) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   int nl = 0;
   for (int i = 0; i < partidos::count; i++)
-    if (now && partidos::rows[i].fin >= from && partidos::rows[i].fin <= now) ord[nl++] = i;
+    if (digestSpan == DIGEST_ALL || (now && partidos::rows[i].fin && partidos::rows[i].fin >= from && partidos::rows[i].fin <= now))
+      ord[nl++] = i;
   qsort(ord, nl, sizeof(int), progresion::byFinish);
   if (!nl) {
     free(ord);
-    empty("Sin partidos en este periodo", "El resumen se rellena solo al jugar.");
+    if (!partidos::count) empty("Todavía no hay partidos", "El resumen se rellena al terminar un partido.");
+    else if (!now && digestSpan != DIGEST_ALL) empty("Falta la fecha y hora", "Consulta TODOS y conecta Wi-Fi para poner la hora.");
+    else if (undated) empty("Hay partidos sin fecha", "Puedes verlos en TODOS; no se asignan a un periodo.");
+    else empty("Sin partidos en este periodo", "Prueba con TODOS para ver el historial completo.");
     return;
   }
   // Por jugador (en orden de aparición): victorias y partidos; goles apuntados en partidos completos.
@@ -949,15 +969,21 @@ static void buildDigest() {
     lv_obj_set_pos(s2, 64, 56);
   };
   char b[48];
-  lv_obj_t* c = tile(0, digestMonth ? "JUGADOR DEL MES" : "JUGADOR DE LA SEMANA");
+  lv_obj_t* c = tile(0, digestSpan == DIGEST_ALL ? "JUGADOR DESTACADO" : digestSpan == DIGEST_MONTH ? "JUGADOR DEL MES" : "JUGADOR DE LA SEMANA");
   if (pop >= 0 && w[pop].wins > 0) {
     snprintf(b, sizeof(b), "%d victorias en %d", w[pop].wins, w[pop].played);
     who(c, w[pop], b);
+  } else {
+    lv_obj_t* text = ui::text(c, nw ? "Sin victorias registradas" : "Sin jugadores elegidos", 400, 14, ui::color::TEXT2);
+    lv_obj_set_pos(text, 12, 40);
   }
   c = tile(1, "MÁS ACTIVO");
   if (act >= 0) {
     snprintf(b, sizeof(b), "%d partidos", w[act].played);
     who(c, w[act], b);
+  } else {
+    lv_obj_t* text = ui::text(c, "Sin jugadores elegidos", 400, 14, ui::color::TEXT2);
+    lv_obj_set_pos(text, 12, 40);
   }
   c = tile(2, "PARTIDOS · GOLES");
   snprintf(b, sizeof(b), "%d · %d", nl, goals);
@@ -972,7 +998,7 @@ static void buildDigest() {
     snprintf(b, sizeof(b), "%d goles", w[sc].goals);
     who(c, w[sc], b);
   } else {
-    lv_obj_t* f = ui::text(c, "Faltan goles por apuntar", 400, 14, ui::color::TEXT2);
+    lv_obj_t* f = ui::text(c, nw ? "Faltan goles por apuntar" : "Sin jugadores elegidos", 400, 14, ui::color::TEXT2);
     lv_obj_set_pos(f, 12, 40);
   }
 }

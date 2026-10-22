@@ -93,10 +93,11 @@ static bool beginVersions() {
 static void finishVersions() {
   if (!versionsRunning || !versionsDone.load()) return;
   versionsRunning = false;
+  // La hora obtenida sigue siendo útil aunque se cancelase la búsqueda al empezar a jugar.
+  if (fetchedClockOk) rtc.set(fetchedClock);
   if (checkState != CheckState::Running) return;  // cancelada al entrar en partido
   if (versionsOk) { pubScreen = fetchedScreen; pubMando = fetchedMando; publishedRelease = fetchedRelease; }
   checkState = versionsOk ? CheckState::Ok : CheckState::Failed;
-  if (fetchedClockOk) rtc.set(fetchedClock);
   s3net::stop();
 }
 

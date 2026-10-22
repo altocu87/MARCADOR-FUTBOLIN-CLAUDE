@@ -434,6 +434,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
 }
 
 static uint32_t matchStartEpoch = 0;  // cuándo empezó el partido (segundos UTC; 0 sin hora)
+static uint32_t matchStartMs = 0;     // tiempo real, incluidas pausas, para recuperar el inicio si llega la hora después
 
 // ---------------------------------------------------------------- acciones
 static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (solo pantalla: el reloj ya está parado)
@@ -448,7 +449,9 @@ static void startMatch() {
   cfg.players[1] = haveTeams && chosenTeams.n[1] ? chosenTeams.n[1] : 1;
   hcIntroUntil = 0;
   hcIntroSeq = 0;
-  if (!eng.start(cfg, millis())) return;
+  uint32_t startedAt = millis();
+  if (!eng.start(cfg, startedAt)) return;
+  matchStartMs = startedAt;
   matchFixedDirty = streakDirty = true;
   matchStartEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
   inMatch = true;
@@ -546,6 +549,11 @@ static void saveMatchFile() {
   m.cfg = eng.config();
   m.startEpoch = matchStartEpoch;
   m.endEpoch = rtc.clockOk ? partidos::epoch(rtc.now) : 0;
+  // Si Internet puso la hora durante el partido, recuperar su inicio con tiempo real,
+  // no con tiempo de juego (que omite pausas). Nunca inventar fecha si no hubo hora conocida.
+  uint32_t wallSeconds = (uint32_t)(millis() - matchStartMs) / 1000u;
+  if (!m.startEpoch && m.endEpoch >= wallSeconds && m.endEpoch) m.startEpoch = m.endEpoch - wallSeconds;
+  if (!m.endEpoch && m.startEpoch) m.endEpoch = m.startEpoch + wallSeconds;
   m.buildId = (uint32_t)MFV3_BUILD;
   for (int t = 0; t < 2 && haveTeams; t++)
     for (int i = 0; i < chosenTeams.n[t] && m.n[t] < 4; i++) {
@@ -657,6 +665,28 @@ static void handleBoardLine(const char* line) {
     char b[200];
     nube::qrUrl(b, sizeof(b));
     sendLine(b);
+    return;
+  }
+  if (!strcmp(line, "RELOJ?")) {  // solo lectura: no pone la hora ni escribe el RTC
+    char b[112];
+    snprintf(b, sizeof(b), "RELOJ valida=%d rtc=%d fecha=%04u-%02u-%02u %02u:%02u:%02u",
+             (int)rtc.clockOk, (int)rtc.rtcOk, rtc.now.year, rtc.now.month, rtc.now.day,
+             rtc.now.hour, rtc.now.minute, rtc.now.second);
+    sendLine(b);
+    return;
+  }
+  if (!strcmp(line, "HISTORIAL?")) {  // solo lectura: totales y hasta cinco partidos, sin nombres
+    char b[144];
+    int undated = 0;
+    for (int k = 0; k < partidos::count; k++) if (!partidos::rows[k].fin) undated++;
+    snprintf(b, sizeof(b), "HISTORIAL partidos=%d sin_fecha=%d", partidos::count, undated);
+    sendLine(b);
+    int first = partidos::count > 5 ? partidos::count - 5 : 0;
+    for (int k = first; k < partidos::count; k++) {
+      const partidos::Row& r = partidos::rows[k];
+      snprintf(b, sizeof(b), "PARTIDO id=%s fin=%lu modo=%c resultado=%u-%u", r.id, (unsigned long)r.fin, r.mode, r.w, r.b);
+      sendLine(b);
+    }
     return;
   }
   if (!strcmp(line, "NUBE?")) {  // pruebas: cómo va la cuenta de la nube
@@ -1637,7 +1667,8 @@ static void render() {
     char warn[32];
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
-    inicio::setStatus(remoteLinked(), updateAvailable(), low ? warn : nullptr, nube::loggedIn() ? nube::pendingCount : 0);
+    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
+    inicio::setStatus(remoteLinked(), updateAvailable(), low || !rtc.clockOk ? warn : nullptr, nube::loggedIn() ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
