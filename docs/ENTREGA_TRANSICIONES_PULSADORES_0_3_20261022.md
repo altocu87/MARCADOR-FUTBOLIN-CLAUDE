@@ -49,3 +49,13 @@ Los colores de los dos pulsadores se confundieron al principio de la conversaci�
 ## Pendientes para equipo A / Cloud
 
 Revisar y aceptar esta entrega. Completar la selección/persistencia del perfil C3-Zero antes de publicar soporte oficial de su actualización: la pantalla sigue descargando el perfil genérico `mando-c3` para Super Mini. Conservar los límites y las incidencias USB ya documentadas. La captura de pantalla no forma parte del tratamiento de las pulsaciones y puede perturbar una medición: no confundir problemas del capturador con fallos de los botones.
+
+## Instalación física de 0.3 confirmada
+
+Se instaló en COM6 únicamente `esp32s3_pantalla7.ino.bin` a 0x10000, mediante el cargador ROM sin stub. Escritura de 1.868.080 bytes en 109,5 s, seguida de **Hash of data verified** y reinicio. SHA256 `c9882963acbcb84a18d1b8983f67cf1b4e194843570270e810652347c8b87e2c`; MD5 `d49f73cecc5c7758ae631b05e32eb2c0`. Fuente exacta: `a336c92e37893de4f4110cdb29484563d099714f`, compilación local con base 54.
+
+La pantalla responde `HELLO waveshare-7c 0.3` e informa memoria interna libre 64.792 bytes, hueco mayor 31.732, mínimo 54.540; PSRAM libre 6.011.792, hueco mayor 5.898.228 y caché 7.123 KB. Son lecturas de arranque, no una prueba prolongada ni demostración de ausencia de fugas.
+
+Las comprobaciones remotas del mismo commit terminaron correctamente: GitHub Actions [Pruebas](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39769729525) y [Firmware](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/39769729510). Esta última compila el catálogo completo. No se ha fusionado ni publicado en main.
+
+**Prueba real de transiciones todavía pendiente:** al abrir la observación, COM7 dejó de estar disponible. La enumeración posterior solo muestra la pantalla COM6 y puertos ajenos. Se pidió al dueño reconectar la mini al PC para poder observar ambas. No se ha iniciado automáticamente el partido de un minuto ni se han simulado goles. No confundir esta instalación y las simulaciones aprobadas con una validación completa de las tres transiciones en la placa real.
