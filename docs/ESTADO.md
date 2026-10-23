@@ -2,6 +2,8 @@
 
 ## Variedad y paquete de sonidos 0.7 · equipo B · 22/10/2026
 
+**Recomprobado el 23/10/2026, solo lectura:** tamaño/CRC completos de los 123 WAV correctos; 98 activos, 25 reservados y ambos partidos conservados. Sin regrabar firmware ni catálogo ni reproducir audio. Ver la comprobación posterior al final del [informe físico](VALIDACION_PLACA_0_7_20261022.md).
+
 **0.7 instalada en COM6; 123 audios verificados en SD, 98 activos y 25 exclusivos de torneo reservados sin selección automática.** Rama `equipo-b/rendimiento-esp32s3`, código `642a4a0`, sin fusionar main ni publicar OTA. Reparto 70 % específico / 30 % comodín y rondas completas por grupo sin repetir entre rondas si hay alternativas. Se conservaron 61 WAV y ambos partidos; se añadieron 62 y se comprobaron tamaño/CRC completo y catálogo después de reiniciar. [Entrega para A/Cloud](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). La pantalla aún no implementa Torneos. Regresión local y GitHub correctos; pruebas acústicas y revisión independiente de Cloud pendientes. El desfase del RTC cercano a dos minutos no se reajustó.
 
 
