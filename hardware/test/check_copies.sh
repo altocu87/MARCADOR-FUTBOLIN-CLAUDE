@@ -39,6 +39,7 @@ sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_012_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_ambient_test.cpp
 sh test/s3_build.sh 4 test/s3_opciones_test.cpp
 # El perfil del QR calculado en la placa = el de la app (con los partidos de prueba que deja la anterior).

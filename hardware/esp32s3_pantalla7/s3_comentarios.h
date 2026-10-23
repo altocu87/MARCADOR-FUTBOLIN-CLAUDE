@@ -4,7 +4,7 @@
 #include <new>
 namespace comentarios {
 static const uint16_t MAX_FILES = 1024;
-enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, SiguePerdiendo, Ventaja2, MasDe8, VaGanando, Ultimos20, Intro, Descanso, FinalNormal, Remontada, EmpateTras3, Pierde4Ultimo60, Pierde4, PenaltyMiss, PenaltyGoal, PenaltyEqualizer, PenaltyEqualizer20, Ambience, Opening20, PoolCount };
+enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, SiguePerdiendo, Ventaja2, MasDe8, VaGanando, Ultimos20, Intro, Descanso, FinalNormal, Remontada, EmpateTras3, Pierde4Ultimo60, Pierde4, PenaltyMiss, PenaltyGoal, PenaltyEqualizer, PenaltyEqualizer20, Ambience, Opening20, SecondHalf, SecondHalfMany, SecondHalfFew, GoldenWinner, ExtraTimeAnnounce, ShootoutAnnounce, Lead3, PoolCount };
 using PoolMask=uint32_t;
 static_assert(PoolCount<=32,"Ampliar las mascaras antes de añadir otro grupo");
 struct Catalog {
@@ -109,6 +109,8 @@ inline PoolMask goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Te
   PoolMask mask=1u<<Comodin;
   uint16_t own=s.of(t),other=s.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White);
   if(own>other)mask|=1u<<VaGanando;
+  if(own==other+3)mask|=1u<<Lead3; // exactamente tres, confirmado por el dueño
+  if(e.phase()==mfv3::Phase::Finished && e.period()==mfv3::Period::Overtime && e.reason()==mfv3::Reason::GoldenGoal)mask|=1u<<GoldenWinner;
   if(lastTwentySeconds(e))mask|=1u<<Ultimos20;
   if(!e.config().chaos){ // no inferir una remontada de las travesuras no registradas como goles
     unsigned worst=worstDeficit(e,t);
@@ -128,6 +130,14 @@ inline PoolMask goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Te
   int streak=0;bool skipCurrent=true;
   for(int i=(int)e.goalCount()-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);if(g.annulled || !g.value)continue;
     if(skipCurrent){skipCurrent=false;continue;}if(g.team==t)break;if(++streak>=2){mask|=1u<<Respuesta2;break;}}
+  return mask;
+}
+// Contexto del comienzo efectivo de segunda parte, con el marcador válido de la primera.
+inline PoolMask secondHalfMask(const mfv3::Engine& e){
+  auto first=e.periodScore(mfv3::Period::First);unsigned goals=first.white+first.blue;
+  PoolMask mask=1u<<SecondHalf;
+  if(goals>6)mask|=1u<<SecondHalfMany;
+  else if(goals<2)mask|=1u<<SecondHalfFew;
   return mask;
 }
 // Reloj de ambiente en tiempo de juego: no acumula frases ni consume tiempo en pausa.

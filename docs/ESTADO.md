@@ -1,5 +1,13 @@
 # Estado del proyecto
 
+## Pantalla 0.12 en preparación · equipo B · 23/10/2026
+
+Autorizada por el dueño para main y placa: 210 voces nuevas (770 totales, 706 activas / 64 reservadas), anulación, segunda parte, prórroga, tanda, gol de oro y ventaja exacta de tres. Integra el ritmo fijo cuyo menú el dueño confirmó estable. Sin comandos privados. Instalación/publicación todavía pendientes; [entrega y reglas](ENTREGA_SONIDOS_0_12_20261023.md). El aviso Wi-Fi y la estabilidad con descargas prolongadas siguen pendientes de medir.
+
+## Incidente visual de 0.11 · equipo B · 23/10/2026
+
+**El dueño comunica carga seguida de azul/negro/gris en el panel físico. No está confirmado resuelto.** USB y captura interna correctos no acreditan estabilidad visual. Instalada prueba privada de 0.11 con reloj fijo, conservando cuatro partidos, catálogo y SD; pendiente respuesta visual del dueño. Main/OTA siguen sin cambios. [Incidente y pruebas](INCIDENTE_PANEL_0_11_20261023.md). No presentar la verificación anterior de archivos como validación visual/acústica del juego.
+
 ## Pantalla 0.11 instalada y verificada · equipo B · 23/10/2026
 
 **COM6, 560 WAV verificados (496 activos / 64 reservados de torneo), 123 anteriores y cuatro partidos conservados tras reiniciar.** Integra ajustes 0.8 y Wi-Fi 0.9 del equipo A. Todos los tests locales y los dos workflows de GitHub correctos para el código `63ad580`. El dueño autoriza la integración en main al terminar la verificación, preparada en [PR 21](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/21). [Entrega a A](ENTREGA_SONIDOS_0_11_20261023.md) · [Informe físico](VALIDACION_PLACA_0_11_20261023.md). La 0.10 no se instaló por separado. Revisión independiente de A y prueba acústica jugando pendientes. RTC válido al final sin ajuste de B; los dos partidos antiguos siguen sin fecha.

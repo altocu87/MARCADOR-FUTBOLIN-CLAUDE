@@ -53,6 +53,13 @@ class Classification(unittest.TestCase):
         for group,prefix in ((43,"PENALTY FALLADO"),(44,"GOL DE PENALTY Y EMPATAS EN LOS ULTIMOS 20 SEG"),(45,"GOL DE PENALETY Y EMPATAS"),(46,"GOL DE PENALTY"),(47,"SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO 3"),(48,"SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO 2"),(49,"SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO"),(50,"SONIDOS PARA DESPUES DEL PITIDO INICIAL, EN LOS PRIMEROS  20 SEG DE PARTIDO, COMODIN")):
             self.assertEqual(preparer.classify(prefix+"_0_0.wav"),(group,0,0))
         self.assertEqual([preparer.GROUPS[g][0] for g in range(43,51)],[18,21,20,19,22,22,22,23])
+    def test_batch_012(self):
+        rows=[(51, 'COMENTARIOS RAMDOM COMODIN9', 22), (52, 'GOL ANULADO 5', 4), (53, 'GOL ANULADO 3', 4), (54, 'GOL ANULADO 2', 4), (55, 'GOL ANULADO 1', 4), (56, 'COMENTARIOS RAMDOM COMODIN8', 22), (57, 'COMIENZO 2º PARTE CUANDO EN LA 1º PARTE HAN HABIDO MAS DE 6 GOLES', 25), (58, 'COMIENZO DEL 2º TIEMPO SI EN EL 1º TIEMPO HAN HABIDO MENOS DE 2 GOLES', 26), (59, 'COMIENZO 2º PARTE 1', 24), (60, 'COMENTARIOS RAMDOM COMODIN_6_5', 22), (61, 'GOL CUANDO EL EQUIPO QUE MARCA VA GANANDO DE 3 GOLES', 30), (62, 'GOL COMODIN  9', 0), (63, 'GOL DE ORO EN LA PRORROGA Y GANADOR', 27), (64, 'GOL COMODIN', 0), (65, 'COMENTARIOS RAMDOM COMODIN', 22), (66, 'FINAL PRORROGA Y VAMOS A LOS PENALTYS', 29), (67, 'FINAL DE LA 2º PARTE EMPATE Y VAMOS A PRORROGA', 28)]
+        for group,prefix,pool in rows:
+            self.assertEqual(preparer.classify(prefix+"_0_0.wav"),(group,0,0))
+            self.assertEqual(preparer.GROUPS[group][0],pool)
+        namespaces=[preparer.GROUPS[group][1] for group,_,_ in rows]
+        self.assertEqual(len(namespaces),len(set(namespaces)))
     def test_unknown_not_guessed(self):
         for name in ("GOL ALGO NUEVO_0_0.wav","GOL COMODIN 8_0_0.wav","GOL_7_OTRO_0_0.wav"):
             self.assertIsNone(preparer.classify(name))

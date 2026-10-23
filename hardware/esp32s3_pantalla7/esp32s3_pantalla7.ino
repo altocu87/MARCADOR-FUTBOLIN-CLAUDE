@@ -494,6 +494,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
   snap = now;
   auto sounds=mfv3snd::detect(eng,sndBefore,goalAccepted);
+  bool secondHalfStarted=sndBefore.phase==Phase::Countdown && now.phase==Phase::Playing &&
+      sndBefore.period==Period::Second && now.period==Period::Second;
+  // La preferencia de inicio ya existente rige también la voz de comienzo de segunda parte.
+  if(secondHalfStarted)sounds.add(mfv3snd::Event::MatchStart);
   bool penaltyAwarded=eng.phase()==Phase::Handicap && eng.handicapStage()==mfv3::HStage::Announce &&
       eng.handicap().kind==mfv3::HKind::Penalty &&
       (sndBefore.phase!=Phase::Handicap || eng.handicap().seq!=hcSoundSeq);
@@ -552,14 +556,25 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     spoken=true;introCommentary=false;
   }
   if(!spoken && !goalAccepted && !animalScore && automaticAllowed){
-    int pool=-1;mfv3snd::Event fallback=mfv3snd::Event::PeriodEnd;
+    int pool=-1;comentarios::PoolMask phaseMask=0;uint8_t phaseGeneric=comentarios::Comodin;
+    mfv3snd::Event fallback=mfv3snd::Event::PeriodEnd;
     if(eng.phase()==Phase::PeriodEnd && sndBefore.phase!=Phase::PeriodEnd && eng.period()==Period::First)pool=comentarios::Descanso;
+    else if(eng.phase()==Phase::PeriodEnd && sndBefore.phase!=Phase::PeriodEnd &&
+            eng.config().endCondition!=mfv3::EndCondition::Goals && eng.score().white==eng.score().blue){
+      if(eng.period()==Period::Second)pool=comentarios::ExtraTimeAnnounce;
+      else if(eng.period()==Period::Overtime)pool=comentarios::ShootoutAnnounce;
+    }
+    else if(secondHalfStarted){
+      phaseMask=comentarios::secondHalfMask(eng);phaseGeneric=comentarios::SecondHalf;
+      fallback=mfv3snd::Event::MatchStart;
+    }
     else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished &&
             eng.period()==Period::Second && eng.config().endCondition!=mfv3::EndCondition::Goals &&
             eng.clockMs(millis())==0 && eng.reason()==mfv3::Reason::Regulation){
       pool=comentarios::FinalNormal;fallback=sounds.has(mfv3snd::Event::Rout)?mfv3snd::Event::Rout:mfv3snd::Event::Victory;
     }
-    if(pool>=0){uint32_t code=comentarios::catalog.pick(1u<<pool,esp_random(),esp_random());
+    if(pool>=0)phaseMask=1u<<pool;
+    if(phaseMask){uint32_t code=comentarios::catalog.pick(phaseMask,esp_random(),esp_random(),phaseGeneric);
       if(code){player.stop();queueCommentary(code);commentaryFallback=fallback;spoken=true;}
     }
   }
@@ -2290,9 +2305,6 @@ void loop() {
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
-  // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
-  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::busy() || versionsRunning ||
-                     screen == Screen::Install);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
   // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
   bool managementBusy=false;

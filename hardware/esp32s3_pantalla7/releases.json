@@ -1,7 +1,18 @@
 {
-  "version": "0.11",
+  "version": "0.12",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.12",
+      "date": "2026-10-23",
+      "title": "Imagen estable y voces para cada fase",
+      "changes": [
+        "Corrige los cambios de color al terminar la carga manteniendo estable el ritmo de la pantalla.",
+        "Nuevas voces al anular un gol, empezar la segunda parte y anunciar la prórroga o la tanda de penaltis.",
+        "Más comentarios de ambiente, goles comodín, ventaja exacta de tres y gol de oro ganador.",
+        "Conserva los sonidos anteriores, los partidos y tus ajustes."
+      ]
+    },
     {
       "version": "0.11",
       "date": "2026-10-23",

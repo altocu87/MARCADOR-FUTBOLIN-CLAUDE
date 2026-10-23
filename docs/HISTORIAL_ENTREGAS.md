@@ -46,3 +46,12 @@ Leer [la entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md). Menú de AJUSTES en `s
 
 Con el Wi-Fi activo la imagen se corría (vídeo del dueño). `uiport::setNetwork()` baja el panel a `PCLK_NET_HZ` y realinea cada 250 ms mientras hay red; no quitarlo sin medir en la placa. Pendiente confirmar en la placa.
 
+
+
+## Incidente del panel físico 0.11 · B · 23/10/2026
+
+Carga visible seguida de alternancia de colores. Prueba privada con ritmo fijo instalada con autorización del dueño; cuatro partidos y catálogo conservados. Confirmación física y solución de producto pendientes; no publicada. Ver [incidente](INCIDENTE_PANEL_0_11_20261023.md). Una captura interna correcta y ACK USB no demuestran que el panel físico esté bien.
+
+## Pantalla 0.12 · B · 23/10/2026
+
+[Entrega](ENTREGA_SONIDOS_0_12_20261023.md): 210 voces nuevas, 770 WAV (706 activos, 64 reservados); ritmo fijo confirmado visualmente en la prueba privada. 0.12 de producto sin comandos privados, con nuevas fases, anulación y ventaja de tres exacta. Dueño autoriza main/placa; comprobar estado final antes de afirmar instalación/publicación. No mezclar con cambios de la auditoría paralela.
