@@ -4,7 +4,8 @@
 // JSON): /sdcard/partidos/<id>.json. Así se puede pasar tal cual a la app o a la nube. Además, una línea por
 // partido en /sdcard/partidos/indice.txt con lo que enseña la lista del historial (se lee entera al encender):
 //   <id>|<fin, segundos desde 1970>|<modo q/c/r>|<ganador w/b/->|<cómo r/g/p>|<B>|<A>|<penaltis B|->|<penaltis A|->|
-//   <código>,<nombre>;…  (Blanco)|<código>,<nombre>;…  (Azul)
+//   <código>,<nombre>;…  (Blanco)|<código>,<nombre>;…  (Azul)|x<cálculos>|t<torneo>|<cruce>|<inicio ms>|<fin ms>
+// (las cuatro últimas, desde los torneos: un índice anterior sin ellas se vuelve a leer del JSON una vez).
 // Sin tarjeta, en la memoria del chip (/ffat/partidos), con sitio para menos.
 // La hora de la placa es la de España: aquí se pasa a la hora universal que usa la app (cambio de hora de la UE).
 
@@ -51,6 +52,10 @@ struct Row {
   uint8_t pg[2][4];       // goles apuntados a cada jugador
   uint8_t kicks[2], kicksIn[2], sdKicks, penRounds;
   uint8_t goalsValid, goalsAssigned;  // goles válidos y cuántos tienen goleador apuntado (el pichichi usa los completos)
+  // Torneo (StoredMatch.tournament de la app): vacíos si el partido no es de un torneo.
+  char tournament[48];
+  char fixture[64];
+  uint64_t startedAt, finishedAt;  // ms, como la app (el reloj del Pool y la ficha del torneo)
 };
 static Row* rows = nullptr;  // en orden de guardado (el último, el más nuevo)
 static int count = 0, cap = 0;
@@ -191,6 +196,15 @@ static bool rowFromText(const char* t, Row& r) {
   r.pw = ps && *ps == '{' ? (int16_t)numOf(keyIn(ps, "white")) : -1;
   r.pb = ps && *ps == '{' ? (int16_t)numOf(keyIn(ps, "blue")) : -1;
   r.totalMs = (uint32_t)numOf(keyIn(res, "totalTimeMs"));
+  r.startedAt = (uint64_t)numOf(keyIn(t, "startedAt"));
+  r.finishedAt = (uint64_t)numOf(keyIn(t, "finishedAt"));
+  const char* tour = keyIn(t, "tournament");
+  if (tour && *tour == '{') {
+    strOf(keyIn(tour, "id"), r.tournament, sizeof(r.tournament));
+    strOf(keyIn(tour, "fixtureId"), r.fixture, sizeof(r.fixture));
+    clean(r.tournament);
+    clean(r.fixture);
+  }
   // Jugadores (por equipo, en el orden del partido)
   static char ids[2][4][48];
   memset(ids, 0, sizeof(ids));
@@ -305,17 +319,26 @@ static void parseSide(const char* s, const char* end, Row& r, int t) {
   }
 }
 
-static bool parseLine(char* l, Row& r) {
+// Devuelve false si la línea no sirve (se vuelve a leer el JSON). `old`: le faltan los datos del torneo (índice de
+// antes de los torneos): la fila vale, pero conviene volver a leer su JSON.
+static bool parseLine(char* l, Row& r, bool* old = nullptr) {
   memset(&r, 0, sizeof(r));
-  char* f[12];
+  char* f[16];
   int k = 0;
   f[k++] = l;
-  for (char* p = l; *p && k < 12; p++)
+  for (char* p = l; *p && k < 16; p++)
     if (*p == '|') {
       *p = 0;
       f[k++] = p + 1;
     }
   if (k < 12 || strlen(f[0]) > 47 || f[11][0] != 'x') return false;  // sin los cálculos: se lee el JSON otra vez
+  if (old) *old = k < 16 || f[12][0] != 't';
+  if (k >= 16 && f[12][0] == 't') {
+    snprintf(r.tournament, sizeof(r.tournament), "%s", f[12] + 1);
+    snprintf(r.fixture, sizeof(r.fixture), "%s", f[13]);
+    r.startedAt = strtoull(f[14], nullptr, 10);
+    r.finishedAt = strtoull(f[15], nullptr, 10);
+  }
   snprintf(r.id, sizeof(r.id), "%s", f[0]);
   r.fin = (uint32_t)strtoul(f[1], nullptr, 10);
   r.mode = f[2][0];
@@ -366,14 +389,17 @@ static int lineOf(const Row& r, char* line, size_t size) {
                 r.kicksIn[1], r.sdKicks, r.penRounds);
   for (int i = 0; i < 8; i++) n += snprintf(line + n, size - n, ",%u", r.pg[i / 4][i % 4]);
   n += snprintf(line + n, size - n, ",%u,%u", r.goalsValid, r.goalsAssigned);
+  n += snprintf(line + n, size - n, "|t%s|%s|%llu|%llu", r.tournament, r.fixture, (unsigned long long)r.startedAt,
+                (unsigned long long)r.finishedAt);
   return n;
 }
 
+static const size_t LINE = 1024;  // una línea del índice (con nombres largos y torneo cabe de sobra)
 static void indexPath(char* out, size_t n) { snprintf(out, n, "%s/indice.txt", dir); }
 static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json", dir, id); }
 
 static bool appendIndex(const Row& r) {
-  char ip[96], line[700];
+  char ip[96], line[LINE];
   indexPath(ip, sizeof(ip));
   FILE* x = fopen(ip, "ab");
   if (!x) return false;
@@ -383,19 +409,48 @@ static bool appendIndex(const Row& r) {
   return true;
 }
 
+// Cambia `path` por `tmp` sin dejar nunca la mesa sin ninguno de los dos (FAT no sustituye al renombrar): el viejo
+// pasa a «.bak» hasta que el nuevo está en su sitio. recoverFile() lo arregla si se fue la luz en medio.
+static void recoverFile(const char* path) {
+  char bak[120];
+  snprintf(bak, sizeof(bak), "%s.bak", path);
+  FILE* f = fopen(path, "rb");
+  if (f) {
+    fclose(f);
+    ::remove(bak);
+  } else {
+    rename(bak, path);
+  }
+}
+static bool replaceFile(const char* tmp, const char* path) {
+  char bak[120];
+  snprintf(bak, sizeof(bak), "%s.bak", path);
+  ::remove(bak);
+  FILE* f = fopen(path, "rb");
+  bool had = f != nullptr;
+  if (f) fclose(f);
+  if (had && rename(path, bak) != 0) return false;
+  if (rename(tmp, path) != 0) {
+    if (had) rename(bak, path);
+    return false;
+  }
+  ::remove(bak);
+  return true;
+}
+
 static void rewriteIndex() {
-  char ip[96], tmp[100], line[700];
+  char ip[96], tmp[100], line[LINE];
   indexPath(ip, sizeof(ip));
   snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
   FILE* out = fopen(tmp, "wb");
   if (!out) return;
-  for (int i = 0; i < count; i++) {
+  bool ok = true;
+  for (int i = 0; i < count && ok; i++) {
     lineOf(rows[i], line, sizeof(line));
-    fprintf(out, "%s\n", line);
+    ok = fprintf(out, "%s\n", line) >= 0;
   }
-  fclose(out);
-  ::remove(ip);
-  rename(tmp, ip);
+  ok = fclose(out) == 0 && ok;
+  if (!ok || !replaceFile(tmp, ip)) ::remove(tmp);
 }
 
 // Al encender: dónde se guardan y la lista de los que ya hay.
@@ -416,16 +471,28 @@ static void begin(bool sd) {
   ++revision;
   char path[96];
   indexPath(path, sizeof(path));
+  recoverFile(path);
   FILE* f = fopen(path, "rb");
   if (!f) return;
-  char line[700];
+  static char line[LINE];
   bool dirty = false;
   while (fgets(line, sizeof(line), f)) {
     line[strcspn(line, "\r\n")] = 0;
     Row r;
     char id[48];
     snprintf(id, sizeof(id), "%.*s", (int)strcspn(line, "|") < 47 ? (int)strcspn(line, "|") : 47, line);
-    if (parseLine(line, r)) {
+    bool old = false;
+    if (parseLine(line, r, &old)) {
+      // Índice de antes de los torneos: el JSON dice si era de un torneo (los de la app) y su hora en ms. Si el JSON
+      // no se puede leer, se queda la fila como estaba (el partido no se pierde de la lista).
+      if (old) {
+        char jp[112];
+        jsonPath(r.id, jp, sizeof(jp));
+        Row again;
+        if (rowFromJson(jp, again)) r = again;
+        else r.finishedAt = (uint64_t)r.fin * 1000u;
+        dirty = true;
+      }
       push(r);
     } else if (strlen(id) >= 36) {  // índice de una versión anterior: se vuelve a leer el partido
       char jp[112];
@@ -470,6 +537,10 @@ struct Match {
   Who who[2][4];
   uint32_t startEpoch = 0, endEpoch = 0;  // segundos (0 = sin hora)
   uint32_t buildId = 0;
+  // Partido de un torneo: se guarda con «tournament»: {id, fixtureId} (vacíos: no es de torneo). El empate de la liga
+  // a tiempo va en cfg.allowDraw (config.allowDraw, como la app).
+  char tournament[48] = "";
+  char fixture[64] = "";
 };
 
 static void newId(char* out) {  // UUID v4
@@ -524,8 +595,9 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
           (unsigned long)m.buildId);
   fprintf(f,
           "\"config\":{\"mode\":\"%s\",\"endCondition\":\"%s\",\"goalsPerPeriod\":%u,\"minutesPerPeriod\":%u,"
-          "\"overtimeSeconds\":%u,\"penaltyRounds\":%u,\"penaltyFirstTeam\":\"%s\",\"testMode\":false},",
-          mode, cond, c.goalsPerPeriod, c.minutesPerPeriod, c.overtimeSeconds, c.penaltyRounds, TEAM[c.penaltyFirst == Team::Blue]);
+          "\"overtimeSeconds\":%u,\"penaltyRounds\":%u,\"penaltyFirstTeam\":\"%s\",\"testMode\":false%s},",
+          mode, cond, c.goalsPerPeriod, c.minutesPerPeriod, c.overtimeSeconds, c.penaltyRounds, TEAM[c.penaltyFirst == Team::Blue],
+          c.allowDraw ? ",\"allowDraw\":true" : "");
   fputs("\"participants\":[", f);
   bool first = true;
   for (int t = 0; t < 2; t++)
@@ -544,8 +616,11 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   mfv3::Score s = e.score(), ps = e.penaltyScore();
   const char* reason = e.reason() == mfv3::Reason::GoldenGoal ? "golden_goal" : e.reason() == mfv3::Reason::Penalties ? "penalties" : "regulation";
   bool pens = e.kickCount() > 0;
-  fprintf(f, "\"result\":{\"winner\":\"%s\",\"reason\":\"%s\",\"score\":{\"white\":%u,\"blue\":%u},", TEAM[e.winner() == Team::Blue],
-          reason, s.white, s.blue);
+  // Empate (liga con empates, a tiempo): sin ganador, «winner»: null como la app (y la fila, '-').
+  bool draw = e.draw();
+  if (draw) fprintf(f, "\"result\":{\"winner\":null,\"reason\":\"%s\",\"score\":{\"white\":%u,\"blue\":%u},", reason, s.white, s.blue);
+  else fprintf(f, "\"result\":{\"winner\":\"%s\",\"reason\":\"%s\",\"score\":{\"white\":%u,\"blue\":%u},", TEAM[e.winner() == Team::Blue],
+               reason, s.white, s.blue);
   if (pens) fprintf(f, "\"penaltyScore\":{\"white\":%u,\"blue\":%u},", ps.white, ps.blue);
   fprintf(f, "\"totalTimeMs\":%lu},", (unsigned long)e.totalTimeMs());
   // Partes jugadas
@@ -683,6 +758,13 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
     }
     fputc('}', f);
   }
+  if (m.tournament[0]) {
+    fputs(",\"tournament\":{\"id\":", f);
+    jstr(f, m.tournament);
+    fputs(",\"fixtureId\":", f);
+    jstr(f, m.fixture);
+    fputc('}', f);
+  }
   fputs("}\n", f);
   cooperate();
   bool ok = fclose(f) == 0;
@@ -818,8 +900,12 @@ static bool loadDetail(const char* id, Detail& d) {
   return true;
 }
 
+// Lo avisa a los torneos (s3_torneos_datos.h), que también guardan los ids de sus jugadores.
+static void (*playerIdChanged)(const char* oldId, const char* newId) = nullptr;
+
 // Un jugador ha cambiado de id (se ha unido con su ficha de la cuenta): se cambia en sus partidos guardados.
 static int replacePlayerId(uint32_t oldCode, const char* oldId, const char* newId) {
+  if (playerIdChanged) playerIdChanged(oldId, newId);
   int changed = 0;
   char from[64], to[64];
   snprintf(from, sizeof(from), "\"%s\"", oldId);
@@ -895,18 +981,40 @@ static bool remove(const char* id) {
     if (out) fclose(out);
     return false;
   }
-  char line[640];
+  static char line[LINE];
   size_t idl = strlen(id);
   while (fgets(line, sizeof(line), in))
     if (strncmp(line, id, idl) || line[idl] != '|') fputs(line, out);
   fclose(in);
-  fclose(out);
-  ::remove(ip);
-  rename(tmp, ip);
+  if (fclose(out) != 0 || !replaceFile(tmp, ip)) ::remove(tmp);
   memmove(&rows[k], &rows[k + 1], (size_t)(count - k - 1) * sizeof(Row));
   count--;
   ++revision;
   return true;
+}
+
+// Borra todos los partidos de un torneo (se descarta, como discardTournament de la app). `gone(id)` recibe cada uno
+// (para borrarlo también de la cuenta). El índice se escribe una sola vez. Devuelve cuántos.
+static int removeTournament(const char* tournamentId, void (*gone)(const char* id)) {
+  if (!tournamentId || !tournamentId[0]) return 0;
+  int k = 0, removed = 0;
+  for (int i = 0; i < count; i++) {
+    if (!strcmp(rows[i].tournament, tournamentId)) {
+      char path[112];
+      jsonPath(rows[i].id, path, sizeof(path));
+      ::remove(path);
+      if (gone) gone(rows[i].id);
+      removed++;
+      continue;
+    }
+    if (k != i) rows[k] = rows[i];
+    k++;
+  }
+  if (!removed) return 0;
+  count = k;
+  ++revision;
+  rewriteIndex();
+  return removed;
 }
 
 }  // namespace partidos

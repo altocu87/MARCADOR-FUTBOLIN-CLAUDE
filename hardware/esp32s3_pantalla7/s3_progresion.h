@@ -6,7 +6,9 @@
 // app). tests/fixtures/progresion (partidos del modo prueba de la app y lo que calcula la app con ellos) comprueba
 // en el PC que la placa da lo mismo (hardware/test/progresion_test.cpp); si la app cambia una regla, esa prueba
 // falla hasta que se cambie también aquí.
-// Sin torneos todavía (la placa aún no los juega): «Ganar torneo» y los logros de campeón no salen.
+// Torneos (los resúmenes de s3_torneos_datos.h, con setTournaments): los partidos de un torneo que sigue en juego
+// solo mueven el ELO; su XP, sus logros y sus retos esperan a que termine (`deferred`). El partido que cierra un
+// torneo da «Ganar torneo» a los campeones y cuenta para los logros Campeón y Tricampeón.
 
 #ifndef MFV3_S3_PROGRESION_H
 #define MFV3_S3_PROGRESION_H
@@ -27,6 +29,7 @@ struct Rules {
   bool challenges = true;
   int rank[6] = {1225, 1275, 1350, 1425, 1500, 1600};  // Madera, Bronce, Plata, Oro, Platino, Diamante
   int xpComplete = 50, xpWin = 100, xpDraw = 60, xpLoss = 25, xpRankedWinBonus = 50, xpOvertimeWin = 25, xpPenaltiesWin = 25;
+  int xpTournamentWin = 300;
   int xpAchievement[3] = {25, 50, 100};  // común, rara, épica
   int xpChallengeDaily = 40, xpChallengeWeekly = 100;
   double levelBase = 100, levelExponent = 1.35;
@@ -332,8 +335,10 @@ struct Player {
   // forma: últimos resultados (bit 1 = victoria), del más nuevo al más viejo
   uint32_t formBits;
   uint8_t formLen;
-  char rform[6];
-  int bestStreak;  // mejor racha de victorias (computePlayerStats)  // forma en clasificatorios: los 5 últimos («G», «P», «E»), del más viejo al más nuevo
+  char rform[6];   // forma en clasificatorios: los 5 últimos («G», «P», «E»), del más viejo al más nuevo
+  int bestStreak;  // mejor racha de victorias (computePlayerStats: cuenta también los partidos de torneos en juego)
+  int streakNow;   // racha de victorias para bestStreak (winStreak es la de los logros)
+  int achPlayed, achWins;  // partidos y victorias para los logros (sin los de torneos en juego, como la app)
 };
 
 // Lo que pasó en cada partido a cada jugador (para el detalle).
@@ -341,7 +346,52 @@ struct Entry {
   int16_t eloBefore, eloAfter, eloDelta;  // eloDelta = 0x7FFF si no movió ELO
   uint16_t xpGained;
   uint8_t levelBefore, levelAfter;
+  bool deferred;  // partido de un torneo en juego: la XP y los logros esperan a que termine
 };
+
+// ---------------------------------------------------------------- torneos (los pone s3_torneos_datos.h)
+// Ids como FNV-1a de 64 bits (idHash): 24 bytes por torneo (con cientos de torneos, poca memoria).
+static uint64_t idHash(const char* s) {
+  uint64_t h = 1469598103934665603ull;
+  for (; *s; s++) h = (h ^ (uint8_t)*s) * 1099511628211ull;
+  return h;
+}
+struct TournamentInfo {
+  uint64_t id;            // idHash del torneo
+  uint64_t finalMatch;    // terminado: idHash del partido que lo cerró («Ganar torneo»); 0 si no
+  bool active;            // en juego: sus partidos solo mueven el ELO
+  uint8_t nChampion;
+  uint32_t champion[2];   // códigos de los campeones
+};
+static TournamentInfo* tournaments = nullptr;  // PSRAM
+static int nTournaments = 0, capTournaments = 0;
+static uint32_t tournamentsRevision = 0;
+static bool setTournaments(const TournamentInfo* list, int n) {
+  if (n > 0 && !s3mem::reserve(tournaments, capTournaments, n, 16)) return false;
+  if (n > 0) memcpy(tournaments, list, (size_t)n * sizeof(TournamentInfo));
+  nTournaments = n > 0 ? n : 0;
+  ++tournamentsRevision;
+  return true;
+}
+static bool tournamentActive(const char* id) {
+  if (!id[0] || !nTournaments) return false;
+  uint64_t h = idHash(id);
+  for (int i = 0; i < nTournaments; i++)
+    if (tournaments[i].active && tournaments[i].id == h) return true;
+  return false;
+}
+// ¿Este partido cierra un torneo terminado y `code` es de los campeones?
+static bool wonTournament(const char* matchId, uint32_t code) {
+  if (!nTournaments) return false;
+  uint64_t h = idHash(matchId);
+  for (int i = 0; i < nTournaments; i++) {
+    const TournamentInfo& t = tournaments[i];
+    if (t.active || !t.finalMatch || t.finalMatch != h) continue;
+    for (int k = 0; k < t.nChampion; k++)
+      if (t.champion[k] == code) return true;
+  }
+  return false;
+}
 
 struct Snapshot {
   Player* p = nullptr;
@@ -382,7 +432,8 @@ static int byFinish(const void* a, const void* b) {
 }
 
 // Recalcula todo. `keep(row)` elige los partidos (todos, o los clasificatorios de una temporada); `codes` son los
-// jugadores que salen aunque no hayan jugado (los de la lista). `challenges`: con retos (no en las temporadas).
+// jugadores que salen aunque no hayan jugado (los de la lista). `challenges`: con retos y torneos (no en las
+// temporadas: la app las calcula sin los dos).
 typedef bool (*Keep)(const partidos::Row&, const void* arg);
 static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, const void* arg, bool withChallenges) {
   s.clear();
@@ -411,6 +462,7 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
     if (!keep || keep(partidos::rows[i], arg)) order[nm++] = i;
   qsort(order, nm, sizeof(int), byFinish);
   bool useCh = withChallenges && rules.challenges;
+  bool useTournaments = withChallenges;
 
   for (int oi = 0; oi < nm; oi++) {
     int ri = order[oi];
@@ -444,6 +496,44 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
           int k = p.rankedPlayed < rules.provisionalMatches ? rules.kProvisional : rules.kEstablished;
           change[t][i] = jsRound(k * mult * (sc - expected));
         }
+    // Torneo en juego: solo el ELO (y lo que enseñan las estadísticas, que cuentan todos los partidos).
+    if (useTournaments && tournamentActive(m.tournament)) {
+      for (int t = 0; t < 2; t++)
+        for (int i = 0; i < m.n[t]; i++) {
+          int pi = idx[t][i];
+          if (pi < 0) continue;
+          Player& p = s.p[pi];
+          Entry& e = ent[t * 4 + i];
+          bool won = t == winner;
+          p.played++;
+          if (won) p.wins++;
+          else if (winner < 0) p.draws++;
+          else p.losses++;
+          p.streakNow = won ? p.streakNow + 1 : 0;
+          if (p.streakNow > p.bestStreak) p.bestStreak = p.streakNow;
+          p.formBits = (p.formBits << 1) | (won ? 1u : 0u);
+          if (p.formLen < 32) p.formLen++;
+          if (m.mode == 'r') {
+            size_t fl = strlen(p.rform);
+            if (fl == 5) memmove(p.rform, p.rform + 1, 5), fl = 4;
+            p.rform[fl] = won ? 'G' : winner >= 0 ? 'P' : 'E';
+            p.rform[fl + 1] = 0;
+          }
+          e.eloBefore = (int16_t)p.elo;
+          if (hasChange) {
+            p.elo += change[t][i];
+            if (p.elo > p.maxElo) p.maxElo = p.elo;
+            p.rankedPlayed++;
+            p.category = categoryFor(p.elo);
+            e.eloDelta = (int16_t)change[t][i];
+          }
+          e.eloAfter = (int16_t)p.elo;
+          e.xpGained = 0;
+          e.levelBefore = e.levelAfter = (uint8_t)p.level;
+          e.deferred = true;
+        }
+      continue;
+    }
     Challenge ch[4];
     int nch = useCh && m.fin ? activeChallenges(m.fin, ch) : 0;
     char dk[12] = "";
@@ -460,10 +550,13 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
         int levelBefore = p.level;
         int lossStreakBefore = p.lossStreak;
         p.played++;
+        p.achPlayed++;
+        if (won) p.achWins++;
+        p.streakNow = won ? p.streakNow + 1 : 0;
+        if (p.streakNow > p.bestStreak) p.bestStreak = p.streakNow;
         if (won) {
           p.wins++;
           p.winStreak++;
-          if (p.winStreak > p.bestStreak) p.bestStreak = p.winStreak;
           p.lossStreak = 0;
           if (m.mode == 'r') p.rankedWins++;
           if (m.mode == 'c') p.chaosWins++;
@@ -521,6 +614,10 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
         if (won && ranked) xp += rules.xpRankedWinBonus;
         if (won && m.reason == 'g') xp += rules.xpOvertimeWin;
         if (won && m.reason == 'p') xp += rules.xpPenaltiesWin;
+        if (useTournaments && wonTournament(m.id, p.code)) {  // «Ganar torneo»
+          p.tournamentsWon++;
+          xp += rules.xpTournamentWin;
+        }
         // Retos del momento
         for (int c = 0; c < nch; c++) {
           uint32_t kh = fnvStr(ch[c].key);
@@ -556,8 +653,8 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
         cx.won = won;
         cx.goalsFor = t ? m.b : m.w;
         cx.goalsAgainst = t ? m.w : m.b;
-        cx.played = p.played;
-        cx.wins = p.wins;
+        cx.played = p.achPlayed;
+        cx.wins = p.achWins;
         cx.winStreak = p.winStreak;
         cx.lossStreakBefore = lossStreakBefore;
         cx.rankedPlayed = p.rankedPlayed;
@@ -629,17 +726,19 @@ struct RefreshKey {
   bool valid = false;
   uint32_t revision = 0;
   int count = 0, n = 0;
+  uint32_t tRevision = 0;
   uint32_t codes[MAX_P] = {};
   Rules rulesCopy;
   bool matches(const uint32_t* list, int size) const {
     return valid && size >= 0 && size <= MAX_P && n == size && count == partidos::count &&
-           revision == partidos::revision && !memcmp(&rulesCopy, &rules, sizeof(rules)) &&
+           revision == partidos::revision && tRevision == tournamentsRevision && !memcmp(&rulesCopy, &rules, sizeof(rules)) &&
            (!size || !memcmp(codes, list, (size_t)size * sizeof(uint32_t)));
   }
   void remember(const uint32_t* list, int size) {
     valid = size >= 0 && size <= MAX_P;
     if (!valid) return;
     revision = partidos::revision;
+    tRevision = tournamentsRevision;
     count = partidos::count;
     n = size;
     if (size) memcpy(codes, list, (size_t)size * sizeof(uint32_t));

@@ -287,30 +287,75 @@ static const char* honourName(const char* id) {
 }
 }  // namespace fc
 
+// Todos los resúmenes: los de la SD (eachSummary, del guardado) o, sin él, los de memoria.
+namespace fc {
+static void forAll(SummaryFn fn, void* arg) {
+  if (eachSummary) {
+    eachSummary(fn, arg);
+    return;
+  }
+  for (uint16_t i = 0; i < nSummaries; i++)
+    if (!fn(summaries[i], arg)) return;
+}
+}  // namespace fc
+
+// Agente 2: recorre todas las ediciones (SD), no solo las de memoria.
 uint16_t nextEdition(const char* key) {
-  uint16_t* list = (uint16_t*)calloc(MAX_SUMMARIES, sizeof(uint16_t));
-  if (!list) return 1;
-  uint16_t n = fc::editionsOf(key, list, MAX_SUMMARIES), best = 0;
-  // Los torneos antiguos sin número guardado cuentan por su orden.
-  for (uint16_t i = 0; i < n; i++) {
-    uint16_t e = summaries[list[i]].edition ? summaries[list[i]].edition : i + 1;
+  struct E { uint64_t at; uint16_t edition; uint32_t order; };
+  struct Acc { const char* key; E* list; int n, cap; bool ok; } acc = {key, nullptr, 0, 0, true};
+  fc::forAll(
+      [](const Summary& s, void* a) {
+        Acc& x = *(Acc*)a;
+        if (s.status == Status::Cancelled || strcmp(s.competitionKey, x.key)) return true;
+        if (x.n == x.cap) {
+          int nc = x.cap ? x.cap * 2 : 32;
+          E* q = (E*)realloc(x.list, (size_t)nc * sizeof(E));
+          if (!q) return x.ok = false;
+          x.list = q, x.cap = nc;
+        }
+        x.list[x.n] = E{s.createdAt, s.edition, (uint32_t)x.n};
+        x.n++;
+        return true;
+      },
+      &acc);
+  // Por creación (estable); los torneos antiguos sin número guardado cuentan por su orden.
+  qsort(acc.list, (size_t)acc.n, sizeof(E), [](const void* a, const void* b) {
+    const E &x = *(const E*)a, &y = *(const E*)b;
+    if (x.at != y.at) return x.at < y.at ? -1 : 1;
+    return x.order < y.order ? -1 : x.order > y.order ? 1 : 0;
+  });
+  uint16_t best = 0;
+  for (int i = 0; i < acc.n; i++) {
+    uint16_t e = acc.list[i].edition ? acc.list[i].edition : (uint16_t)(i + 1);
     if (e > best) best = e;
   }
-  free(list);
+  free(acc.list);
   return best + 1;
 }
 
-int16_t activeEdition(const char* key) {
+int16_t activeEdition(const char* key) {  // las que están en juego siempre están en memoria
   for (uint16_t i = 0; i < nSummaries; i++)
     if (summaries[i].status == Status::Active && !strcmp(summaries[i].competitionKey, key)) return (int16_t)i;
   return -1;
 }
 
+// Agente 2: el cuadro de honor de cada competición, de todas sus ediciones (recorriendo el índice de la SD), con la
+// lista de jugadores en PSRAM y sin tope. Las ediciones de `editions` son las recientes que hay en memoria.
+namespace fc {
+static HonourRow** owned = nullptr;  // los cuadros de la última llamada (se liberan en la siguiente)
+static uint8_t nOwned = 0;
+}  // namespace fc
+
 uint8_t competitions(Competition* out, uint8_t max) {
-  if (!summaries || !out) return 0;
-  uint16_t* list = (uint16_t*)calloc(MAX_SUMMARIES, sizeof(uint16_t));
+  for (uint8_t i = 0; i < fc::nOwned; i++) free(fc::owned[i]);
+  free(fc::owned);
+  fc::owned = nullptr;
+  fc::nOwned = 0;
+  if (!summaries || !out || !max) return 0;
+  uint16_t* list = (uint16_t*)calloc(nSummaries ? nSummaries : 1, sizeof(uint16_t));
   if (!list) return 0;
   uint8_t nc = 0;
+  // Las competiciones: las de memoria (cada una tiene allí sus ediciones más recientes).
   for (uint16_t i = 0; i < nSummaries && nc < max; i++) {
     const Summary& first = summaries[i];
     if (first.status == Status::Cancelled) continue;
@@ -320,47 +365,79 @@ uint8_t competitions(Competition* out, uint8_t max) {
     Competition& c = out[nc++];
     memset(&c, 0, sizeof(c));
     TORNEO_CPY(c.key, first.competitionKey);
-    uint16_t n = fc::editionsOf(c.key, list, MAX_SUMMARIES);
+    uint16_t n = fc::editionsOf(c.key, list, nSummaries);
     const Summary& last = summaries[list[n - 1]];
     TORNEO_CPY(c.name, last.competition);
     c.format = last.format;
-    for (int16_t k = (int16_t)n - 1; k >= 0; k--) {
-      const Summary& s = summaries[list[k]];
-      if (!c.logo[0] && s.logo[0]) TORNEO_CPY(c.logo, s.logo);
-      if (!c.banner[0] && s.banner[0]) TORNEO_CPY(c.banner, s.banner);
-      if (!c.cup[0] && s.cup[0]) TORNEO_CPY(c.cup, s.cup);
-    }
-    for (int16_t k = (int16_t)n - 1; k >= 0 && c.nEditions < 32; k--) c.editions[c.nEditions++] = list[k];  // la más nueva primero
+    for (int16_t k = (int16_t)n - 1; k >= 0 && c.nEditions < RECENT_EDITIONS; k--) c.editions[c.nEditions++] = list[k];  // la más nueva primero
     c.lastChampion = -1;
     for (uint16_t k = 0; k < n; k++)
       if (summaries[list[k]].status == Status::Finished) c.lastChampion = (int16_t)list[k];
-    // Palmarés: ediciones jugadas, títulos y MVP de cada uno.
-    auto row = [&](const char* id) -> HonourRow* {
-      for (uint8_t h = 0; h < c.nHonours; h++)
-        if (!strcmp(c.honours[h].id, id)) return &c.honours[h];
-      if (c.nHonours >= MAX_ENTRANTS * 2) return nullptr;
-      HonourRow& h = c.honours[c.nHonours++];
-      memset(&h, 0, sizeof(h));
-      TORNEO_CPY(h.id, id);
-      return &h;
-    };
-    for (uint16_t k = 0; k < n; k++) {
-      const Summary& s = summaries[list[k]];
-      for (uint8_t p = 0; p < s.nPlayers; p++)
-        if (HonourRow* h = row(s.players[p])) h->editions++;
-      for (uint8_t p = 0; p < s.nChampion; p++)
-        if (HonourRow* h = row(s.championIds[p])) h->titles++;
-      if (s.mvpId[0])
-        if (HonourRow* h = row(s.mvpId)) h->mvps++;
-    }
-    for (uint8_t i2 = 1; i2 < c.nHonours; i2++) {  // títulos → MVP → ediciones → nombre (estable)
+  }
+  free(list);
+  // Todas las ediciones (SD): cuántas hay, escudo/copa/banner de la más nueva que los tenga y el cuadro de honor.
+  struct Build { int cap; uint64_t logoAt, cupAt, bannerAt; bool haveLogo, haveCup, haveBanner; };
+  Build* b = (Build*)calloc(nc ? nc : 1, sizeof(Build));
+  fc::owned = (HonourRow**)calloc(nc ? nc : 1, sizeof(HonourRow*));
+  if (!b || !fc::owned) {
+    free(b);
+    return nc;
+  }
+  fc::nOwned = nc;
+  struct Acc { Competition* out; uint8_t nc; Build* b; } acc = {out, nc, b};
+  fc::forAll(
+      [](const Summary& s, void* a) {
+        Acc& x = *(Acc*)a;
+        if (s.status == Status::Cancelled) return true;
+        int ci = -1;
+        for (uint8_t c = 0; c < x.nc && ci < 0; c++)
+          if (!strcmp(x.out[c].key, s.competitionKey)) ci = c;
+        if (ci < 0) return true;
+        Competition& c = x.out[ci];
+        Build& bd = x.b[ci];
+        c.totalEditions++;
+        auto take = [&](char* dst, const char* src, uint64_t& at, bool& have) {
+          if (src[0] && (!have || s.createdAt >= at)) snprintf(dst, 40, "%s", src), at = s.createdAt, have = true;
+        };
+        take(c.logo, s.logo, bd.logoAt, bd.haveLogo);
+        take(c.cup, s.cup, bd.cupAt, bd.haveCup);
+        take(c.banner, s.banner, bd.bannerAt, bd.haveBanner);
+        auto row = [&](const char* id) -> HonourRow* {
+          for (uint16_t h = 0; h < c.nHonours; h++)
+            if (!strcmp(c.honours[h].id, id)) return &c.honours[h];
+          if (c.nHonours == bd.cap) {
+            int ncap = bd.cap ? bd.cap * 2 : 16;
+            HonourRow* q = (HonourRow*)realloc(c.honours, (size_t)ncap * sizeof(HonourRow));
+            if (!q) return nullptr;
+            c.honours = q;
+            fc::owned[ci] = q;
+            bd.cap = ncap;
+          }
+          HonourRow& h = c.honours[c.nHonours++];
+          memset(&h, 0, sizeof(h));
+          TORNEO_CPY(h.id, id);
+          return &h;
+        };
+        for (uint8_t p = 0; p < s.nPlayers; p++)
+          if (HonourRow* h = row(s.players[p])) h->editions++;
+        for (uint8_t p = 0; p < s.nChampion; p++)
+          if (HonourRow* h = row(s.championIds[p])) h->titles++;
+        if (s.mvpId[0])
+          if (HonourRow* h = row(s.mvpId)) h->mvps++;
+        return true;
+      },
+      &acc);
+  free(b);
+  for (uint8_t ci = 0; ci < nc; ci++) {  // títulos → MVP → ediciones → nombre (estable)
+    Competition& c = out[ci];
+    for (uint16_t i2 = 1; i2 < c.nHonours; i2++) {
       HonourRow v = c.honours[i2];
       int k = i2;
       while (k > 0) {
         const HonourRow& a = c.honours[k - 1];
-        int d = v.titles - a.titles;
-        if (!d) d = v.mvps - a.mvps;
-        if (!d) d = v.editions - a.editions;
+        int d = (int)v.titles - (int)a.titles;
+        if (!d) d = (int)v.mvps - (int)a.mvps;
+        if (!d) d = (int)v.editions - (int)a.editions;
         if (!d) d = -rg::collate(fc::honourName(v.id), fc::honourName(a.id));
         if (d <= 0) break;
         c.honours[k] = c.honours[k - 1];
@@ -369,7 +446,6 @@ uint8_t competitions(Competition* out, uint8_t max) {
       c.honours[k] = v;
     }
   }
-  free(list);
   // La competición con la edición más reciente primero (por la fecha de esa edición: fin o, si no, creación).
   auto date = [&](const Competition& c) -> uint64_t {
     if (!c.nEditions) return 0;
