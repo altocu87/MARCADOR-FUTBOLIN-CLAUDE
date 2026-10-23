@@ -1,0 +1,966 @@
+{
+ "name": "copa5_elo",
+ "players": [
+  {
+   "id": "p01",
+   "name": "Álvaro",
+   "elo": 1210
+  },
+  {
+   "id": "p02",
+   "name": "Ana",
+   "elo": 1180
+  },
+  {
+   "id": "p03",
+   "name": "beto",
+   "elo": 1305
+  },
+  {
+   "id": "p04",
+   "name": "Carla",
+   "elo": 1180
+  },
+  {
+   "id": "p05",
+   "name": "Ñete",
+   "elo": 990
+  },
+  {
+   "id": "p06",
+   "name": "Nico",
+   "elo": 1250
+  },
+  {
+   "id": "p07",
+   "name": "Óscar",
+   "elo": 1100
+  },
+  {
+   "id": "p08",
+   "name": "Olga",
+   "elo": 1420
+  },
+  {
+   "id": "p09",
+   "name": "Pablo",
+   "elo": 1050
+  },
+  {
+   "id": "p10",
+   "name": "Rosa",
+   "elo": 1180
+  },
+  {
+   "id": "p11",
+   "name": "Sara",
+   "elo": 1333
+  },
+  {
+   "id": "p12",
+   "name": "Tomás",
+   "elo": 960
+  },
+  {
+   "id": "p13",
+   "name": "Úrsula",
+   "elo": 1275
+  },
+  {
+   "id": "p14",
+   "name": "Vera",
+   "elo": 1120
+  },
+  {
+   "id": "p15",
+   "name": "Wences",
+   "elo": 1005
+  },
+  {
+   "id": "p16",
+   "name": "Ximena",
+   "elo": 1190
+  }
+ ],
+ "template": {
+  "teamSize": 1,
+  "pairing": "elo",
+  "seeding": "elo",
+  "final": "none",
+  "finalBestOf": 3,
+  "ranked": false,
+  "endCondition": "goals",
+  "goalsPerPeriod": 5,
+  "minutesPerPeriod": 5,
+  "finalGoals": null,
+  "id": "tpl_c5",
+  "name": "Copa",
+  "format": "bracket"
+ },
+ "selected": [
+  "p02",
+  "p04",
+  "p07",
+  "p10",
+  "p16"
+ ],
+ "fixedPairs": [],
+ "tournamentName": "Copa de octubre",
+ "draftSeed": "copa5_elo-borrador",
+ "createSeed": "copa5_elo-crear",
+ "now": 1791140400000,
+ "edition": 1,
+ "competition": "Copa del Almacén",
+ "logo": "escudo-09",
+ "cup": "",
+ "banner": "banner-1",
+ "cancel": false,
+ "describe": "Copa · 1 vs 1 · final al mejor de 3 · a 5 goles",
+ "fit": [
+  "fit|2|0|Mínimo 3 jugadores|-",
+  "fit|3|1|-|3 jugadores · semifinales y final al mejor de 3 · 1 pase directo",
+  "fit|4|1|-|4 jugadores · semifinales y final al mejor de 3",
+  "fit|5|1|-|5 jugadores · cuartos, semis y final al mejor de 3 · 3 pases directos",
+  "fit|6|1|-|6 jugadores · cuartos, semis y final al mejor de 3 · 2 pases directos",
+  "fit|7|1|-|7 jugadores · cuartos, semis y final al mejor de 3 · 1 pase directo",
+  "fit|8|1|-|8 jugadores · cuartos, semis y final al mejor de 3",
+  "fit|9|0|Máximo 8 jugadores|-",
+  "fit|10|0|Máximo 8 jugadores|-",
+  "fit|11|0|Máximo 8 jugadores|-",
+  "fit|12|0|Máximo 8 jugadores|-",
+  "fit|13|0|Máximo 8 jugadores|-",
+  "fit|14|0|Máximo 8 jugadores|-",
+  "fit|15|0|Máximo 8 jugadores|-",
+  "fit|16|0|Máximo 8 jugadores|-",
+  "fit|17|0|Máximo 8 jugadores|-"
+ ],
+ "draft": [
+  "D|-|p02;p04;p07;p10;p16"
+ ],
+ "validate": [
+  "V|-",
+  "V|Ponle un nombre al torneo.",
+  "V|Entre 3 y 8 equipos."
+ ],
+ "created": [
+  "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+  "C|goals 5 5 0|-|-",
+  "E|tt_5|Ximena|p16|-|-",
+  "E|tt_1|Ana|p02|-|-",
+  "E|tt_2|Carla|p04|-|-",
+  "E|tt_4|Rosa|p10|-|-",
+  "E|tt_3|Óscar|p07|-|-",
+  "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+  "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+  "F|fx_2|1|0|Rosa|Óscar|-|0|0|0|0|1|-|-|-|0|-|fx_5/blue",
+  "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+  "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+  "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+  "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+  "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+  "F|fx_5|2|0|Ximena|-|-|0|0|0|0|1|-|-|-|0|-|fx_7/white",
+  "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+  "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|0|-|fx_7/blue",
+  "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+  "F|fx_7|3|0|-|-|-|0|0|0|0|3|-|-|-|0|-|-",
+  "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+  "N|fx_2",
+  "P|0|4|1",
+  "L|1|Cuartos",
+  "L|2|Semifinales",
+  "L|3|Final",
+  "S|Ana|0|0|0|0|0|0|0|0|0",
+  "S|Carla|0|0|0|0|0|0|0|0|0",
+  "S|Óscar|0|0|0|0|0|0|0|0|0",
+  "S|Rosa|0|0|0|0|0|0|0|0|0",
+  "S|Ximena|0|0|0|0|0|0|0|0|0",
+  "R|1|Ana|0",
+  "R|2|Carla|0",
+  "R|3|Ximena|0",
+  "R|4|Óscar|0",
+  "R|5|Rosa|0"
+ ],
+ "steps": [
+  {
+   "op": "play",
+   "fixture": "fx_2",
+   "accepted": false,
+   "match": {
+    "id": "m_copa5_elo_1",
+    "fixture": "fx_2",
+    "winner": "-",
+    "w": 2,
+    "b": 2,
+    "reason": "r",
+    "totalMs": 323711,
+    "startedAt": 1791140460000,
+    "finishedAt": 1791140783711,
+    "white": [
+     "p10"
+    ],
+    "blue": [
+     "p07"
+    ],
+    "names": {
+     "white": [
+      "Rosa"
+     ],
+     "blue": [
+      "Óscar"
+     ]
+    },
+    "scored": {
+     "white": [
+      2
+     ],
+     "blue": [
+      2
+     ]
+    },
+    "goalsValid": 4,
+    "goalsAssigned": 4
+   },
+   "clockAt": 1791140855316,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|-|0|0|0|0|1|-|-|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|-|-|0|0|0|0|1|-|-|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|-|-|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_2",
+    "P|0|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Ana|0|0|0|0|0|0|0|0|0",
+    "S|Carla|0|0|0|0|0|0|0|0|0",
+    "S|Óscar|0|0|0|0|0|0|0|0|0",
+    "S|Rosa|0|0|0|0|0|0|0|0|0",
+    "S|Ximena|0|0|0|0|0|0|0|0|0",
+    "R|1|Ana|0",
+    "R|2|Carla|0",
+    "R|3|Ximena|0",
+    "R|4|Óscar|0",
+    "R|5|Rosa|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_2",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_2",
+    "fixture": "fx_2",
+    "winner": "w",
+    "w": 5,
+    "b": 3,
+    "reason": "r",
+    "totalMs": 311574,
+    "startedAt": 1791140855316,
+    "finishedAt": 1791141166890,
+    "white": [
+     "p10"
+    ],
+    "blue": [
+     "p07"
+    ],
+    "names": {
+     "white": [
+      "Rosa"
+     ],
+     "blue": [
+      "Óscar"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      3
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 8
+   },
+   "clockAt": 1791141220655,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|-|0|0|0|0|1|-|-|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|-|-|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_5",
+    "P|1|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|1|1|0|0|3|5|3|2|1",
+    "S|Ana|0|0|0|0|0|0|0|0|-1",
+    "S|Carla|0|0|0|0|0|0|0|0|-1",
+    "S|Ximena|0|0|0|0|0|0|0|0|1",
+    "S|Óscar|1|0|0|1|0|3|5|-2|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|Ximena|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_5",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_3",
+    "fixture": "fx_5",
+    "winner": "b",
+    "w": 2,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 410291,
+    "startedAt": 1791141220655,
+    "finishedAt": 1791141630946,
+    "white": [
+     "p16"
+    ],
+    "blue": [
+     "p10"
+    ],
+    "names": {
+     "white": [
+      "Ximena"
+     ],
+     "blue": [
+      "Rosa"
+     ]
+    },
+    "scored": {
+     "white": [
+      2
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 7
+   },
+   "clockAt": 1791141662111,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|Rosa|-|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_6",
+    "P|2|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|0|0|0|0|0|0|0|0|0",
+    "S|Carla|0|0|0|0|0|0|0|0|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|Ximena|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "abandon",
+   "fixture": "fx_6",
+   "at": 1791141662111,
+   "clockAt": 1791141662111,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|1791141662111|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|Rosa|-|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_6",
+    "P|2|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|0|0|0|0|0|0|0|0|0",
+    "S|Carla|0|0|0|0|0|0|0|0|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|Ximena|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_6",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_4",
+    "fixture": "fx_6",
+    "winner": "w",
+    "w": 5,
+    "b": 1,
+    "reason": "r",
+    "totalMs": 336808,
+    "startedAt": 1791141662111,
+    "finishedAt": 1791141998919,
+    "white": [
+     "p02"
+    ],
+    "blue": [
+     "p04"
+    ],
+    "names": {
+     "white": [
+      "Ana"
+     ],
+     "blue": [
+      "Carla"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      1
+     ]
+    },
+    "goalsValid": 6,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1791142047905,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_4|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|Rosa|Ana|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_7",
+    "P|3|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|1|1|0|0|3|5|1|4|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|1",
+    "S|Carla|1|0|0|1|0|1|5|-4|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "undo",
+   "removed": "m_copa5_elo_4",
+   "clockAt": 1791142047905,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|-|0|0|0|0|1|-|-|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|Rosa|-|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_6",
+    "P|2|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|0|0|0|0|0|0|0|0|0",
+    "S|Carla|0|0|0|0|0|0|0|0|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|Ximena|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_6",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_5",
+    "fixture": "fx_6",
+    "winner": "w",
+    "w": 5,
+    "b": 1,
+    "reason": "r",
+    "totalMs": 409120,
+    "startedAt": 1791142047905,
+    "finishedAt": 1791142457025,
+    "white": [
+     "p02"
+    ],
+    "blue": [
+     "p04"
+    ],
+    "names": {
+     "white": [
+      "Ana"
+     ],
+     "blue": [
+      "Carla"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      1
+     ]
+    },
+    "goalsValid": 6,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1791142506405,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 5 5 0|-|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 5 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_5|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 5 5 0",
+    "F|fx_7|3|0|Rosa|Ana|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 5 5 0",
+    "N|fx_7",
+    "P|3|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|1|1|0|0|3|5|1|4|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|1",
+    "S|Carla|1|0|0|1|0|1|5|-4|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "rules",
+   "rules": {
+    "endCondition": "goals",
+    "goalsPerPeriod": 6,
+    "minutesPerPeriod": 5
+   },
+   "final": {
+    "endCondition": "goals",
+    "goalsPerPeriod": 8,
+    "minutesPerPeriod": 5
+   },
+   "bestOf": 3,
+   "clockAt": 1791142506405,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 6 5 0|goals 8 5 0|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_5|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_7|3|0|Rosa|Ana|-|0|0|0|0|3|-|-|-|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|goals 8 5 0",
+    "N|fx_7",
+    "P|3|4|1",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|1|1|0|0|3|5|1|4|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|1",
+    "S|Ximena|1|0|0|1|0|2|5|-3|1",
+    "S|Carla|1|0|0|1|0|1|5|-4|-1",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_7",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_6",
+    "fixture": "fx_7",
+    "winner": "b",
+    "w": 5,
+    "b": 8,
+    "reason": "r",
+    "totalMs": 378354,
+    "startedAt": 1791142506405,
+    "finishedAt": 1791142884759,
+    "white": [
+     "p10"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Rosa"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      8
+     ]
+    },
+    "goalsValid": 13,
+    "goalsAssigned": 13
+   },
+   "clockAt": 1791142931902,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 6 5 0|goals 8 5 0|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_5|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_7|3|0|Rosa|Ana|-|0|0|0|0|3|0-1|m_copa5_elo_6|m_copa5_elo_6|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 2 · AL MEJOR DE 3|goals 8 5 0",
+    "N|fx_7",
+    "P|3|4|0",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|1|1|0|0|3|5|1|4|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|0",
+    "S|Ximena|1|0|0|1|0|2|5|-3|0",
+    "S|Carla|1|0|0|1|0|1|5|-4|0",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_7",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_7",
+    "fixture": "fx_7",
+    "winner": "w",
+    "w": 8,
+    "b": 7,
+    "reason": "r",
+    "totalMs": 360648,
+    "startedAt": 1791142931902,
+    "finishedAt": 1791143292550,
+    "white": [
+     "p10"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Rosa"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      8
+     ],
+     "blue": [
+      7
+     ]
+    },
+    "goalsValid": 15,
+    "goalsAssigned": 15
+   },
+   "clockAt": 1791143363550,
+   "lines": [
+    "T|t_1|Copa de octubre|active|-|-|0|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 6 5 0|goals 8 5 0|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_5|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_7|3|0|Rosa|Ana|-|0|0|0|0|3|1-1|m_copa5_elo_7|m_copa5_elo_6,m_copa5_elo_7|0|-|-",
+    "H|fx_7|0|GRAN FINAL|¡PARTIDO DECISIVO!|goals 8 5 0",
+    "N|fx_7",
+    "P|3|4|0",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Rosa|2|2|0|0|6|10|5|5|0",
+    "S|Ana|1|1|0|0|3|5|1|4|0",
+    "S|Óscar|1|0|0|1|0|3|5|-2|0",
+    "S|Ximena|1|0|0|1|0|2|5|-3|0",
+    "S|Carla|1|0|0|1|0|1|5|-4|0",
+    "R|1|Rosa|0",
+    "R|2|Ana|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_7",
+   "accepted": true,
+   "match": {
+    "id": "m_copa5_elo_8",
+    "fixture": "fx_7",
+    "winner": "b",
+    "w": 3,
+    "b": 8,
+    "reason": "r",
+    "totalMs": 347113,
+    "startedAt": 1791143363550,
+    "finishedAt": 1791143710663,
+    "white": [
+     "p10"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Rosa"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      3
+     ],
+     "blue": [
+      8
+     ]
+    },
+    "goalsValid": 11,
+    "goalsAssigned": 11
+   },
+   "clockAt": 1791143777678,
+   "lines": [
+    "T|t_1|Copa de octubre|finished|Ana|m_copa5_elo_8|1791143710663|1791140400000|1|-|none|1|Copa del Almacén",
+    "C|goals 6 5 0|goals 8 5 0|-",
+    "E|tt_5|Ximena|p16|-|-",
+    "E|tt_1|Ana|p02|-|-",
+    "E|tt_2|Carla|p04|-|-",
+    "E|tt_4|Rosa|p10|-|-",
+    "E|tt_3|Óscar|p07|-|-",
+    "F|fx_1|1|0|Ximena|-|Ximena|0|1|0|0|1|-|-|-|0|-|fx_5/white",
+    "H|fx_1|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_2|1|0|Rosa|Óscar|Rosa|0|0|0|0|1|-|m_copa5_elo_2|-|0|-|fx_5/blue",
+    "H|fx_2|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_3|1|0|Ana|-|Ana|0|1|0|0|1|-|-|-|0|-|fx_6/white",
+    "H|fx_3|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_4|1|0|Carla|-|Carla|0|1|0|0|1|-|-|-|0|-|fx_6/blue",
+    "H|fx_4|2|CUARTOS DE FINAL|-|goals 6 5 0",
+    "F|fx_5|2|0|Ximena|Rosa|Rosa|0|0|0|0|1|-|m_copa5_elo_3|-|0|-|fx_7/white",
+    "H|fx_5|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_6|2|0|Ana|Carla|Ana|0|0|0|0|1|-|m_copa5_elo_5|-|0|-|fx_7/blue",
+    "H|fx_6|1|SEMIFINAL|-|goals 6 5 0",
+    "F|fx_7|3|0|Rosa|Ana|Ana|0|0|0|0|3|1-2|m_copa5_elo_8|m_copa5_elo_6,m_copa5_elo_7,m_copa5_elo_8|0|-|-",
+    "H|fx_7|0|GRAN FINAL|PARTIDO 4 · AL MEJOR DE 3|goals 8 5 0",
+    "N|-",
+    "P|4|4|0",
+    "L|1|Cuartos",
+    "L|2|Semifinales",
+    "L|3|Final",
+    "S|Ana|2|2|0|0|6|13|4|9|1",
+    "S|Rosa|3|2|0|1|6|13|13|0|-1",
+    "S|Óscar|1|0|0|1|0|3|5|-2|0",
+    "S|Ximena|1|0|0|1|0|2|5|-3|0",
+    "S|Carla|1|0|0|1|0|1|5|-4|0",
+    "R|1|Ana|1",
+    "R|2|Rosa|0",
+    "R|3|Ximena|0",
+    "R|4|Carla|0",
+    "R|5|Óscar|0"
+   ]
+  }
+ ],
+ "report": [
+  "r|6|60|2217100|1791140855316|1791143710663|p02|p02|1|m_copa5_elo_8|m_copa5_elo_7|2–1 en la serie",
+  "l|p02|4|3|0|1|28|17|28|1|16.5",
+  "l|p10|5|3|0|2|26|28|26|0|8.0",
+  "l|p07|1|0|0|1|3|5|3|0|-1.0",
+  "l|p16|1|0|0|1|2|5|2|0|-1.5",
+  "l|p04|1|0|0|1|1|5|1|0|-2.0"
+ ],
+ "key": "name:copa del almacén"
+}

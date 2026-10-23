@@ -1,0 +1,1717 @@
+{
+ "name": "liga5b",
+ "players": [
+  {
+   "id": "p01",
+   "name": "Álvaro",
+   "elo": 1210
+  },
+  {
+   "id": "p02",
+   "name": "Ana",
+   "elo": 1180
+  },
+  {
+   "id": "p03",
+   "name": "beto",
+   "elo": 1305
+  },
+  {
+   "id": "p04",
+   "name": "Carla",
+   "elo": 1180
+  },
+  {
+   "id": "p05",
+   "name": "Ñete",
+   "elo": 990
+  },
+  {
+   "id": "p06",
+   "name": "Nico",
+   "elo": 1250
+  },
+  {
+   "id": "p07",
+   "name": "Óscar",
+   "elo": 1100
+  },
+  {
+   "id": "p08",
+   "name": "Olga",
+   "elo": 1420
+  },
+  {
+   "id": "p09",
+   "name": "Pablo",
+   "elo": 1050
+  },
+  {
+   "id": "p10",
+   "name": "Rosa",
+   "elo": 1180
+  },
+  {
+   "id": "p11",
+   "name": "Sara",
+   "elo": 1333
+  },
+  {
+   "id": "p12",
+   "name": "Tomás",
+   "elo": 960
+  },
+  {
+   "id": "p13",
+   "name": "Úrsula",
+   "elo": 1275
+  },
+  {
+   "id": "p14",
+   "name": "Vera",
+   "elo": 1120
+  },
+  {
+   "id": "p15",
+   "name": "Wences",
+   "elo": 1005
+  },
+  {
+   "id": "p16",
+   "name": "Ximena",
+   "elo": 1190
+  }
+ ],
+ "template": {
+  "teamSize": 1,
+  "pairing": "elo",
+  "seeding": "elo",
+  "final": "none",
+  "finalBestOf": 1,
+  "ranked": false,
+  "endCondition": "goals",
+  "goalsPerPeriod": 5,
+  "minutesPerPeriod": 5,
+  "finalGoals": null,
+  "id": "tpl_liga",
+  "name": "Liga del jueves",
+  "format": "league"
+ },
+ "selected": [
+  "p01",
+  "p02",
+  "p03",
+  "p04",
+  "p06",
+  "p08"
+ ],
+ "fixedPairs": [],
+ "tournamentName": "Liga del jueves",
+ "draftSeed": "liga5b-borrador",
+ "createSeed": "liga5b-crear",
+ "now": 1791478800000,
+ "edition": 0,
+ "competition": "",
+ "logo": "",
+ "cup": "",
+ "banner": "",
+ "cancel": false,
+ "describe": "Liga · 1 vs 1 · 3-0 pts · sin final · a 5 goles",
+ "fit": [
+  "fit|2|0|Mínimo 3 jugadores|-",
+  "fit|3|1|-|3 partidos · 3 jugadores, todos contra todos",
+  "fit|4|1|-|6 partidos · 4 jugadores, todos contra todos",
+  "fit|5|1|-|10 partidos · 5 jugadores, todos contra todos",
+  "fit|6|1|-|15 partidos · 6 jugadores, todos contra todos",
+  "fit|7|1|-|21 partidos · 7 jugadores, todos contra todos",
+  "fit|8|1|-|28 partidos · 8 jugadores, todos contra todos",
+  "fit|9|0|Máximo 8 jugadores|-",
+  "fit|10|0|Máximo 8 jugadores|-",
+  "fit|11|0|Máximo 8 jugadores|-",
+  "fit|12|0|Máximo 8 jugadores|-",
+  "fit|13|0|Máximo 8 jugadores|-",
+  "fit|14|0|Máximo 8 jugadores|-",
+  "fit|15|0|Máximo 8 jugadores|-",
+  "fit|16|0|Máximo 8 jugadores|-",
+  "fit|17|0|Máximo 8 jugadores|-"
+ ],
+ "draft": [
+  "D|-|p01;p02;p03;p04;p06;p08"
+ ],
+ "validate": [
+  "V|-",
+  "V|Ponle un nombre al torneo.",
+  "V|Entre 3 y 8 equipos."
+ ],
+ "created": [
+  "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+  "C|goals 5 5 0|-|3-1-0",
+  "E|tt_6|Olga|p08|-|-",
+  "E|tt_3|beto|p03|-|-",
+  "E|tt_5|Nico|p06|-|-",
+  "E|tt_1|Álvaro|p01|-|-",
+  "E|tt_2|Ana|p02|-|-",
+  "E|tt_4|Carla|p04|-|-",
+  "F|fx_1|1|0|Olga|Carla|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+  "F|fx_2|1|0|Ana|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+  "F|fx_3|1|0|Nico|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+  "F|fx_4|2|0|Ana|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+  "F|fx_5|2|0|Carla|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+  "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+  "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+  "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+  "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+  "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+  "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+  "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+  "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+  "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+  "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+  "N|fx_1",
+  "P|0|15|1",
+  "L|1|Jornada 1",
+  "L|2|Jornada 2",
+  "L|3|Jornada 3",
+  "L|4|Jornada 4",
+  "L|5|Jornada 5",
+  "S|Álvaro|0|0|0|0|0|0|0|0|0",
+  "S|Ana|0|0|0|0|0|0|0|0|0",
+  "S|beto|0|0|0|0|0|0|0|0|0",
+  "S|Carla|0|0|0|0|0|0|0|0|0",
+  "S|Nico|0|0|0|0|0|0|0|0|0",
+  "S|Olga|0|0|0|0|0|0|0|0|0",
+  "R|1|Álvaro|0",
+  "R|2|Ana|0",
+  "R|3|beto|0",
+  "R|4|Carla|0",
+  "R|5|Nico|0",
+  "R|6|Olga|0"
+ ],
+ "steps": [
+  {
+   "op": "play",
+   "fixture": "fx_1",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_1",
+    "fixture": "fx_1",
+    "winner": "w",
+    "w": 5,
+    "b": 3,
+    "reason": "r",
+    "totalMs": 366867,
+    "startedAt": 1791478860000,
+    "finishedAt": 1791479226867,
+    "white": [
+     "p08"
+    ],
+    "blue": [
+     "p04"
+    ],
+    "names": {
+     "white": [
+      "Olga"
+     ],
+     "blue": [
+      "Carla"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      3
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 8
+   },
+   "clockAt": 1791479305124,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_2",
+    "P|1|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Olga|1|1|0|0|3|5|3|2|1",
+    "S|Álvaro|0|0|0|0|0|0|0|0|-1",
+    "S|Ana|0|0|0|0|0|0|0|0|-1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|0",
+    "S|Carla|1|0|0|1|0|3|5|-2|-1",
+    "R|1|Olga|0",
+    "R|2|Álvaro|0",
+    "R|3|Ana|0",
+    "R|4|beto|0",
+    "R|5|Nico|0",
+    "R|6|Carla|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_2",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_2",
+    "fixture": "fx_2",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 351085,
+    "startedAt": 1791479305124,
+    "finishedAt": 1791479656209,
+    "white": [
+     "p02"
+    ],
+    "blue": [
+     "p03"
+    ],
+    "names": {
+     "white": [
+      "Ana"
+     ],
+     "blue": [
+      "beto"
+     ]
+    },
+    "scored": {
+     "white": [
+      4
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791479733523,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_3",
+    "P|2|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Olga|1|1|0|0|3|5|3|2|0",
+    "S|beto|1|1|0|0|3|5|4|1|1",
+    "S|Álvaro|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|1",
+    "S|Ana|1|0|0|1|0|4|5|-1|-1",
+    "S|Carla|1|0|0|1|0|3|5|-2|0",
+    "R|1|Olga|0",
+    "R|2|beto|0",
+    "R|3|Álvaro|0",
+    "R|4|Nico|0",
+    "R|5|Ana|0",
+    "R|6|Carla|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_3",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_3",
+    "fixture": "fx_3",
+    "winner": "b",
+    "w": 1,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 321043,
+    "startedAt": 1791479733523,
+    "finishedAt": 1791480054566,
+    "white": [
+     "p06"
+    ],
+    "blue": [
+     "p01"
+    ],
+    "names": {
+     "white": [
+      "Nico"
+     ],
+     "blue": [
+      "Álvaro"
+     ]
+    },
+    "scored": {
+     "white": [
+      1
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 6,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1791480093927,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_4",
+    "P|3|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|1|1|0|0|3|5|1|4|1",
+    "S|Olga|1|1|0|0|3|5|3|2|-1",
+    "S|beto|1|1|0|0|3|5|4|1|-1",
+    "S|Ana|1|0|0|1|0|4|5|-1|1",
+    "S|Carla|1|0|0|1|0|3|5|-2|1",
+    "S|Nico|1|0|0|1|0|1|5|-4|-1",
+    "R|1|Álvaro|0",
+    "R|2|Olga|0",
+    "R|3|beto|0",
+    "R|4|Ana|0",
+    "R|5|Carla|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_4",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_4",
+    "fixture": "fx_4",
+    "winner": "w",
+    "w": 5,
+    "b": 3,
+    "reason": "r",
+    "totalMs": 419007,
+    "startedAt": 1791480093927,
+    "finishedAt": 1791480512934,
+    "white": [
+     "p02"
+    ],
+    "blue": [
+     "p08"
+    ],
+    "names": {
+     "white": [
+      "Ana"
+     ],
+     "blue": [
+      "Olga"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      3
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 8
+   },
+   "clockAt": 1791480561198,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_5",
+    "P|4|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|1|1|0|0|3|5|1|4|0",
+    "S|Ana|2|1|0|1|3|9|8|1|1",
+    "S|beto|1|1|0|0|3|5|4|1|0",
+    "S|Olga|2|1|0|1|3|8|8|0|-1",
+    "S|Carla|1|0|0|1|0|3|5|-2|0",
+    "S|Nico|1|0|0|1|0|1|5|-4|0",
+    "R|1|Álvaro|0",
+    "R|2|Ana|0",
+    "R|3|beto|0",
+    "R|4|Olga|0",
+    "R|5|Carla|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_5",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_5",
+    "fixture": "fx_5",
+    "winner": "w",
+    "w": 5,
+    "b": 2,
+    "reason": "r",
+    "totalMs": 418409,
+    "startedAt": 1791480561198,
+    "finishedAt": 1791480979607,
+    "white": [
+     "p04"
+    ],
+    "blue": [
+     "p01"
+    ],
+    "names": {
+     "white": [
+      "Carla"
+     ],
+     "blue": [
+      "Álvaro"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      2
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 7
+   },
+   "clockAt": 1791481017765,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_6",
+    "P|5|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Ana|2|1|0|1|3|9|8|1|1",
+    "S|Carla|2|1|0|1|3|8|7|1|1",
+    "S|Álvaro|2|1|0|1|3|7|6|1|-1",
+    "S|beto|1|1|0|0|3|5|4|1|-1",
+    "S|Olga|2|1|0|1|3|8|8|0|-1",
+    "S|Nico|1|0|0|1|0|1|5|-4|0",
+    "R|1|Ana|0",
+    "R|2|Carla|0",
+    "R|3|Álvaro|0",
+    "R|4|beto|0",
+    "R|5|Olga|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_6",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_6",
+    "fixture": "fx_6",
+    "winner": "w",
+    "w": 5,
+    "b": 4,
+    "reason": "r",
+    "totalMs": 365022,
+    "startedAt": 1791481017765,
+    "finishedAt": 1791481382787,
+    "white": [
+     "p06"
+    ],
+    "blue": [
+     "p03"
+    ],
+    "names": {
+     "white": [
+      "Nico"
+     ],
+     "blue": [
+      "beto"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      4
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791481446160,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_7",
+    "P|6|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Ana|2|1|0|1|3|9|8|1|0",
+    "S|Carla|2|1|0|1|3|8|7|1|0",
+    "S|Álvaro|2|1|0|1|3|7|6|1|0",
+    "S|beto|2|1|0|1|3|9|9|0|0",
+    "S|Olga|2|1|0|1|3|8|8|0|0",
+    "S|Nico|2|1|0|1|3|6|9|-3|0",
+    "R|1|Ana|0",
+    "R|2|Carla|0",
+    "R|3|Álvaro|0",
+    "R|4|beto|0",
+    "R|5|Olga|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_7",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_7",
+    "fixture": "fx_7",
+    "winner": "b",
+    "w": 1,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 318095,
+    "startedAt": 1791481446160,
+    "finishedAt": 1791481764255,
+    "white": [
+     "p08"
+    ],
+    "blue": [
+     "p01"
+    ],
+    "names": {
+     "white": [
+      "Olga"
+     ],
+     "blue": [
+      "Álvaro"
+     ]
+    },
+    "scored": {
+     "white": [
+      1
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 6,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1791481827002,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_8",
+    "P|7|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|3|2|0|1|6|12|7|5|1",
+    "S|Ana|2|1|0|1|3|9|8|1|-1",
+    "S|Carla|2|1|0|1|3|8|7|1|-1",
+    "S|beto|2|1|0|1|3|9|9|0|0",
+    "S|Nico|2|1|0|1|3|6|9|-3|1",
+    "S|Olga|3|1|0|2|3|9|13|-4|-1",
+    "R|1|Álvaro|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|beto|0",
+    "R|5|Nico|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_8",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_8",
+    "fixture": "fx_8",
+    "winner": "b",
+    "w": 2,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 312917,
+    "startedAt": 1791481827002,
+    "finishedAt": 1791482139919,
+    "white": [
+     "p06"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Nico"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      2
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 7
+   },
+   "clockAt": 1791482193390,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_9",
+    "P|8|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|3|2|0|1|6|12|7|5|0",
+    "S|Ana|3|2|0|1|6|14|10|4|0",
+    "S|Carla|2|1|0|1|3|8|7|1|0",
+    "S|beto|2|1|0|1|3|9|9|0|0",
+    "S|Olga|3|1|0|2|3|9|13|-4|1",
+    "S|Nico|3|1|0|2|3|8|14|-6|-1",
+    "R|1|Álvaro|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|beto|0",
+    "R|5|Olga|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_9",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_9",
+    "fixture": "fx_9",
+    "winner": "w",
+    "w": 5,
+    "b": 3,
+    "reason": "r",
+    "totalMs": 347283,
+    "startedAt": 1791482193390,
+    "finishedAt": 1791482540673,
+    "white": [
+     "p04"
+    ],
+    "blue": [
+     "p03"
+    ],
+    "names": {
+     "white": [
+      "Carla"
+     ],
+     "blue": [
+      "beto"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      3
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 8
+   },
+   "clockAt": 1791482574717,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_10",
+    "P|9|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|3|2|0|1|6|12|7|5|0",
+    "S|Ana|3|2|0|1|6|14|10|4|0",
+    "S|Carla|3|2|0|1|6|13|10|3|0",
+    "S|beto|3|1|0|2|3|12|14|-2|0",
+    "S|Olga|3|1|0|2|3|9|13|-4|0",
+    "S|Nico|3|1|0|2|3|8|14|-6|0",
+    "R|1|Álvaro|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|beto|0",
+    "R|5|Olga|0",
+    "R|6|Nico|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_10",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_10",
+    "fixture": "fx_10",
+    "winner": "w",
+    "w": 5,
+    "b": 3,
+    "reason": "r",
+    "totalMs": 306342,
+    "startedAt": 1791482574717,
+    "finishedAt": 1791482881059,
+    "white": [
+     "p06"
+    ],
+    "blue": [
+     "p08"
+    ],
+    "names": {
+     "white": [
+      "Nico"
+     ],
+     "blue": [
+      "Olga"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      3
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 8
+   },
+   "clockAt": 1791482955094,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_11",
+    "P|10|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Álvaro|3|2|0|1|6|12|7|5|0",
+    "S|Ana|3|2|0|1|6|14|10|4|0",
+    "S|Carla|3|2|0|1|6|13|10|3|0",
+    "S|Nico|4|2|0|2|6|13|17|-4|1",
+    "S|beto|3|1|0|2|3|12|14|-2|-1",
+    "S|Olga|4|1|0|3|3|12|18|-6|-1",
+    "R|1|Álvaro|0",
+    "R|2|Ana|0",
+    "R|3|Carla|0",
+    "R|4|Nico|0",
+    "R|5|beto|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_11",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_11",
+    "fixture": "fx_11",
+    "winner": "b",
+    "w": 0,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 418884,
+    "startedAt": 1791482955094,
+    "finishedAt": 1791483373978,
+    "white": [
+     "p01"
+    ],
+    "blue": [
+     "p03"
+    ],
+    "names": {
+     "white": [
+      "Álvaro"
+     ],
+     "blue": [
+      "beto"
+     ]
+    },
+    "scored": {
+     "white": [
+      0
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 5,
+    "goalsAssigned": 5
+   },
+   "clockAt": 1791483420952,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|beto|0|0|0|0|1|-|m_liga5b_11|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_12",
+    "P|11|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Ana|3|2|0|1|6|14|10|4|1",
+    "S|beto|4|2|0|2|6|17|14|3|1",
+    "S|Carla|3|2|0|1|6|13|10|3|0",
+    "S|Álvaro|4|2|0|2|6|12|12|0|-1",
+    "S|Nico|4|2|0|2|6|13|17|-4|-1",
+    "S|Olga|4|1|0|3|3|12|18|-6|0",
+    "R|1|Ana|0",
+    "R|2|beto|0",
+    "R|3|Carla|0",
+    "R|4|Álvaro|0",
+    "R|5|Nico|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_12",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_12",
+    "fixture": "fx_12",
+    "winner": "w",
+    "w": 5,
+    "b": 0,
+    "reason": "r",
+    "totalMs": 314797,
+    "startedAt": 1791483420952,
+    "finishedAt": 1791483735749,
+    "white": [
+     "p04"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Carla"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      5
+     ],
+     "blue": [
+      0
+     ]
+    },
+    "goalsValid": 5,
+    "goalsAssigned": 5
+   },
+   "clockAt": 1791483775955,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|beto|0|0|0|0|1|-|m_liga5b_11|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|Carla|0|0|0|0|1|-|m_liga5b_12|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_13",
+    "P|12|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Carla|4|3|0|1|9|18|10|8|1",
+    "S|beto|4|2|0|2|6|17|14|3|0",
+    "S|Álvaro|4|2|0|2|6|12|12|0|1",
+    "S|Ana|4|2|0|2|6|14|15|-1|-1",
+    "S|Nico|4|2|0|2|6|13|17|-4|0",
+    "S|Olga|4|1|0|3|3|12|18|-6|0",
+    "R|1|Carla|0",
+    "R|2|beto|0",
+    "R|3|Álvaro|0",
+    "R|4|Ana|0",
+    "R|5|Nico|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_13",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_13",
+    "fixture": "fx_13",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 369713,
+    "startedAt": 1791483775955,
+    "finishedAt": 1791484145668,
+    "white": [
+     "p08"
+    ],
+    "blue": [
+     "p03"
+    ],
+    "names": {
+     "white": [
+      "Olga"
+     ],
+     "blue": [
+      "beto"
+     ]
+    },
+    "scored": {
+     "white": [
+      4
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791484227488,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|beto|0|0|0|0|1|-|m_liga5b_11|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|Carla|0|0|0|0|1|-|m_liga5b_12|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|beto|0|0|0|0|1|-|m_liga5b_13|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_14",
+    "P|13|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Carla|4|3|0|1|9|18|10|8|0",
+    "S|beto|5|3|0|2|9|22|18|4|0",
+    "S|Álvaro|4|2|0|2|6|12|12|0|0",
+    "S|Ana|4|2|0|2|6|14|15|-1|0",
+    "S|Nico|4|2|0|2|6|13|17|-4|0",
+    "S|Olga|5|1|0|4|3|16|23|-7|0",
+    "R|1|Carla|0",
+    "R|2|beto|0",
+    "R|3|Álvaro|0",
+    "R|4|Ana|0",
+    "R|5|Nico|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_14",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_14",
+    "fixture": "fx_14",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 337783,
+    "startedAt": 1791484227488,
+    "finishedAt": 1791484565271,
+    "white": [
+     "p04"
+    ],
+    "blue": [
+     "p06"
+    ],
+    "names": {
+     "white": [
+      "Carla"
+     ],
+     "blue": [
+      "Nico"
+     ]
+    },
+    "scored": {
+     "white": [
+      4
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791484635759,
+   "lines": [
+    "T|t_1|Liga del jueves|active|-|-|0|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|beto|0|0|0|0|1|-|m_liga5b_11|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|Carla|0|0|0|0|1|-|m_liga5b_12|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|beto|0|0|0|0|1|-|m_liga5b_13|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|Nico|0|0|0|0|1|-|m_liga5b_14|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|fx_15",
+    "P|14|15|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Carla|5|3|0|2|9|22|15|7|0",
+    "S|beto|5|3|0|2|9|22|18|4|0",
+    "S|Nico|5|3|0|2|9|18|21|-3|1",
+    "S|Álvaro|4|2|0|2|6|12|12|0|-1",
+    "S|Ana|4|2|0|2|6|14|15|-1|-1",
+    "S|Olga|5|1|0|4|3|16|23|-7|0",
+    "R|1|Carla|0",
+    "R|2|beto|0",
+    "R|3|Nico|0",
+    "R|4|Álvaro|0",
+    "R|5|Ana|0",
+    "R|6|Olga|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_15",
+   "accepted": true,
+   "match": {
+    "id": "m_liga5b_15",
+    "fixture": "fx_15",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 398999,
+    "startedAt": 1791484635759,
+    "finishedAt": 1791485034758,
+    "white": [
+     "p01"
+    ],
+    "blue": [
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "Álvaro"
+     ],
+     "blue": [
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      4
+     ],
+     "blue": [
+      5
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791485087343,
+   "lines": [
+    "T|t_1|Liga del jueves|finished|Carla|m_liga5b_14|1791485034758|1791478800000|1|-|none|0|-",
+    "C|goals 5 5 0|-|3-1-0",
+    "E|tt_6|Olga|p08|-|-",
+    "E|tt_3|beto|p03|-|-",
+    "E|tt_5|Nico|p06|-|-",
+    "E|tt_1|Álvaro|p01|-|-",
+    "E|tt_2|Ana|p02|-|-",
+    "E|tt_4|Carla|p04|-|-",
+    "F|fx_1|1|0|Olga|Carla|Olga|0|0|0|0|1|-|m_liga5b_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|1|0|Ana|beto|beto|0|0|0|0|1|-|m_liga5b_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_3|1|0|Nico|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_4|2|0|Ana|Olga|Ana|0|0|0|0|1|-|m_liga5b_4|-|0|-|-",
+    "H|fx_4|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_5|2|0|Carla|Álvaro|Carla|0|0|0|0|1|-|m_liga5b_5|-|0|-|-",
+    "H|fx_5|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_6|2|0|Nico|beto|Nico|0|0|0|0|1|-|m_liga5b_6|-|0|-|-",
+    "H|fx_6|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_7|3|0|Olga|Álvaro|Álvaro|0|0|0|0|1|-|m_liga5b_7|-|0|-|-",
+    "H|fx_7|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_8|3|0|Nico|Ana|Ana|0|0|0|0|1|-|m_liga5b_8|-|0|-|-",
+    "H|fx_8|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_9|3|0|Carla|beto|Carla|0|0|0|0|1|-|m_liga5b_9|-|0|-|-",
+    "H|fx_9|4|JORNADA 3|-|goals 5 5 0",
+    "F|fx_10|4|0|Nico|Olga|Nico|0|0|0|0|1|-|m_liga5b_10|-|0|-|-",
+    "H|fx_10|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_11|4|0|Álvaro|beto|beto|0|0|0|0|1|-|m_liga5b_11|-|0|-|-",
+    "H|fx_11|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_12|4|0|Carla|Ana|Carla|0|0|0|0|1|-|m_liga5b_12|-|0|-|-",
+    "H|fx_12|4|JORNADA 4|-|goals 5 5 0",
+    "F|fx_13|5|0|Olga|beto|beto|0|0|0|0|1|-|m_liga5b_13|-|0|-|-",
+    "H|fx_13|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_14|5|0|Carla|Nico|Nico|0|0|0|0|1|-|m_liga5b_14|-|0|-|-",
+    "H|fx_14|4|JORNADA 5|-|goals 5 5 0",
+    "F|fx_15|5|0|Álvaro|Ana|Ana|0|0|0|0|1|-|m_liga5b_15|-|0|-|-",
+    "H|fx_15|4|JORNADA 5|-|goals 5 5 0",
+    "N|-",
+    "P|15|15|0",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "L|4|Jornada 4",
+    "L|5|Jornada 5",
+    "S|Carla|5|3|0|2|9|22|15|7|0",
+    "S|beto|5|3|0|2|9|22|18|4|0",
+    "S|Ana|5|3|0|2|9|19|19|0|1",
+    "S|Nico|5|3|0|2|9|18|21|-3|-1",
+    "S|Álvaro|5|2|0|3|6|16|17|-1|-1",
+    "S|Olga|5|1|0|4|3|16|23|-7|0",
+    "R|1|Carla|1",
+    "R|2|beto|0",
+    "R|3|Ana|0",
+    "R|4|Nico|0",
+    "R|5|Álvaro|0",
+    "R|6|Olga|0"
+   ]
+  }
+ ],
+ "report": [
+  "r|15|113|5366246|1791478860000|1791485034758|p04|p04|1|m_liga5b_11|m_liga5b_2|-",
+  "l|p04|5|3|0|2|22|15|22|1|14.5",
+  "l|p03|5|3|0|2|22|18|22|0|11.0",
+  "l|p02|5|3|0|2|19|19|19|0|9.0",
+  "l|p06|5|3|0|2|18|21|18|0|7.5",
+  "l|p01|5|2|0|3|16|17|16|0|5.5",
+  "l|p08|5|1|0|4|16|23|16|0|-0.5"
+ ],
+ "key": "tpl_liga"
+}
