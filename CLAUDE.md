@@ -1,8 +1,27 @@
-# Marcador Futbolín — normas de diseño
+# Marcador Futbolín
+
+App React (`src/`) + pantalla nativa ESP32-S3 7" con LVGL (`hardware/esp32s3_pantalla7/`) + mando ESP32-C3 + nube Supabase.
+Equipo A = Cloud (Claude); equipo B = esta rama. «master» significa la rama `main`.
+
+## Cómo trabajar con el dueño (Alex)
+
+- No es programador: hablarle en español, frases cortas, sin tecnicismos.
+- Decidir solo lo que se pueda y apuntarlo; preguntar solo lo físico de la placa o elegir entre dos diseños.
+- **Sin su permiso expreso: no fusionar en `main`, no publicar firmware/OTA, no grabar la placa, no pasar a versión 1.0.**
+- No dar por hecho lo no comprobado: código hecho ≠ instalado ≠ probado en la placa. Decir cuál de las tres.
+
+## Dónde mirar (leer solo lo que haga falta)
+
+- Estado actual: `docs/ESTADO.md` (lo nuevo arriba; leer solo la primera sección).
+- Notas de entregas anteriores: `docs/HISTORIAL_ENTREGAS.md`. Las entregas nuevas se apuntan ahí y en `ESTADO.md`, **no en este archivo**.
+- Decisiones: `docs/DECISIONES.md` · Placa y cableado: `docs/HARDWARE.md` · Actualizaciones: `docs/ACTUALIZACIONES_PANTALLA.md`.
+- `docs/ENTREGA_*`, `docs/VALIDACION_*` y `docs/REVISION_*` son historial: abrirlos solo si la tarea trata de esa entrega.
+- No leer `dist/`, `build/`, `node_modules/` ni las imágenes `.png` sueltas de la raíz.
+
+## Normas de diseño
 
 - Siempre que aparezca la ficha de un jugador (tarjetas, carteles, listas, resúmenes…),
   enseña su foto (`player.photo`, con `Avatar` o `RankPhoto`; si no tiene, sus iniciales).
-- «master» significa la rama `main`.
 - Pantalla táctil y decisiones rápidas: las opciones a elegir son botones grandes con solo su título
   (la elegida se ilumina). Nada de puntos de radio ni casillas que parezcan lo que hay que pulsar, ni
   descripciones debajo de cada opción. Si una opción no se entiende sola, lleva una «?» al lado que la
@@ -17,51 +36,27 @@
   vistazo; nada repetido (si ya está en el título, en un cartel o en otra parte de la pantalla, no se vuelve a
   poner) y fuera lo que no aporta. Las explicaciones largas, detrás de una «?».
 
-## Versiones y actualizaciones de la pantalla nativa (decisión del dueño, 19/10/2026)
+## Versiones de la pantalla (decisión del dueño, 19/10/2026)
 
-- La versión de producto de la pantalla ESP32-S3 empieza en **0.1**. Seguir en **0.x**. No pasar a **1.0 ni superior** hasta que el dueño lo autorice expresamente; no decidirlo por madurez o por estar terminada una fase.
-- Antes de **cada publicación de firmware**, subir esa versión y añadir una entrada a `hardware/esp32s3_pantalla7/releases.json`: fecha, título y qué cambia para quien juega, con lenguaje llano. Conservar las entradas antiguas. Los commits internos de una entrega todavía no publicada pueden compartir versión.
-- Ese registro es la fuente única para la versión del programa, las notas del actualizador y el historial de la pantalla. Regenerar `s3_release.h` con `node scripts/native-release.mjs generate`; comprobarlo con `node scripts/native-release.mjs check` y ejecutar las pruebas.
-- `majorOneAuthorized` permanece en `false` hasta esa autorización expresa. La publicación automática debe rechazar versiones repetidas, notas vacías y el salto no autorizado a 1.x.
-- No confundir esta numeración con la versión de la app web, la versión del protocolo MFV3, el motor o el contador interno de compilaciones. No cambiar esos protocolos por subir la versión visible.
-- Actualizaciones tiene su propio apartado en Ajustes, novedades legibles, explicación previa, confirmación de instalación y progreso real. No mostrar éxito hasta comprobar el archivo y, para el mando, recibir su confirmación.
-- Preparar y probar en la rama; no fusionar, publicar una entrega de firmware ni grabar la placa sin la autorización correspondiente del dueño. Ver `docs/ACTUALIZACIONES_PANTALLA.md` y las entregas del equipo B para Cloud.
+- Siempre **0.x**; `majorOneAuthorized` sigue en `false` hasta que el dueño autorice la 1.0.
+- Antes de cada publicación de firmware: subir la versión y añadir entrada en `hardware/esp32s3_pantalla7/releases.json`
+  (fecha, título, qué cambia para quien juega, en lenguaje llano; conservar las antiguas). Es la fuente única de versión y novedades.
+- Después: `node scripts/native-release.mjs generate`, luego `node scripts/native-release.mjs check`, y las pruebas.
+- No confundir con la versión de la app web, del protocolo MFV3, del motor ni el contador de compilaciones.
+- Actualizaciones: no mostrar éxito hasta comprobar el archivo y, para el mando, recibir su confirmación.
 
+## Pruebas
 
-## Entrega pendiente de valoración por Cloud · 20/10/2026
+`npm test` · `npm run typecheck` · `npm run test:hardware` · placa: `scripts/placa.py` (compilar, grabar, captura).
 
-El equipo B ha integrado en main la corrección de esperas USB y las opciones de sesión (pantalla 0.2). Antes de continuar, consultar [la entrega a equipo A](docs/ENTREGA_EQUIPO_B_USB_SESIONES_20261020.md) y el estado vigente en [ESTADO](docs/ESTADO.md). La instalación física de 0.2 build 54 ya está autorizada y verificada: leer [su informe](docs/VALIDACION_PLACA_0_2_20261020.md), incluidos los límites e incidencias del diagnóstico USB. Siguen pendientes el login real por QR y la lectura de límites de Supabase; no darlos por realizados. Revisión de Cloud de 0.3–0.7 registrada el 22/10/2026 en [docs/REVISION_CLOUD_0_3_A_0_7_20261022.md](docs/REVISION_CLOUD_0_3_A_0_7_20261022.md).
+## Trampas conocidas (no repetir)
 
-## Mando físico C3-Zero · entrega en la rama del equipo B
-
-La mini real del dueño es Waveshare ESP32-C3-Zero: leer [su entrega](docs/ENTREGA_MANDO_C3_ZERO_20261020.md). Se ha instalado y comprobado el saludo por radio, pero los contactos y luces de los pulsadores siguen pendientes de cablear y probar. Revisar el perfil RGB y la selección del firmware OTA antes de publicar soporte oficial. No confundir esta adaptación local con una nueva versión de la pantalla.
-
-## Pantalla 0.3 · continuar desde el mando · rama del equipo B
-
-Consultar [la entrega 0.3](docs/ENTREGA_TRANSICIONES_PULSADORES_0_3_20261022.md): permite continuar primera/segunda parte y entrar en penaltis con cualquiera de los pulsadores. Contiene pruebas y estado físico, además de los colores reales del cableado corregidos por el dueño. Actualiza la indicación anterior: ya se han probado un gol y una anulación por equipo en placa con resultado correcto; el fallo intermitente inicial no se reprodujo. La aceptación por Cloud y la publicación oficial siguen pendientes.
-
-## Pantalla 0.4 · fechas y resumen · rama del equipo B
-
-Consultar [la entrega 0.4](docs/ENTREGA_FECHAS_RESUMEN_0_4_20261022.md). Corrige la continuidad del reloj y añade TODOS al resumen para incluir registros sin fecha sin inventar su día. El dueño confirma varios partidos correctos con 0.3; faltan fechas en dos rápidos y aclara que el vacío es la pestaña Resumen. Las fechas recordadas son aproximadas y constan en la entrega: no migrarlas ni atribuirles hora exacta sin verificar. 0.4 ya está instalada por autorización expresa: consultar [la validación física](docs/VALIDACION_PLACA_0_4_20261022.md). Reloj puesto en hora; Resumen real muestra 2 partidos / 27 goles. Los dos registros originales siguen con fecha cero: no darlos por reparados ni inventar horas. No se ha medido retención del reloj al desconectar ni un nuevo guardado físico.
-
-## Sonidos FC26 · grupo 1 y requisitos de sincronización
-
-Leer [la entrega de sonidos](docs/ENTREGA_SONIDOS_FC26_COMODIN_20261022.md) y [el catálogo](docs/sonidos/catalogo_fc26_gol_comodin_01.json). Seis WAV comodín guardados y confirmados en SD, firmware 0.4; no están aún asignados automáticamente (selector actual limitado a cuatro). Los grupos específicos deben poder alternar con comodines. Última instrucción: iniciar audio al subir el gol al marcador visible; al anular, cortar comentario y sustituir por sonido de anulación (aún no entregado). No confundir requisitos con implementación ni activar solo cuatro de los seis. No publicar los WAV del dueño en el repositorio.
-
-## Pantalla 0.5 · selector de comentarios y paquete de 61 voces
-
-Consultar [la entrega 0.5](docs/ENTREGA_COMENTARIOS_0_5_20261022.md). Código en rama B, catálogo nativo hasta 1.024, selección por situaciones con comodines, sustitución al anular y sincronización tras el frame. Instalación 0.5 autorizada y completada: 61 voces y catálogo activo comprobados después de reiniciar en COM6; consultar [validación física](docs/VALIDACION_PLACA_0_5_20261022.md) y catálogo instalado de 61. La SD real tiene unos 8 GB: el dato previo de 13 MB era FFat porque Arduino 3.3.12 consultaba el disco 0. FsStore::sdSpace lo corrige por ruta /sdcard; no volver a usar SD_MMC.totalBytes/usedBytes como capacidad fiable con ambos volúmenes montados. Partidos y fechas originales conservados. Pendiente prueba audible/latencia real con el dueño. El informe físico registra también un desfase de reloj de unos 123 s frente al PC pese a valida=1 rtc=1; no se reajustó y sigue pendiente de diagnóstico. Grupo 4 confirmado: dos o más goles SEGUIDOS del rival, sin exigir ir ganando. Grupo 2 confirmado: marca quien ya había encajado al menos tres, no quien recibe su tercer gol. Nuevo grupo de seis empates: al menos dos goles válidos anteriores de cualquier equipo dentro de los 60 segundos de juego previos, sin contar el actual ni anulados; ventana móvil, no último minuto restante. Mantener comodines y empate normal elegibles. Consultar catálogo actualizado de 61 y pruebas de límite, pausas y cambio de parte. No afirmar latencia física ni instalación total a partir de las simulaciones. Mantener 0.x.
-
-Próximos sonidos anunciados por el dueño: leer [el plan para A/Cloud](docs/PLAN_COMENTARIOS_EVENTOS_20261022.md). Incluye inicio, segunda parte, final, prórroga, penaltis, victorias/campeón y sequía de goles. Son previsiones, no clips recibidos ni automatismos activos; el ejemplo de 90 s debe concretarse. La máscara (ahora `PoolMask` de 32 bits) corresponde a contextos de gol: no añadir todos los nuevos eventos sin revisar representación, persistencia y pruebas.
-
-## Revisión de Cloud y fusión · 22/10/2026
-
-Cloud (equipo A) ha revisado las entregas 0.3–0.7 y el dueño ha autorizado fusionarlas: main contiene la pantalla **0.7** y GitHub la publica como actualización oficial. Leer [la revisión](docs/REVISION_CLOUD_0_3_A_0_7_20261022.md). Las secciones anteriores que dicen «rama del equipo B» describen su origen; el código ya está en main. No instalar desde la pantalla el firmware publicado del mando en el C3-Zero hasta que exista una variante con LED RGB.
-
-## Ajustes de la pantalla y mando por modelo · 0.8 · en main (23/10/2026)
-
-Leer [la entrega](docs/ENTREGA_AJUSTES_PLACA_0_8_20261022.md). Menú de AJUSTES en `s3_opciones.h` (+ `s3_opciones_datos.h`); los sitios de los botones están en `ui::SETTINGS`. Los equipos fijos (`s3_equipos.h`) van en la nube dentro de `prefs`/`mesa`.`clubs`: al subir, cambiar solo ese campo y unir con los de la cuenta. El perfil del QR (`s3_perfil.h`) debe seguir igual que `buildProfileSnapshot` (`tests/perfil-placa.test.ts`). Las tablas grandes, en memoria dinámica (PSRAM), no como globales. Usar solo letras de `fuentes.txt`: una actualización por Wi-Fi no lleva letras nuevas. El mando anuncia su modelo en INFO (`MODEL_*`) y la pantalla descarga `mando-c3` o `mando-c3zero`. Un mando sin modelo no recibe actualizaciones hasta elegirlo en AJUSTES → MANDO. Antes de actualizar el C3-Zero del dueño, elegir C3-ZERO.
-
-## Pantalla 0.9 · Wi-Fi e imagen (23/10/2026)
-
-Con el Wi-Fi activo la imagen se corría (vídeo del dueño). `uiport::setNetwork()` baja el panel a `PCLK_NET_HZ` y realinea cada 250 ms mientras hay red; no quitarlo sin medir en la placa. Pendiente confirmar en la placa.
+- Wi-Fi: `uiport::setNetwork()` baja el panel a `PCLK_NET_HZ` y realinea; no quitarlo sin medir en la placa.
+- Capacidad de la SD: usar `FsStore::sdSpace` (ruta `/sdcard`), nunca `SD_MMC.totalBytes/usedBytes`.
+- Solo letras de `fuentes.txt`: una actualización por Wi-Fi no lleva letras nuevas.
+- Tablas grandes en PSRAM (memoria dinámica), no como globales.
+- Perfil del QR (`s3_perfil.h`) igual que `buildProfileSnapshot` (`tests/perfil-placa.test.ts`).
+- Equipos fijos en la nube: al subir, cambiar solo `prefs`/`mesa`.`clubs` y unir con los de la cuenta.
+- Mando C3-Zero del dueño: elegir C3-ZERO en AJUSTES → MANDO antes de actualizar; no instalarle el firmware del mando publicado hasta que haya variante con LED RGB.
+- No subir al repositorio los WAV del dueño.
+- Sonidos: antes de tocarlos, leer las secciones de sonidos de `docs/HISTORIAL_ENTREGAS.md` (reglas de grupos, victoria inmediata, etc.).
