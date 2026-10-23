@@ -82,12 +82,21 @@ static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s
 static void indexPath(char* out, size_t n) { snprintf(out, n, "%s/indice.txt", dir); }
 static void cloudPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.nube", dir, id); }
 
+// Crea la carpeta y, si faltan, las que la contienen (en el PC la de pruebas puede no existir aún).
 static void mkdirs(const char* p) {
+  char part[128];
+  size_t n = strlen(p);
+  if (n >= sizeof(part)) n = sizeof(part) - 1;
+  for (size_t i = 1; i <= n; i++) {
+    if (i < n && p[i] != '/') continue;
+    memcpy(part, p, i);
+    part[i] = 0;
 #ifdef _WIN32
-  mkdir(p);
+    mkdir(part);
 #else
-  mkdir(p, 0777);
+    mkdir(part, 0777);
 #endif
+  }
 }
 
 // Copia un texto sin partir una letra de varios bytes (UTF-8) al recortarlo.
