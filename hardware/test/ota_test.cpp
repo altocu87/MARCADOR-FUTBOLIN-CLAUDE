@@ -92,8 +92,16 @@ int main() {
   uint8_t p[MAX_PACKET];
   uint8_t n = encodeInfo(p, GROUP, 57, true);
   Info i = decodeInfo(p, n, GROUP);
-  assert(i.ok && i.build == 57 && i.armed);
+  assert(i.ok && i.build == 57 && i.armed && i.model == MODEL_UNKNOWN);
   assert(!decodeInfo(p, n, GROUP + 1).ok);
+  // El modelo de la mini va en un byte más; los mandos anteriores no lo mandan (y siguen valiendo).
+  n = encodeInfo(p, GROUP, 58, false, MODEL_C3_ZERO);
+  i = decodeInfo(p, n, GROUP);
+  assert(i.ok && i.build == 58 && !i.armed && i.model == MODEL_C3_ZERO);
+  i = decodeInfo(p, n - 1, GROUP);
+  assert(i.ok && i.build == 58 && i.model == MODEL_UNKNOWN);
+  p[n - 1] = 9;  // un modelo que no existe: como si no lo dijera
+  assert(decodeInfo(p, n, GROUP).model == MODEL_UNKNOWN);
   const uint8_t goal[10] = {'M', 'F', 'V', '3', 1, 1, 0, 0, 1, 0};
   assert(!decodeInfo(goal, 10, GROUP).ok && typeOf(goal, 10, GROUP) == 0);
   assert(MAX_PACKET <= 250);

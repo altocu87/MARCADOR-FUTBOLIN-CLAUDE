@@ -239,6 +239,7 @@ static void statusText(char* out, size_t n) {
 }
 
 static void onSync(lv_event_t*) {
+  if (nube::paused) return ui::toast("En modo prueba no se sincroniza");
   if (hooks.networkReady && !hooks.networkReady()) return ui::toast("Espera a que termine la consulta de red");
   if (hooks.hasWifi && !hooks.hasWifi()) return ui::toast("Primero, el Wi-Fi en AJUSTES");
   nube::sync();

@@ -314,6 +314,7 @@ struct Player {
   int level;
   uint8_t category;
   uint8_t ach[(ACH_COUNT + 7) / 8];  // logros conseguidos
+  uint32_t achAt[ACH_COUNT];          // cuándo (segundos UTC del partido; 0 sin hora): el perfil del QR
   int achCount;
   int tournamentsWon;
   int challengesDone;
@@ -586,6 +587,7 @@ static bool compute(Snapshot& s, const uint32_t* codes, int nCodes, Keep keep, c
           if (hasBit(p.ach, a)) continue;
           if (check(a, cx)) {
             setBit(p.ach, a);
+            p.achAt[a] = m.fin;
             p.achCount++;
             xp += rules.xpAchievement[ACH[a].rarity];
           }

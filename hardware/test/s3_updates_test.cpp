@@ -10,8 +10,8 @@
 
 static void shot(const char* name) {
   if (!getenv("MFV3_ASSETS_VERIFY")) return;
-  lv_obj_update_layout(gfx.scr);
-  lv_draw_buf_t* buf = lv_snapshot_take(gfx.scr, LV_COLOR_FORMAT_RGB888); assert(buf);
+  lv_obj_update_layout(lv_screen_active());
+  lv_draw_buf_t* buf = lv_snapshot_take(lv_screen_active(), LV_COLOR_FORMAT_RGB888); assert(buf);
   std::string path = std::string("../build/") + name + ".ppm";
   FILE* f = fopen(path.c_str(), "wb"); assert(f);
   fprintf(f, "P6\n%u %u\n255\n", buf->header.w, buf->header.h);
@@ -35,10 +35,11 @@ int main() {
   updateInfo::parse(huge.c_str(), meta); assert(!meta.notes[0]);
 
   // El adaptador no retiene la dirección de una pantalla destruida por LVGL.
-  openSettings(); render(); assert(gfx.active() && gfx.scr);
+  // (AJUSTES ya es una pantalla LVGL propia: s3_opciones.h; Actualizaciones sigue con el adaptador.)
+  openUpdate(); render(); assert(gfx.active() && gfx.scr);
   ui::show(ui::screen()); assert(gfx.scr == nullptr && !gfx.active());
-  openSettings(); render(); shot("actualizaciones-ajustes");
-  tapRect(ui::SETTINGS[2].r); assert(screen == Screen::Update && !canInstallUpdate());
+  openSettings(); render(); assert(opciones::active()); shot("actualizaciones-ajustes");
+  openUpdate(); render(); assert(screen == Screen::Update && !canInstallUpdate());
   tapRect(ui::UPDATE[2].r); assert(screen == Screen::Update && updateTab == UpdateTab::Overview);
   tapRect(UPDATE_TABS[1]); assert(updateTab == UpdateTab::History && updateHistoryCount() == nativeRelease::COUNT);
   shot("actualizaciones-historial");
@@ -88,7 +89,8 @@ int main() {
   const std::string digest = sim::fakeMd5(std::vector<uint8_t>(firmware.begin(), firmware.end()));
   pubMando.size = pubScreen.size = (uint32_t)firmware.size();
   strcpy(pubMando.md5, digest.c_str()); strcpy(pubScreen.md5, digest.c_str());
-  sim::web[s3net::url(MANDO_ID, (String(MANDO_ID) + "-ota.bin").c_str()).c_str()] = firmware;
+  instMandoModel = mfv3::ota::MODEL_SUPER_MINI;
+  sim::web[s3net::url(mandoId(instMandoModel), (String(mandoId(instMandoModel)) + "-ota.bin").c_str()).c_str()] = firmware;
   sim::web[s3net::url(S3_BOARD_ID, (String(S3_BOARD_ID) + "-ota.bin").c_str()).c_str()] = firmware;
   sim::webLatencyMs = mfv3::ota::Sender::OFFER_WAIT_MS + 1000;
   inst = Inst::MandoDownload; drawInstall(); installPoll(millis());

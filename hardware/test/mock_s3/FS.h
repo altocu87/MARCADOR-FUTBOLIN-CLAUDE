@@ -72,8 +72,26 @@ class FS {
   bool exists(const char* p) { return disk.files.count(p) || disk.dirs.count(p); }
   bool remove(const char* p) { return disk.files.erase(p) > 0; }
   bool mkdir(const char* p) { disk.dirs[p] = true; return true; }
+  // Una carpeta vacía se borra; con algo dentro, no (como FAT).
+  bool rmdir(const char* p) {
+    std::string pre = std::string(p) + "/";
+    for (auto& f : disk.files) if (f.first.rfind(pre, 0) == 0) return false;
+    for (auto& d : disk.dirs) if (d.first.rfind(pre, 0) == 0) return false;
+    return disk.dirs.erase(p) > 0;
+  }
   bool rename(const char* a, const char* b) {
     if(disk.failRenameTo==b)return false;
+    if (disk.dirs.count(a)) {  // carpeta: se mueve con todo lo que tiene
+      if (exists(b)) return false;
+      std::string pa = std::string(a) + "/", pb = std::string(b) + "/";
+      std::map<std::string, std::vector<uint8_t>> files;
+      std::map<std::string, bool> dirs;
+      for (auto& f : disk.files) files[f.first.rfind(pa, 0) == 0 ? pb + f.first.substr(pa.size()) : f.first] = f.second;
+      for (auto& d : disk.dirs) dirs[d.first == a ? std::string(b) : d.first.rfind(pa, 0) == 0 ? pb + d.first.substr(pa.size()) : d.first] = d.second;
+      disk.files.swap(files);
+      disk.dirs.swap(dirs);
+      return true;
+    }
     auto it = disk.files.find(a);
     if (it == disk.files.end()) return false;
     disk.files[b] = it->second;

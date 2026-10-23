@@ -64,24 +64,31 @@ inline uint8_t typeOf(const uint8_t* p, int len, uint8_t group) {
 }
 
 // ---------------------------------------------------------------- INFO (versión del mando)
-inline uint8_t encodeInfo(uint8_t* out, uint8_t group, uint32_t build, bool armed) {
+// Modelo de mini del mando, para descargar el programa que le corresponde (cada uno enciende su LED a su manera).
+// Los mandos anteriores no lo dicen (MODEL_UNKNOWN): la pantalla pregunta el modelo en AJUSTES → MANDO.
+const uint8_t MODEL_UNKNOWN = 0, MODEL_SUPER_MINI = 1, MODEL_C3_ZERO = 2;
+
+inline uint8_t encodeInfo(uint8_t* out, uint8_t group, uint32_t build, bool armed, uint8_t model = MODEL_UNKNOWN) {
   uint8_t n = header(out, Type::Info, group);
   put32(out + n, build);
   out[n + 4] = KIND_MANDO;
   out[n + 5] = armed ? 1 : 0;
-  return n + 6;
+  out[n + 6] = model;  // un byte más al final: las pantallas antiguas lo ignoran
+  return n + 7;
 }
 struct Info {
   bool ok;
   uint32_t build;
   bool armed;
+  uint8_t model;
 };
 inline Info decodeInfo(const uint8_t* p, int len, uint8_t group) {
-  Info i = {false, 0, false};
+  Info i = {false, 0, false, MODEL_UNKNOWN};
   if (typeOf(p, len, group) != (uint8_t)Type::Info || len < HEADER + 6 || p[HEADER + 4] != KIND_MANDO) return i;
   i.ok = true;
   i.build = get32(p + HEADER);
   i.armed = p[HEADER + 5] != 0;
+  if (len >= HEADER + 7 && p[HEADER + 6] <= MODEL_C3_ZERO) i.model = p[HEADER + 6];
   return i;
 }
 

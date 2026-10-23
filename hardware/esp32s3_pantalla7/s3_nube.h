@@ -316,7 +316,12 @@ struct UpPlayer {
 static UpPlayer* upPlayers = nullptr;
 static int nUpPlayers = 0;
 
-enum Job : uint8_t { NONE, LOGIN, SYNC, LINK };
+enum Job : uint8_t { NONE, LOGIN, SYNC, LINK, PROFILE };
+// Perfil público de un jugador (su QR; s3_perfil.h): no hace falta cuenta, va con la clave pública.
+static char* profileBody = nullptr;
+static int profileResult = 0;  // 0 sin terminar, 1 publicado, -1 no se pudo
+static uint8_t profileReturn = 0;  // fase y aviso de la cuenta de antes (se dejan igual)
+static char profileMessage[96] = "";
 // Entrar con QR: código aleatorio que enseña la placa (y su dirección de la app) y si se ha dejado de esperar.
 static const char* APP_URL = "https://altocu87.github.io/MARCADOR-FUTBOLIN-CLAUDE/app/";
 static char linkCode[40] = "";
@@ -413,6 +418,120 @@ static bool waitLink() {
   }
   snprintf(jobError, sizeof(jobError), "%s", linkCancel ? "" : "El QR ha caducado: vuelve a probar");
   return false;
+}
+
+// ---------------------------------------------------------------- equipos fijos (en las preferencias de la mesa)
+// La app los guarda en la fila «prefs»/«mesa», campo «clubs» (src/services/cloud/sync.ts). La tarea solo mueve
+// texto: lo baja a clubsDown y sube clubsUp (los prepara y los aplica loop(), que es quien toca la memoria del chip).
+static char* clubsUp = nullptr;    // equipos de la placa para subir (nullptr: nada que subir)
+static char* clubsDown = nullptr;  // equipos que llegan de la cuenta
+static char* clubsGoneIds = nullptr;  // ids borrados en la placa («id\n…»), para no recuperarlos de la cuenta
+static bool clubsPushedOk = false;
+static char* (*clubsOut)() = nullptr;          // loop(): los equipos en JSON si hay cambios sin subir
+static char* (*clubsGone)() = nullptr;         // loop(): los borrados aquí sin subir
+static void (*clubsIn)(const char*) = nullptr;  // loop(): llegaron de la cuenta
+static void (*clubsDone)() = nullptr;           // loop(): ya están en la cuenta
+
+static bool post(const char* body);
+
+// Los de la placa más los de la cuenta que la placa no tiene (ni ha borrado, ni son de una pareja que ya tiene).
+// Así un equipo creado en la app mientras tanto no se pierde. malloc.
+static bool hasText(const char* hay, const char* needle) { return hay && needle[0] && strstr(hay, needle); }
+static char* mergeClubs(const char* mine, const char* cloud) {
+  size_t cap = strlen(mine) + (cloud ? strlen(cloud) : 0) + 8;
+  char* out = (char*)malloc(cap);
+  if (!out) return nullptr;
+  size_t k = strlen(mine);
+  memcpy(out, mine, k);
+  while (k && out[k - 1] != ']') k--;
+  if (k) k--;  // sin el «]»
+  bool empty = k <= 1;
+  if (cloud && *cloud == '[')
+    for (const char* o = partidos::nextIn(cloud, nullptr); o; o = partidos::nextIn(cloud, o)) {
+      char id[60], key[80], a[48] = "", b[48] = "";
+      partidos::strOf(partidos::keyIn(o, "id"), id, sizeof(id));
+      const char* ids = partidos::keyIn(o, "playerIds");
+      if (ids && *ids == '[') {
+        const char* q = strchr(ids, '"');
+        if (q) {
+          partidos::strOf(q, a, sizeof(a));
+          q = strchr(partidos::skipStr(q), '"');
+          if (q && q < partidos::closeOf(ids)) partidos::strOf(q, b, sizeof(b));
+        }
+      }
+      if (strcmp(a, b) > 0) { char t[48]; memcpy(t, a, 48); memcpy(a, b, 48); memcpy(b, t, 48); }
+      snprintf(key, sizeof(key), "\"id\":\"%s\"", id);
+      if (!id[0] || hasText(mine, key)) continue;
+      snprintf(key, sizeof(key), "%s\n", id);
+      if (clubsGoneIds && !strncmp(clubsGoneIds, key, strlen(key))) continue;
+      snprintf(key, sizeof(key), "\n%s\n", id);
+      if (hasText(clubsGoneIds, key)) continue;
+      char pair[110];
+      snprintf(pair, sizeof(pair), "[\"%s\",\"%s\"]", a, b);
+      if (hasText(mine, pair)) continue;
+      const char* end = partidos::closeOf(o);
+      size_t n = (size_t)(end - o + 1);
+      if (k + n + 4 > cap) break;
+      if (!empty) out[k++] = ',';
+      memcpy(out + k, o, n);
+      k += n;
+      empty = false;
+    }
+  out[k++] = ']';
+  out[k] = 0;
+  return out;
+}
+
+// Sube los equipos sin tocar lo demás de las preferencias: se lee la fila, se cambia solo «clubs» y se guarda.
+static bool pushClubs() {
+  char url[200];
+  snprintf(url, sizeof(url), "%s/rest/v1/mesa_datos?select=datos&tipo=eq.prefs&id=eq.mesa", URL);
+  Resp r = http("GET", url, access, nullptr, nullptr);
+  if (r.code != 200 || !r.body) {
+    snprintf(jobError, sizeof(jobError), r.code ? "No se pudieron leer los equipos (%d)" : "Sin conexión con la nube", r.code);
+    free(r.body);
+    return false;
+  }
+  const char* arr = r.body;
+  while (*arr && *arr != '[') arr++;
+  const char* row = partidos::nextIn(arr, nullptr);
+  const char* datos = row ? partidos::keyIn(row, "datos") : nullptr;
+  const char* cloudClubs = datos && *datos == '{' ? partidos::keyIn(datos, "clubs") : nullptr;
+  char* merged = mergeClubs(clubsUp, cloudClubs);
+  if (!merged) {
+    free(r.body);
+    snprintf(jobError, sizeof(jobError), "Sin memoria para subir los equipos");
+    return false;
+  }
+  size_t up = strlen(merged), cap = up + 120 + (datos ? strlen(datos) : 0);
+  char* body = (char*)malloc(cap);
+  bool ok = false;
+  if (body) {
+    int k = snprintf(body, cap, "[{\"tipo\":\"prefs\",\"id\":\"mesa\",\"borrado\":false,\"datos\":");
+    if (datos && *datos == '{') {
+      const char* end = partidos::closeOf(datos);
+      const char* old = partidos::keyIn(datos, "clubs");
+      if (old && (*old == '[' || *old == 'n')) {  // se cambia su valor
+        const char* oldEnd = *old == '[' ? partidos::closeOf(old) + 1 : old + 4;
+        k += snprintf(body + k, cap - k, "%.*s%s%.*s", (int)(old - datos), datos, merged, (int)(end - oldEnd + 1), oldEnd);
+      } else {  // no estaba: delante de lo demás
+        const char* rest = datos + 1;
+        while (*rest == ' ' || *rest == '\n') rest++;
+        k += snprintf(body + k, cap - k, "{\"clubs\":%s%s%.*s", merged, *rest == '}' ? "" : ",", (int)(end - rest + 1), rest);
+      }
+    } else {
+      k += snprintf(body + k, cap - k, "{\"clubs\":%s}", merged);
+    }
+    snprintf(body + k, cap - k, "}]");
+    ok = post(body);
+  }
+  free(body);
+  free(r.body);
+  // loop() se queda con la lista unida (la de la cuenta ya es esta).
+  free(clubsDown);
+  clubsDown = ok ? merged : nullptr;
+  if (!ok) free(merged);
+  return ok;
 }
 
 static bool post(const char* body) {
@@ -518,6 +637,19 @@ static bool takeRow(const char* o) {
       return false;
     }
     return true;
+  } else if (!strcmp(tipo, "prefs")) {
+    const char* clubs = !del && !strcmp(id, "mesa") && datos && *datos == '{' ? partidos::keyIn(datos, "clubs") : nullptr;
+    if (clubs && *clubs == '[') {
+      const char* end = partidos::closeOf(clubs);
+      size_t n = (size_t)(end - clubs + 1);
+      char* copy = (char*)malloc(n + 1);
+      if (!copy) return false;
+      memcpy(copy, clubs, n);
+      copy[n] = 0;
+      free(clubsDown);
+      clubsDown = copy;
+    }
+    return true;
   } else if (!strcmp(tipo, "player")) {
     if (del) {
       c.kind = 'q';
@@ -548,7 +680,7 @@ static bool pull(const char* since) {
   for (int offset = 0;; offset += 20) {
     char url[400];
     snprintf(url, sizeof(url),
-             "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(player,match)&order=actualizado.asc,tipo.asc,id.asc&limit=20&offset=%d%s%s",
+             "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(player,match,prefs)&order=actualizado.asc,tipo.asc,id.asc&limit=20&offset=%d%s%s",
              URL, offset, since[0] ? "&actualizado=gt." : "", since);
     // «+» de la hora (zona) en la dirección: %2B
     char enc[480];
@@ -599,7 +731,14 @@ static void runJob() {
     return;
   }
 
-  if (job == LINK) {
+  if (job == PROFILE) {
+    char url[160];
+    snprintf(url, sizeof(url), "%s/rest/v1/rpc/publicar_perfil_jugador", URL);
+    Resp r = http("POST", url, ANON, nullptr, profileBody);
+    free(r.body);
+    jobOk = r.code >= 200 && r.code < 300;
+    if (!jobOk) snprintf(jobError, sizeof(jobError), r.code ? "No se pudo publicar (%d)" : "Sin conexión", r.code);
+  } else if (job == LINK) {
 
     jobOk = waitLink();
   } else if (job == LOGIN) {
@@ -635,6 +774,7 @@ static void runJob() {
       else ups[i].done = true;  // «j»: los jugadores ya van arriba
     }
     if (jobOk) for (int i = 0; i < nUps; i++) if (ups[i].line[0] == 'j') ups[i].done = true;
+    if (jobOk && clubsUp) jobOk = clubsPushedOk = pushClubs();
   }
   if (wifiDown) wifiDown();
   jobDone = true;
@@ -734,8 +874,28 @@ static void freeUploads() {
 }
 
 // Prepara lo pendiente sin perder la cola persistente cuando no cabe en memoria.
+// Publicar el perfil de un jugador (el texto es de la tarea hasta que acaba). false si la red está ocupada.
+static bool publishProfile(char* body) {
+  if (phase == BUSY || !body) {
+    free(body);
+    return false;
+  }
+  free(profileBody);
+  profileBody = body;
+  profileResult = 0;
+  profileReturn = phase;
+  snprintf(profileMessage, sizeof(profileMessage), "%s", message);
+  nChanges = applied = 0;
+  Saved keep = saved;
+  startJob(PROFILE);
+  saved = keep;
+  return true;
+}
+
+// Modo prueba (s3_datos.h): no se sube ni se baja nada; lo de prueba no llega nunca a la cuenta.
+static bool paused = false;
 static void sync() {
-  if (phase == BUSY || !loggedIn()) return;
+  if (paused || phase == BUSY || !loggedIn()) return;
   freeUploads();
   recoverPending();
   pendingBytes = 0;
@@ -787,6 +947,13 @@ static void sync() {
     return;
   }
   nChanges = applied = 0;
+  free(clubsUp);
+  free(clubsDown);
+  clubsDown = nullptr;
+  clubsPushedOk = false;
+  clubsUp = clubsOut ? clubsOut() : nullptr;
+  free(clubsGoneIds);
+  clubsGoneIds = clubsUp && clubsGone ? clubsGone() : nullptr;
   startJob(SYNC);
 }
 
@@ -869,12 +1036,34 @@ static void apply() {
     c.px = nullptr;
   }
   if (phase != BUSY || !jobDone || applied < nChanges) return;
+  // Equipos: lo subido manda; si no había nada que subir, lo de la cuenta sustituye a lo de aquí.
+  if (job == SYNC) {
+    if (clubsUp && clubsPushedOk) {
+      if (clubsDown && clubsIn) clubsIn(clubsDown);
+      if (clubsDone) clubsDone();
+    } else if (!clubsUp && clubsDown && clubsIn) clubsIn(clubsDown);
+  }
+  free(clubsGoneIds);
+  clubsGoneIds = nullptr;
+  free(clubsUp);
+  free(clubsDown);
+  clubsUp = clubsDown = nullptr;
+  clubsPushedOk = false;
   // Trabajo terminado y todo aplicado.
   saved = jobSaved;
   freeUploads();
   free(changes);
   changes = nullptr;
   nChanges = capChanges = applied = 0;
+  if (job == PROFILE) {  // no toca la cuenta ni lo pendiente
+    free(profileBody);
+    profileBody = nullptr;
+    profileResult = jobOk ? 1 : -1;
+    job = NONE;
+    phase = profileReturn;
+    snprintf(message, sizeof(message), "%s", profileMessage);
+    return;
+  }
   if (job == LOGIN || job == LINK) {
     job = NONE;
     linkCode[0] = 0;

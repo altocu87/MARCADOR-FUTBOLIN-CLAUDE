@@ -28,7 +28,7 @@ enum class Btn : uint8_t {
   // Inicio: ajustes y aviso de versión nueva
   Settings, UpdateAvail,
   // Ajustes
-  Back, SetWifi, SetUpdate, VolMinus, VolPlus, SetTest, SetPlayers, SetAccount,
+  Back, SetWifi, SetUpdate, SetSound, SetScreen, SetTest, SetPlayers, SetAccount, SetMatch, SetMando, SetTeams, SetData,
   // Wi-Fi: redes (WifiNet0 + n), buscar otra vez, olvidar
   WifiNet0, WifiNet1, WifiNet2, WifiNet3, WifiNet4, WifiRescan, WifiForget,
   // Teclado
@@ -59,14 +59,21 @@ const Button HOME[] = {
 
 // ---- Ajustes (VOLVER arriba a la derecha en todas las pantallas de ajustes)
 const Rect BACK = {610, 8, 170, 56};
+// Menú de AJUSTES (s3_opciones.h): 4 filas de botones grandes. El orden de la lista no cambia (las pruebas usan [1],
+// [2]…): los nuevos van al final.
 const Button SETTINGS[] = {
     {Btn::Back, BACK},
-    {Btn::SetWifi, {40, 76, 720, 60}},
-    {Btn::SetUpdate, {40, 142, 720, 60}},
-    {Btn::VolMinus, {460, 208, 110, 60}}, {Btn::VolPlus, {650, 208, 110, 60}},
-    {Btn::SetTest, {40, 274, 720, 60}},
-    {Btn::SetPlayers, {40, 340, 720, 60}},
-    {Btn::SetAccount, {40, 406, 720, 60}},
+    {Btn::SetWifi, {536, 278, 248, 93}},
+    {Btn::SetUpdate, {16, 379, 380, 93}},
+    {Btn::SetSound, {276, 76, 248, 93}},
+    {Btn::SetScreen, {536, 76, 248, 93}},
+    {Btn::SetTest, {404, 379, 380, 93}},
+    {Btn::SetPlayers, {276, 177, 248, 93}},
+    {Btn::SetAccount, {16, 278, 248, 93}},
+    {Btn::SetMatch, {16, 76, 248, 93}},
+    {Btn::SetMando, {16, 177, 248, 93}},
+    {Btn::SetTeams, {536, 177, 248, 93}},
+    {Btn::SetData, {276, 278, 248, 93}},
 };
 
 // ---- Wi-Fi: hasta 5 redes

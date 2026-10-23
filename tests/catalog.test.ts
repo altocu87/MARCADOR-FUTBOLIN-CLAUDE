@@ -3,6 +3,7 @@ import { BOARDS, CAP_LABEL, DETECTION, PIN_FUNCTIONS, PIN_ORDER, findBoard, type
 import boardsHeader from '../hardware/common/mfv3_boards.h?raw';
 import mandoIno from '../hardware/mando_pulsadores/mando_pulsadores.ino?raw';
 import s3Ino from '../hardware/esp32s3_pantalla7/esp32s3_pantalla7.ino?raw';
+import s3Ajustes from '../hardware/esp32s3_pantalla7/s3_ajustes.h?raw';
 
 // Todos los sketches (texto) para comprobar que existe el de cada placa.
 const SKETCHES = import.meta.glob('../hardware/*/*.ino', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -53,6 +54,14 @@ describe('Catálogo «Hazlo tú mismo»', () => {
     const mando = findBoard('mando-c3')!;
     expect(ino).toContain(`PIN_BTN_BLANCO = ${digits(mando.pins.btnBlanco!)};`);
     expect(ino).toContain(`PIN_BTN_AZUL = ${digits(mando.pins.btnAzul!)};`);
+  });
+
+  it('cada programa de mando que descarga la pantalla se compila con el perfil de su mini', () => {
+    const ids = [...s3Ajustes.matchAll(/"(mando-[\w-]+)"/g)].map((m) => m[1]);
+    expect(ids.sort()).toEqual(['mando-c3', 'mando-c3zero']);
+    expect(findBoard('mando-c3')!.build?.defines ?? '').not.toContain('MFV3_MANDO_RGB_PIN');
+    expect(findBoard('mando-c3zero')!.build?.defines).toContain('-DMFV3_MANDO_RGB_PIN=10');
+    for (const id of ids) expect(findBoard(id)!.sketch).toBe('mando_pulsadores');
   });
 
   it('cada modelo que el firmware puede anunciar está en el catálogo', () => {

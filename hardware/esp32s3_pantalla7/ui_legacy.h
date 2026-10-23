@@ -85,13 +85,15 @@ class LegacyGfx {
   const lv_font_t* lvFont() {
     using namespace lgfx::fonts;
     const lgfx::IFont* f = font_;
+    // Solo letras que ya están en la memoria de la placa (fuentes.txt): las que faltaban se quedaban en la letra
+    // pequeña de LVGL con un aviso en cada dibujo.
     if (f == &FreeSans9pt7b) return assets::font(400, 16);
-    if (f == &FreeSansBold9pt7b) return assets::font(700, 16);
-    if (f == &FreeSans12pt7b) return assets::font(400, 20);
-    if (f == &FreeSansBold12pt7b) return assets::font(700, 20);
-    if (f == &FreeSansBold18pt7b) return assets::font(700, 30);
-    if (f == &FreeSansBold24pt7b) return assets::font(700, 40);
-    return assets::font(700, 20);
+    if (f == &FreeSansBold9pt7b) return assets::font(800, 17);
+    if (f == &FreeSans12pt7b) return assets::font(400, 22);
+    if (f == &FreeSansBold12pt7b) return assets::font(800, 20);
+    if (f == &FreeSansBold18pt7b) return assets::font(900, 30);
+    if (f == &FreeSansBold24pt7b) return assets::font(900, 38);
+    return assets::font(800, 20);
   }
 
   // Un rectángulo relleno tapa lo que había: se borran los objetos que quedan enteros debajo.

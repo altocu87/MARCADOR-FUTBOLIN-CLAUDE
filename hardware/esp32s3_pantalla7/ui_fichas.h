@@ -19,6 +19,7 @@ struct Hooks {
   void (*back)() = nullptr;  // volver a AJUSTES
   void (*changed)(uint32_t code) = nullptr;   // jugador creado o cambiado (para subirlo a la cuenta)
   void (*removed)(const char* id) = nullptr;  // jugador borrado
+  void (*qr)(uint32_t code) = nullptr;         // QR de su perfil (AJUSTES, s3_opciones.h)
 };
 static Hooks hooks;
 
@@ -117,7 +118,11 @@ static void face(lv_obj_t* parent, const jug::Player& p, int x, int y, int size,
   lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
   char ini[8];
   jug::initials(p.name, ini, sizeof(ini));
-  lv_obj_t* l = ui::text(b, ini, 900, iniSize, ui::color::TEXT2);
+  // Solo tamaños que hay en la placa (fuentes.txt): 40 u 80 caían en la letra pequeña de LVGL.
+  static const uint16_t SIZES[] = {11, 12, 13, 14, 15, 20, 24, 26, 30, 34, 38};
+  uint16_t sz = SIZES[0];
+  for (uint16_t s : SIZES) if (s <= iniSize) sz = s;
+  lv_obj_t* l = ui::text(b, ini, 900, sz, ui::color::TEXT2);
   lv_obj_center(l);
 }
 
@@ -191,6 +196,9 @@ static void onRename(lv_event_t*) {
 }
 static void onChangePhoto(lv_event_t*) { go(View::Photos); }
 static void onAskDelete(lv_event_t*) { go(View::Confirm); }
+static void onQr(lv_event_t*) {
+  if (hooks.qr && editCode) hooks.qr(editCode);
+}
 
 static void buildDetail() {
   const jug::Player* p = editing();
@@ -200,9 +208,10 @@ static void buildDetail() {
   lv_label_set_long_mode(n, LV_LABEL_LONG_MODE_DOTS);
   lv_obj_set_width(n, 420);
   lv_obj_set_pos(n, 340, 110);
-  btn(scr, 340, 186, 420, 66, "CAMBIAR NOMBRE", 18, Kind::Normal, onRename);
-  btn(scr, 340, 266, 420, 66, "CAMBIAR FOTO", 18, Kind::Normal, onChangePhoto);
-  btn(scr, 340, 346, 420, 66, "BORRAR JUGADOR", 18, Kind::Danger, onAskDelete);
+  btn(scr, 340, 166, 420, 66, "CAMBIAR NOMBRE", 18, Kind::Normal, onRename);
+  btn(scr, 340, 240, 420, 66, "CAMBIAR FOTO", 18, Kind::Normal, onChangePhoto);
+  btn(scr, 340, 314, 420, 66, "QR DEL PERFIL", 18, Kind::Normal, onQr);
+  btn(scr, 340, 388, 420, 66, "BORRAR JUGADOR", 18, Kind::Danger, onAskDelete);
 }
 
 // ---------------------------------------------------------------- BORRAR

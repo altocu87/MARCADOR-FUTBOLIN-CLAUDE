@@ -64,6 +64,7 @@
 #include "ui_cargando.h"
 #include "s3_loco.h"
 #include "s3_partidos.h"
+#include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
 
 using mfv3::Engine;
@@ -157,17 +158,28 @@ static char wifiSsid[33] = "", wifiPass[65] = "";
 // Brillo elegido desde la app (orden «BRILLO 0–100»); se guarda y se recupera al despertar del reposo.
 static uint8_t userBrightness = 100;
 static uint8_t backlightLevel() { return (uint8_t)(10 + (uint16_t)userBrightness * 245 / 100); }
+// Minutos sin usarla hasta el reloj de reposo (AJUSTES → PANTALLA). 0 = nunca.
+static uint8_t sleepMinutes = (uint8_t)(SLEEP_AFTER_MS / 60000UL);
+static uint32_t sleepAfterMs() { return sleepMinutes ? sleepMinutes * 60000UL : 0; }
+// Mando: modelo de su mini (mfv3_ota.h, MODEL_*), para descargar su programa al actualizarlo.
+static volatile uint8_t mandoModelSaid = 0;  // el que dice el mando (0: no lo dice, programa anterior)
+static uint8_t mandoModelChosen = 0;         // el último conocido o elegido en AJUSTES → MANDO (se guarda)
 
 static void loadPrefs() {
   prefs.begin("mfv3", false);
   cfg.endCondition = (mfv3::EndCondition)prefs.getUChar("cond", 0);
   cfg.goalsPerPeriod = prefs.getUChar("goals", 5);
   cfg.minutesPerPeriod = prefs.getUChar("mins", 5);
+  cfg.penaltyFirst = prefs.getUChar("pfirst", 0) ? Team::Blue : Team::White;
   if (!cfg.valid()) cfg = mfv3::Config();
   matchesPlayed = prefs.getULong("played", 0);
   historyCount = prefs.getBytes("hist2", history, sizeof(history)) / sizeof(LastResult);  // «hist2»: con fecha
   userBrightness = prefs.getUChar("bri", 100);
   if (userBrightness > 100) userBrightness = 100;
+  sleepMinutes = prefs.getUChar("slp", sleepMinutes);
+  if (sleepMinutes > 60) sleepMinutes = (uint8_t)(SLEEP_AFTER_MS / 60000UL);
+  mandoModelChosen = prefs.getUChar("mmod", 0);
+  if (mandoModelChosen > mfv3::ota::MODEL_C3_ZERO) mandoModelChosen = 0;
   sndVolume = prefs.getUChar("vol", 80);
   if (sndVolume > 100) sndVolume = 100;
   char text[mfv3snd::EVENT_COUNT*64+1] = {0};
@@ -256,6 +268,7 @@ static void saveConfig() {
   prefs.putUChar("cond", (uint8_t)cfg.endCondition);
   prefs.putUChar("goals", cfg.goalsPerPeriod);
   prefs.putUChar("mins", cfg.minutesPerPeriod);
+  prefs.putUChar("pfirst", cfg.penaltyFirst == Team::Blue ? 1 : 0);
 }
 
 static void saveMatchFile();
@@ -387,6 +400,7 @@ static Snapshot takeSnapshot() {
 
 // La racha se invalida con los eventos del motor, nunca por el paso de un fotograma.
 static bool streakDirty = true, matchFixedDirty = true;
+static bool rankingFresh = false;  // RANKING: rehacer la pantalla (datos nuevos)
 static uint8_t streakCount = 0, streakTeam = 0;
 static uint8_t lastStreak() {
   if (!streakDirty) return streakCount;
@@ -847,7 +861,7 @@ static void handleBoardLine(const char* line) {
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
   else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i));
-  else if (!strcmp(word, "REPOSO")) lastActivity = millis() - SLEEP_AFTER_MS - 1;  // a reposo ya (para probarlo)
+  else if (!strcmp(word, "REPOSO")) lastActivity = millis() - sleepAfterMs() - 1;  // a reposo ya (para probarlo)
   else if (!strcmp(word, "PERFIL")) {  // «PERFIL» (pantalla entera) o «PERFIL x y ancho alto» (solo esa zona)
     int x = 0, y = 0, w = 0, h = 0;
     lv_area_t a;
@@ -893,6 +907,7 @@ static void otaPush(const uint8_t* data, int len) {
   if (in.ok) {
     uint32_t t = millis();
     mandoBuild = in.build;
+    mandoModelSaid = in.model;
     mandoInfoAt = t ? t : 1;  // 0 = «nunca»
     lastRadioAt = t;
     return;
@@ -992,7 +1007,10 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
   gfx.drawFastHLine(0, 44, ui::W, C_LINE);
 }
 
-#include "s3_ajustes.h"  // AJUSTES: Wi-Fi, actualizar, volumen (usa lo de arriba)
+#include "s3_ajustes.h"  // AJUSTES: Wi-Fi y actualizar (usa lo de arriba)
+#include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
+#include "s3_perfil.h"    // el QR del perfil de cada jugador
+#include "s3_opciones.h"  // AJUSTES: menú y sus apartados
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -1397,7 +1415,6 @@ static void onConfigNext() {
 }
 // Atrás desde elegir jugadores: lo elegido se guarda por si se vuelve a CONTINUAR (como la app).
 // Inicio → RANKING (de momento, el historial de partidos; TORNEO y RETOS llegarán más adelante).
-static bool rankingFresh = false;
 static void onHomeMenu(uint8_t which) {
   if (which == inicio::RANKING) {
     screen = Screen::Ranking;
@@ -1453,6 +1470,7 @@ static bool nubeWifiDown() {
 
 // Recién entrado con la cuenta: todo lo de la placa se apunta para subir.
 static void nubeLoggedIn() {
+  if (equipos::count) equipos::save(true);  // los equipos de aquí, también (se unen con los de la cuenta)
   for (int i = 0; i < partidos::count; i++) nube::matchSaved(partidos::rows[i].id);
   for (int i = 0; i < jugadores.count; i++) nube::playerChanged(jugadores.list[i].code);
 }
@@ -1540,9 +1558,20 @@ static void formatClock(char* out, size_t n, uint32_t ms) {
 // Copia de presentación sin temporizadores: textos, reglas y fichas se preparan al iniciar,
 // al cambiar de parte o cuando la app actualiza un jugador. No conserva punteros al almacén.
 static partido::View matchFixed;
+// Nombre del equipo fijo de cada lado (s3_equipos.h), si juega una pareja guardada.
+static void clubNames(char out[2][28]) {
+  for (int t = 0; t < 2; t++) {
+    out[t][0] = 0;
+    if (!haveTeams || chosenTeams.n[t] != 2) continue;
+    const equipos::Club* c = equipos::findCodes(jugadores, chosenTeams.code[t][0], chosenTeams.code[t][1]);
+    if (c) snprintf(out[t], 28, "%s", c->name);
+  }
+}
+
 static void prepareMatchFixed() {
   memset(&matchFixed, 0, sizeof(matchFixed));
   partido::View& v = matchFixed;
+  clubNames(v.team);
   const mfv3::Config& c = eng.config();
   v.mode = chosenMode;
   v.period = (uint8_t)eng.period();
@@ -1731,6 +1760,7 @@ static void victoryView(victoria::View& v) {
   v.winner = (uint8_t)eng.winner();
   v.white = s.white;
   v.blue = s.blue;
+  clubNames(v.team);
   char d[8];
   formatClock(d, sizeof(d), eng.totalTimeMs());
   int n = snprintf(v.facts, sizeof(v.facts), "Duración %s", d);
@@ -1786,8 +1816,10 @@ static void render() {
     char warn[32];
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
     else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
-    inicio::setStatus(remoteLinked(), updateAvailable(), low || !rtc.clockOk ? warn : nullptr, nube::loggedIn() ? nube::pendingCount : 0);
+    inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
+                      nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -1807,6 +1839,13 @@ static void render() {
   if (!test.active && !inMatch && screen == Screen::Ranking && !sleepClock()) {
     if (!historial::active() || rankingFresh) historial::show(&jugadores, rankingFresh);
     rankingFresh = false;
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (!test.active && !inMatch && screen == Screen::Settings && !sleepClock()) {
+    if (!opciones::active() || opcionesFresh) opciones::show(opcionesFresh);
+    opcionesFresh = false;
+    opciones::tick();
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2078,6 +2117,7 @@ void setup() {
   victoria::hooks.home = goHome;
   elegir::hooks.back = onPlayersBack;
   fichas::hooks.back = onFichasBack;
+  fichas::hooks.qr = opciones::openQr;
   fichas::hooks.changed = onFichaChanged;
   fichas::hooks.removed = onFichaRemoved;
   cuenta::hooks.back = onCuentaBack;
@@ -2120,6 +2160,18 @@ void setup() {
 #else
   nube::begin(&jugadores, "../build/placa");
 #endif
+  // Equipos fijos y datos: en la carpeta de los jugadores. Si se fue la luz a medio cambiar los datos (modo prueba o
+  // restaurar una copia), se dejan como estaban.
+  if (jugadores.ok) {
+    equipos::begin(&FFat);
+    perfil::fs_ = &FFat;
+    datos::chip = &FFat;
+    datos::recover();
+  }
+  nube::clubsOut = []() -> char* { return equipos::dirty ? equipos::toJson() : nullptr; };
+  nube::clubsGone = equipos::goneIds;
+  nube::clubsIn = [](const char* arr) { equipos::fromJson(arr); };
+  nube::clubsDone = equipos::pushed;
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
@@ -2182,6 +2234,9 @@ void loop() {
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
+  // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
+  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::busy() || versionsRunning ||
+                     screen == Screen::Install);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
   // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
   bool managementBusy=false;
@@ -2204,7 +2259,7 @@ void loop() {
 
   // Atenuar la pantalla tras inactividad fuera de un partido en juego.
   bool idleScreen = (!inMatch && screen != Screen::Install) || (inMatch && eng.phase() == Phase::Finished);
-  if (idleScreen && !dimmed && now - lastActivity > SLEEP_AFTER_MS) {
+  if (idleScreen && !dimmed && sleepAfterMs() && now - lastActivity > sleepAfterMs()) {
     dimmed = true;
     lcd.backlight(16);
   }

@@ -1,4 +1,5 @@
-// MARCADOR FUTBOLÍN V3 · pantalla de 7": AJUSTES (Wi-Fi con teclado, actualizar, volumen, prueba).
+// MARCADOR FUTBOLÍN V3 · pantalla de 7": AJUSTES → Wi-Fi (con teclado) y Actualizaciones. El menú y los demás
+// apartados están en s3_opciones.h.
 // -------------------------------------------------------------------------------------------------
 // Se incluye A MITAD del sketch (después de los colores, lcd, prefs, text() y button()), porque dibuja con
 // ellos. Todo lo de red está en s3_net.h; el protocolo para pasar el programa al mando, en mfv3_ota.h.
@@ -13,7 +14,8 @@
 #ifndef MFV3_S3_AJUSTES_H
 #define MFV3_S3_AJUSTES_H
 
-static const char* MANDO_ID = "mando-c3";  // programa del mando en la web (ESP32-C3 Super Mini)
+// Programa del mando en la web, según su mini: Super Mini (LED en GPIO8) o Waveshare C3-Zero (LED RGB en GPIO10).
+static const char* mandoId(uint8_t model) { return model == mfv3::ota::MODEL_C3_ZERO ? "mando-c3zero" : "mando-c3"; }
 
 // ---------------------------------------------------------------- Wi-Fi
 static s3net::Network nets[ui::WIFI_ROWS];
@@ -40,17 +42,31 @@ static void forgetWifi() {
 }
 
 // ---------------------------------------------------------------- versiones
-static mfv3::ota::Published pubScreen, pubMando;
+static mfv3::ota::Published pubScreen, pubMando;  // pubMando: el del modelo de este mando
+static mfv3::ota::Published pubMandoBy[3];         // publicados de cada modelo (0 sin uso)
 enum class CheckState : uint8_t { Never, Running, Ok, NoConnect, Failed };
 static CheckState checkState = CheckState::Never;
 
-enum class MandoUpd : uint8_t { Unknown, NeedsCable, UpToDate, Outdated };
+enum class MandoUpd : uint8_t { Unknown, NeedsCable, NeedsModel, UpToDate, Outdated };
 
 // El mando dice su versión con cada saludo (cada 20 s). Si se le oye pero nunca la dice, tiene un programa
 // anterior a las actualizaciones por radio: hay que ponérselo una vez por USB.
 static bool mandoInfoFresh() { return mandoInfoAt != 0 && millis() - mandoInfoAt < 90000UL; }
+// El modelo que dice el mando manda; si no lo dice (programa anterior), el elegido en AJUSTES → MANDO.
+static uint8_t mandoModel() { return mandoModelSaid ? mandoModelSaid : mandoModelChosen; }
+static void setMandoModel(uint8_t m) {
+  if (m > mfv3::ota::MODEL_C3_ZERO || m == mandoModelChosen) return;
+  mandoModelChosen = m;
+  prefs.putUChar("mmod", m);
+}
+static void syncMandoModel() {
+  if (mandoModelSaid && mandoModelSaid != mandoModelChosen) setMandoModel(mandoModelSaid);
+  pubMando = pubMandoBy[mandoModel() <= mfv3::ota::MODEL_C3_ZERO ? mandoModel() : 0];
+}
 static MandoUpd mandoUpd() {
   if (!mandoInfoFresh()) return remoteLinked() ? MandoUpd::NeedsCable : MandoUpd::Unknown;
+  // Sin saber su mini no se le pasa nada: el programa de otra mini dejaría su luz sin funcionar.
+  if (!mandoModel()) return MandoUpd::NeedsModel;
   return pubMando.ok() && pubMando.build > mandoBuild ? MandoUpd::Outdated : MandoUpd::UpToDate;
 }
 static bool screenOutdated() { return pubScreen.ok() && pubScreen.build > (uint32_t)MFV3_BUILD; }
@@ -59,13 +75,14 @@ static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUp
 // Solo los resultados cruzan de la tarea de red a loop(); LVGL y el reloj quedan en loop().
 static std::atomic<bool> versionsDone{false};
 static bool versionsRunning = false, versionsOk = false;
-static mfv3::ota::Published fetchedScreen, fetchedMando;
+static mfv3::ota::Published fetchedScreen, fetchedMando[3];
 static updateInfo::Release publishedRelease, fetchedRelease;
 static reloj::Clock fetchedClock;
 static bool fetchedClockOk = false;
 static void fetchVersionsWork() {
   versionsOk = s3net::fetchPublished(S3_BOARD_ID, fetchedScreen, &fetchedRelease);
-  s3net::fetchPublished(MANDO_ID, fetchedMando);
+  // Los dos modelos (unos cientos de bytes): cambiar de modelo no obliga a volver a buscar.
+  for (uint8_t m = mfv3::ota::MODEL_SUPER_MINI; m <= mfv3::ota::MODEL_C3_ZERO; m++) s3net::fetchPublished(mandoId(m), fetchedMando[m]);
   fetchedClockOk = reloj::internetClock(fetchedClock);
   versionsDone.store(true);
 }
@@ -76,7 +93,7 @@ static bool beginVersions() {
   if (versionsRunning) return false;
   fetchedRelease = updateInfo::Release();
   fetchedScreen = mfv3::ota::Published();
-  fetchedMando = mfv3::ota::Published();
+  for (auto& m : fetchedMando) m = mfv3::ota::Published();
   versionsDone = false;
   versionsRunning = true;
 #ifdef ARDUINO
@@ -96,7 +113,12 @@ static void finishVersions() {
   // La hora obtenida sigue siendo útil aunque se cancelase la búsqueda al empezar a jugar.
   if (fetchedClockOk) rtc.set(fetchedClock);
   if (checkState != CheckState::Running) return;  // cancelada al entrar en partido
-  if (versionsOk) { pubScreen = fetchedScreen; pubMando = fetchedMando; publishedRelease = fetchedRelease; }
+  if (versionsOk) {
+    pubScreen = fetchedScreen;
+    for (int m = 0; m < 3; m++) pubMandoBy[m] = fetchedMando[m];
+    syncMandoModel();
+    publishedRelease = fetchedRelease;
+  }
   checkState = versionsOk ? CheckState::Ok : CheckState::Failed;
   s3net::stop();
 }
@@ -134,6 +156,7 @@ static bool instErrorMando = false;
 static uint8_t instPct = 0;
 static uint32_t instAt = 0;
 static bool instMando = false, instScreen = false, instStepDrawn = false;
+static uint8_t instMandoModel = 0;  // la mini del mando que se está actualizando
 static mfv3::ota::Sender sender;
 static s3net::SlotSource slotSource;
 
@@ -157,7 +180,9 @@ static void instFail(const char* why) {
 
 static void startInstall() {
   if (inMatch || checkState != CheckState::Ok || versionsRunning || nube::busy() || s3net::scanning || !wifiSsid[0]) return;
+  syncMandoModel();
   instMando = mandoUpd() == MandoUpd::Outdated;
+  instMandoModel = mandoModel();
   instScreen = screenOutdated();
   if (!instMando && !instScreen) return;
   s3net::stop();
@@ -179,6 +204,8 @@ static void instProgress(uint32_t done, uint32_t total) {
   if (p != instPct) {
     instPct = p;
     drawProgressBar(p);
+    // Descargando se escribe en la flash y se usa el Wi-Fi a la vez: la imagen se realinea con cada avance.
+    uiport::resyncPanel();
     // Descarga y comprobación se ejecutan en loop(): refrescar el dibujo sin atender toques
     // ni disparar temporizadores que puedan abrir otra pantalla mientras se escribe flash.
     lv_refr_now(uiport::display);
@@ -201,7 +228,7 @@ static void installPoll(uint32_t now) {
     }
     case Inst::MandoDownload: {
       if (!instStepDrawn) return;  // primero se dibuja la pantalla de «descargando»; después, a descargar
-      bool ok = s3net::downloadToSlot(MANDO_ID, pubMando, instProgress);
+      bool ok = s3net::downloadToSlot(mandoId(instMandoModel), pubMando, instProgress);
       s3net::stop();  // la radio vuelve a su canal para hablar con el mando
       uint8_t md5[16];
       if (!ok || !mfv3::ota::md5FromHex(pubMando.md5, md5)) {
@@ -295,34 +322,6 @@ static void buildLabel(char* out, size_t n, uint32_t build) {
   else snprintf(out, n, "Version de prueba");
 }
 
-static void drawSettings() {
-  titleBar("AJUSTES", C_ACCENT);
-  settingRow(ui::SETTINGS[1].r, "WI-FI", wifiSsid[0] ? wifiSsid : "Sin configurar", wifiSsid[0] ? C_TEXT2 : C_GOLD);
-  char v[40];
-  uint16_t vc = C_TEXT2;
-  if (updateAvailable()) {
-    snprintf(v, sizeof(v), "Hay version nueva");
-    vc = C_GOLD;
-  } else if (checkState == CheckState::Running) {
-    snprintf(v, sizeof(v), "Buscando...");
-  } else {
-    snprintf(v, sizeof(v), "Version %s", FW_VERSION);
-  }
-  settingRow(ui::SETTINGS[2].r, "ACTUALIZACIONES", v, vc);
-#if HAS_AUDIO
-  const ui::Rect vr = {40, 208, 720, 60};
-  settingRow(vr, "VOLUMEN", nullptr, C_TEXT2);
-  button(ui::SETTINGS[3].r, "-", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
-  button(ui::SETTINGS[4].r, "+", C_SURFACE, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold24pt7b);
-  snprintf(v, sizeof(v), "%u%%", (unsigned)sndVolume);
-  text(v, 610, 238, &lgfx::fonts::FreeSansBold18pt7b, sndVolume ? C_TEXT : C_LINE);
-#endif
-  settingRow(ui::SETTINGS[5].r, "PRUEBA DE LA PLACA", nullptr, C_TEXT2);
-  snprintf(v, sizeof(v), "%u jugadores", (unsigned)jugadores.count);
-  settingRow(ui::SETTINGS[6].r, "JUGADORES", v, C_TEXT2);
-  settingRow(ui::SETTINGS[7].r, "CUENTA", nube::loggedIn() ? nube::saved.email : "Sin cuenta", nube::loggedIn() ? C_TEXT2 : C_GOLD);
-}
-
 static void signalBars(int x, int y, int8_t rssi) {
   uint8_t bars = rssi > -55 ? 4 : rssi > -67 ? 3 : rssi > -78 ? 2 : 1;
   for (uint8_t i = 0; i < 4; i++) {
@@ -402,7 +401,6 @@ static void drawConnecting() {
 
 static void drawAjustes() {
   switch (screen) {
-    case Screen::Settings: drawSettings(); break;
     case Screen::Wifi: drawWifi(); break;
     case Screen::Keyboard: drawKeyboard(); break;
     case Screen::Connecting: drawConnecting(); break;
@@ -424,11 +422,6 @@ static uint32_t ajustesKey() {
   mix((uint32_t)mandoUpd());
   mix(mandoBuild);
   switch (screen) {
-    case Screen::Settings:
-      mix(sndVolume);
-      mix(jugadores.count);
-      mix(nube::loggedIn());
-      break;
     case Screen::Wifi: mix(netScanned); mix(netCount); break;
     case Screen::Keyboard:
       mix(kbMode); mix(kbShow); mix((uint32_t)(uintptr_t)kbError);
@@ -449,7 +442,11 @@ static uint32_t ajustesKey() {
 }
 
 // ---------------------------------------------------------------- toques
-static void openSettings() { screen = Screen::Settings; }
+static bool opcionesFresh = false;  // AJUSTES desde Inicio: al menú (s3_opciones.h)
+static void openSettings() {
+  screen = Screen::Settings;
+  opcionesFresh = true;
+}
 
 // JUGADORES: crear, cambiar y borrar (ui_fichas.h, pantalla nueva de LVGL).
 static bool fichasFresh = false;
@@ -513,28 +510,6 @@ static void connectingPoll() {
 
 static void ajustesTap(int16_t x, int16_t y) {
   switch (screen) {
-    case Screen::Settings: {
-      ui::Btn b = ui::hit(ui::SETTINGS, x, y);
-      if (b == ui::Btn::Back) goHome();
-      else if (b == ui::Btn::SetWifi) openWifi();
-      else if (b == ui::Btn::SetUpdate) openUpdate();
-      else if (b == ui::Btn::SetPlayers) openPlayers();
-      else if (b == ui::Btn::SetAccount) openAccount();
-      else if (b == ui::Btn::SetTest) {
-        screen = Screen::Home;
-        enterTest();
-      }
-#if HAS_AUDIO
-      else if (b == ui::Btn::VolMinus || b == ui::Btn::VolPlus) {
-        int v = (int)sndVolume + (b == ui::Btn::VolPlus ? 10 : -10);
-        sndVolume = (uint8_t)(v < 0 ? 0 : v > 100 ? 100 : v);
-        prefs.putUChar("vol", sndVolume);
-        player.setVolume(sndVolume);
-        playTestTone();  // para oír cómo queda
-      }
-#endif
-      break;
-    }
     case Screen::Wifi: {
       ui::Btn b = ui::hit(ui::WIFI, x, y);
       if (b == ui::Btn::Back) screen = Screen::Settings;
@@ -600,6 +575,7 @@ static void ajustesTap(int16_t x, int16_t y) {
 
 // En loop(): recoger la búsqueda de redes sin bloquear el dibujo y atender conexiones e instalación.
 static void ajustesLoop(uint32_t now) {
+  if (screen != Screen::Install) syncMandoModel();  // nunca a mitad de una instalación
   if (s3net::scanning) {
     if (s3net::pollScan(nets, ui::WIFI_ROWS, netCount)) netScanned = true;
   } else if (screen == Screen::Wifi && !netScanned && !versionsRunning && !nube::busy() && lastKey == ajustesKey()) {

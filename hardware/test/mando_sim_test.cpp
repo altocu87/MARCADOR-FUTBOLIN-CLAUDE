@@ -21,7 +21,7 @@ static mfv3::RadioCmd lastCmd() {
   return m.cmd;
 }
 static mfv3::ota::Info lastInfo() {
-  mfv3::ota::Info last = {false, 0, false};
+  mfv3::ota::Info last = {false, 0, false, 0};
   for (auto& p : sim::radioSent) {
     mfv3::ota::Info i = mfv3::ota::decodeInfo(p.data(), (int)p.size(), GRUPO_MESA);
     if (i.ok) last = i;
@@ -52,6 +52,12 @@ int main() {
   assert(cmds().size() == 3 && lastCmd() == RadioCmd::Hello && sim::wifiChannel == mfv3::RADIO_CHANNEL);
   // Con el saludo, su versión (compilado a mano: 0) y sin armar.
   assert(lastInfo().ok && lastInfo().build == MFV3_BUILD && !lastInfo().armed);
+  // Y su modelo, para que la pantalla le pase el programa de su mini.
+#if MFV3_MANDO_RGB_PIN >= 0
+  assert(lastInfo().model == mfv3::ota::MODEL_C3_ZERO);
+#else
+  assert(lastInfo().model == mfv3::ota::MODEL_SUPER_MINI);
+#endif
   sim::radioSent.clear();
   run(50);
   // Toque corto en BLANCO (pulsado = LOW): 3 copias de GOL al soltar.
