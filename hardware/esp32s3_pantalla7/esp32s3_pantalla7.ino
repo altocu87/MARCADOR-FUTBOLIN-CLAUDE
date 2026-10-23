@@ -40,6 +40,7 @@
 #include "mfv3_ota.h"
 #include "mfv3_radio.h"
 #include "s3_net.h"
+#include "s3_fase3.h"  // solo en la compilación de prueba de la fase 3 (hardware/fase3)
 #include "s3_release.h"
 #include "mfv3_sound.h"
 #include "mfv3_audio.h"
@@ -963,6 +964,9 @@ static void handleBoardLine(const char* line) {
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
   else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i));
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  else if (!strcmp(word, "VOLVER_ANTERIOR")) { if (!fase3::rollback()) sendLine("VOLVER_ANTERIOR no hay"); }
+#endif
   else if (!strcmp(word, "REPOSO")) lastActivity = millis() - sleepAfterMs() - 1;  // a reposo ya (para probarlo)
   else if (!strcmp(word, "PERFIL")) {  // «PERFIL» (pantalla entera) o «PERFIL x y ancho alto» (solo esa zona)
     int x = 0, y = 0, w = 0, h = 0;
@@ -2381,6 +2385,9 @@ void setup() {
   initColors();
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
   loadPrefs();
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  fase3::onBoot(prefs);  // tres reinicios por fallo seguidos: vuelve sola a la versión anterior
+#endif
   lcd.backlight(backlightLevel());  // el brillo guardado
 #if HAS_AUDIO
   sndStore.begin();
@@ -2474,6 +2481,9 @@ void loop() {
 
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  fase3::tick(prefs, now);
+#endif
   ajustesLoop(now);
   // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
   // También al descomprimir fotos de jugadores (usan la PSRAM igual que la red); medio segundo más, para no cambiar

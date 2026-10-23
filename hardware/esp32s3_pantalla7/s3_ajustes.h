@@ -429,7 +429,11 @@ static uint32_t ajustesKey() {
       break;
     case Screen::Update:
       mix((uint32_t)updateTab); mix(updateHistoryPage);
-      mix(nube::busy()); mix(versionsRunning); mix(s3net::scanning); break;
+      mix(nube::busy()); mix(versionsRunning); mix(s3net::scanning);
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+      mix(fase3Armed());
+#endif
+      break;
     case Screen::Install:
       mix((uint32_t)inst);
       mix((uint32_t)sender.state());

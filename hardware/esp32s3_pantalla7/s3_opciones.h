@@ -205,7 +205,11 @@ static void fillWifi(char* b, size_t n, int) {
 static void fillUpdate(char* b, size_t n, int) {
   if (updateAvailable()) snprintf(b, n, "!Hay versión nueva");
   else if (checkState == CheckState::Running) snprintf(b, n, "Buscando...");
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  else snprintf(b, n, "Versión %s · prueba fase 3", FW_VERSION);
+#else
   else snprintf(b, n, "Versión %s", FW_VERSION);
+#endif
 }
 
 static void onMenu(lv_event_t* e) {

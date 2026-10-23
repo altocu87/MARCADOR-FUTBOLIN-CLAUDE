@@ -9,6 +9,10 @@
   python scripts/placa.py captura <nombre>       -> guarda lo que enseña la pantalla en docs/capturas-placa/<nombre>.png
   python scripts/placa.py jugadores [archivo]    -> pasa jugadores y fotos (build/placa/jugadores-demo.txt, de
                                                     node scripts/jugadores-demo-placa.mjs), como hace la app
+  python scripts/placa.py ranuras                -> qué programa hay en cada uno de los dos huecos y cuál arranca
+  python scripts/placa.py probar <programa.bin>  -> graba un programa de prueba (el «-ota.bin») en el hueco que NO
+                                                    está en uso y arranca con él: el de ahora se queda intacto
+  python scripts/placa.py volver                 -> vuelve a arrancar con el programa del otro hueco (el anterior)
 
 Usa arduino-cli con su propia carpeta de bibliotecas (LVGL 9.5, LovyanGFX, WebSockets) y copia lv_conf.h junto a lvgl.
 """
@@ -83,6 +87,106 @@ def esptool(*args):
     r = subprocess.run([exe, *args])
     if r.returncode != 0:
         sys.exit("esptool falló")
+
+
+# ---------------------------------------------------------------- dos huecos para el programa (partitions.csv)
+# La placa tiene dos huecos de 6 MB (app0 y app1); «otadata» dice con cuál arranca. Una actualización por Wi-Fi
+# escribe siempre en el que no está en uso, y lo mismo hace «probar»: así el programa de antes se queda entero y
+# «volver» solo cambia otra vez el hueco de arranque. Formato de otadata (ESP-IDF): dos copias de 4 KB; cada una
+# empieza por ota_seq (4 bytes), etiqueta (20), estado (4) y CRC32 de ota_seq. Arranca la de ota_seq mayor válida:
+# hueco (ota_seq - 1) % 2.
+OTADATA = 0xE000
+SLOTS = (0x10000, 0x610000)
+SLOT_SIZE = 0x600000
+
+
+def otadata_entries(raw):
+    out = []
+    for k in (0, 0x1000):
+        seq, label, state, crc = struct.unpack_from("<I20sII", raw, k)
+        valid = seq != 0xFFFFFFFF and crc == (zlib.crc32(struct.pack("<I", seq), 0xFFFFFFFF) & 0xFFFFFFFF)
+        out.append((seq, valid))
+    return out
+
+
+def boot_slot(raw):
+    """Hueco con el que arranca (0 o 1) y la ota_seq mayor válida (0 si otadata está vacío: arranca app0)."""
+    seqs = [seq for seq, ok in otadata_entries(raw) if ok]
+    if not seqs:
+        return 0, 0
+    top = max(seqs)
+    return (top - 1) % 2, top
+
+
+def otadata_for(raw, slot):
+    """otadata nuevo para arrancar con `slot`: una entrada más alta en la copia que no tiene la mayor."""
+    current, top = boot_slot(raw)
+    seq = top + 1
+    while (seq - 1) % 2 != slot:
+        seq += 1
+    entries = otadata_entries(raw)
+    keep = 0 if entries[0][1] and entries[0][0] == top else 1
+    sector = 1 - keep if top else 0
+    entry = struct.pack("<I20sII", seq, b"\xff" * 20, 0xFFFFFFFF, zlib.crc32(struct.pack("<I", seq), 0xFFFFFFFF) & 0xFFFFFFFF)
+    out = bytearray(raw)
+    out[sector * 0x1000 : (sector + 1) * 0x1000] = entry + b"\xff" * (0x1000 - len(entry))
+    return bytes(out)
+
+
+def app_info(head):
+    """Fecha y hora de compilación del programa de un hueco (esp_app_desc_t), o None si está vacío."""
+    if len(head) < 0x100 or head[0] != 0xE9 or struct.unpack_from("<I", head, 0x20)[0] != 0xABCD5432:
+        return None
+    text = lambda a, n: head[a : a + n].split(b"\0")[0].decode("ascii", "replace")
+    return f"compilado {text(0x90, 16)} {text(0x80, 16)} (IDF {text(0xA0, 32)})"
+
+
+def read_flash(port, addr, size):
+    tmp = os.path.join(os.environ.get("TEMP", "/tmp"), f"mfv3_lee_{addr:x}.bin")
+    esptool("--chip", "esp32s3", "--port", port, "--after", "no-reset", "read-flash", hex(addr), hex(size), tmp)
+    data = open(tmp, "rb").read()
+    os.remove(tmp)
+    return data
+
+
+def ranuras(port=None):
+    port = port or need_port()
+    raw = read_flash(port, OTADATA, 0x2000)
+    slot, _ = boot_slot(raw)
+    for i, addr in enumerate(SLOTS):
+        info = app_info(read_flash(port, addr, 0x100)) or "vacío"
+        print(f"app{i}: {info}{'   <- arranca con este' if i == slot else ''}")
+    return raw, slot
+
+
+def cambiar_hueco(port, raw, slot):
+    tmp = os.path.join(os.environ.get("TEMP", "/tmp"), "mfv3_otadata.bin")
+    open(tmp, "wb").write(otadata_for(raw, slot))
+    esptool("--chip", "esp32s3", "--port", port, "write-flash", hex(OTADATA), tmp)
+    os.remove(tmp)
+
+
+def probar(path):
+    data = open(path, "rb").read()
+    if not data or data[0] != 0xE9 or len(data) > SLOT_SIZE:
+        sys.exit("Eso no es un programa de la pantalla (usa el «-ota.bin», no el «.bin» entero)")
+    port = need_port()
+    raw, slot = ranuras(port)
+    other = 1 - slot
+    print(f"Grabando la prueba en app{other}; app{slot} se queda como está")
+    esptool("--chip", "esp32s3", "--port", port, "--after", "no-reset", "write-flash", hex(SLOTS[other]), path)
+    cambiar_hueco(port, raw, other)
+    print("Listo: arranca con la prueba. Para volver a la de antes: python scripts/placa.py volver")
+
+
+def volver():
+    port = need_port()
+    raw, slot = ranuras(port)
+    other = 1 - slot
+    if not app_info(read_flash(port, SLOTS[other], 0x100)):
+        sys.exit(f"app{other} está vacío: no hay programa anterior al que volver")
+    cambiar_hueco(port, raw, other)
+    print(f"Listo: arranca otra vez con app{other}")
 
 
 def grabar(borrar=False):
@@ -213,6 +317,12 @@ def main(argv):
         # Por defecto los de la placa (los 6 que dejó Alex); si no, los de prueba de la app.
         mine = os.path.join(ROOT, "build", "placa", "jugadores-placa.txt")
         jugadores(rest[0] if rest else mine if os.path.exists(mine) else os.path.join(ROOT, "build", "placa", "jugadores-demo.txt"))
+    elif cmd == "ranuras":
+        ranuras()
+    elif cmd == "probar" and rest:
+        probar(rest[0])
+    elif cmd == "volver":
+        volver()
     elif cmd == "captura":
         captura(rest[0] if rest else "captura")
     else:
