@@ -29,3 +29,7 @@ Primera consulta tras instalar: PANEL fijo=1 hz=12500000 red=1 reinicios=0 error
 4. Sustituir la prueba privada por una versión de producto validada, sin publicar comandos de laboratorio accidentalmente. Mantener 0.x, novedades y revisión de A. Main sigue en la 0.11 publicada, sin esta prueba.
 
 Los registros y copias privadas están en la carpeta diagnostico-panel-0.11 del proyecto local de Codex; no subir NVS, audios ni copias privadas al repositorio.
+
+## Confirmación posterior del dueño y preparación 0.12
+
+El dueño respondió «El menú se mantiene normal» tras instalar la prueba fija. Confirma mejora visual del menú, no todas las cargas de red ni acústica. La entrega 0.12 incorpora el mismo comportamiento y elimina controles privados; ver [su entrega](ENTREGA_SONIDOS_0_12_20261023.md) para estado de compilación/instalación/publicación.

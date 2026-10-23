@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Pantalla 0.12 en preparación · equipo B · 23/10/2026
+
+Autorizada por el dueño para main y placa: 210 voces nuevas (770 totales, 706 activas / 64 reservadas), anulación, segunda parte, prórroga, tanda, gol de oro y ventaja exacta de tres. Integra el ritmo fijo cuyo menú el dueño confirmó estable. Sin comandos privados. Instalación/publicación todavía pendientes; [entrega y reglas](ENTREGA_SONIDOS_0_12_20261023.md). El aviso Wi-Fi y la estabilidad con descargas prolongadas siguen pendientes de medir.
+
 ## Incidente visual de 0.11 · equipo B · 23/10/2026
 
 **El dueño comunica carga seguida de azul/negro/gris en el panel físico. No está confirmado resuelto.** USB y captura interna correctos no acreditan estabilidad visual. Instalada prueba privada de 0.11 con reloj fijo, conservando cuatro partidos, catálogo y SD; pendiente respuesta visual del dueño. Main/OTA siguen sin cambios. [Incidente y pruebas](INCIDENTE_PANEL_0_11_20261023.md). No presentar la verificación anterior de archivos como validación visual/acústica del juego.

@@ -428,20 +428,16 @@ int main() {
   tapBtn(ui::BACK);
   assert(opciones::view == opciones::View::Menu);
 
-  // ---- Wi-Fi en marcha: la pantalla va a menos ritmo y se realinea a menudo; al acabar, como antes.
-  assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
-  s3net::link = s3net::Link::Connecting;
-  loop();
-  assert(uiport::netMode && uiport::pcPclk == uiport::PCLK_NET_HZ);
-  uint32_t resyncs = uiport::pcResyncs;
-  run(1100);
-  assert(uiport::pcResyncs >= resyncs + 4);  // cada 250 ms
-  s3net::link = s3net::Link::Off;
-  loop();
-  assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
-  resyncs = uiport::pcResyncs;
-  run(1100);
-  assert(uiport::pcResyncs <= resyncs + 1);  // sin red, solo cuando hace falta
+  // ---- El Wi-Fi no cambia el reloj ni provoca realineaciones periódicas (regresión física 0.11).
+  run(100);uint32_t resyncs=uiport::pcResyncs;
+  s3net::link=s3net::Link::Connecting;loop();run(1100);
+  assert(uiport::pcResyncs==resyncs);
+  s3net::link=s3net::Link::Off;loop();run(1100);
+  assert(uiport::pcResyncs==resyncs);
+  // Se mantiene la recuperación puntual tras escribir flash, incluso con red activa.
+  s3net::link=s3net::Link::Connecting;uiport::needResync=true;loop();
+  assert(uiport::pcResyncs==resyncs+1);run(1100);assert(uiport::pcResyncs==resyncs+1);
+  s3net::link=s3net::Link::Off;loop();
 
   // Volver: menú y después Inicio.
   assert(opciones::view == opciones::View::Menu);

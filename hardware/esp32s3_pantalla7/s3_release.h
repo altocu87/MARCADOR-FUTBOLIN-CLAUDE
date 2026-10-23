@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.11";
+static const char VERSION[] = "0.12";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.12", "2026-10-23", "Imagen estable y voces para cada fase\n\n• Corrige los cambios de color al terminar la carga manteniendo estable el ritmo de la pantalla.\n\n• Nuevas voces al anular un gol, empezar la segunda parte y anunciar la prórroga o la tanda de penaltis.\n\n• Más comentarios de ambiente, goles comodín, ventaja exacta de tres y gol de oro ganador.\n\n• Conserva los sonidos anteriores, los partidos y tus ajustes."},
   {"0.11", "2026-10-23", "Voces al empezar, al descanso y al terminar\n\n• La introducción suena durante la cuenta atrás y puede acabar mientras comienza el juego, sin retrasar el partido.\n\n• Nuevas voces al descanso, al terminar sin prórroga, en remontadas y al marcar mientras se sigue perdiendo por mucho.\n\n• Más variedad de goles y frases para los últimos segundos, con selección rápida en memoria.\n\n• Voces de penalti y comentarios durante el juego cada 30–60 segundos, con prioridad para goles y cambios de fase.\n\n• Incluye los ajustes y la mejora de imagen con Wi-Fi de las versiones 0.8 y 0.9."},
   {"0.10", "2026-10-23", "Más comentarios de gol\n\n• Incluye los ajustes de la 0.8 y la corrección de imagen con Wi-Fi de la 0.9.\n\n• Nuevas frases al ir ganando, empatar y marcar en los últimos 20 segundos de la segunda parte o de la prórroga.\n\n• Se mantienen el reparto 70 % específico y 30 % comodín y las rondas de frases sin repetir dentro de cada grupo.\n\n• Las frases exclusivas de torneo quedan guardadas para cuando ese modo esté disponible en la pantalla."},
   {"0.9", "2026-10-23", "Pantalla estable con el Wi-Fi\n\n• La imagen ya no se corre ni se parte al buscar novedades, actualizar o entrar con el QR.\n\n• Mientras se usa el Wi-Fi, la pantalla va un poco más despacio y se recoloca sola si hace falta."},
