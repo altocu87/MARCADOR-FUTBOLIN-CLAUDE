@@ -10,3 +10,6 @@ hardware/*/build/
 hardware/test/.lgfx/
 hardware/test/.lvgl/
 build/
+
+# Fase 3 (pio): copia temporal del .ino que crea PlatformIO al compilar; no subir (arduino-cli la compilaría dos veces)
+hardware/esp32s3_pantalla7/*.ino.cpp
