@@ -2234,6 +2234,9 @@ void loop() {
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
+  // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
+  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::busy() || versionsRunning ||
+                     screen == Screen::Install);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
   // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
   bool managementBusy=false;

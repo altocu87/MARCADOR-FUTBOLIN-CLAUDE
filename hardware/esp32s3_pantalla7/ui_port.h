@@ -89,6 +89,10 @@ namespace uiport {
 
 static esp_lcd_panel_handle_t panel = nullptr;
 static const uint32_t PCLK_HZ = 12500000;
+// Con el Wi-Fi en marcha (buscar novedades, actualizar, entrar con QR, la nube): sus búferes y el cifrado usan la
+// PSRAM a la vez que la pantalla y la imagen se corría (vídeo del dueño, 23/10/2026). Mientras dura, la pantalla
+// pide menos (≈ 22 imágenes/s en vez de ≈ 28) y se realinea cada cuarto de segundo.
+static const uint32_t PCLK_NET_HZ = 10000000;
 static SemaphoreHandle_t vsyncSem = nullptr;
 static uint16_t *fb0 = nullptr, *fb1 = nullptr;
 
@@ -159,6 +163,9 @@ static bool readTouch(int16_t& x, int16_t& y) { return gt911Read(x, y); }
 static void resyncPanel() {
   if (panel) esp_lcd_rgb_panel_restart(panel);
 }
+static void setPclk(uint32_t hz) {
+  if (panel) esp_lcd_rgb_panel_set_pclk(panel, hz);
+}
 
 // Pines y tiempos del panel: los de board_config.h (perfil de cada placa), leídos de la configuración LovyanGFX.
 static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
@@ -225,7 +232,10 @@ static bool beginDisplay(LGFX& lcd, lv_display_t*& disp) {
 
 static uint16_t* pcFb = nullptr;
 static void flushCb(lv_display_t* disp, const lv_area_t*, uint8_t*) { if(lv_display_flush_is_last(disp))presented++;lv_display_flush_ready(disp); }
-static void resyncPanel() {}
+static uint32_t pcResyncs = 0, pcPclk = 12500000;  // pruebas: cuántas veces se realinea y a qué ritmo va
+static const uint32_t PCLK_HZ = 12500000, PCLK_NET_HZ = 10000000;
+static void resyncPanel() { pcResyncs++; }
+static void setPclk(uint32_t hz) { pcPclk = hz; }
 static bool readTouch(int16_t& x, int16_t& y) {
   x = (int16_t)sim::touchX;
   y = (int16_t)sim::touchY;
@@ -290,6 +300,17 @@ static bool begin(LGFX& lcd) {
 // Algo escribió en la memoria flash: hay que realinear la imagen (ver resyncPanel).
 static volatile bool needResync = false;
 
+// Wi-Fi en marcha: pantalla a PCLK_NET_HZ y realineada cada 250 ms (ver PCLK_NET_HZ). Lo dice loop() en cada vuelta.
+static bool netMode = false;
+static uint32_t netResyncAt = 0;
+static void setNetwork(bool on) {
+  if (on == netMode) return;
+  netMode = on;
+  setPclk(on ? PCLK_NET_HZ : PCLK_HZ);
+  needResync = true;  // el ritmo nuevo entra al realinear
+  netResyncAt = millis();
+}
+
 // Un paso de LVGL (animaciones, toques, dibujo). Se llama en cada vuelta de loop().
 // «RENDIMIENTO 1»: cada segundo, por el USB, cuántas imágenes se han pintado y cuánto se ha tardado (para ver
 // dónde se atasca la pantalla). «RENDIMIENTO 0» lo apaga.
@@ -350,6 +371,10 @@ static void perfEnable(int mode) {
 }
 
 static void step() {
+  if (netMode && millis() - netResyncAt >= 250) {
+    netResyncAt = millis();
+    needResync = true;
+  }
   if (needResync) {
     needResync = false;
     resyncPanel();

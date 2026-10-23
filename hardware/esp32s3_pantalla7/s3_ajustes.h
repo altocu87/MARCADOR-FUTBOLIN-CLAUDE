@@ -204,6 +204,8 @@ static void instProgress(uint32_t done, uint32_t total) {
   if (p != instPct) {
     instPct = p;
     drawProgressBar(p);
+    // Descargando se escribe en la flash y se usa el Wi-Fi a la vez: la imagen se realinea con cada avance.
+    uiport::resyncPanel();
     // Descarga y comprobación se ejecutan en loop(): refrescar el dibujo sin atender toques
     // ni disparar temporizadores que puedan abrir otra pantalla mientras se escribe flash.
     lv_refr_now(uiport::display);

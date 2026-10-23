@@ -428,10 +428,25 @@ int main() {
   tapBtn(ui::BACK);
   assert(opciones::view == opciones::View::Menu);
 
+  // ---- Wi-Fi en marcha: la pantalla va a menos ritmo y se realinea a menudo; al acabar, como antes.
+  assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
+  s3net::link = s3net::Link::Connecting;
+  loop();
+  assert(uiport::netMode && uiport::pcPclk == uiport::PCLK_NET_HZ);
+  uint32_t resyncs = uiport::pcResyncs;
+  run(1100);
+  assert(uiport::pcResyncs >= resyncs + 4);  // cada 250 ms
+  s3net::link = s3net::Link::Off;
+  loop();
+  assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
+  resyncs = uiport::pcResyncs;
+  run(1100);
+  assert(uiport::pcResyncs <= resyncs + 1);  // sin red, solo cuando hace falta
+
   // Volver: menú y después Inicio.
   assert(opciones::view == opciones::View::Menu);
   tapBtn(ui::BACK);
   assert(screen == Screen::Home && !opciones::active());
 
-  std::printf("Ajustes: menu, partido, sonido, pantalla, mando por modelo, equipos y nube, QR, modo prueba y copias OK\n");
+  std::printf("Ajustes: menu, partido, sonido, pantalla, mando por modelo, equipos y nube, QR, modo prueba, copias y pantalla con Wi-Fi OK\n");
 }

@@ -1,7 +1,16 @@
 {
-  "version": "0.8",
+  "version": "0.9",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.9",
+      "date": "2026-10-23",
+      "title": "Pantalla estable con el Wi-Fi",
+      "changes": [
+        "La imagen ya no se corre ni se parte al buscar novedades, actualizar o entrar con el QR.",
+        "Mientras se usa el Wi-Fi, la pantalla va un poco más despacio y se recoloca sola si hace falta."
+      ]
+    },
     {
       "version": "0.8",
       "date": "2026-10-22",

@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Pantalla 0.9 · imagen estable con el Wi-Fi · 23/10/2026
+
+El dueño envió un vídeo: con el Wi-Fi activo (actualizar, entrar con QR) la imagen se corría y se partía. Causa: los búferes de red y el cifrado usan la PSRAM a la vez que la pantalla. Arreglo en `ui_port.h`: con red en marcha, el panel baja a 10 MHz (≈ 22 imágenes/s) y se realinea cada 250 ms; durante la descarga, tras cada avance; al acabar vuelve a 12,5 MHz. Pruebas simuladas y compilación real correctas. **Falta confirmarlo en la placa** (no se puede grabar desde la nube: se instala por Wi-Fi desde Actualizaciones).
+
 ## Ajustes en la pantalla y mando por modelo · 0.8 · 22/10/2026
 
 Fusionada en main el 23/10/2026 con autorización del dueño; GitHub la publica como actualización oficial. **Sin instalar todavía en la placa.** Nuevo menú de AJUSTES en la pantalla: Partido, Sonido, Pantalla, Mando, Equipos fijos, Datos (modo prueba y copias de seguridad), QR del perfil de cada jugador y los apartados que ya había. El mando se actualiza con el programa de su mini: Super Mini o C3-Zero. Si no dice su modelo, no se le ofrece nada hasta elegirlo en AJUSTES → MANDO. Pruebas simuladas correctas en las tres placas. Falta la prueba física. [Entrega](ENTREGA_AJUSTES_PLACA_0_8_20261022.md).
