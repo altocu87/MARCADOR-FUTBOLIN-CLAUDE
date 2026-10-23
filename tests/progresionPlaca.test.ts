@@ -8,6 +8,12 @@
  *   ACTUALIZAR_PROGRESION=1 npx vitest run tests/progresionPlaca.test.ts
  * y cambiar también la copia de la placa hasta que su prueba vuelva a pasar.
  * (GENERAR_PARTIDOS=1 vuelve a sacar los partidos del modo prueba.)
+ *
+ * Con torneos: partidos-torneos.jsonl son los mismos partidos del modo prueba con su «tournament» y torneos.txt dice
+ * de cada torneo si sigue en juego y, si terminó, qué partido lo cerró y quiénes ganaron (lo que la placa saca de sus
+ * resúmenes). torneos-app.json son esos torneos completos, como los guarda la app (la placa los lee en
+ * hardware/test/torneos_datos_test.cpp). Los partidos de un torneo en juego solo mueven el ELO; el que cierra uno da
+ * «Ganar torneo».
  */
 process.env.TZ = 'Europe/Madrid';
 
@@ -15,12 +21,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { generateDemoData } from '../src/services/demo/demoData';
-import { DEFAULT_PROGRESSION, type StoredMatch } from '../src/services/persistence';
+import { DEFAULT_PROGRESSION, type StoredMatch, type Tournament } from '../src/services/persistence';
 import { ACHIEVEMENTS, categoryFor, computeProgression } from '../src/services/progression';
 
 const DIR = join(__dirname, 'fixtures', 'progresion');
 const MATCHES = join(DIR, 'partidos.jsonl');
 const EXPECTED = join(DIR, 'esperado.txt');
+const T_MATCHES = join(DIR, 'partidos-torneos.jsonl');
+const T_INFO = join(DIR, 'torneos.txt');
+const T_FULL = join(DIR, 'torneos-app.json');
+const T_EXPECTED = join(DIR, 'esperado-torneos.txt');
 
 /** Código de un jugador en la placa: FNV-1a de su id (como soundCode). */
 function code(id: string): string {
@@ -49,10 +59,48 @@ function loadMatches(): StoredMatch[] {
     .map((l) => JSON.parse(l) as StoredMatch);
 }
 
+/** Los partidos del modo prueba con sus torneos (y una línea por torneo para la placa). */
+function loadTournamentData(): { matches: StoredMatch[]; tournaments: Tournament[] } {
+  if (process.env.GENERAR_PARTIDOS || !existsSync(T_MATCHES) || !existsSync(T_INFO) || !existsSync(T_FULL)) {
+    const demo = generateDemoData(Date.UTC(2026, 9, 18, 18, 0, 0), 20261003);
+    mkdirSync(DIR, { recursive: true });
+    writeFileSync(T_MATCHES, demo.matches.map((m) => JSON.stringify(m)).join('\n') + '\n');
+    writeFileSync(T_FULL, JSON.stringify(demo.tournaments, null, 1) + '\n');
+    // id estado(a/f/c) partidoFinal campeones (códigos, con comas; «-» si no hay)
+    const lines = demo.tournaments.map((t) => {
+      const champ = t.teams.find((x) => x.id === t.winnerTeamId)?.playerIds ?? [];
+      return `${t.id} ${t.status[0]} ${t.finalMatchId ?? '-'} ${champ.map(code).join(',') || '-'}`;
+    });
+    writeFileSync(T_INFO, lines.join('\n') + '\n');
+  }
+  const matches = readFileSync(T_MATCHES, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l) as StoredMatch);
+  // Lo justo de cada torneo para la progresión (lo mismo que lee la placa de torneos.txt).
+  const tournaments = readFileSync(T_INFO, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => {
+      const [id, st, fin] = l.split(' ');
+      const winners = matches.find((m) => m.id === fin);
+      const champ = l.split(' ')[3];
+      const playerIds = champ === '-' || !winners ? [] : winners.participants.filter((p) => champ.split(',').includes(code(p.playerId))).map((p) => p.playerId);
+      return {
+        id,
+        status: st === 'a' ? 'active' : st === 'f' ? 'finished' : 'cancelled',
+        ...(fin !== '-' ? { finalMatchId: fin } : {}),
+        ...(playerIds.length ? { winnerTeamId: 'campeon' } : {}),
+        teams: [{ id: 'campeon', name: '', playerIds }],
+      } as unknown as Tournament;
+    });
+  return { matches, tournaments };
+}
+
 /** Una línea por jugador (por código): elo maxElo clasificatorios xp nivel rango logros(ids, en el orden del catálogo). */
-function expectedText(matches: StoredMatch[]): string {
+function expectedText(matches: StoredMatch[], tournaments?: Tournament[]): string {
   const ids = [...new Set(matches.flatMap((m) => m.participants.map((p) => p.playerId)))];
-  const snap = computeProgression(ids, matches, DEFAULT_PROGRESSION);
+  const snap = computeProgression(ids, matches, DEFAULT_PROGRESSION, tournaments ? { tournaments } : {});
   const cats = ['scrap', 'wood', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
   const lines = ids
     .map((id) => {
@@ -68,7 +116,7 @@ function expectedText(matches: StoredMatch[]): string {
     for (const part of m.participants) {
       const x = e?.get(part.playerId);
       if (!x) continue;
-      lines.push(`P ${m.id} ${code(part.playerId)} ${x.eloBefore ?? '-'} ${x.eloAfter ?? '-'} ${x.xpGained} ${x.levelAfter}`);
+      lines.push(`P ${m.id} ${code(part.playerId)} ${x.eloBefore ?? '-'} ${x.eloAfter ?? '-'} ${x.xpGained} ${x.levelAfter}${x.deferred ? ' d' : ''}`);
     }
   }
   return lines.join('\n') + '\n';
@@ -87,5 +135,31 @@ describe('progresión de la placa', () => {
     const text = expectedText(matches);
     if (process.env.ACTUALIZAR_PROGRESION || !existsSync(EXPECTED)) writeFileSync(EXPECTED, text);
     expect(readFileSync(EXPECTED, 'utf8')).toBe(text);
+  });
+});
+
+describe('progresión de la placa con torneos', () => {
+  const { matches, tournaments } = loadTournamentData();
+
+  it('hay un torneo en juego y otros terminados con campeón', () => {
+    expect(tournaments.some((t) => t.status === 'active')).toBe(true);
+    expect(tournaments.some((t) => t.status === 'finished' && t.finalMatchId && t.winnerTeamId)).toBe(true);
+    const live = new Set(tournaments.filter((t) => t.status === 'active').map((t) => t.id));
+    expect(matches.some((m) => m.tournament && live.has(m.tournament.id))).toBe(true);
+  });
+
+  it('los resúmenes de la placa dan lo mismo que los torneos completos de la app', () => {
+    const full = JSON.parse(readFileSync(T_FULL, 'utf8')) as Tournament[];
+    expect(full.map((t) => t.id)).toEqual(tournaments.map((t) => t.id));
+    expect(expectedText(matches, tournaments)).toBe(expectedText(matches, full));
+  });
+
+  it('lo esperado coincide con lo que calcula hoy la app', () => {
+    const text = expectedText(matches, tournaments);
+    if (process.env.ACTUALIZAR_PROGRESION || !existsSync(T_EXPECTED)) writeFileSync(T_EXPECTED, text);
+    expect(readFileSync(T_EXPECTED, 'utf8')).toBe(text);
+    // Hay XP en espera y campeones con su premio.
+    expect(text).toMatch(/ d\n/);
+    expect(text).toMatch(/champion/);
   });
 });

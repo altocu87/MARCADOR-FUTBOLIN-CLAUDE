@@ -1,5 +1,7 @@
 // La progresión de la placa (s3_progresion.h) tiene que dar lo mismo que la de la app con los partidos fijos de
 // tests/fixtures/progresion: lo que calcula la app está en esperado.txt (lo mantiene tests/progresionPlaca.test.ts).
+// Y con torneos: partidos-torneos.jsonl + torneos.txt (en juego / terminado, partido final y campeones) contra
+// esperado-torneos.txt (XP en espera marcada con « d», «Ganar torneo» y los logros de campeón).
 // Uso (desde hardware/): g++ -std=c++17 -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp && ./a.out
 #include <cassert>
 #include <cstdlib>
@@ -37,8 +39,11 @@ static std::string readFile(const char* p) {
   return s;
 }
 
-int main() {
-  std::string all = readFile("../tests/fixtures/progresion/partidos.jsonl");
+// Partidos de un archivo (uno por línea) en lugar de los que hubiera.
+static void loadMatches(const char* path) {
+  partidos::count = 0;
+  ++partidos::revision;
+  std::string all = readFile(path);
   std::istringstream in(all);
   std::string line;
   while (std::getline(in, line)) {
@@ -48,14 +53,16 @@ int main() {
     assert(ok);
     partidos::push(r);
   }
-  // Todos los jugadores que salen en los partidos.
-  std::vector<uint32_t> codes;
+}
+
+// Lo que calcula la placa, en el formato de lo esperado.
+static std::vector<std::string> board(std::vector<uint32_t>& codes, progresion::Snapshot& s) {
+  codes.clear();
   for (int i = 0; i < partidos::count; i++)
     for (int t = 0; t < 2; t++)
       for (int k = 0; k < partidos::rows[i].n[t]; k++) codes.push_back(partidos::rows[i].code[t][k]);
   std::sort(codes.begin(), codes.end());
   codes.erase(std::unique(codes.begin(), codes.end()), codes.end());
-  progresion::Snapshot s;
   bool ok = progresion::compute(s, codes.data(), (int)codes.size(), nullptr, nullptr, true);
   assert(ok);
   std::vector<std::string> out;
@@ -71,21 +78,26 @@ int main() {
     out.push_back(b);
   }
   std::sort(out.begin(), out.end());
-  // Por partido, en el orden del archivo (el de la app).
   for (int i = 0; i < partidos::count; i++) {
     const partidos::Row& r = partidos::rows[i];
     for (int t = 0; t < 2; t++)
       for (int k = 0; k < r.n[t]; k++) {
         const progresion::Entry& e = s.entries[(size_t)i * 8 + t * 4 + k];
-        char b[160], eb[16], ea[16];
+        char b[200], eb[16], ea[16];
         if (e.eloDelta == 0x7FFF) snprintf(eb, sizeof(eb), "-"), snprintf(ea, sizeof(ea), "-");
         else snprintf(eb, sizeof(eb), "%d", e.eloBefore), snprintf(ea, sizeof(ea), "%d", e.eloAfter);
-        snprintf(b, sizeof(b), "P %s %08lx %s %s %u %u", r.id, (unsigned long)r.code[t][k], eb, ea, e.xpGained, e.levelAfter);
+        snprintf(b, sizeof(b), "P %s %08lx %s %s %u %u%s", r.id, (unsigned long)r.code[t][k], eb, ea, e.xpGained, e.levelAfter,
+                 e.deferred ? " d" : "");
         out.push_back(b);
       }
   }
-  std::string want = readFile("../tests/fixtures/progresion/esperado.txt");
+  return out;
+}
+
+static int compare(const std::vector<std::string>& out, const char* expectedPath) {
+  std::string want = readFile(expectedPath);
   std::istringstream w(want);
+  std::string line;
   int bad = 0, i = 0;
   while (std::getline(w, line)) {
     if (i >= (int)out.size() || out[i] != line) {
@@ -95,6 +107,71 @@ int main() {
     i++;
   }
   if (i != (int)out.size()) bad++, std::printf("líneas: app %d, placa %d\n", i, (int)out.size());
+  return bad;
+}
+
+// Torneos: «id estado partidoFinal campeones» (como los resúmenes de s3_torneos_datos.h).
+static void loadTournaments(const char* path) {
+  std::string all = readFile(path);
+  std::istringstream in(all);
+  std::string line;
+  std::vector<progresion::TournamentInfo> list;
+  while (std::getline(in, line)) {
+    if (line.empty()) continue;
+    progresion::TournamentInfo t;
+    memset(&t, 0, sizeof(t));
+    char st[4], fin[64], champ[64];
+    assert(sscanf(line.c_str(), "%47s %3s %63s %63s", t.id, st, fin, champ) == 4);
+    t.active = st[0] == 'a';
+    if (strcmp(fin, "-")) snprintf(t.finalMatch, sizeof(t.finalMatch), "%s", fin);
+    for (char* c = strtok(champ, ","); c && strcmp(c, "-") && t.nChampion < 2; c = strtok(nullptr, ","))
+      t.champion[t.nChampion++] = (uint32_t)strtoul(c, nullptr, 16);
+    list.push_back(t);
+  }
+  assert(progresion::setTournaments(list.data(), (int)list.size()));
+}
+
+static void withTournaments() {
+  loadMatches("../tests/fixtures/progresion/partidos-torneos.jsonl");
+  loadTournaments("../tests/fixtures/progresion/torneos.txt");
+  int tagged = 0;
+  for (int i = 0; i < partidos::count; i++) tagged += partidos::rows[i].tournament[0] != 0;
+  assert(tagged > 0);
+  std::vector<uint32_t> codes;
+  progresion::Snapshot s;
+  int bad = compare(board(codes, s), "../tests/fixtures/progresion/esperado-torneos.txt");
+  if (bad) {
+    std::printf("progresión de la placa con torneos: %d diferencias con la app\n", bad);
+    std::exit(1);
+  }
+  int won = 0;
+  for (int i = 0; i < s.n; i++) won += s.p[i].tournamentsWon;
+  assert(won > 0);
+  // Un cambio en los torneos (el que estaba en juego termina) obliga a recalcular.
+  progresion::refresh(codes.data(), (int)codes.size());
+  long before = 0;
+  for (int i = 0; i < progresion::all.n; i++) before += progresion::all.p[i].xp;
+  for (int i = 0; i < progresion::nTournaments; i++) progresion::tournaments[i].active = false;
+  progresion::setTournaments(progresion::tournaments, progresion::nTournaments);
+  progresion::refresh(codes.data(), (int)codes.size());
+  long after = 0;
+  for (int i = 0; i < progresion::all.n; i++) after += progresion::all.p[i].xp;
+  assert(after > before);  // la XP que esperaba ya se cuenta
+  std::printf("progresión de la placa con torneos igual que la app (%d partidos, %d de torneo, %d títulos)\n", partidos::count, tagged, won);
+  s.clear();
+  progresion::all.clear();
+  progresion::allKey.valid = false;
+  progresion::setTournaments(nullptr, 0);
+}
+
+int main() {
+  withTournaments();
+  loadMatches("../tests/fixtures/progresion/partidos.jsonl");
+  std::string line;
+  // Todos los jugadores que salen en los partidos.
+  std::vector<uint32_t> codes;
+  progresion::Snapshot s;
+  int bad = compare(board(codes, s), "../tests/fixtures/progresion/esperado.txt");
   if (bad) {
     std::printf("progresión de la placa: %d diferencias con la app\n", bad);
     return 1;

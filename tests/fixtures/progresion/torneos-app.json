@@ -1,0 +1,1486 @@
+[
+ {
+  "formatVersion": 1,
+  "id": "t_dbed020f-fa3d-49d1-8ff9-58f8b05e25eb",
+  "name": "Liguilla Rápida · 1ª edición",
+  "format": "league",
+  "teamSize": 1,
+  "ranked": true,
+  "config": {
+   "mode": "ranked",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567",
+    "name": "Rubén",
+    "playerIds": [
+     "p_35b8375e-f3ef-4339-9c75-d68143af8bd2"
+    ]
+   },
+   {
+    "id": "tt_084412a4-d497-43ad-abda-90188f72050c",
+    "name": "Javi",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+    "name": "Alex",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198"
+    ]
+   },
+   {
+    "id": "tt_0328b801-438f-44ee-b7c8-a839f7abb7e8",
+    "name": "Óscar",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_6513556f-bee4-46d7-a67c-cb463a90e635",
+    "name": "Sara",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "fx_119a2a00-48e6-456c-b30a-dafd39099317",
+    "round": 1,
+    "whiteTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635",
+    "blueTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c",
+    "matchId": "m_5388c6f1-7cc7-422a-9b4b-57d3a5b70b22",
+    "winnerTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635"
+   },
+   {
+    "id": "fx_2d018ecb-e012-446d-b61d-7691edfa1de8",
+    "round": 1,
+    "whiteTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+    "blueTeamId": "tt_0328b801-438f-44ee-b7c8-a839f7abb7e8",
+    "matchId": "m_3c52f17f-b7b2-484f-b858-8f623d534e37",
+    "winnerTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f"
+   },
+   {
+    "id": "fx_d4170618-9140-446b-b593-e2a6b58b5f62",
+    "round": 2,
+    "whiteTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635",
+    "blueTeamId": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567",
+    "matchId": "m_54931724-2e1b-4899-8e4b-04a5cd606645",
+    "winnerTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635"
+   },
+   {
+    "id": "fx_83dd8425-afc5-4061-b2cd-06d93031aa2a",
+    "round": 2,
+    "whiteTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+    "blueTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c",
+    "matchId": "m_72ace1b6-7edf-4906-a16d-b680e2d2bb23",
+    "winnerTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f"
+   },
+   {
+    "id": "fx_47a813c9-dc10-47ce-b1c4-28960c18d1f8",
+    "round": 3,
+    "whiteTeamId": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567",
+    "blueTeamId": "tt_0328b801-438f-44ee-b7c8-a839f7abb7e8",
+    "matchId": "m_42c1e4b8-d721-40e3-9c56-452a563fffbe",
+    "winnerTeamId": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567"
+   },
+   {
+    "id": "fx_afea46f1-3fba-4119-8ae8-8e25912281a0",
+    "round": 3,
+    "whiteTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+    "blueTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635",
+    "matchId": "m_4866dbd9-b333-48a2-a751-e6c68d5c8350",
+    "winnerTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f"
+   },
+   {
+    "id": "fx_a7146478-520a-4edf-af21-905e41db6a13",
+    "round": 4,
+    "whiteTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+    "blueTeamId": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567",
+    "matchId": "m_ee8e7b39-ea44-40f1-b352-66f7f4c35324",
+    "winnerTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f"
+   },
+   {
+    "id": "fx_8f6c2ed3-2105-4aee-ba48-8ec5fd644afa",
+    "round": 4,
+    "whiteTeamId": "tt_0328b801-438f-44ee-b7c8-a839f7abb7e8",
+    "blueTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c",
+    "matchId": "m_0b47eaa9-aa79-4119-994d-048c8cc6fbf1",
+    "winnerTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c"
+   },
+   {
+    "id": "fx_57248ca1-9573-4c6f-8c29-12f12ce4658c",
+    "round": 5,
+    "whiteTeamId": "tt_dc618ccd-0d09-407f-9884-da6c3fc7f567",
+    "blueTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c",
+    "matchId": "m_18e090bd-e74e-41f1-aab3-f887a1f6b68c",
+    "winnerTeamId": "tt_084412a4-d497-43ad-abda-90188f72050c"
+   },
+   {
+    "id": "fx_51d9dd5a-2752-49a9-a0ef-11c63fac3beb",
+    "round": 5,
+    "whiteTeamId": "tt_0328b801-438f-44ee-b7c8-a839f7abb7e8",
+    "blueTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635",
+    "matchId": "m_7f66c996-72a4-47c0-b311-3a98d68c9103",
+    "winnerTeamId": "tt_6513556f-bee4-46d7-a67c-cb463a90e635"
+   }
+  ],
+  "status": "finished",
+  "createdAt": 1782831600000,
+  "templateName": "Liguilla Rápida",
+  "templateId": "builtin-league",
+  "edition": 1,
+  "winnerTeamId": "tt_bdc70f32-bb93-42e0-ad02-c25d5156a79f",
+  "finishedAt": 1783005185542,
+  "finalMatchId": "m_ee8e7b39-ea44-40f1-b352-66f7f4c35324"
+ },
+ {
+  "formatVersion": 1,
+  "id": "t_8db521d4-9b07-4e3e-b247-f5f8a9fc109f",
+  "name": "Copa Parejas · 1ª edición",
+  "format": "bracket",
+  "teamSize": 2,
+  "ranked": false,
+  "config": {
+   "mode": "quick",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_986097ef-0a4d-46ab-ba00-7bb5f1b61492",
+    "name": "Carmen + María",
+    "playerIds": [
+     "p_91c4587e-342a-4985-a631-0a403859abda",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_dc935789-15a7-467e-9c5a-da46077a9a0f",
+    "name": "Paula + Iván",
+    "playerIds": [
+     "p_09236053-7299-40a3-a125-c8921c740871",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94",
+    "name": "Alex + Vicky",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_70a91244-983f-498a-b3f6-be110401e9d3"
+    ]
+   },
+   {
+    "id": "tt_d68be49e-fc19-4e6b-8e22-fb27785e1e65",
+    "name": "Elena + José",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef",
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "fx_2bec246b-c3fc-4d93-bc45-457b1572ee42",
+    "round": 1,
+    "whiteTeamId": "tt_986097ef-0a4d-46ab-ba00-7bb5f1b61492",
+    "blueTeamId": "tt_d68be49e-fc19-4e6b-8e22-fb27785e1e65",
+    "nextFixtureId": "fx_deb20053-f69b-4bc6-90e6-03adc9e22906",
+    "nextSlot": "white",
+    "matchId": "m_d1113150-9d8b-4ea9-9738-8cdeb950886a",
+    "winnerTeamId": "tt_d68be49e-fc19-4e6b-8e22-fb27785e1e65"
+   },
+   {
+    "id": "fx_632431b6-b13f-43af-aabf-ba16e688a40b",
+    "round": 1,
+    "whiteTeamId": "tt_dc935789-15a7-467e-9c5a-da46077a9a0f",
+    "blueTeamId": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94",
+    "nextFixtureId": "fx_deb20053-f69b-4bc6-90e6-03adc9e22906",
+    "nextSlot": "blue",
+    "matchId": "m_00690f57-4078-4f01-b3b9-3692ac32ad3e",
+    "winnerTeamId": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94"
+   },
+   {
+    "id": "fx_deb20053-f69b-4bc6-90e6-03adc9e22906",
+    "round": 2,
+    "whiteTeamId": "tt_d68be49e-fc19-4e6b-8e22-fb27785e1e65",
+    "blueTeamId": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94",
+    "bestOf": 3,
+    "matchId": "m_cd239df8-1346-43af-8cc2-ba671d337e25",
+    "matchIds": [
+     "m_084bbdf5-5551-4604-b1f0-985ab19ee620",
+     "m_cd239df8-1346-43af-8cc2-ba671d337e25"
+    ],
+    "series": {
+     "white": 0,
+     "blue": 2
+    },
+    "winnerTeamId": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94"
+   }
+  ],
+  "status": "finished",
+  "createdAt": 1785855600000,
+  "templateName": "Copa Parejas",
+  "templateId": "builtin-pairs",
+  "edition": 1,
+  "winnerTeamId": "tt_80a5d18b-2a3f-477d-af5d-e9c165118c94",
+  "finishedAt": 1785858865287,
+  "finalMatchId": "m_cd239df8-1346-43af-8cc2-ba671d337e25"
+ },
+ {
+  "formatVersion": 1,
+  "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46",
+  "name": "Copa Rotativa · 1ª edición",
+  "format": "pool",
+  "teamSize": 2,
+  "ranked": false,
+  "config": {
+   "mode": "quick",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_0e3f117f-6596-4e78-a482-5b9167149c21",
+    "name": "Alex",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198"
+    ]
+   },
+   {
+    "id": "tt_88a31113-f061-411c-be6d-ebc955a38bb8",
+    "name": "Javi",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_ce574438-bf13-4d36-8eae-cbbf306cda00",
+    "name": "Nerea",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57"
+    ]
+   },
+   {
+    "id": "tt_51b17996-1e22-4756-b694-b3cd6a3b9024",
+    "name": "Elena",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_da6d1e2e-1d0a-4973-8e5d-dd85a48c9188",
+    "name": "María",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_e084663a-e971-4806-a5a3-2b64cfc47e40",
+    "name": "Diego",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_1efc8f7c-c64a-440e-ba6b-6833d3306e6c",
+    "name": "Óscar",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_63fc3b24-4b23-4b69-acb8-767c5c444f44",
+    "name": "Lucía",
+    "playerIds": [
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+    ]
+   },
+   {
+    "id": "tt_90e10727-b660-4c21-aa3c-4c0e8e69cefe",
+    "name": "Nerea + Elena",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_27e1bb56-5229-452b-8941-ecee29ff6dcf",
+    "name": "Alex + Javi",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_0b86c0ba-6965-41c2-a8c8-a539f1b264fe",
+    "name": "María + Diego",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_b9ae84a9-e08c-4066-a9d8-9637dcc254f4",
+    "name": "Óscar + Lucía",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+    ]
+   },
+   {
+    "id": "tt_6a27fd7a-b4da-4b26-8b55-7a6fcdfb65d8",
+    "name": "Nerea + Lucía",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+    ]
+   },
+   {
+    "id": "tt_32a860f4-780f-4984-9091-dce5c62d273f",
+    "name": "Elena + Óscar",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_5eccf9f9-3db8-4de4-85b0-09ec698a1e87",
+    "name": "Alex + María",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_54ac0972-dfcb-493f-8cc7-661a3511eb07",
+    "name": "Javi + Diego",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_4f21ff86-74a5-4d85-9cce-d6b77d0380d6",
+    "name": "Javi + Elena",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_6b6b6595-4b16-4fd9-ac83-a5d69abd18ba",
+    "name": "Diego + Óscar",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_0bc114dd-a37d-4067-96e7-0b301cfb3ab5",
+    "name": "Alex + Lucía",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+    ]
+   },
+   {
+    "id": "tt_93862656-d6a4-43e2-9cdf-cd5034a6f518",
+    "name": "María + Nerea",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57"
+    ]
+   },
+   {
+    "id": "tt_7558fff1-4d7c-4082-bc02-91031cb6a9a4",
+    "name": "Nerea + Óscar",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_6f18f2f0-1b98-4ed2-87d1-a5e776012704",
+    "name": "Alex + Elena",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_84814fde-a078-49c7-9c00-0c02d3dbee69",
+    "name": "Lucía + Javi",
+    "playerIds": [
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r1-p2",
+    "round": 1,
+    "court": 2,
+    "whiteTeamId": "tt_0b86c0ba-6965-41c2-a8c8-a539f1b264fe",
+    "blueTeamId": "tt_b9ae84a9-e08c-4066-a9d8-9637dcc254f4",
+    "matchId": "m_ebbf6566-82e9-413f-8ddd-41994504ff20",
+    "winnerTeamId": "tt_0b86c0ba-6965-41c2-a8c8-a539f1b264fe"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r1-p1",
+    "round": 1,
+    "court": 1,
+    "whiteTeamId": "tt_90e10727-b660-4c21-aa3c-4c0e8e69cefe",
+    "blueTeamId": "tt_27e1bb56-5229-452b-8941-ecee29ff6dcf",
+    "matchId": "m_b842faf3-f7c4-43db-aeb4-1ae8915476b8",
+    "winnerTeamId": "tt_27e1bb56-5229-452b-8941-ecee29ff6dcf"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r2-p2",
+    "round": 2,
+    "court": 2,
+    "whiteTeamId": "tt_6a27fd7a-b4da-4b26-8b55-7a6fcdfb65d8",
+    "blueTeamId": "tt_32a860f4-780f-4984-9091-dce5c62d273f",
+    "matchId": "m_97e530d5-0c35-4fb8-b9e8-9f9e5a25dfb5",
+    "winnerTeamId": "tt_6a27fd7a-b4da-4b26-8b55-7a6fcdfb65d8"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r2-p1",
+    "round": 2,
+    "court": 1,
+    "whiteTeamId": "tt_5eccf9f9-3db8-4de4-85b0-09ec698a1e87",
+    "blueTeamId": "tt_54ac0972-dfcb-493f-8cc7-661a3511eb07",
+    "matchId": "m_209ef732-c14c-4307-b882-287aa4d188ed",
+    "winnerTeamId": "tt_5eccf9f9-3db8-4de4-85b0-09ec698a1e87"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r3-p2",
+    "round": 3,
+    "court": 2,
+    "whiteTeamId": "tt_4f21ff86-74a5-4d85-9cce-d6b77d0380d6",
+    "blueTeamId": "tt_6b6b6595-4b16-4fd9-ac83-a5d69abd18ba",
+    "matchId": "m_ce385015-f4d5-46fa-b790-2b61216a7868",
+    "winnerTeamId": "tt_4f21ff86-74a5-4d85-9cce-d6b77d0380d6"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r3-p1",
+    "round": 3,
+    "court": 1,
+    "whiteTeamId": "tt_0bc114dd-a37d-4067-96e7-0b301cfb3ab5",
+    "blueTeamId": "tt_93862656-d6a4-43e2-9cdf-cd5034a6f518",
+    "matchId": "m_7ffbb250-a589-4be6-9915-c05ff207a8b2",
+    "winnerTeamId": "tt_0bc114dd-a37d-4067-96e7-0b301cfb3ab5"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r4-p2",
+    "round": 4,
+    "court": 2,
+    "whiteTeamId": "tt_0b86c0ba-6965-41c2-a8c8-a539f1b264fe",
+    "blueTeamId": "tt_7558fff1-4d7c-4082-bc02-91031cb6a9a4",
+    "matchId": "m_9f8f04f0-14dc-4bcf-ad89-8bbba56f1d86",
+    "winnerTeamId": "tt_0b86c0ba-6965-41c2-a8c8-a539f1b264fe"
+   },
+   {
+    "id": "t_6a1af3cf-914c-4157-9dea-fcdb7c5e0f46-r4-p1",
+    "round": 4,
+    "court": 1,
+    "whiteTeamId": "tt_6f18f2f0-1b98-4ed2-87d1-a5e776012704",
+    "blueTeamId": "tt_84814fde-a078-49c7-9c00-0c02d3dbee69",
+    "stage": "final",
+    "matchId": "m_44426257-fa2a-4ea0-b0ed-a063cd9cd819",
+    "winnerTeamId": "tt_84814fde-a078-49c7-9c00-0c02d3dbee69"
+   }
+  ],
+  "status": "finished",
+  "createdAt": 1788879600000,
+  "entrants": [
+   "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+   "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9",
+   "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+   "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef",
+   "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+   "p_a10b2152-9002-499b-96c4-75adff9a470f",
+   "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+   "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+  ],
+  "ladder": {
+   "swap": true,
+   "limit": "rounds",
+   "minutes": 30,
+   "rounds": 4,
+   "finalBestOf": 1,
+   "start": [
+    [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ],
+    [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ],
+    [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ],
+    [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_c6bcdcb8-59f7-4ea0-a03a-f36da8cbf2ea"
+    ]
+   ]
+  },
+  "templateName": "Copa Rotativa",
+  "templateId": "builtin-pool",
+  "edition": 1,
+  "winnerTeamId": "tt_84814fde-a078-49c7-9c00-0c02d3dbee69",
+  "finishedAt": 1788885408602,
+  "finalMatchId": "m_44426257-fa2a-4ea0-b0ed-a063cd9cd819"
+ },
+ {
+  "formatVersion": 1,
+  "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc",
+  "name": "Copa Rotativa · 2ª edición",
+  "format": "pool",
+  "teamSize": 2,
+  "ranked": false,
+  "config": {
+   "mode": "quick",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_0fde6140-3136-45d8-9004-baa2516aac36",
+    "name": "Marcos",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a"
+    ]
+   },
+   {
+    "id": "tt_ac546c28-9d0a-4efc-8924-abddefc71c3c",
+    "name": "Nerea",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57"
+    ]
+   },
+   {
+    "id": "tt_b2f8f226-8060-4195-80fd-eda2af0fa3ef",
+    "name": "Óscar",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_1cb638ce-9a1d-4af9-986d-4b670f391c46",
+    "name": "Victoria",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_2681c391-0128-4cfb-abe5-13053f7404cb",
+    "name": "Alex",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198"
+    ]
+   },
+   {
+    "id": "tt_f3b883a4-6fd9-4856-9e73-0e15d46829f0",
+    "name": "Iván",
+    "playerIds": [
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_e51fbf0e-2cb8-483b-acfc-a704bd8f2ccb",
+    "name": "Sara",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   },
+   {
+    "id": "tt_cfb81352-e1fc-4a47-bc02-a4bf07a3cd60",
+    "name": "María",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_66db3dfe-b3a9-4e70-860e-8aa56d90e407",
+    "name": "Diego",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_e1732376-353b-42e8-88f6-6d66a07d0da4",
+    "name": "Javi",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_8057e928-308c-4793-9a88-522e1ea671ca",
+    "name": "Marcos + Nerea",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57"
+    ]
+   },
+   {
+    "id": "tt_8b5f0043-aa17-4d97-b3e8-9cf04f08d0b3",
+    "name": "Óscar + Victoria",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0",
+    "name": "Sara + María",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_1b35b234-2d08-4bf4-80bc-22097fcdb42e",
+    "name": "Alex + Iván",
+    "playerIds": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_0d8e4018-fa6e-42fb-8ff8-2501e3e509db",
+    "name": "Diego + Javi",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_f95f5ab8-94e2-4a38-bdbc-fa3e92bbc9d3",
+    "name": "Óscar + Diego",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_86120e78-580a-4532-b512-8ec1b9156651",
+    "name": "Victoria + Javi",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_dfe72c70-0877-4dfc-9a0e-c5124950b5fe",
+    "name": "Marcos + Sara",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   },
+   {
+    "id": "tt_e2ed2574-32cf-47ce-ba8f-337e412aade0",
+    "name": "Nerea + María",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_01aedcf4-feba-445d-955a-42aad17761f2",
+    "name": "Nerea + Iván",
+    "playerIds": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_88cdfaff-a916-4ec7-a66e-d30c2827de35",
+    "name": "María + Alex",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198"
+    ]
+   },
+   {
+    "id": "tt_b1ba7a98-f413-40e5-8ce3-809cdf6a55cf",
+    "name": "Marcos + Javi",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_8edfd463-a090-4681-b707-110ecba1a973",
+    "name": "Sara + Victoria",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d",
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_1990ca97-143a-4b3d-a14e-e2b30a7b6b21",
+    "name": "Marcos + Diego",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_1a2bb03e-f2ed-48eb-9afa-e3ca807e5e17",
+    "name": "Javi + Óscar",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_f49df215-59a0-432f-a7f0-2eb4dee27b70",
+    "name": "Victoria + Alex",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r1-p2",
+    "round": 1,
+    "court": 2,
+    "whiteTeamId": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0",
+    "blueTeamId": "tt_1b35b234-2d08-4bf4-80bc-22097fcdb42e",
+    "resting": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ],
+    "matchId": "m_b6824053-a78a-4966-b4c9-f36549cd9dfe",
+    "winnerTeamId": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r1-p1",
+    "round": 1,
+    "court": 1,
+    "whiteTeamId": "tt_8057e928-308c-4793-9a88-522e1ea671ca",
+    "blueTeamId": "tt_8b5f0043-aa17-4d97-b3e8-9cf04f08d0b3",
+    "resting": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ],
+    "matchId": "m_28117b4f-7d06-4678-b51d-20b289158acd",
+    "winnerTeamId": "tt_8057e928-308c-4793-9a88-522e1ea671ca"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r2-p2",
+    "round": 2,
+    "court": 2,
+    "whiteTeamId": "tt_f95f5ab8-94e2-4a38-bdbc-fa3e92bbc9d3",
+    "blueTeamId": "tt_86120e78-580a-4532-b512-8ec1b9156651",
+    "resting": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ],
+    "matchId": "m_77474cfb-6c98-43bf-b986-9532ff353d90",
+    "winnerTeamId": "tt_86120e78-580a-4532-b512-8ec1b9156651"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r2-p1",
+    "round": 2,
+    "court": 1,
+    "whiteTeamId": "tt_dfe72c70-0877-4dfc-9a0e-c5124950b5fe",
+    "blueTeamId": "tt_e2ed2574-32cf-47ce-ba8f-337e412aade0",
+    "resting": [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ],
+    "matchId": "m_4fd538cf-3258-4446-a7d6-27c838c69680",
+    "winnerTeamId": "tt_dfe72c70-0877-4dfc-9a0e-c5124950b5fe"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r3-p2",
+    "round": 3,
+    "court": 2,
+    "whiteTeamId": "tt_01aedcf4-feba-445d-955a-42aad17761f2",
+    "blueTeamId": "tt_88cdfaff-a916-4ec7-a66e-d30c2827de35",
+    "resting": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ],
+    "matchId": "m_5d2e6516-04a5-4486-add6-8961efa50603",
+    "winnerTeamId": "tt_88cdfaff-a916-4ec7-a66e-d30c2827de35"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r3-p1",
+    "round": 3,
+    "court": 1,
+    "whiteTeamId": "tt_b1ba7a98-f413-40e5-8ce3-809cdf6a55cf",
+    "blueTeamId": "tt_8edfd463-a090-4681-b707-110ecba1a973",
+    "resting": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ],
+    "matchId": "m_be7c28a3-aa21-47bf-8720-e0e3e23b3304",
+    "winnerTeamId": "tt_8edfd463-a090-4681-b707-110ecba1a973"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r4-p2",
+    "round": 4,
+    "court": 2,
+    "whiteTeamId": "tt_1990ca97-143a-4b3d-a14e-e2b30a7b6b21",
+    "blueTeamId": "tt_1a2bb03e-f2ed-48eb-9afa-e3ca807e5e17",
+    "resting": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ],
+    "matchId": "m_3f2bdfc5-cc3a-49f7-a4d3-b6a2fd4efe68",
+    "winnerTeamId": "tt_1a2bb03e-f2ed-48eb-9afa-e3ca807e5e17"
+   },
+   {
+    "id": "t_b715838d-5cfe-48b1-9867-efe8bb50bdcc-r4-p1",
+    "round": 4,
+    "court": 1,
+    "whiteTeamId": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0",
+    "blueTeamId": "tt_f49df215-59a0-432f-a7f0-2eb4dee27b70",
+    "resting": [
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ],
+    "stage": "final",
+    "matchId": "m_8b59bf6c-5b74-46a1-b067-4d700647f805",
+    "winnerTeamId": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0"
+   }
+  ],
+  "status": "finished",
+  "createdAt": 1790607600000,
+  "entrants": [
+   "p_25e7198e-d171-413a-b901-dc61196b379a",
+   "p_4c54b1c4-d920-448a-8360-54a3b1d74d57",
+   "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+   "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+   "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+   "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a",
+   "p_41896afc-ab82-476d-8d1f-720c9506766d",
+   "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+   "p_a10b2152-9002-499b-96c4-75adff9a470f",
+   "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+  ],
+  "ladder": {
+   "swap": true,
+   "limit": "rounds",
+   "minutes": 30,
+   "rounds": 4,
+   "finalBestOf": 1,
+   "start": [
+    [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_4c54b1c4-d920-448a-8360-54a3b1d74d57"
+    ],
+    [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ],
+    [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ],
+    [
+     "p_fecc961f-ccf9-4e6a-8293-c2d5423a6198",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ],
+    [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   ]
+  },
+  "templateName": "Copa Rotativa",
+  "templateId": "builtin-pool",
+  "edition": 2,
+  "winnerTeamId": "tt_52802cee-fc01-45a2-8bec-2f799b649eb0",
+  "finishedAt": 1790612651303,
+  "finalMatchId": "m_8b59bf6c-5b74-46a1-b067-4d700647f805"
+ },
+ {
+  "formatVersion": 1,
+  "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0",
+  "name": "Copa Rotativa · 3ª edición",
+  "format": "pool",
+  "teamSize": 2,
+  "ranked": false,
+  "config": {
+   "mode": "quick",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_623385bc-2d63-46da-bcd1-059e7f989083",
+    "name": "José",
+    "playerIds": [
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc"
+    ]
+   },
+   {
+    "id": "tt_a64f20c5-1b69-4846-bfa3-0dc3e74a3a9e",
+    "name": "Óscar",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_c0869905-62d2-4151-a04f-62d4ad84a273",
+    "name": "Vicky",
+    "playerIds": [
+     "p_70a91244-983f-498a-b3f6-be110401e9d3"
+    ]
+   },
+   {
+    "id": "tt_25f56856-41e6-460d-829a-a25b7e0191c8",
+    "name": "Victoria",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_86bdac1e-a376-4760-b30d-87df72e24ce5",
+    "name": "Carmen",
+    "playerIds": [
+     "p_91c4587e-342a-4985-a631-0a403859abda"
+    ]
+   },
+   {
+    "id": "tt_1871c02f-859b-4f4f-93a9-84bef8ba0752",
+    "name": "María",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_e60164e3-4fb5-4d35-a604-044b68360b05",
+    "name": "Marcos",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a"
+    ]
+   },
+   {
+    "id": "tt_f5faac7a-ea21-4ae9-a0d3-d1678cd37c5c",
+    "name": "Paula",
+    "playerIds": [
+     "p_09236053-7299-40a3-a125-c8921c740871"
+    ]
+   },
+   {
+    "id": "tt_ea234e49-7e7b-4ce1-8df8-d7cd94fc28af",
+    "name": "Sara",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   },
+   {
+    "id": "tt_39eddad5-fc93-467f-83af-574bf6d68414",
+    "name": "Diego",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_deb31cc3-1530-4d0b-89d3-5fbfe1f6ddd1",
+    "name": "Iván",
+    "playerIds": [
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_62329c5e-4e77-4db7-8d18-473f901acb4a",
+    "name": "Elena",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_5dd8feca-fb77-4105-b549-de70e9f8d1d9",
+    "name": "Vicky + Victoria",
+    "playerIds": [
+     "p_70a91244-983f-498a-b3f6-be110401e9d3",
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_1cbb003c-8fe2-4aba-bfbc-fc793cfe5bf0",
+    "name": "Marcos + Paula",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_09236053-7299-40a3-a125-c8921c740871"
+    ]
+   },
+   {
+    "id": "tt_ba1e6600-d5d0-452f-b22c-292405a1887c",
+    "name": "José + Óscar",
+    "playerIds": [
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_4e56cf39-e3d5-4934-b077-2675cd120548",
+    "name": "Iván + Elena",
+    "playerIds": [
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_9dd551be-79a6-4ca4-88d8-ec8d890cfe60",
+    "name": "Carmen + María",
+    "playerIds": [
+     "p_91c4587e-342a-4985-a631-0a403859abda",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_4b061c8c-c135-49a3-9d91-c932e0ccc210",
+    "name": "Sara + Diego",
+    "playerIds": [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_d90dbb46-aac9-44f7-b1bf-db0cda56a677",
+    "name": "José + Carmen",
+    "playerIds": [
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc",
+     "p_91c4587e-342a-4985-a631-0a403859abda"
+    ]
+   },
+   {
+    "id": "tt_1bc8b7b9-84ea-44a0-b990-fcaedccdaae0",
+    "name": "Óscar + María",
+    "playerIds": [
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_d56a0bc0-fd1f-4e11-93a0-ec162edf60ed",
+    "name": "Marcos + Sara",
+    "playerIds": [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   },
+   {
+    "id": "tt_f40e465f-7f8b-4f9d-a58a-3741bbdaac32",
+    "name": "Paula + Diego",
+    "playerIds": [
+     "p_09236053-7299-40a3-a125-c8921c740871",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   },
+   {
+    "id": "tt_7258186b-73f0-4e4b-ab24-a70077db0fa0",
+    "name": "Vicky + Iván",
+    "playerIds": [
+     "p_70a91244-983f-498a-b3f6-be110401e9d3",
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a"
+    ]
+   },
+   {
+    "id": "tt_adc8a8d5-efb6-429d-b490-4b800d5458fe",
+    "name": "Victoria + Elena",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   },
+   {
+    "id": "tt_002d2738-65cc-4342-bf79-7cb7cb1b21b2",
+    "name": "Paula + Carmen",
+    "playerIds": [
+     "p_09236053-7299-40a3-a125-c8921c740871",
+     "p_91c4587e-342a-4985-a631-0a403859abda"
+    ]
+   },
+   {
+    "id": "tt_514a6ce8-09e3-474d-b9d2-3a8e62605228",
+    "name": "Diego + José",
+    "playerIds": [
+     "p_a10b2152-9002-499b-96c4-75adff9a470f",
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc"
+    ]
+   },
+   {
+    "id": "tt_11c33efb-b2af-4968-84a6-5b3f1efc28ad",
+    "name": "Victoria + Óscar",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ]
+   },
+   {
+    "id": "tt_405658c4-63f9-4268-8043-fe47e005f938",
+    "name": "Elena + María",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_96c75041-b39e-403d-9228-0d56fb79b013",
+    "name": "Vicky + Marcos",
+    "playerIds": [
+     "p_70a91244-983f-498a-b3f6-be110401e9d3",
+     "p_25e7198e-d171-413a-b901-dc61196b379a"
+    ]
+   },
+   {
+    "id": "tt_b6031dfc-fb14-4bd9-b324-5c0cd6b364ba",
+    "name": "Iván + Sara",
+    "playerIds": [
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a",
+     "p_41896afc-ab82-476d-8d1f-720c9506766d"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r1-p3",
+    "round": 1,
+    "court": 3,
+    "whiteTeamId": "tt_9dd551be-79a6-4ca4-88d8-ec8d890cfe60",
+    "blueTeamId": "tt_4b061c8c-c135-49a3-9d91-c932e0ccc210",
+    "matchId": "m_ce066642-2cbd-4005-8786-93cb70b20e43",
+    "winnerTeamId": "tt_4b061c8c-c135-49a3-9d91-c932e0ccc210"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r1-p2",
+    "round": 1,
+    "court": 2,
+    "whiteTeamId": "tt_ba1e6600-d5d0-452f-b22c-292405a1887c",
+    "blueTeamId": "tt_4e56cf39-e3d5-4934-b077-2675cd120548",
+    "matchId": "m_2fed4896-020f-42c6-888c-5db21faed5f3",
+    "winnerTeamId": "tt_4e56cf39-e3d5-4934-b077-2675cd120548"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r1-p1",
+    "round": 1,
+    "court": 1,
+    "whiteTeamId": "tt_5dd8feca-fb77-4105-b549-de70e9f8d1d9",
+    "blueTeamId": "tt_1cbb003c-8fe2-4aba-bfbc-fc793cfe5bf0",
+    "matchId": "m_27f15f82-8c94-4da2-91db-310cd0c9d4da",
+    "winnerTeamId": "tt_5dd8feca-fb77-4105-b549-de70e9f8d1d9"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r2-p3",
+    "round": 2,
+    "court": 3,
+    "whiteTeamId": "tt_d90dbb46-aac9-44f7-b1bf-db0cda56a677",
+    "blueTeamId": "tt_1bc8b7b9-84ea-44a0-b990-fcaedccdaae0",
+    "matchId": "m_7cd5e077-9afa-4c12-b68d-d2965421fed1",
+    "winnerTeamId": "tt_1bc8b7b9-84ea-44a0-b990-fcaedccdaae0"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r2-p2",
+    "round": 2,
+    "court": 2,
+    "whiteTeamId": "tt_d56a0bc0-fd1f-4e11-93a0-ec162edf60ed",
+    "blueTeamId": "tt_f40e465f-7f8b-4f9d-a58a-3741bbdaac32",
+    "matchId": "m_56b75125-ea1e-4ec2-98af-c2128d79aed2",
+    "winnerTeamId": "tt_d56a0bc0-fd1f-4e11-93a0-ec162edf60ed"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r2-p1",
+    "round": 2,
+    "court": 1,
+    "whiteTeamId": "tt_7258186b-73f0-4e4b-ab24-a70077db0fa0",
+    "blueTeamId": "tt_adc8a8d5-efb6-429d-b490-4b800d5458fe",
+    "matchId": "m_8a39885a-079d-4efd-a1a5-006e710502d3",
+    "winnerTeamId": "tt_7258186b-73f0-4e4b-ab24-a70077db0fa0"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r3-p3",
+    "round": 3,
+    "court": 3,
+    "whiteTeamId": "tt_002d2738-65cc-4342-bf79-7cb7cb1b21b2",
+    "blueTeamId": "tt_514a6ce8-09e3-474d-b9d2-3a8e62605228"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r3-p2",
+    "round": 3,
+    "court": 2,
+    "whiteTeamId": "tt_11c33efb-b2af-4968-84a6-5b3f1efc28ad",
+    "blueTeamId": "tt_405658c4-63f9-4268-8043-fe47e005f938"
+   },
+   {
+    "id": "t_147b96ec-5a4a-4c2d-9a97-eb9f672b97a0-r3-p1",
+    "round": 3,
+    "court": 1,
+    "whiteTeamId": "tt_96c75041-b39e-403d-9228-0d56fb79b013",
+    "blueTeamId": "tt_b6031dfc-fb14-4bd9-b324-5c0cd6b364ba"
+   }
+  ],
+  "status": "active",
+  "createdAt": 1792162800000,
+  "entrants": [
+   "p_7121f3ba-0018-4976-9d43-62f88e5b59fc",
+   "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a",
+   "p_70a91244-983f-498a-b3f6-be110401e9d3",
+   "p_012ad03a-b903-4475-a41e-4ba09a9ffcde",
+   "p_91c4587e-342a-4985-a631-0a403859abda",
+   "p_7ad561f6-2a66-4417-be59-b4ce66776a98",
+   "p_25e7198e-d171-413a-b901-dc61196b379a",
+   "p_09236053-7299-40a3-a125-c8921c740871",
+   "p_41896afc-ab82-476d-8d1f-720c9506766d",
+   "p_a10b2152-9002-499b-96c4-75adff9a470f",
+   "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a",
+   "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+  ],
+  "ladder": {
+   "swap": true,
+   "limit": "rounds",
+   "minutes": 30,
+   "rounds": 4,
+   "finalBestOf": 1,
+   "start": [
+    [
+     "p_70a91244-983f-498a-b3f6-be110401e9d3",
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ],
+    [
+     "p_25e7198e-d171-413a-b901-dc61196b379a",
+     "p_09236053-7299-40a3-a125-c8921c740871"
+    ],
+    [
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc",
+     "p_a0b844ae-101b-4a0f-9a9d-262d52912f2a"
+    ],
+    [
+     "p_49fe115b-63b4-4553-a3c9-f58d8ad7f57a",
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ],
+    [
+     "p_91c4587e-342a-4985-a631-0a403859abda",
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ],
+    [
+     "p_41896afc-ab82-476d-8d1f-720c9506766d",
+     "p_a10b2152-9002-499b-96c4-75adff9a470f"
+    ]
+   ]
+  },
+  "templateName": "Copa Rotativa",
+  "templateId": "builtin-pool",
+  "edition": 3
+ },
+ {
+  "formatVersion": 1,
+  "id": "t_372630f3-ff31-4d0f-9b6a-e7fa80a52087",
+  "name": "Liguilla Rápida · 2ª edición",
+  "format": "league",
+  "teamSize": 1,
+  "ranked": true,
+  "config": {
+   "mode": "ranked",
+   "endCondition": "goals",
+   "goalsPerPeriod": 5,
+   "minutesPerPeriod": 5,
+   "overtimeSeconds": 60,
+   "penaltyRounds": 5,
+   "penaltyFirstTeam": "white",
+   "testMode": false
+  },
+  "teams": [
+   {
+    "id": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9",
+    "name": "Victoria",
+    "playerIds": [
+     "p_012ad03a-b903-4475-a41e-4ba09a9ffcde"
+    ]
+   },
+   {
+    "id": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a",
+    "name": "María",
+    "playerIds": [
+     "p_7ad561f6-2a66-4417-be59-b4ce66776a98"
+    ]
+   },
+   {
+    "id": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc",
+    "name": "Javi",
+    "playerIds": [
+     "p_a5fe64e9-8f05-435d-9d4e-c36fb94e58c9"
+    ]
+   },
+   {
+    "id": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "name": "Rubén",
+    "playerIds": [
+     "p_35b8375e-f3ef-4339-9c75-d68143af8bd2"
+    ]
+   },
+   {
+    "id": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1",
+    "name": "José",
+    "playerIds": [
+     "p_7121f3ba-0018-4976-9d43-62f88e5b59fc"
+    ]
+   },
+   {
+    "id": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "name": "Elena",
+    "playerIds": [
+     "p_4569046e-a8f8-4e6d-aff9-0208e8d6cfef"
+    ]
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "fx_c7963ca8-c0fd-4b5d-b159-14a20473b560",
+    "round": 1,
+    "whiteTeamId": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9",
+    "blueTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "matchId": "m_5efdb6cf-3011-4223-8105-b3f4a98afda6",
+    "winnerTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579"
+   },
+   {
+    "id": "fx_c66836ee-d098-4203-9b27-de7b013a69f5",
+    "round": 1,
+    "whiteTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1",
+    "blueTeamId": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a",
+    "matchId": "m_bb931f91-d2a4-4f02-ac4e-992342f3fd3f",
+    "winnerTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1"
+   },
+   {
+    "id": "fx_dc1961cc-3c68-4af6-85cf-19394c2a17f9",
+    "round": 1,
+    "whiteTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc",
+    "blueTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "matchId": "m_943d4d86-5c52-4877-b28e-d9b19ba65225",
+    "winnerTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc"
+   },
+   {
+    "id": "fx_ee83907d-8581-4f39-a8ed-e80a48b2d01b",
+    "round": 2,
+    "whiteTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1",
+    "blueTeamId": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9",
+    "matchId": "m_182d2f46-18bf-46ae-9e3b-a29eb90ce255",
+    "winnerTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1"
+   },
+   {
+    "id": "fx_428df5c2-5254-4273-ad11-0877da62d074",
+    "round": 2,
+    "whiteTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "blueTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "matchId": "m_f77fb99d-a6b4-4f9b-b321-6620f2557395",
+    "winnerTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce"
+   },
+   {
+    "id": "fx_f4889c38-b311-4406-b361-60da8b6117ca",
+    "round": 2,
+    "whiteTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc",
+    "blueTeamId": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a",
+    "matchId": "m_e1e7ffc8-03b7-4cfc-a753-5c04854205e8",
+    "winnerTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc"
+   },
+   {
+    "id": "fx_b10cfa60-637f-42f5-876f-dee69d16c2f6",
+    "round": 3,
+    "whiteTeamId": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9",
+    "blueTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "matchId": "m_c380e449-de85-428b-8575-990fa7fbd22f",
+    "winnerTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce"
+   },
+   {
+    "id": "fx_916608f1-66cd-4b26-933b-4dd21b56f24d",
+    "round": 3,
+    "whiteTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc",
+    "blueTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1",
+    "matchId": "m_74ab227d-e6ef-4603-b0ba-7070676db54d",
+    "winnerTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc"
+   },
+   {
+    "id": "fx_1ed36060-09ae-49e2-a0c9-4b7306639f05",
+    "round": 3,
+    "whiteTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "blueTeamId": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a"
+   },
+   {
+    "id": "fx_892fd832-3068-4524-a6c0-b5228941c7ce",
+    "round": 4,
+    "whiteTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc",
+    "blueTeamId": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9"
+   },
+   {
+    "id": "fx_286920b2-5a49-43a9-b6e4-991701ea8636",
+    "round": 4,
+    "whiteTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "blueTeamId": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a"
+   },
+   {
+    "id": "fx_a4ef6a81-a6dd-43b3-bfd8-4c12cd566967",
+    "round": 4,
+    "whiteTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "blueTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1"
+   },
+   {
+    "id": "fx_42b9ab06-3c6f-4a56-a649-311aa691a012",
+    "round": 5,
+    "whiteTeamId": "tt_5b9b992a-9325-45a4-ba47-cd80a42ee9e9",
+    "blueTeamId": "tt_f3d360f6-7e3b-47c6-917a-639c01ca7d3a"
+   },
+   {
+    "id": "fx_9c548d15-1a39-4d2b-8652-3f2030add13d",
+    "round": 5,
+    "whiteTeamId": "tt_cd31a911-e862-4494-a929-f2cb33cb5579",
+    "blueTeamId": "tt_318ee17d-9fe3-41b3-8286-b9a8fcdb5cdc"
+   },
+   {
+    "id": "fx_6b07ad93-eb60-483b-9a0e-c5fdb742232d",
+    "round": 5,
+    "whiteTeamId": "tt_cf78a356-92b0-4d77-bc18-9e54e03371ce",
+    "blueTeamId": "tt_ed49319f-14de-4e36-8b80-e7f1338b71c1"
+   }
+  ],
+  "status": "active",
+  "createdAt": 1791817200000,
+  "templateName": "Liguilla Rápida",
+  "templateId": "builtin-league",
+  "edition": 2
+ }
+]
