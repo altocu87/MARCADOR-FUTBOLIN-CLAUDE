@@ -354,6 +354,34 @@ int main() {
 
   // ---- DATOS: modo prueba.
   datos::removeStdioTree("../build/placa/copias");
+  // Un torneo y un tipo de torneo de verdad: se apartan con el modo prueba y van en las copias.
+  for (uint16_t i = torneos::nSummaries; i > 0; i--) torneos::discard(torneos::summaries[i - 1].id);
+  {
+    static torneos::Tournament real;
+    assert(torneos::alloc(real));
+    torneos::clear(real);
+    strcpy(real.id, "t_real-1");
+    strcpy(real.name, "Liga de verdad");
+    real.nTeams = 3;
+    for (int k = 0; k < 3; k++) {
+      snprintf(real.teams[k].id, 48, "tt_%d", k);
+      snprintf(real.teams[k].name, 48, "Equipo %d", k);
+      real.teams[k].n = 1;
+      snprintf(real.teams[k].player[0], 40, "p_%d", k);
+    }
+    real.nFix = 1;
+    strcpy(real.fix[0].id, "fx_1");
+    real.fix[0].white = 0;
+    real.fix[0].blue = 1;
+    real.createdAt = 1792000000000ull;
+    assert(torneos::save(real));
+    torneos::Template tpl;
+    torneos::newTemplate(tpl, torneos::Format::League, nullptr);
+    strcpy(tpl.name, "Liga de casa");
+    assert(torneos::saveTemplate(tpl));
+  }
+  assert(torneos::nSummaries == 1 && torneos::nTemplates >= 1);
+  int realTemplates = torneos::nTemplates;
   int realMatches = partidos::count, realPlayers = jugadores.count;
   tapBtn(setting(ui::Btn::SetData));
   assert(opciones::view == opciones::View::Data && shows("MODO PRUEBA") && shows("COPIA DE SEGURIDAD"));
@@ -362,8 +390,23 @@ int main() {
   assert(shows("¿Activar el modo prueba?"));
   askYes();
   run(200);
-  assert(datos::demo && jugadores.count == 12 && partidos::count == 40 && nube::paused && equipos::count == 0);
+#ifdef MFV3_TORNEOS_REGLAS
+  // Con las reglas de los torneos: una liguilla terminada y otra en juego, con sus partidos.
+  {
+    int live = 0, done = 0, inTournaments = 0;
+    for (uint16_t i = 0; i < torneos::nSummaries; i++) {
+      live += torneos::summaries[i].status == torneos::Status::Active;
+      done += torneos::summaries[i].status == torneos::Status::Finished && torneos::summaries[i].champion[0];
+    }
+    for (int i = 0; i < partidos::count; i++) inTournaments += partidos::rows[i].tournament[0] != 0;
+    assert(live == 1 && done == 1 && inTournaments > 0 && partidos::count == 40 + inTournaments);
+  }
+#else
+  assert(partidos::count == 40 && torneos::nSummaries == 0);
+#endif
+  assert(datos::demo && jugadores.count == 12 && partidos::count >= 40 && nube::paused && equipos::count == 0);
   assert(FFat.exists("/jugadores.real") && datos::stdioExists("../build/placa/partidos-sd.real"));
+  assert(datos::stdioExists("../build/placa/torneos-sd.real") && !torneos::summaryOf("t_real-1") && torneos::nTemplates == 0);
   assert(shows("Activo"));
   shot("ajustes-datos-prueba");
   // El perfil de un jugador de prueba (con partidos), para compararlo con el de la app (tests/perfil-placa).
@@ -396,6 +439,8 @@ int main() {
   run(200);
   assert(!datos::demo && jugadores.count == realPlayers && partidos::count == realMatches && equipos::count == 2);
   assert(!FFat.exists("/jugadores.real") && !datos::stdioExists("../build/placa/partidos-sd.real") && !nube::paused);
+  assert(!datos::stdioExists("../build/placa/torneos-sd.real") && torneos::summaryOf("t_real-1") && torneos::nSummaries == 1);
+  assert(torneos::nTemplates == realTemplates);
 
   // ---- Copia de seguridad: hacer, cambiar cosas, restaurar y borrar.
   tap(536 + 124, 76 + 160 + 36);  // HACER COPIA
@@ -405,6 +450,7 @@ int main() {
   shot("ajustes-datos-copia");
   jugadores.add("Dani", nullptr);
   equipos::removeAt(0);
+  assert(datos::stdioExists("../build/placa/copias") && torneos::discard("t_real-1") && torneos::nSummaries == 0);
   cfg.goalsPerPeriod = 3;
   saveConfig();
   tap(16 + 400 + 105, 76 + 250 + 8 + 32);  // RESTAURAR
@@ -412,6 +458,8 @@ int main() {
   run(200);
   assert(jugadores.count == realPlayers && equipos::count == 2 && partidos::count == realMatches && cfg.goalsPerPeriod != 3);
   assert(!FFat.exists("/jugadores.new") && !FFat.exists("/jugadores.old"));
+  assert(torneos::summaryOf("t_real-1") && torneos::nTemplates == realTemplates);  // el torneo vuelve con la copia
+  assert(!datos::stdioExists("../build/placa/torneos-sd.new") && !datos::stdioExists("../build/placa/torneos-sd.old"));
   tap(16 + 618 + 71, 76 + 250 + 8 + 32);  // BORRAR la copia
   askYes();
   run(200);
@@ -424,6 +472,9 @@ int main() {
   FFat.rename("/jugadores", "/jugadores.new");  // restaurar a medias: la de verdad ya fuera, la nueva lista
   datos::recover();
   assert(jugadores.count == realPlayers && !FFat.exists("/jugadores.new"));
+  rename("../build/placa/torneos-sd", "../build/placa/torneos-sd.real");  // solo los torneos apartados (lo primero)
+  datos::recover();
+  assert(!datos::demo && torneos::summaryOf("t_real-1") && !datos::stdioExists("../build/placa/torneos-sd.real"));
   nube::logout();
   tapBtn(ui::BACK);
   assert(opciones::view == opciones::View::Menu);

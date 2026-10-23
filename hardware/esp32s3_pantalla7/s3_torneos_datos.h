@@ -100,6 +100,16 @@ static bool defaultPenaltyBlue = false;
 static void setDir(const char* d) { snprintf(dir, sizeof(dir), "%s", d); }  // PC: carpeta de pruebas
 #endif
 
+// La carpeta, la misma que los partidos: en la tarjeta o, sin ella, en el chip (la tarea de la nube la usa igual).
+static void pickDir(bool sd) {
+#ifdef ARDUINO
+  snprintf(dir, sizeof(dir), "%s", sd ? SD_DIR : CHIP_DIR);
+#else
+  (void)sd;
+  if (!dir[0]) snprintf(dir, sizeof(dir), "../build/placa/torneos-sd");
+#endif
+}
+
 static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json", dir, id); }
 static void indexPath(char* out, size_t n) { snprintf(out, n, "%s/indice.txt", dir); }
 static void cloudPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.nube", dir, id); }
@@ -1027,12 +1037,7 @@ bool loadIndex() {
 
 void begin(bool sd) {
   using namespace guardado;
-#ifdef ARDUINO
-  snprintf(dir, sizeof(dir), "%s", sd ? SD_DIR : CHIP_DIR);
-#else
-  (void)sd;
-  if (!dir[0]) snprintf(dir, sizeof(dir), "../build/placa/torneos-sd");
-#endif
+  pickDir(sd);
   mkdirs(dir);
   loadIndex();
   loadTemplates();
