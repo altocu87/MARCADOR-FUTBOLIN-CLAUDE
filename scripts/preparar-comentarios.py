@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepara los WAV exportados por el dueño. No toca originales ni conecta con la placa.
 Uso: python scripts/preparar-comentarios.py <carpeta-originales> <paquete-salida>
-Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.7 (verificación remota del instalador).
+Requiere FFmpeg ya instalado. Catálogo agrupado CMT1 compatible con pantalla >=0.7; nuevos grupos 9/10 requieren >=0.10 (verificación remota del instalador).
 """
 import argparse
 import array
@@ -38,6 +38,36 @@ GROUPS = {
     18: (None, 'torneo/final_empate_20s', 'solo_final_torneo_empate_ultimos_20s'),
     19: (None, 'torneo/final_delante_20s', 'solo_final_torneo_delante_ultimos_20s'),
     20: (None, 'torneo/final_ventaja2', 'solo_final_torneo_ventaja_dos_o_mas'),
+    21: (None, 'torneo/final_delante', 'solo_final_torneo_delante'),
+    22: (None, 'torneo/final_ventaja2_extra', 'solo_final_torneo_ventaja_dos_o_mas'),
+    23: (None, 'torneo/final_delante_comodin', 'solo_final_torneo_delante'),
+    24: (None, 'torneo/final_delante_20s_extra', 'solo_final_torneo_delante_ultimos_20s'),
+    25: (9, 'va_ganando2', 'gol_y_va_ganando'),
+    26: (9, 'va_ganando1', 'gol_y_va_ganando'),
+    27: (10, 'ultimos20_2', 'gol_ultimos_20s'),
+    28: (10, 'ultimos20_1', 'gol_ultimos_20s'),
+    29: (2, 'empate_extra2', 'gol_empate'),
+    30: (0, 'comodin_extra6', 'gol_comodin'),
+    31: (2, 'empate_general', 'gol_empate'),
+    32: (13, 'final_sin_prorroga', 'final_partido_sin_prorroga'),
+    33: (11, 'intro', 'intro_cuenta_atras'),
+    34: (12, 'final_primera_parte', 'final_primera_parte'),
+    35: (None, 'torneo/falta_uno_30s', 'solo_torneo_falta_uno_ultimos_30s'),
+    36: (None, 'torneo/falta_uno', 'solo_torneo_falta_uno'),
+    37: (14, 'remontada1', 'gol_remontada'),
+    38: (15, 'empate_tras_tres', 'empate_tras_perder_por_tres'),
+    39: (16, 'pierde_mas_tres_60s', 'gol_y_pierde_mas_tres_ultimo_minuto'),
+    40: (17, 'pierde_mas_tres', 'gol_y_pierde_mas_tres'),
+    41: (10, 'ultimos20_comodin', 'gol_ultimos_20s'),
+    42: (0, 'comodin_extra7', 'gol_comodin'),
+    43: (18, 'penalty_fallado', 'penalty_fallado'),
+    44: (21, 'penalty_empate_20s', 'penalty_empate_ultimos_20s'),
+    45: (20, 'penalty_empate', 'penalty_empate'),
+    46: (19, 'gol_penalty', 'gol_penalty'),
+    47: (22, 'ambiente3', 'ambiente_partido'),
+    48: (22, 'ambiente2', 'ambiente_partido'),
+    49: (22, 'ambiente1', 'ambiente_partido'),
+    50: (23, 'primeros20', 'primeros_20s_partido'),
 }
 
 def classify(name):
@@ -47,6 +77,35 @@ def classify(name):
     if match:
         return tuple(map(int, match.groups()))
     for group, prefix in (
+        (43, 'PENALTY FALLADO'),
+        (44, 'GOL DE PENALTY Y EMPATAS EN LOS ULTIMOS 20 SEG'),
+        (45, 'GOL DE PENALETY Y EMPATAS'),
+        (46, 'GOL DE PENALTY'),
+        (47, 'SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO 3'),
+        (48, 'SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO 2'),
+        (49, 'SONIDOS RAMDOM CUALQUIER MOMENTO DEL PARTIDO'),
+        (50, 'SONIDOS PARA DESPUES DEL PITIDO INICIAL, EN LOS PRIMEROS  20 SEG DE PARTIDO, COMODIN'),
+        (32, 'FINAL DEL PARTIDO SIN PRORROGA'),
+        (33, 'INTRO, REPRODUCIR MIENTRAS LA CUENTA ATRAS DE 3 SEGUNDOS ANTES DEL PARTIDO'),
+        (34, 'FINAL DE LA 1º PARTE'),
+        (35, 'GOL TORNEO AL EQUIPO QUE MARCA LE FALTA 1 GOL PARA IGUALAR LA ELIMINATORIA Y QUEDA MENOS DE 30 SEGUNDOS'),
+        (36, 'GOL TORNEO AL EQUIPO QUE MARCA LE FALTA 1 GOL PARA IGUALAR LA ELIMINATORIA'),
+        (37, 'GOL REMONTADA 1'),
+        (38, 'GOL CUANDOI EMPATAS DESPUES DE HABER IDO PERDIENDO DE 3 O MAS'),
+        (39, 'GOL ULTIMO MINUTO Y PIERDE DE MAS DE 3'),
+        (40, 'GOL PERO EL EQUIPO PIERDE DE MAS DE 3'),
+        (41, 'GOL COMODIN ULTI 20 SEG'),
+        (42, 'GOL COMODIN 7'),
+        (21, 'GOL FINAL Y VAN GANANDO'),
+        (22, 'GOL GANANDO DE MAS DE 1 EN LA FINAL'),
+        (23, 'GOL COMODIN FINAL IR GANANDO'),
+        (24, 'GOL FINAL GANANDO ULTIMOS 20 SEG'),
+        (25, 'GOL Y GANANDO 2'),
+        (26, 'GOL  Y GANANDO 1'),
+        (27, 'GOL ULTIMO SEG 2'),
+        (28, 'GOL ULTIMOS SEG 1'),
+        (29, 'GOL EMPATE 2'),
+        (30, 'GOL COMODIN 6'),
         (7, 'GOL_EMPATE TRAS ULTIMO MINUTO CON MAS DE 2 GOLES'),
         (8, 'GOL_ GOL PERO EL EQUIPO SIGUE PERDIENDO'),
         (9, 'GOL_ GOL Y EL EQUIPO VA GANANDO DE MAS DE 2 GOLES'),
@@ -76,14 +135,23 @@ def code_for(identifier):
     return code
 
 
-def prepare(source, output, ffmpeg):
+def prepare(source, output, ffmpeg, overrides=None):
+    # El nombre GOL EMPATE se reutilizó con otro audio/criterio. Resolverlo explícitamente,
+    # sin cambiar la clasificación histórica de los finales ni sus códigos instalados.
+    overrides = {} if overrides is None else overrides
+    if not isinstance(overrides, dict) or any(type(g) is not int or g not in GROUPS for g in overrides.values()):
+        raise ValueError('Asignaciones de grupo inválidas')
+    known_names = {p.name for p in source.rglob('*.wav')}
+    if set(overrides) - known_names:
+        raise ValueError('Asignación sin archivo original')
     files = []
     used = set()
-    for path in sorted(source.rglob('GOL*.wav')):
+    for path in sorted(source.rglob('*.wav')):
         match = classify(path.name)
         if match is None:
             continue
         group, variant, repeated = match
+        group = overrides.get(path.name, group)
         if variant != repeated:
             raise ValueError('Índice de variante ambiguo: ' + path.name)
         pool, suffix, label = GROUPS[group]
@@ -150,7 +218,7 @@ def prepare(source, output, ffmpeg):
         print(group, variant, code, len(data), 'bytes', flush=True)
     reserved = [f for f in files if f['pool'] is None]
     files = [f for f in files if f['pool'] is not None]
-    if (not files and not reserved) or len(files) > 1024:
+    if (not files and not reserved) or len(files) + len(reserved) > 1024:
         raise ValueError('El catálogo debe contener de 1 a 1024 archivos')
     files.sort(key=lambda f: (f['pool'], f['id']))
     binary_rows = b''.join(struct.pack('<BI', f['pool'], int(f['code'], 16)) for f in files)
@@ -161,7 +229,7 @@ def prepare(source, output, ffmpeg):
     commands += [f'COMENTARIOS_FIN {crc:08x}']
     (output / 'catalogo-comandos.txt').write_text('\n'.join(commands) + '\n', encoding='ascii')
     manifest = dict(reserved_files=reserved, reserved_total_bytes=sum(f['prepared_bytes'] for f in reserved),
-                    schema=2, minimum_firmware='0.7', files=files, catalog_crc32=f'{crc:08x}',
+                    schema=2, minimum_firmware='0.11' if any(f['pool'] >= 11 for f in files) else '0.10' if any(f['pool'] >= 9 for f in files) else '0.7', files=files, catalog_crc32=f'{crc:08x}',
                     total_bytes=sum(f['prepared_bytes'] for f in files),
                     rules=dict(generic_with_specific=True, group4_consecutive=True,
                                group4_requires_leading=False, group2_threshold=3,
@@ -170,7 +238,13 @@ def prepare(source, output, ffmpeg):
                                equalizer_recent_uses_play_time=True, annul_audio_received=False,
                                specific_percent=70, wildcard_percent=30, shuffle_without_replacement=True,
                                still_losing_after_goal=True, lead_at_least_two_after_goal=True,
-                               scoring_team_more_than_eight_after_goal=True))
+                               scoring_team_more_than_eight_after_goal=True,
+                               leading_after_goal=True, last_seconds_max_ms=20000,
+                               last_seconds_periods=['second', 'overtime'],
+                               last_seconds_excludes_goals_only=True,
+                               comeback_takes_lead_after_previous_deficit=True,
+                               intro_continues_after_countdown=True,
+                               losing_more_than_three_after_goal=True))
     (output / 'catalogo.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print('TOTAL', len(files), manifest['total_bytes'], 'bytes')
 
@@ -178,8 +252,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--groups-json', type=Path, help='Asignaciones explícitas nombre:grupo para nombres ambiguos')
     args = parser.parse_args()
     ffmpeg = shutil.which('ffmpeg')
     if not ffmpeg:
         parser.error('FFmpeg no está instalado/en PATH; no se instalará automáticamente')
-    prepare(args.source, args.output, ffmpeg)
+    prepare(args.source, args.output, ffmpeg, json.loads(args.groups_json.read_text(encoding='utf-8-sig')) if args.groups_json else None)

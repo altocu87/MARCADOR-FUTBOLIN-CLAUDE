@@ -43,6 +43,8 @@ sh test/s3_build.sh 4 test/s3_updates_test.cpp
 sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_ambient_test.cpp
 # Pantallas de los torneos (ui_torneo*.h) con toques y el paso por el partido. Mide los textos con las letras reales,
 # así que primero se generan las de fuentes.txt (sin las capas de la app, que no hacen falta aquí).
 python3 ../scripts/placa_recursos.py --fuentes /tmp/mfv3_fat_torneos

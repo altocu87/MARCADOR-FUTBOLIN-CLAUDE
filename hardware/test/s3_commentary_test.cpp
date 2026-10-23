@@ -38,7 +38,7 @@ int main(){
   sim::sdFatFree=sim::sdFatTotal+1;assert(!sndStore.sdSpace(total,free));
   sim::sdFatTotal=8ull<<30;sim::sdFatFree=(8ull<<30)-(1ull<<20);
   mfv3::Engine e;uint32_t t;fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);auto b=goal(e,t,Team::White);
-  assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Ventaja2))); // marcar tu tercero no significa haber encajado tres
+  assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Ventaja2)|(1u<<VaGanando))); // marcar tu tercero no significa haber encajado tres
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);goal(e,t,Team::Blue);b=goal(e,t,Team::White);
   assert(goalMask(e,b,Team::White)&(1u<<Encajados3));
   fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);goal(e,t,Team::White);b=goal(e,t,Team::Blue);
@@ -162,6 +162,49 @@ int main(){
   }
   {Catalog high;assert(high.add(MasDe8,9001));assert(high.add(MasDe8,9002));uint32_t last=0;
    for(unsigned i=0;i<50;i++){auto code=high.pick(1u<<MasDe8,UINT32_MAX,UINT32_MAX);assert(code>=9001 && code<=9002 && code!=last);last=code;}}
+  // Reglas 0.10: el tiempo del gol registrado, nunca la cuenta atrás ni el fin de primera parte.
+  auto second=[&](mfv3::EndCondition mode=mfv3::EndCondition::Time){
+    mfv3::Config c;c.endCondition=mode;c.minutesPerPeriod=1;c.goalsPerPeriod=1;
+    assert(e.start(c,1000));e.tick(4000);e.tick(64000);assert(e.phase()==Phase::PeriodEnd);
+    assert(e.next(65000)==mfv3::Result::Accepted);e.tick(68000);assert(e.period()==Period::Second && e.phase()==Phase::Playing);
+  };
+  for(Team team:{Team::White,Team::Blue}){
+    for(unsigned elapsed:{39999u,40000u,59999u}){
+      second();uint32_t at=68000+elapsed;e.tick(at);b=mfv3snd::before(e);
+      assert(e.goal(team,at)==mfv3::Result::Accepted);auto mask=goalMask(e,b,team);
+      assert(mask&(1u<<VaGanando));assert(bool(mask&(1u<<Ultimos20))==(elapsed>=40000));
+    }
+    second();e.tick(128000);e.next(129000);e.tick(132000);
+    e.tick(172000);b=mfv3snd::before(e);assert(e.goal(team,172000)==mfv3::Result::Accepted);
+    assert(e.phase()==Phase::Finished && (goalMask(e,b,team)&(1u<<Ultimos20))); // gol de oro
+    second();e.tick(128000);e.next(129000);e.tick(132000);
+    e.tick(171999);b=mfv3snd::before(e);assert(e.goal(team,171999)==mfv3::Result::Accepted);
+    assert(e.phase()==Phase::Finished && !(goalMask(e,b,team)&(1u<<Ultimos20)));
+    for(unsigned elapsed:{10000u,40000u}){
+      second(mfv3::EndCondition::Both);uint32_t at=68000+elapsed;b=mfv3snd::before(e);
+      assert(e.goal(team,at)==mfv3::Result::Accepted && e.phase()==Phase::Finished);
+      assert(bool(goalMask(e,b,team)&(1u<<Ultimos20))==(elapsed==40000));
+    }
+    mfv3::Config c;c.endCondition=mfv3::EndCondition::Time;c.minutesPerPeriod=1;
+    e.start(c,1000);e.tick(4000);b=mfv3snd::before(e);e.goal(team,44000);
+    assert(!(goalMask(e,b,team)&(1u<<Ultimos20))); // primera parte: excluida
+    c.endCondition=mfv3::EndCondition::Goals;c.goalsPerPeriod=20;
+    e.start(c,1000);e.tick(4000);b=mfv3snd::before(e);e.goal(team,999999);
+    assert(!(goalMask(e,b,team)&(1u<<Ultimos20))); // goles: no hay tiempo final
+    second();e.pause(78000);e.resume(198000);b=mfv3snd::before(e);e.goal(team,228000);
+    assert(goalMask(e,b,team)&(1u<<Ultimos20)); // pausa de dos minutos no cuenta
+  }
+  second();e.goal(Team::Blue,72000);b=mfv3snd::before(e);e.goal(Team::White,108000);
+  auto tiedMask=goalMask(e,b,Team::White);assert((tiedMask&(1u<<Empate)) && (tiedMask&(1u<<Ultimos20)) && !(tiedMask&(1u<<VaGanando)));
+  // Los grupos altos mantienen pesos y bolsas; bit 10 no se trunca.
+  { Catalog high;assert(high.add(Comodin,1));assert(high.add(VaGanando,2));assert(high.add(Ultimos20,3));
+    unsigned buckets[4]={};
+    for(uint32_t i=0;i<1000;i++){
+      uint32_t sample=(uint32_t)((((uint64_t)i<<32)+(1ull<<31))/1000);
+      buckets[high.pick((1u<<Comodin)|(1u<<VaGanando)|(1u<<Ultimos20),sample,0)]++;
+    }
+    assert(buckets[1]==300 && buckets[2]==350 && buckets[3]==350);
+  }
   Catalog c;
   for(unsigned p=0;p<4;p++)for(unsigned i=0;i<200;i++)assert(c.add(p,1+p*200+i));
   assert(c.n==800);std::set<unsigned> seen;uint32_t random=123;
@@ -171,7 +214,7 @@ int main(){
   uint32_t last=0;for(unsigned i=0;i<1000;i++){auto code=c.pick(1,0,i);assert(code!=last);last=code;}
   for(unsigned i=800;i<MAX_FILES;i++)assert(c.add(4,i+1));
   assert(!c.add(4,1025) && !c.add(4,100));
-  Catalog empty;assert(!empty.pick(31,0,0));assert(!empty.add(9,1));
+  Catalog empty;assert(!empty.pick(31,0,0));assert(!empty.add(PoolCount,1));
   SD_MMC.disk.files["/sonidos/00001001.wav"]=wav(1111); // compatibilidad con carpeta antigua
   SD_MMC.mkdir("/sonidos/00");SD_MMC.disk.files["/sonidos/00/00001002.wav"]=wav(2222);
   auto crc=putCatalog({{0,0x1001},{2,0x1002}});commit(crc);assert(replies.back()=="COMENTARIOS_GUARDADO" && catalog.n==2);
@@ -255,6 +298,15 @@ int main(){
     assert(eng.score().white==i);assert((pendingCommentary==0x1003)==(i>8));
   }
   assert(catalog.started&(1u<<MasDe8));goHome();
+  // Catálogo persistido con índice de dos dígitos y recorrido real del sketch.
+  crc=putCatalog({{9,0x1001},{10,0x1003}});commit(crc);assert(replies.back()=="COMENTARIOS_GUARDADO");
+  catalog.clear();load(sndStore);assert(catalog.counts[VaGanando]==1 && catalog.counts[Ultimos20]==1);
+  command("COMENTARIOS?");assert(replies.back().find("grupos=0,0,0,0,0,0,0,0,0,1,1")!=std::string::npos);
+  catalog.clear();assert(catalog.add(Ultimos20,0x1003));sndChoices=mfv3snd::Choices();
+  cfg=mfv3::Config();cfg.endCondition=mfv3::EndCondition::Time;cfg.minutesPerPeriod=1;
+  startMatch();sim::now+=3000;loop();sim::now+=60000;loop();assert(eng.phase()==Phase::PeriodEnd);
+  eng.next(sim::now);sim::now+=3000;loop();sim::now+=40000;loop();inputGoal(Team::White);
+  assert(pendingCommentary==0x1003 && (catalog.started&(1u<<Ultimos20)));goHome();
   player.play({false,0x1001,{nullptr,0}},false);player.pump(millis());sim::failI2sStop=true;
   player.play({false,0x1002,{nullptr,0}},false);assert(!player.ok && !(sim::exioOut&(1u<<exio::SPEAKER_AMP)));
   sim::failI2sStop=false;

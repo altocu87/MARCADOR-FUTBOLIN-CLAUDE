@@ -1,9 +1,9 @@
 {
-  "version": "0.10",
+  "version": "0.12",
   "majorOneAuthorized": false,
   "releases": [
     {
-      "version": "0.10",
+      "version": "0.12",
       "date": "2026-10-23",
       "title": "Torneos en la pantalla",
       "changes": [
@@ -12,6 +12,29 @@
         "Clasificación, cuadro o pistas, el siguiente partido con pronóstico, repetir el último y cambiar las reglas.",
         "Cartel de cada fase (gran final, semifinal, pista…), empates en la liga a tiempo y la ceremonia del campeón con la experiencia ganada.",
         "Ficha del torneo con MVP y palmarés de cada competición; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."
+      ]
+    },
+    {
+      "version": "0.11",
+      "date": "2026-10-23",
+      "title": "Voces al empezar, al descanso y al terminar",
+      "changes": [
+        "La introducción suena durante la cuenta atrás y puede acabar mientras comienza el juego, sin retrasar el partido.",
+        "Nuevas voces al descanso, al terminar sin prórroga, en remontadas y al marcar mientras se sigue perdiendo por mucho.",
+        "Más variedad de goles y frases para los últimos segundos, con selección rápida en memoria.",
+        "Voces de penalti y comentarios durante el juego cada 30–60 segundos, con prioridad para goles y cambios de fase.",
+        "Incluye los ajustes y la mejora de imagen con Wi-Fi de las versiones 0.8 y 0.9."
+      ]
+    },
+    {
+      "version": "0.10",
+      "date": "2026-10-23",
+      "title": "Más comentarios de gol",
+      "changes": [
+        "Incluye los ajustes de la 0.8 y la corrección de imagen con Wi-Fi de la 0.9.",
+        "Nuevas frases al ir ganando, empatar y marcar en los últimos 20 segundos de la segunda parte o de la prórroga.",
+        "Se mantienen el reparto 70 % específico y 30 % comodín y las rondas de frases sin repetir dentro de cada grupo.",
+        "Las frases exclusivas de torneo quedan guardadas para cuando ese modo esté disponible en la pantalla."
       ]
     },
     {

@@ -1,6 +1,6 @@
-# Torneos en la pantalla · 0.10 · 23/10/2026
+# Torneos en la pantalla · 0.12 · 23/10/2026
 
-Equipo A (Cloud), por encargo del dueño: llevar los torneos de la app web a la placa, lo más parecidos posible y con la ligereza de los menús. Trabajo repartido entre tres agentes (reglas, datos, pantallas) y unido por el coordinador. Plan y contrato: [PLAN_TORNEOS_PLACA.md](PLAN_TORNEOS_PLACA.md). Rama `claude/torneos-placa`. **Sin fusionar en main, sin publicar y sin grabar en la placa**: falta la autorización del dueño y la prueba con el dedo.
+Equipo A (Cloud), por encargo del dueño: llevar los torneos de la app web a la placa, lo más parecidos posible y con la ligereza de los menús. Trabajo repartido entre tres agentes (reglas, datos, pantallas) y unido por el coordinador. Plan y contrato: [PLAN_TORNEOS_PLACA.md](PLAN_TORNEOS_PLACA.md). Rama `claude/torneos-placa`, **fusionada en main el 23/10/2026 con autorización del dueño**, encima de la 0.11 del equipo B (560 sonidos): por eso sale como **0.12**. GitHub la publica como actualización. **Sin instalar ni probar en la placa.**
 
 ## Qué cambia para quien juega
 
@@ -45,7 +45,7 @@ Equipo A (Cloud), por encargo del dueño: llevar los torneos de la app web a la 
 - **Ficha**: los destacados no abren el partido.
 - **Partidos a medias**: no hay «CONTINUAR un partido a medias», porque la placa no guarda los partidos en curso. Sí queda marcado como «a medias».
 - **Sonidos**: hasta tener los sonidos propios de «ganar un torneo» y la sirena, se usan los de victoria y gol anulado.
-- **Voces de torneo**: las 25 de la SD siguen reservadas, sin activar.
+- **Voces de torneo**: las de torneo de la SD (64 con la 0.11) siguen reservadas, sin activar.
 
 ## Datos del dueño
 
@@ -64,14 +64,13 @@ Equipo A (Cloud), por encargo del dueño: llevar los torneos de la app web a la 
   - Las tres placas.
 - `check_copies.sh` genera ahora las letras de `fuentes.txt` en `/tmp` antes de la prueba de pantallas, con `placa_recursos.py --fuentes`. Así funciona también en GitHub.
 - `npx vitest run`: 327 pruebas. Son nuevas `torneosPlaca`, `torneosDatosPlaca` y las ampliaciones de `boardMatches`, `progresionPlaca` y `perfil-placa`.
-- `npx tsc --noEmit`, sin errores. `native-release.mjs check`: «0.10 correcto».
+- `npx tsc --noEmit`, sin errores. `native-release.mjs check`: «0.12 correcto».
 - GitHub (rama, commit `36b65c2`): Pruebas y Firmware correctos en todas las placas. Para que la Elecrow de 4 MB siga cabiendo (se pasaba por 33 KB), `lv_conf.h` desactiva las piezas de LVGL que el programa no usa (calendario, gráficas, menús, ventanas, interruptores, tablas, pestañas…); no cambia nada de lo que se ve.
 - Capturas del PC en `docs/capturas-placa/torneos/` (42). Son de la placa simulada en el PC, no fotografías de la placa.
 
 ## Pendiente
 
 - Prueba física con el dedo: fluidez de cada pantalla, velocidad de la SD con muchos torneos y nube real.
-- Autorización del dueño para fusionar en main (eso publica 0.10 por Wi-Fi).
-- Activar las 25 voces de torneo cuando lo demás esté probado.
+- Activar las voces de torneo cuando lo demás esté probado.
 - Sonidos propios de «ganar torneo» y sirena en `mfv3_sound.h`.
 - Previo a este trabajo: borrar un partido desde HISTORIAL no se avisa a la nube. REPETIR ÚLTIMO PARTIDO del torneo sí lo hace.
