@@ -13,6 +13,13 @@
 #include "Arduino.h"
 #include "misc/lv_text_private.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
+#include "torneos_fake.h"
+
+// Torneos que hay (en juego o terminados).
+static int tournamentsCount() {
+  torneos::loadIndex();
+  return (int)torneos::nSummaries;
+}
 
 static void run(uint32_t ms) {
   uint32_t end = sim::now + ms;
@@ -177,6 +184,10 @@ int main() {
   setvbuf(stdout, nullptr, _IONBF, 0);
   assets::setRoot(getenv("MFV3_ASSETS") ? getenv("MFV3_ASSETS") : "../build/placa/fat");
   sim::now = 1000;
+  // Carpetas propias (otras pruebas usan las de build/placa a la vez).
+  system("rm -rf /tmp/ag3_partidos /tmp/ag3_torneos_sd");
+  partidos::setDir("/tmp/ag3_partidos");
+  torneos::guardado::setDir("/tmp/ag3_torneos_sd");
   setup();
   test.active = false;
   nube::logout();
@@ -208,6 +219,7 @@ int main() {
   elegir::prewarm(&jugadores);
   torneos::fake::now = tourNow();
   torneos::fake::seed(ids, 12);
+  progresion::refresh(nullptr, 0);
   goHome();
   run(300);
 
@@ -272,10 +284,10 @@ int main() {
   assert(shows("Los Titanes|"));
   shot("torneo-teclado-pareja");
   assert(tapText("GUARDAR") && tor::view == tor::View::Pairs && shows("Los Titanes"));
-  uint8_t before = torneos::fake::nDb;
+  int before = tournamentsCount();
   assert(tapText("CREAR TORNEO"));
   run(200);
-  assert(tor::view == tor::View::Detail && torneos::fake::nDb == before + 1 && tor::curOk);
+  assert(tor::view == tor::View::Detail && tournamentsCount() == before + 1 && tor::curOk);
   assert(shows("Liga de Parejas") && shows("1ª EDICIÓN") && shows("CLASIFICACIÓN") && shows("SIGUIENTE PARTIDO"));
   assert(equipos::count >= 1);  // la pareja con nombre se guarda como equipo
   shot("torneo-liga-nueva");
@@ -463,6 +475,7 @@ int main() {
   assert(shows("CUADRO") && shows("pase directo") && shows("GRAN FINAL") == false && shows("FINAL") && shows("SIGUIENTE"));
   shot("torneo-copa");
   assert(openByName("Pool de los Martes"));
+  if (!shows("RONDA 1 TERMINADA")) fprintf(stderr, "%s\n", screenText().c_str());
   assert(shows("PISTAS") && shows("BANQUILLO") && shows("RONDA 1 TERMINADA") && shows("SIGUIENTE RONDA"));
   shot("torneo-pool-ronda-terminada");
   same = lv_screen_active();
@@ -473,12 +486,12 @@ int main() {
 
   // ---- Descartar (papelera, con confirmación).
   assert(openByName("Copa del Viernes"));
-  uint8_t dbBefore = torneos::fake::nDb;
+  int dbBefore = tournamentsCount();
   tap(764, 32);
   assert(shows("¿Descartar el torneo?") && shows("NO, SEGUIR"));
   shot("torneo-descartar");
   assert(tapText("DESCARTAR"));
-  assert(torneos::fake::nDb == dbBefore - 1 && tor::view == tor::View::Players);
+  assert(tournamentsCount() == dbBefore - 1 && tor::view == tor::View::Players);
 
   // ---- Palmarés y una competición con 35 ediciones (de 10 en 10).
   assert(tapText("PALMARÉS") && tor::view == tor::View::Honours && shows("Copa Histórica") && shows("ÚLTIMO CAMPEÓN"));

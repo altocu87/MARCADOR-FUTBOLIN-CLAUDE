@@ -130,10 +130,11 @@ static void playerReward(lv_obj_t* p, const char* id, int x, int y, int w, int p
   bool up = rw.levelAfter > rw.levelBefore;
   lv_obj_t* ll = ui::text(p, lv, 900, 15, up ? col::GOLD : ui::color::TEXT, 1);
   lv_obj_set_pos(ll, tx, yy);
-  int bx = tx + 64;
+  lv_obj_update_layout(ll);
+  int bx = tx + lv_obj_get_width(ll) + 12;
   if (up) {
-    icon(p, Icon::Up, tx + 46, yy + 2, 14, col::GOLD);
-    bx += 4;
+    icon(p, Icon::Up, bx - 6, yy + 2, 14, col::GOLD);
+    bx += 16;
   }
   int bw = tw - (bx - tx) - 8;
   if (bw > 200) bw = 200;

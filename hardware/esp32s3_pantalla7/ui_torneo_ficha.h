@@ -121,7 +121,7 @@ static void buildReport(lv_obj_t* parent) {
   }
   const char* head[6] = {"PJ", "G", "E", "P", "GOLES", "MVP"};
   bool on[6] = {true, true, anyDraws, true, anyScored, true};
-  int colX[6], x = twid - 10;
+  int colX[6], x = twid - 36;  // a la derecha, la «?» del MVP
   for (int c = 5; c >= 0; c--) {
     if (!on[c]) {
       colX[c] = -1;
@@ -345,7 +345,7 @@ static void buildCompetition() {
     line(r, n, 900, 14, lead ? col::GOLD : ui::color::TEXT2, 4, 9, 20, LV_TEXT_ALIGN_CENTER);
     face(r, hr.id, 28, 4, 28);
     line(r, nameOf(hr.id), 800, 14, lead ? col::GOLD : ui::color::TEXT, 62, 9, 136);
-    uint8_t v[3] = {hr.titles, hr.mvps, hr.editions};
+    uint16_t v[3] = {hr.titles, hr.mvps, hr.editions};
     for (int k = 0; k < 3; k++) {
       char t[6];
       snprintf(t, sizeof(t), "%u", v[k]);

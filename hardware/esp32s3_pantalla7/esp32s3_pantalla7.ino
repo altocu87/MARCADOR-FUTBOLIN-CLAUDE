@@ -70,12 +70,7 @@
 #include "s3_types.h"
 // Torneos: reglas y ficha (agente 1), guardado y nube (agente 2) y sus pantallas (agente 3).
 #include "s3_torneos_ficha.h"
-#if __has_include("s3_torneos_datos.h") && !defined(MFV3_TORNEOS_FAKE)
 #include "s3_torneos_datos.h"
-#else
-// CONTRATO: mientras no esté el guardado del agente 2, el de las pruebas (en memoria). El coordinador lo quita al unir.
-#include "../test/torneos_fake.h"
-#endif
 #include "ui_torneo.h"
 
 using mfv3::Engine;
@@ -667,17 +662,6 @@ static void inputPause() {
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
-// CONTRATO: el partido de torneo se guarda con `tournament: {id, fixtureId}` (StoredMatch de la app). Si
-// partidos::Match (agente 2) trae `tournamentId` y `fixtureId`, se rellenan; si no, nada (compila igual).
-template <typename M>
-static auto tagTournament(M& m, int) -> decltype((void)m.tournamentId[0], (void)m.fixtureId[0], void()) {
-  if (!tourMatch || tourFixture < 0) return;
-  snprintf(m.tournamentId, sizeof(m.tournamentId), "%s", tor::cur.id);
-  snprintf(m.fixtureId, sizeof(m.fixtureId), "%s", tor::cur.fix[tourFixture].id);
-}
-template <typename M>
-static void tagTournament(M&, long) {}
-
 static void saveMatchFile() {
   static partidos::Match m;
   m = partidos::Match();
@@ -700,7 +684,11 @@ static void saveMatchFile() {
       jugadores.idOf(p->code, w.id, sizeof(w.id));
       snprintf(w.name, sizeof(w.name), "%s", p->name);
     }
-  tagTournament(m, 0);
+  // Partido de torneo: se guarda con «tournament»: {id, fixtureId}, como la app.
+  if (tourMatch && tourFixture >= 0) {
+    snprintf(m.tournament, sizeof(m.tournament), "%s", tor::cur.id);
+    snprintf(m.fixture, sizeof(m.fixture), "%s", tor::cur.fix[tourFixture].id);
+  }
   tourSavedOk = false;
   if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
   else {

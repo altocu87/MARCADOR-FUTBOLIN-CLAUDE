@@ -43,6 +43,8 @@ sh test/s3_build.sh 4 test/s3_updates_test.cpp
 sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
+# Pantallas de los torneos (ui_torneo*.h) con toques y el paso por el partido.
+sh test/s3_build.sh 4 test/s3_torneos_test.cpp
 sh test/s3_build.sh 4 test/s3_opciones_test.cpp
 # El perfil del QR calculado en la placa = el de la app (con los partidos de prueba que deja la anterior).
 (cd .. && TZ=Europe/Madrid MFV3_PERFIL_PLACA=1 npx vitest run tests/perfil-placa.test.ts)

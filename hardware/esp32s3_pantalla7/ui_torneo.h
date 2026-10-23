@@ -267,7 +267,9 @@ static int ladderCourt(lv_obj_t* parent, const torneos::Fixture& f, int y, int w
     sc = ui::color::TEXT3;
   }
   int l = sx + pairW + 4, rr = w - 8 - pairW - 4;
-  line(r, s, 900, s[0] == 'S' || s[0] == 'n' ? 11 : 15, sc, l, h / 2 - 9, rr - l, LV_TEXT_ALIGN_CENTER);
+  // El siguiente: un ▶ (la pista ya va con su marco; «SIGUIENTE» no cabe entre las dos parejas).
+  if (s[0] == 'S') icon(r, Icon::Play, (l + rr) / 2 - 9, h / 2 - 9, 18, ui::color::ACCENT);
+  else line(r, s, 900, s[0] == 'n' ? 11 : 15, sc, l, h / 2 - 9, rr - l, LV_TEXT_ALIGN_CENTER);
   return h;
 }
 
