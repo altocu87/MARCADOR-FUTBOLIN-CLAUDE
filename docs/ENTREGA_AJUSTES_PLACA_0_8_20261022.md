@@ -1,6 +1,6 @@
 # Ajustes en la pantalla y actualización del mando por modelo · 0.8 · 22/10/2026
 
-Equipo A (Cloud), por encargo del dueño: llevar a la placa la lógica de Ajustes de la app web, con un estilo austero (botones y letras grandes, sin imágenes nuevas) y resolver la actualización del mando C3-Zero. Rama `claude/ajustes-placa`. **Sin fusionar en main, sin publicar y sin grabar en la placa**: falta la autorización del dueño.
+Equipo A (Cloud), por encargo del dueño: llevar a la placa la lógica de Ajustes de la app web, con un estilo austero (botones y letras grandes, sin imágenes nuevas) y resolver la actualización del mando C3-Zero. Rama `claude/ajustes-placa`, **fusionada en main el 23/10/2026** con autorización del dueño; GitHub la publica como 0.8. **Sin grabar todavía en la placa.**
 
 ## Qué cambia para quien juega
 
