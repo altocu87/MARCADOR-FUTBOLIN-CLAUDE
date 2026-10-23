@@ -350,10 +350,16 @@ struct Entry {
 };
 
 // ---------------------------------------------------------------- torneos (los pone s3_torneos_datos.h)
+// Ids como FNV-1a de 64 bits (idHash): 24 bytes por torneo (con cientos de torneos, poca memoria).
+static uint64_t idHash(const char* s) {
+  uint64_t h = 1469598103934665603ull;
+  for (; *s; s++) h = (h ^ (uint8_t)*s) * 1099511628211ull;
+  return h;
+}
 struct TournamentInfo {
-  char id[48];
+  uint64_t id;            // idHash del torneo
+  uint64_t finalMatch;    // terminado: idHash del partido que lo cerró («Ganar torneo»); 0 si no
   bool active;            // en juego: sus partidos solo mueven el ELO
-  char finalMatch[48];    // terminado: el partido que lo cerró («Ganar torneo»)
   uint8_t nChampion;
   uint32_t champion[2];   // códigos de los campeones
 };
@@ -368,16 +374,19 @@ static bool setTournaments(const TournamentInfo* list, int n) {
   return true;
 }
 static bool tournamentActive(const char* id) {
-  if (!id[0]) return false;
+  if (!id[0] || !nTournaments) return false;
+  uint64_t h = idHash(id);
   for (int i = 0; i < nTournaments; i++)
-    if (tournaments[i].active && !strcmp(tournaments[i].id, id)) return true;
+    if (tournaments[i].active && tournaments[i].id == h) return true;
   return false;
 }
 // ¿Este partido cierra un torneo terminado y `code` es de los campeones?
 static bool wonTournament(const char* matchId, uint32_t code) {
+  if (!nTournaments) return false;
+  uint64_t h = idHash(matchId);
   for (int i = 0; i < nTournaments; i++) {
     const TournamentInfo& t = tournaments[i];
-    if (t.active || !t.finalMatch[0] || strcmp(t.finalMatch, matchId)) continue;
+    if (t.active || !t.finalMatch || t.finalMatch != h) continue;
     for (int k = 0; k < t.nChampion; k++)
       if (t.champion[k] == code) return true;
   }

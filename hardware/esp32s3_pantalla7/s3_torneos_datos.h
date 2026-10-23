@@ -511,99 +511,97 @@ static bool toJson(FILE* f, const Tournament& t, const char* old) {
   return fputs("}\n", f) >= 0 && ok;
 }
 
-// ---------------------------------------------------------------- resúmenes
+// ---------------------------------------------------------------- resúmenes e índice
+// El índice de la SD es un registro: cada vez que un torneo cambia se AÑADE su línea al final («S2 …»; descartarlo
+// añade «X <id>»), así guardar no reescribe todo el historial. Vale la última línea de cada torneo. Al encender se
+// compacta (una línea por torneo, sin los descartados, con los que falten y sin los que ya no estén) y una línea a
+// medio escribir por un corte de luz se descarta. Las líneas añadidas en esta sesión se recuerdan (`touched`) para
+// saber cuál es la buena hasta la próxima compactación.
+//
+// En memoria (`summaries`, PSRAM, sin tope fijo): los torneos en juego y las RECENT_EDITIONS ediciones más nuevas de
+// cada competición. El resto se lee del índice cuando hace falta (editionsPage, cuadro de honor, perfil).
+
 // El resumen del índice: el de las reglas (summarize) y el partido que cerró el torneo.
 static void summarizeAll(const Tournament& t, Summary& s) {
   torneos::summarize(t, s);
   memcpy(s.finalMatchId, t.finalMatchId, sizeof(s.finalMatchId));
 }
 
-static bool allocSummaries() {
-  if (!summaries) summaries = (Summary*)calloc(MAX_SUMMARIES, sizeof(Summary));
-  return summaries != nullptr;
-}
+static int capSummaries = 0;
 static int findSummary(const char* id) {
   for (uint16_t i = 0; i < nSummaries; i++)
     if (!strcmp(summaries[i].id, id)) return i;
   return -1;
 }
-// Pone (o cambia) un resumen, en orden de creación (y de id si coinciden).
-static bool putSummary(const Summary& s) {
-  if (!allocSummaries()) return false;
-  int at = findSummary(s.id);
-  if (at >= 0) {
-    memmove(&summaries[at], &summaries[at + 1], (size_t)(nSummaries - at - 1) * sizeof(Summary));
-    nSummaries--;
-  }
-  if (nSummaries >= MAX_SUMMARIES) return false;
-  uint16_t k = nSummaries;
-  while (k > 0 && (summaries[k - 1].createdAt > s.createdAt || (summaries[k - 1].createdAt == s.createdAt && strcmp(summaries[k - 1].id, s.id) > 0))) k--;
-  memmove(&summaries[k + 1], &summaries[k], (size_t)(nSummaries - k) * sizeof(Summary));
-  summaries[k] = s;
-  nSummaries++;
-  return true;
-}
-static void dropSummary(const char* id) {
-  int at = findSummary(id);
-  if (at < 0) return;
+static void removeAt(int at) {
   memmove(&summaries[at], &summaries[at + 1], (size_t)(nSummaries - at - 1) * sizeof(Summary));
   nSummaries--;
 }
-
-// Lo que necesita la progresión (s3_progresion.h): qué torneos siguen en juego y quién ganó cada uno.
-static void syncProgresion() {
-  progresion::TournamentInfo* list = nSummaries ? (progresion::TournamentInfo*)calloc(nSummaries, sizeof(progresion::TournamentInfo)) : nullptr;
-  int n = 0;
-  for (uint16_t i = 0; i < nSummaries && list; i++) {
+static void dropSummary(const char* id) {
+  int at = findSummary(id);
+  if (at >= 0) removeAt(at);
+}
+static bool newer(const Summary& a, const Summary& b) {  // a es más nueva que b
+  return a.createdAt != b.createdAt ? a.createdAt > b.createdAt : strcmp(a.id, b.id) > 0;
+}
+// Deja en memoria, de la competición `key`, las que están en juego y las RECENT_EDITIONS más nuevas.
+static void trimKey(const char* key) {
+  for (int i = (int)nSummaries - 1; i >= 0; i--) {
     const Summary& s = summaries[i];
-    progresion::TournamentInfo& x = list[n++];
-    memcpy(x.id, s.id, sizeof(x.id));
-    x.active = s.status == Status::Active;
-    if (s.status == Status::Finished) memcpy(x.finalMatch, s.finalMatchId, sizeof(x.finalMatch));
-    x.nChampion = s.nChampion;
-    for (uint8_t k = 0; k < s.nChampion && k < 2; k++) x.champion[k] = partidos::codeOf(s.championIds[k]);
+    if (strcmp(s.competitionKey, key) || s.status == Status::Active) continue;
+    bool out = s.status == Status::Cancelled;
+    int rank = 0;
+    for (uint16_t k = 0; k < nSummaries && !out; k++) {
+      const Summary& o = summaries[k];
+      if ((int)k != i && o.status != Status::Cancelled && !strcmp(o.competitionKey, key) && newer(o, s)) rank++;
+      out = rank >= RECENT_EDITIONS;
+    }
+    if (out) removeAt(i);
   }
-  progresion::setTournaments(list, n);
-  free(list);
+}
+// Pone (o cambia) un resumen en memoria, en orden de creación, y recorta su competición.
+static bool keepSummary(const Summary& s) {
+  dropSummary(s.id);
+  int cap = capSummaries;
+  if (!s3mem::reserve(summaries, cap, nSummaries + 1, 32)) return false;
+  capSummaries = cap;
+  uint16_t k = nSummaries;
+  while (k > 0 && newer(summaries[k - 1], s)) k--;
+  memmove(&summaries[k + 1], &summaries[k], (size_t)(nSummaries - k) * sizeof(Summary));
+  summaries[k] = s;
+  nSummaries++;
+  trimKey(s.competitionKey);
+  return true;
 }
 
-// Índice: «S1» y los campos del resumen separados por tabuladores (en un texto no puede ir ni tabulador ni salto).
+// Línea del índice: «S2» y los campos separados por tabuladores (en un texto no puede ir ni tabulador ni salto); los
+// jugadores, separados por comas.
 static void cleanField(FILE* f, const char* s) {
   for (; *s; s++) fputc(*s == '\t' || *s == '\n' || *s == '\r' ? ' ' : *s, f);
 }
-static bool writeIndex() {
-  char ip[96], tmp[104];
-  indexPath(ip, sizeof(ip));
-  snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
-  FILE* f = fopen(tmp, "wb");
-  if (!f) return false;
-  bool ok = true;
-  for (uint16_t i = 0; i < nSummaries && ok; i++) {
-    const Summary& s = summaries[i];
-    const char* text[] = {s.id, s.name, s.competitionKey, s.competition};
-    fputs("S1", f);
-    for (const char* x : text) fputc('\t', f), cleanField(f, x);
-    fprintf(f, "\t%c\t%c\t%u\t%llu\t%llu\t%u\t%u\t%d\t%u", "lbp"[(int)s.format], "afc"[(int)s.status], s.edition,
-            (unsigned long long)s.createdAt, (unsigned long long)s.finishedAt, s.done, s.total, s.ranked ? 1 : 0, s.nChampion);
-    const char* more[] = {s.champion, s.championIds[0], s.championIds[1], s.mvpId, s.logo, s.cup, s.banner, s.finalMatchId};
-    for (const char* x : more) fputc('\t', f), cleanField(f, x);
-    ok = fputc('\n', f) != EOF;
+static bool writeLine(FILE* f, const Summary& s) {
+  const char* text[] = {s.id, s.name, s.competitionKey, s.competition};
+  fputs("S2", f);
+  for (const char* x : text) fputc('\t', f), cleanField(f, x);
+  fprintf(f, "\t%c\t%c\t%u\t%llu\t%llu\t%u\t%u\t%d\t%u", "lbp"[(int)s.format], "afc"[(int)s.status], s.edition,
+          (unsigned long long)s.createdAt, (unsigned long long)s.finishedAt, s.done, s.total, s.ranked ? 1 : 0, s.nChampion);
+  const char* more[] = {s.champion, s.championIds[0], s.championIds[1], s.mvpId, s.logo, s.cup, s.banner, s.finalMatchId};
+  for (const char* x : more) fputc('\t', f), cleanField(f, x);
+  fputc('\t', f);
+  for (uint8_t i = 0; i < s.nPlayers && i < MAX_ENTRANTS; i++) {
+    if (i) fputc(',', f);
+    cleanField(f, s.players[i]);
   }
-  ok = fclose(f) == 0 && ok;
-  if (!ok || !partidos::replaceFile(tmp, ip)) {
-    ::remove(tmp);
-    return false;
-  }
-  return true;
+  return fputc('\n', f) != EOF;
 }
-static bool parseIndexLine(char* l, Summary& s) {
+static bool parseLine(char* l, Summary& s) {
   memset(&s, 0, sizeof(s));
   char* f[24];
   int k = 0;
   f[k++] = l;
   for (char* p = l; *p && k < 24; p++)
     if (*p == '\t') *p = 0, f[k++] = p + 1;
-  if (k < 22 || strcmp(f[0], "S1")) return false;
+  if (k < 23 || strcmp(f[0], "S2")) return false;
   copyText(s.id, sizeof(s.id), f[1]);
   copyText(s.name, sizeof(s.name), f[2]);
   copyText(s.competitionKey, sizeof(s.competitionKey), f[3]);
@@ -626,7 +624,93 @@ static bool parseIndexLine(char* l, Summary& s) {
   copyText(s.cup, sizeof(s.cup), f[19]);
   copyText(s.banner, sizeof(s.banner), f[20]);
   copyText(s.finalMatchId, sizeof(s.finalMatchId), f[21]);
+  for (char* p = f[22]; *p && s.nPlayers < MAX_ENTRANTS;) {
+    char* c = strchr(p, ',');
+    if (c) *c = 0;
+    if (*p) copyText(s.players[s.nPlayers++], 40, p);
+    if (!c) break;
+    p = c + 1;
+  }
   return s.id[0] != 0;
+}
+// «X <id>»: descartado.
+static bool goneLine(const char* l, char* id, size_t n) {
+  if (l[0] != 'X' || l[1] != '\t') return false;
+  copyText(id, n, l + 2);
+  return id[0] != 0;
+}
+static uint64_t idHash(const char* s) {  // FNV-1a de 64 bits
+  uint64_t h = 1469598103934665603ull;
+  for (; *s; s++) h = (h ^ (uint8_t)*s) * 1099511628211ull;
+  return h;
+}
+
+// Líneas añadidas en esta sesión: la buena de cada torneo es la última (las demás, viejas).
+struct Touch {
+  char id[48];
+  long at;
+};
+static Touch* touched = nullptr;
+static int nTouched = 0, capTouched = 0;
+static bool live(const char* id, long at) {
+  for (int i = nTouched - 1; i >= 0; i--)
+    if (!strcmp(touched[i].id, id)) return touched[i].at == at;
+  return true;  // tras compactar, cada torneo tiene una sola línea
+}
+static void touch(const char* id, long at) {
+  for (int i = 0; i < nTouched; i++)
+    if (!strcmp(touched[i].id, id)) {
+      touched[i].at = at;
+      return;
+    }
+  if (!s3mem::reserve(touched, capTouched, nTouched + 1, 16)) return;
+  copyText(touched[nTouched].id, 48, id);
+  touched[nTouched++].at = at;
+}
+
+static char* lineBuf = nullptr;  // 2 KB, PSRAM (una línea del índice)
+static const size_t INDEX_LINE = 2048;
+static bool haveLineBuf() { return lineBuf || (lineBuf = (char*)malloc(INDEX_LINE)) != nullptr; }
+
+// Cada línea buena del índice (la última de cada torneo y no descartado): fn(resumen, posición). fn devuelve false
+// para parar. Las líneas sin salto al final (a medio escribir) no cuentan.
+template <typename F>
+static void eachLine(F fn) {
+  char ip[96];
+  indexPath(ip, sizeof(ip));
+  FILE* f = haveLineBuf() ? fopen(ip, "rb") : nullptr;
+  if (!f) return;
+  for (;;) {
+    long at = ftell(f);
+    if (!fgets(lineBuf, (int)INDEX_LINE, f)) break;
+    size_t len = strlen(lineBuf);
+    if (!len || lineBuf[len - 1] != '\n') continue;  // a medio escribir (o demasiado larga)
+    lineBuf[strcspn(lineBuf, "\r\n")] = 0;
+    Summary s;
+    if (!parseLine(lineBuf, s) || !live(s.id, at)) continue;
+    if (!fn(s, at)) break;
+  }
+  fclose(f);
+}
+// Para competitions()/nextEdition() de la ficha (eachSummary del contrato).
+static void eachSummaryFromIndex(SummaryFn fn, void* arg) {
+  eachLine([&](const Summary& s, long) { return fn(s, arg); });
+}
+
+static bool compact(bool scanDir);
+// Añade la línea de un torneo (o «X <id>» si `s` es nullptr) al final del índice.
+static bool append(const Summary* s, const char* goneId) {
+  char ip[96];
+  indexPath(ip, sizeof(ip));
+  FILE* f = fopen(ip, "ab");
+  if (!f) return false;
+  fseek(f, 0, SEEK_END);
+  long at = ftell(f);
+  bool ok = s ? writeLine(f, *s) : fprintf(f, "X\t%s\n", goneId) > 0;
+  ok = fclose(f) == 0 && ok;
+  if (ok) touch(s ? s->id : goneId, at);
+  if (nTouched > 64) compact(false);  // muchos cambios en una sesión larga: se compacta
+  return ok;
 }
 
 // Un torneo de trabajo (resúmenes de los que llegan o se rehacen), en la PSRAM.
@@ -637,6 +721,210 @@ static bool readFileInto(const char* path, Tournament& t) {
   bool ok = fromJson(txt, t);
   free(txt);
   return ok;
+}
+
+// Compacta el índice: una línea por torneo (la última), sin los descartados. Con `scanDir` (al encender), además
+// quita los que ya no tienen archivo y añade los archivos sin línea (y recoge los restos de un corte de luz). La
+// memoria de trabajo (12 bytes por línea) se libera al acabar.
+static bool compact(bool scanDir) {
+  char ip[96], tmp[104];
+  indexPath(ip, sizeof(ip));
+  snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
+  partidos::recoverFile(ip);
+  if (!haveLineBuf()) return false;
+  struct L { uint64_t h; uint32_t k; bool gone, keep; };
+  L* ls = nullptr;
+  int nl = 0, capL = 0;
+  bool dirty = false, ok = true;
+  // Pase 1: qué hay en cada línea.
+  if (FILE* f = fopen(ip, "rb")) {
+    while (ok && fgets(lineBuf, (int)INDEX_LINE, f)) {
+      size_t len = strlen(lineBuf);
+      if (!len || lineBuf[len - 1] != '\n') { dirty = true; continue; }
+      lineBuf[len - 1] = 0;
+      Summary s;
+      char id[48];
+      bool gone = goneLine(lineBuf, id, sizeof(id));
+      if (!gone && !parseLine(lineBuf, s)) { dirty = true; continue; }
+      if (!s3mem::reserve(ls, capL, nl + 1, 64)) { ok = false; break; }
+      ls[nl] = L{idHash(gone ? id : s.id), (uint32_t)nl, gone, false};
+      dirty |= gone;
+      nl++;
+    }
+    fclose(f);
+  } else {
+    dirty = true;
+  }
+  if (!ok) { free(ls); return false; }
+  // La última de cada torneo es la que vale.
+  L** by = nl ? (L**)malloc((size_t)nl * sizeof(L*)) : nullptr;
+  for (int i = 0; by && i < nl; i++) by[i] = &ls[i];
+  if (by)
+    qsort(by, (size_t)nl, sizeof(L*), [](const void* a, const void* b) {
+      const L &x = **(L* const*)a, &y = **(L* const*)b;
+      if (x.h != y.h) return x.h < y.h ? -1 : 1;
+      return x.k < y.k ? -1 : x.k > y.k ? 1 : 0;
+    });
+  for (int i = 0; by && i < nl; i++) {
+    bool last = i + 1 == nl || by[i + 1]->h != by[i]->h;
+    by[i]->keep = last && !by[i]->gone;
+    if (!last) dirty = true;
+  }
+  // Los archivos de la carpeta: los que faltan en el índice se añaden; las líneas sin archivo se quitan.
+  char (*add)[48] = nullptr;
+  int nAdd = 0, capAdd = 0;
+  if (scanDir && (by || !nl)) {
+    uint64_t* present = nullptr;
+    int np = 0, capP = 0;
+    bool listed = false;
+    if (DIR* d = opendir(dir)) {
+      listed = true;
+      while (struct dirent* e = readdir(d)) {
+        const char* n = e->d_name;
+        size_t len = strlen(n);
+        char path[160];
+        snprintf(path, sizeof(path), "%s/%s", dir, n);
+        if (len > 5 && !strcmp(n + len - 5, ".nube")) { ::remove(path); continue; }
+        if (len > 4 && !strcmp(n + len - 4, ".tmp")) { ::remove(path); continue; }
+        if (len > 9 && !strcmp(n + len - 9, ".json.bak")) {
+          path[strlen(path) - 4] = 0;
+          partidos::recoverFile(path);
+          len -= 4;
+        } else if (len <= 5 || strcmp(n + len - 5, ".json")) {
+          continue;
+        }
+        if (len - 5 >= 48) continue;
+        char id[48];
+        snprintf(id, sizeof(id), "%.*s", (int)(len - 5), n);
+        if (!s3mem::reserve(present, capP, np + 1, 64)) { listed = false; break; }
+        present[np++] = idHash(id);
+        bool inIndex = false;
+        uint64_t h = idHash(id);
+        for (int i = 0; i < nl && !inIndex; i++) inIndex = ls[i].h == h && ls[i].keep;
+        bool goneHere = false;  // descartado (con «X») pero con archivo: se vuelve a borrar
+        for (int i = 0; i < nl && !goneHere && !inIndex; i++) goneHere = ls[i].h == h;
+        if (goneHere) {
+          ::remove(path);
+          continue;
+        }
+        if (inIndex) continue;
+        if (!s3mem::reserve(add, capAdd, nAdd + 1, 8)) continue;
+        memcpy(add[nAdd++], id, 48);
+        dirty = true;
+      }
+      closedir(d);
+    }
+    if (listed) {
+      qsort(present, (size_t)np, sizeof(uint64_t), [](const void* a, const void* b) {
+        uint64_t x = *(const uint64_t*)a, y = *(const uint64_t*)b;
+        return x < y ? -1 : x > y ? 1 : 0;
+      });
+      for (int i = 0; i < nl; i++)
+        if (ls[i].keep && !bsearch(&ls[i].h, present, (size_t)np, sizeof(uint64_t), [](const void* a, const void* b) {
+              uint64_t x = *(const uint64_t*)a, y = *(const uint64_t*)b;
+              return x < y ? -1 : x > y ? 1 : 0;
+            }))
+          ls[i].keep = false, dirty = true;
+    }
+    free(present);
+  }
+  free(by);
+  // Pase 2: el índice nuevo (si hay algo que cambiar).
+  if (dirty) {
+    FILE* in = fopen(ip, "rb");
+    FILE* out = fopen(tmp, "wb");
+    ok = out != nullptr;
+    int k = 0;
+    while (ok && in && fgets(lineBuf, (int)INDEX_LINE, in)) {
+      size_t len = strlen(lineBuf);
+      if (!len || lineBuf[len - 1] != '\n') continue;
+      Summary s;
+      char id[48];
+      lineBuf[len - 1] = 0;
+      char* again = (char*)malloc(len + 1);
+      if (!again) { ok = false; break; }
+      memcpy(again, lineBuf, len);
+      bool valid = goneLine(lineBuf, id, sizeof(id)) || parseLine(lineBuf, s);
+      if (valid) {
+        if (k < nl && ls[k].keep) ok = fprintf(out, "%s\n", again) > 0;
+        k++;
+      }
+      free(again);
+    }
+    if (in) fclose(in);
+    for (int i = 0; ok && i < nAdd; i++) {
+      char jp[112];
+      jsonPath(add[i], jp, sizeof(jp));
+      if (!alloc(work) || !readFileInto(jp, work)) continue;
+      Summary s;
+      summarizeAll(work, s);
+      ok = writeLine(out, s);
+    }
+    if (out) ok = fclose(out) == 0 && ok;
+    if (!ok || !partidos::replaceFile(tmp, ip)) ::remove(tmp), ok = false;
+  }
+  free(ls);
+  free(add);
+  if (ok) nTouched = 0;
+  return ok;
+}
+
+// La memoria, otra vez desde el índice: los en juego y las ediciones recientes de cada competición.
+static void select() {
+  nSummaries = 0;
+  eachLine([](const Summary& s, long) {
+    keepSummary(s);
+    return true;
+  });
+}
+
+// Lo que necesita la progresión (s3_progresion.h): qué torneos siguen en juego y quién ganó cada uno (de todos).
+static void syncProgresion() {
+  progresion::TournamentInfo* list = nullptr;
+  int n = 0, cap = 0;
+  eachLine([&](const Summary& s, long) {
+    if (s.status == Status::Cancelled || (s.status == Status::Finished && !s.finalMatchId[0])) return true;
+    if (!s3mem::reserve(list, cap, n + 1, 64)) return false;
+    progresion::TournamentInfo& x = list[n++];
+    memset(&x, 0, sizeof(x));
+    x.id = progresion::idHash(s.id);
+    x.active = s.status == Status::Active;
+    if (s.status == Status::Finished) x.finalMatch = progresion::idHash(s.finalMatchId);
+    x.nChampion = s.nChampion;
+    for (uint8_t k = 0; k < s.nChampion && k < 2; k++) x.champion[k] = partidos::codeOf(s.championIds[k]);
+    return true;
+  });
+  progresion::setTournaments(list, n);
+  free(list);
+}
+
+// Resumen de un torneo por su id: de memoria o del índice. false si no está.
+static bool findAny(const char* id, Summary& out) {
+  int i = findSummary(id);
+  if (i >= 0) {
+    out = summaries[i];
+    return true;
+  }
+  bool found = false;
+  eachLine([&](const Summary& s, long) {
+    if (strcmp(s.id, id)) return true;
+    out = s;
+    found = true;
+    return false;
+  });
+  return found;
+}
+
+// Tras guardar o descartar: memoria, progresión y pantallas al día.
+static void changed(const Summary* s, const char* goneId) {
+  append(s, goneId);
+  if (s) keepSummary(*s);
+  else {
+    dropSummary(goneId);
+    select();  // puede volver a memoria una edición antigua de esa competición
+  }
+  syncProgresion();
+  ++revision;
 }
 
 // ---------------------------------------------------------------- tipos de torneo (FFat)
@@ -871,10 +1159,7 @@ static void cloudArrived(const char* id) {
   }
   Summary s;
   summarizeAll(work, s);
-  putSummary(s);
-  writeIndex();
-  syncProgresion();
-  ++revision;
+  changed(&s, nullptr);
 }
 // Lo borraron en la cuenta (sus partidos llegan borrados aparte).
 static void cloudGone(const char* id) {
@@ -884,10 +1169,7 @@ static void cloudGone(const char* id) {
   char path[112];
   jsonPath(id, path, sizeof(path));
   ::remove(path);
-  dropSummary(id);
-  writeIndex();
-  syncProgresion();
-  ++revision;
+  changed(nullptr, id);
 }
 
 // Un jugador ha cambiado de id (se ha unido con su ficha de la cuenta): también en los torneos donde juega.
@@ -896,16 +1178,23 @@ static void playerIdChanged(const char* oldId, const char* newId) {
   snprintf(from, sizeof(from), "\"%s\"", oldId);
   snprintf(to, sizeof(to), "\"%s\"", newId);
   size_t fl = strlen(from), tl = strlen(to);
-  bool any = false;
-  for (uint16_t i = 0; i < nSummaries; i++) {
+  // Todos los torneos (del índice): primero la lista de ids, luego cada archivo.
+  char (*ids)[48] = nullptr;
+  int n = 0, cap = 0;
+  eachLine([&](const Summary& s, long) {
+    if (!s3mem::reserve(ids, cap, n + 1, 32)) return false;
+    memcpy(ids[n++], s.id, 48);
+    return true;
+  });
+  for (int i = 0; i < n; i++) {
     char path[112], tmp[120];
-    jsonPath(summaries[i].id, path, sizeof(path));
+    jsonPath(ids[i], path, sizeof(path));
     char* txt = partidos::readAll(path);
     if (!txt || !strstr(txt, from)) {
       free(txt);
       continue;
     }
-    snprintf(tmp, sizeof(tmp), "%s/%s.tmp", dir, summaries[i].id);
+    snprintf(tmp, sizeof(tmp), "%s/%s.tmp", dir, ids[i]);
     FILE* f = fopen(tmp, "wb");
     bool ok = f != nullptr;
     for (const char* q = txt; ok && *q;) {
@@ -918,16 +1207,14 @@ static void playerIdChanged(const char* oldId, const char* newId) {
       ::remove(tmp);
       continue;
     }
-    for (uint8_t k = 0; k < summaries[i].nChampion; k++)
-      if (!strcmp(summaries[i].championIds[k], oldId)) copyText(summaries[i].championIds[k], 40, newId);
-    if (!strcmp(summaries[i].mvpId, oldId)) copyText(summaries[i].mvpId, 40, newId);
-    queue('t', summaries[i].id);
-    any = true;
+    if (alloc(work) && readFileInto(path, work)) {
+      Summary s;
+      summarizeAll(work, s);
+      changed(&s, nullptr);
+    }
+    queue('t', ids[i]);
   }
-  if (!any) return;
-  writeIndex();
-  syncProgresion();
-  ++revision;
+  free(ids);
 }
 
 }  // namespace guardado
@@ -935,75 +1222,9 @@ static void playerIdChanged(const char* oldId, const char* newId) {
 // ---------------------------------------------------------------- lo del contrato
 bool loadIndex() {
   using namespace guardado;
-  nSummaries = 0;
   ++revision;
-  if (!allocSummaries()) return false;
-  char ip[96];
-  indexPath(ip, sizeof(ip));
-  partidos::recoverFile(ip);
-  bool dirty = false;
-  if (FILE* f = fopen(ip, "rb")) {
-    char* line = (char*)malloc(2048);
-    while (line && fgets(line, 2048, f)) {
-      line[strcspn(line, "\r\n")] = 0;
-      Summary s;
-      if (parseIndexLine(line, s)) {
-        putSummary(s);
-      } else if (line[0]) dirty = true;
-    }
-    free(line);
-    fclose(f);
-  } else {
-    dirty = true;
-  }
-  // Que cuadre con la carpeta: torneos sin línea (se fue la luz al guardar) y líneas sin torneo. Los restos de una
-  // descarga o de una sustitución a medias se recogen aquí.
-  const int MAX_SEEN = MAX_SUMMARIES + 56;
-  char (*seen)[48] = (char(*)[48])calloc(MAX_SEEN, 48);
-  int nSeen = 0;
-  bool listed = false;
-  if (DIR* d = seen ? opendir(dir) : nullptr) {
-    listed = true;
-    while (struct dirent* e = readdir(d)) {
-      const char* n = e->d_name;
-      size_t len = strlen(n);
-      char path[160];
-      snprintf(path, sizeof(path), "%s/%s", dir, n);
-      if (len > 5 && !strcmp(n + len - 5, ".nube")) { ::remove(path); continue; }
-      if (len > 4 && !strcmp(n + len - 4, ".tmp")) { ::remove(path); continue; }
-      if (len > 9 && !strcmp(n + len - 9, ".json.bak")) {
-        path[strlen(path) - 4] = 0;
-        partidos::recoverFile(path);
-        len -= 4;
-      } else if (len <= 5 || strcmp(n + len - 5, ".json")) continue;
-      if (len - 5 >= 48) continue;
-      char id[48];
-      snprintf(id, sizeof(id), "%.*s", (int)(len - 5), n);
-      if (nSeen < MAX_SEEN) memcpy(seen[nSeen++], id, 48);
-      else listed = false;  // demasiados: no se quita nada del índice
-      if (findSummary(id) >= 0) continue;
-      char jp[112];
-      jsonPath(id, jp, sizeof(jp));
-      if (!alloc(work) || !readFileInto(jp, work)) continue;
-      Summary s;
-      summarizeAll(work, s);
-      if (putSummary(s)) dirty = true;
-    }
-    closedir(d);
-  }
-  // Líneas cuyo torneo ya no está (solo si se ha podido mirar la carpeta entera).
-  for (uint16_t i = 0; listed && i < nSummaries;) {
-    bool there = false;
-    for (int k = 0; k < nSeen && !there; k++) there = !strcmp(seen[k], summaries[i].id);
-    if (there) {
-      i++;
-      continue;
-    }
-    dropSummary(summaries[i].id);
-    dirty = true;
-  }
-  free(seen);
-  if (dirty) writeIndex();
+  compact(true);  // una línea por torneo y que cuadre con la carpeta
+  select();
   syncProgresion();
   return true;
 }
@@ -1019,7 +1240,10 @@ void begin(bool sd) {
   nube::tournamentArrived = cloudArrived;
   nube::tournamentGone = cloudGone;
   nube::tournamentsLoggedIn = []() {
-    for (uint16_t i = 0; i < nSummaries; i++) queue('t', summaries[i].id);
+    eachLine([](const Summary& s, long) {  // todos, también los antiguos
+      queue('t', s.id);
+      return true;
+    });
     if (nTemplates) writeTemplatesFile(true);
   };
   nube::templatesOut = []() -> char* { return templatesDirty ? templatesJson() : nullptr; };
@@ -1031,6 +1255,7 @@ void begin(bool sd) {
   nube::templatesDone = templatesPushed;
   partidos::playerIdChanged = playerIdChanged;
   matchSource = matchesOf;
+  eachSummary = eachSummaryFromIndex;
 }
 
 bool load(const char* id, Tournament& t) {
@@ -1061,11 +1286,8 @@ bool save(Tournament& t) {
   }
   Summary s;
   guardado::summarizeAll(t, s);
-  putSummary(s);
-  writeIndex();
-  syncProgresion();
+  changed(&s, nullptr);
   queue('t', t.id);
-  ++revision;
   return true;
 }
 
@@ -1080,11 +1302,8 @@ bool discard(const char* id) {
   FILE* f = fopen(path, "rb");
   if (f) fclose(f), had = true;
   ::remove(path);
-  dropSummary(id);
-  writeIndex();
-  syncProgresion();
+  changed(nullptr, id);
   queue('T', id);
-  ++revision;
   return had;
 }
 
@@ -1156,16 +1375,75 @@ void newTemplate(Template& out, Format f, const Template* copyOf) {
   out.pairing = f == Format::Pool ? Pairing::Random : Pairing::Elo;
 }
 
+// Ediciones de una competición en la SD (no descartadas), de la más nueva a la más antigua: primero dónde está cada
+// una (16 bytes por edición, solo mientras dura) y luego se leen las de la página.
+namespace guardado {
+struct At {
+  uint64_t createdAt;
+  long at;
+  char id[48];
+};
+static At* editionsOf(const char* key, int& n) {
+  At* list = nullptr;
+  int cap = 0;
+  n = 0;
+  eachLine([&](const Summary& s, long at) {
+    if (s.status == Status::Cancelled || strcmp(s.competitionKey, key)) return true;
+    if (!s3mem::reserve(list, cap, n + 1, 32)) return false;
+    list[n].createdAt = s.createdAt;
+    list[n].at = at;
+    memcpy(list[n].id, s.id, 48);
+    n++;
+    return true;
+  });
+  qsort(list, (size_t)n, sizeof(At), [](const void* a, const void* b) {
+    const At &x = *(const At*)a, &y = *(const At*)b;
+    if (x.createdAt != y.createdAt) return x.createdAt > y.createdAt ? -1 : 1;
+    return -strcmp(x.id, y.id);
+  });
+  return list;
+}
+}  // namespace guardado
+
+uint16_t editionCount(const char* key) {
+  uint16_t n = 0;
+  guardado::eachLine([&](const Summary& s, long) {
+    if (s.status != Status::Cancelled && !strcmp(s.competitionKey, key)) n++;
+    return true;
+  });
+  return n;
+}
+
+uint16_t editionsPage(const char* key, uint16_t from, Summary* out, uint16_t max) {
+  using namespace guardado;
+  int n = 0;
+  At* list = editionsOf(key, n);
+  uint16_t k = 0;
+  char ip[96];
+  indexPath(ip, sizeof(ip));
+  FILE* f = list && haveLineBuf() ? fopen(ip, "rb") : nullptr;
+  for (int i = from; f && i < n && k < max; i++) {
+    if (fseek(f, list[i].at, SEEK_SET) != 0 || !fgets(lineBuf, (int)INDEX_LINE, f)) continue;
+    lineBuf[strcspn(lineBuf, "\r\n")] = 0;
+    if (parseLine(lineBuf, out[k])) k++;
+  }
+  if (f) fclose(f);
+  free(list);
+  return k;
+}
+
 // ---------------------------------------------------------------- extras (fuera del contrato)
 // Todo lo de aquí, a la cuenta (al entrar o tras restaurar una copia).
 static void queueAll() {
   if (nube::tournamentsLoggedIn) nube::tournamentsLoggedIn();
 }
-// Resumen de un torneo por su id (o nullptr).
+// Resumen de un torneo por su id, si está en memoria (en juego o reciente); si no, nullptr.
 static const Summary* summaryOf(const char* id) {
   int i = guardado::findSummary(id);
   return i >= 0 ? &summaries[i] : nullptr;
 }
+// Resumen de cualquier torneo (de memoria o del índice de la SD). false si no está.
+static bool findSummary(const char* id, Summary& out) { return guardado::findAny(id, out); }
 
 }  // namespace torneos
 

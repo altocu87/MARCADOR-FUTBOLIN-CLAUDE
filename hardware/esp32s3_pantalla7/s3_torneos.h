@@ -33,7 +33,12 @@ static const uint16_t MAX_TEAMS_T = 160;                 // equipos de un torneo
 static const uint16_t MAX_FIXTURES = 320;                // cruces de un torneo
 static const uint8_t MAX_SERIES = 3;                     // partidos de una serie (al mejor de 3)
 static const uint8_t MAX_TEMPLATES = 24;                 // tipos de torneo guardados
-static const uint16_t MAX_SUMMARIES = 200;               // torneos que se recuerdan (palmarés)
+static const uint16_t MAX_SUMMARIES = 200;               // tamaño de las listas de trabajo (no es un tope del historial)
+// CONTRATO (agente 2, palmarés casi ilimitado): en la SD está todo el historial (un <id>.json por torneo y una línea
+// por torneo en el índice). En memoria (`summaries`) solo los torneos en juego y las RECENT_EDITIONS últimas ediciones
+// de cada competición; las demás se leen de la SD bajo demanda (editionsPage) y el cuadro de honor recorre el índice
+// entero línea a línea.
+static const uint8_t RECENT_EDITIONS = 10;
 static const uint8_t POOL_MINUTES[4] = {20, 30, 45, 60};
 static const uint8_t POOL_ROUNDS[6] = {3, 4, 5, 6, 8, 10};
 static const uint16_t MAX_PLAYED = MAX_FIXTURES + 16;   // CONTRATO (agente 1): partidos apuntados (con las series)
@@ -271,11 +276,16 @@ struct Report {
   uint16_t extraTime;
 };
 void report(const Tournament& t, Report& out);
-struct HonourRow { char id[40]; uint8_t titles, mvps, editions; };
+// CONTRATO (agente 2): títulos, MVP y ediciones con 16 bits (cientos de ediciones).
+struct HonourRow { char id[40]; uint16_t titles, mvps, editions; };
 struct Competition {
   char key[56]; char name[28]; Format format; char logo[40], cup[40], banner[40];
-  uint8_t nEditions; uint16_t editions[32];  // índices en summaries, la más reciente primero
-  uint8_t nHonours; HonourRow honours[MAX_ENTRANTS * 2];
+  // CONTRATO (agente 2): `editions`, las RECENT_EDITIONS más recientes que hay en memoria (índices en summaries, la
+  // más reciente primero); `totalEditions`, todas las de la SD (las antiguas, con editionsPage). `honours`, el cuadro
+  // de honor entero (todas las ediciones), en PSRAM: es del módulo y vale hasta la siguiente llamada a competitions().
+  uint8_t nEditions; uint16_t editions[RECENT_EDITIONS];
+  uint16_t totalEditions;
+  uint16_t nHonours; HonourRow* honours;
   int16_t lastChampion;  // índice en summaries
 };
 uint8_t competitions(Competition* out, uint8_t max);     // PSRAM: cada Competition es grande
@@ -306,6 +316,11 @@ void competitionKey(const Tournament& t, char* out, size_t n);
 const char* competitionName(const Tournament& t);
 uint32_t playerCode(const char* id);                      // = partidos::codeOf
 
+// CONTRATO (agente 2): todos los resúmenes, de la SD (s3_torneos_datos.h lo pone al empezar) o, sin él, los de
+// memoria. `fn` devuelve false para parar. Lo usan competitions() y nextEdition() para contar todas las ediciones.
+typedef bool (*SummaryFn)(const Summary& s, void* arg);
+static void (*eachSummary)(SummaryFn fn, void* arg) = nullptr;
+
 // ---------------------------------------------------------------- guardado y nube (s3_torneos_datos.h · agente 2)
 // /sdcard/torneos/<id>.json (o el chip sin SD) + /sdcard/torneos/indice.txt; plantillas en /jugadores/tipos.txt
 // (FFat, como equipos.txt) y en la nube dentro de prefs/mesa campo «tournamentTemplates».
@@ -320,6 +335,10 @@ extern Template* templates; extern uint8_t nTemplates;
 bool saveTemplate(const Template& t);
 bool removeTemplate(const char* id);
 void newTemplate(Template& out, Format f, const Template* copyOf);
+// CONTRATO (agente 2): ediciones de una competición en la SD (no descartadas), de la más nueva a la más antigua.
+uint16_t editionCount(const char* key);
+// Copia en `out` hasta `max` ediciones saltándose las `from` más nuevas (páginas del palmarés). Devuelve cuántas.
+uint16_t editionsPage(const char* key, uint16_t from, Summary* out, uint16_t max);
 
 }  // namespace torneos
 

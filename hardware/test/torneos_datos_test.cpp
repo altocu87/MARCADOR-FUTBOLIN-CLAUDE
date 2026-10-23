@@ -7,7 +7,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 #include "Arduino.h"
@@ -206,23 +208,37 @@ int main() {
   }
   printf("torneos abiertos con sus partidos: lista de jugados, MVP y jugadores del palmarés\n");
 
-  // ------------------------------------------------ índice: se rehace si falta y recoge restos de un corte
+  // ------------------------------------------------ índice: registro que se compacta al encender
   std::string ip = std::string(ROOT) + "/torneos/indice.txt";
-  std::string before = readFile(ip);
-  assert(torneos::loadIndex() && torneos::nSummaries == ids.size() && readFile(ip) == before);
-  fsx::remove(ip);
+  auto indexLines = [&]() {
+    std::vector<std::string> v;
+    std::string all = readFile(ip), cur;
+    for (char ch : all)
+      if (ch == '\n') v.push_back(cur), cur.clear();
+      else cur += ch;
+    std::sort(v.begin(), v.end());
+    return v;
+  };
+  assert(indexLines().size() == 2 * ids.size());  // cada guardado añade su línea
+  assert(torneos::loadIndex() && torneos::nSummaries == ids.size() && indexLines().size() == ids.size());
+  auto before = indexLines();
+  assert(torneos::loadIndex() && indexLines() == before);
+  // Se fue la luz: índice sustituido a medias (.bak), una línea a medio escribir, restos de una descarga y un .bak.
+  fsx::rename(ip, ip + ".bak");
+  { FILE* f = fopen((ip + ".bak").c_str(), "ab"); fputs("S2\tt_cortado\tMedio", f); fclose(f); }
   writeFile(std::string(ROOT) + "/torneos/basura.nube", "{");
   fsx::rename(std::string(ROOT) + "/torneos/" + ids[1] + ".json", std::string(ROOT) + "/torneos/" + ids[1] + ".json.bak");
-  assert(torneos::loadIndex() && torneos::nSummaries == ids.size());
-  assert(readFile(ip) == before);
+  assert(torneos::loadIndex() && torneos::nSummaries == ids.size() && indexLines() == before);
   assert(!fsx::exists(std::string(ROOT) + "/torneos/basura.nube"));
   assert(fsx::exists(std::string(ROOT) + "/torneos/" + ids[1] + ".json"));
-  // Una línea cuyo torneo ya no está se quita.
+  // Sin índice se rehace con los archivos; una línea cuyo torneo ya no está se quita.
+  fsx::remove(ip);
+  assert(torneos::loadIndex() && torneos::nSummaries == ids.size() && indexLines() == before);
   fsx::remove(std::string(ROOT) + "/torneos/" + ids[2] + ".json");
   assert(torneos::loadIndex() && torneos::nSummaries == ids.size() - 1);
   writeFile(std::string(ROOT) + "/torneos/" + ids[2] + ".json", texts[2]);
   assert(torneos::loadIndex() && torneos::nSummaries == ids.size());
-  printf("índice de torneos: se rehace, recupera un .bak y quita lo que falta\n");
+  printf("índice de torneos: se compacta, recupera un corte de luz, se rehace y quita lo que falta\n");
 
   // ------------------------------------------------ partidos con torneo
   assert(torneos::load(ids[5].c_str(), t));  // la liga en juego
@@ -372,6 +388,159 @@ int main() {
   int lines = 0;
   for (char ch : pending()) lines += ch == '\n';
   assert(lines == torneos::nSummaries);
+
+  // ------------------------------------------------ cuenta en una SD vacía: se rehace todo el historial
+  {
+    std::string tdir = std::string(ROOT) + "/torneos";
+    for (auto& p : fsx::directory_iterator(tdir)) fsx::remove_all(p.path());
+    torneos::loadIndex();
+    assert(torneos::nSummaries == 0);
+    cloudTournaments = "[";
+    for (size_t i = 0; i < ids.size(); i++)
+      cloudTournaments += std::string(i ? "," : "") + "{\"tipo\":\"tournament\",\"id\":\"" + ids[i] + "\",\"borrado\":false,\"datos\":" + texts[i] +
+                          ",\"actualizado\":\"2026-10-22T00:00:0" + std::to_string(i) + "Z\"}";
+    cloudTournaments += "]";
+    cloudRows = "[]";
+    nube::saved.tournaments = false;
+    fsx::remove(std::string(ROOT) + "/partidos/subir.txt");
+    nube::countPending();
+    nube::sync();
+    drain();
+    assert(nube::phase == nube::OK && torneos::nSummaries == ids.size());
+    assert(torneos::loadIndex() && torneos::nSummaries == ids.size() && indexLines().size() == ids.size());
+    cloudTournaments = "[]";
+    printf("cuenta → SD vacía: los torneos bajan y el índice se rehace entero\n");
+  }
+
+  // ------------------------------------------------ cientos de torneos: memoria acotada, páginas y cuadro de honor
+  {
+    std::string sdir = std::string(ROOT) + "/estres";
+    fsx::create_directories(sdir);
+    torneos::guardado::setDir(sdir.c_str());
+    const char* KEYS[3] = {"name:liga de los martes", "tpl_copa", "tpl_pool"};
+    struct H { int titles = 0, mvps = 0, editions = 0; };
+    std::map<std::string, std::map<std::string, H>> want;
+    std::map<std::string, int> count, lastEdition;
+    std::map<std::string, std::vector<uint64_t>> created;
+    uint32_t rnd = 12345;
+    auto next = [&]() { return rnd = rnd * 1103515245u + 12345u, (rnd >> 8); };
+    auto make = [&](int from, int to) {
+      FILE* f = fopen((sdir + "/indice.txt").c_str(), "ab");
+      for (int i = from; i < to; i++) {
+        torneos::Summary e;
+        memset(&e, 0, sizeof(e));
+        int c = i % 3;
+        snprintf(e.id, sizeof(e.id), "t_e%04d", i);
+        snprintf(e.name, sizeof(e.name), "Edición %d", i);
+        snprintf(e.competitionKey, sizeof(e.competitionKey), "%s", KEYS[c]);
+        snprintf(e.competition, sizeof(e.competition), "Competición %d", c);
+        e.format = (torneos::Format)c;
+        e.createdAt = 1700000000000ull + (uint64_t)i * 60000u;
+        bool cancelled = i % 47 == 5, active = i == 499;
+        e.status = active ? torneos::Status::Active : cancelled ? torneos::Status::Cancelled : torneos::Status::Finished;
+        e.edition = (uint16_t)(++lastEdition[KEYS[c]]);
+        e.nPlayers = (uint8_t)(4 + next() % 4);
+        for (uint8_t k = 0; k < e.nPlayers; k++) {
+          int pick;
+          bool dup;
+          do {
+            pick = (int)(next() % 40);
+            dup = false;
+            for (uint8_t q = 0; q < k; q++) dup |= atoi(e.players[q] + 2) == pick;
+          } while (dup);
+          snprintf(e.players[k], 40, "p_%02d", pick);
+        }
+        if (!active) {
+          e.finishedAt = e.createdAt + 3600000;
+          e.nChampion = (uint8_t)(1 + next() % 2);
+          for (uint8_t k = 0; k < e.nChampion; k++) memcpy(e.championIds[k], e.players[k], 40);
+          snprintf(e.champion, sizeof(e.champion), "Campeones %d", i);
+          memcpy(e.mvpId, e.players[next() % e.nPlayers], 40);
+          snprintf(e.finalMatchId, sizeof(e.finalMatchId), "m_e%04d", i);
+        }
+        if (i % 7 == 0) snprintf(e.logo, sizeof(e.logo), "escudo-%02d", i % 13);
+        torneos::guardado::writeLine(f, e);
+        writeFile(sdir + "/" + e.id + ".json", "{}");
+        if (e.status == torneos::Status::Cancelled) continue;
+        count[KEYS[c]]++;
+        created[KEYS[c]].push_back(e.createdAt);
+        auto& m = want[KEYS[c]];
+        for (uint8_t k = 0; k < e.nPlayers; k++) m[e.players[k]].editions++;
+        for (uint8_t k = 0; k < e.nChampion; k++) m[e.championIds[k]].titles++;
+        if (e.mvpId[0]) m[e.mvpId].mvps++;
+      }
+      fclose(f);
+    };
+    make(0, 100);
+    assert(torneos::loadIndex());
+    uint16_t few = torneos::nSummaries;
+    int capFew = torneos::guardado::capSummaries;
+    assert(few <= 3 * torneos::RECENT_EDITIONS + 1);
+    make(100, 500);
+    assert(torneos::loadIndex());
+    // La memoria no crece con el número de torneos: las 10 últimas de cada competición y la que está en juego.
+    assert(torneos::nSummaries == few && torneos::guardado::capSummaries == capFew);
+    assert(torneos::nSummaries == 3 * torneos::RECENT_EDITIONS);  // la que está en juego es de las 10 últimas
+    assert(progresion::nTournaments == 489);  // todos menos los 11 descartados (los antiguos también dan «Ganar torneo»)
+    // Cuadro de honor de todas las ediciones (lo que da competitions de la app: títulos, MVP y ediciones de cada uno).
+    torneos::Competition* cs = (torneos::Competition*)calloc(8, sizeof(torneos::Competition));
+    uint8_t nc = torneos::competitions(cs, 8);
+    assert(nc == 3);
+    for (uint8_t ci = 0; ci < nc; ci++) {
+      const torneos::Competition& c = cs[ci];
+      auto& m = want[c.key];
+      assert(c.totalEditions == count[c.key] && c.nEditions == torneos::RECENT_EDITIONS && c.nHonours == m.size());
+      for (uint16_t h = 0; h < c.nHonours; h++) {
+        const H& w = m[c.honours[h].id];
+        assert(c.honours[h].titles == w.titles && c.honours[h].mvps == w.mvps && c.honours[h].editions == w.editions);
+        if (h) {
+          const torneos::HonourRow &a = c.honours[h - 1], &b = c.honours[h];
+          assert(a.titles > b.titles || (a.titles == b.titles && (a.mvps > b.mvps || (a.mvps == b.mvps && a.editions >= b.editions))));
+        }
+      }
+      // Páginas: de la más nueva a la más antigua, todas, y las primeras son las de memoria.
+      assert(torneos::editionCount(c.key) == count[c.key]);
+      std::vector<uint64_t> got;
+      std::vector<std::string> gotIds;
+      torneos::Summary page[37];
+      for (uint16_t from = 0;; ) {
+        uint16_t n = torneos::editionsPage(c.key, from, page, 37);
+        if (!n) break;
+        for (uint16_t k = 0; k < n; k++) got.push_back(page[k].createdAt), gotIds.push_back(page[k].id);
+        from += n;
+      }
+      auto exp = created[c.key];
+      std::sort(exp.rbegin(), exp.rend());
+      assert(got == exp);
+      for (uint8_t k = 0; k < c.nEditions; k++) assert(gotIds[k] == torneos::summaries[c.editions[k]].id);
+      assert(torneos::nextEdition(c.key) == lastEdition[c.key] + 1);
+    }
+    assert(torneos::activeEdition(KEYS[499 % 3]) >= 0 && !strcmp(torneos::summaries[torneos::activeEdition(KEYS[499 % 3])].id, "t_e0499"));
+    // Corte de luz a mitad de añadir una línea, con un cambio de un torneo antiguo antes: al encender vale lo último.
+    {
+      torneos::Summary old;
+      assert(torneos::findSummary("t_e0010", old) && !torneos::summaryOf("t_e0010"));
+      snprintf(old.name, sizeof(old.name), "Renombrada");
+      FILE* f = fopen((sdir + "/indice.txt").c_str(), "ab");
+      torneos::guardado::writeLine(f, old);
+      fputs("S2\tt_e0011\tA medi", f);
+      fclose(f);
+      assert(torneos::loadIndex() && torneos::nSummaries == few);
+      torneos::Summary again;
+      assert(torneos::findSummary("t_e0010", again) && !strcmp(again.name, "Renombrada"));
+      assert(torneos::findSummary("t_e0011", again) && strcmp(again.name, "A medi"));
+      std::string idx = readFile(sdir + "/indice.txt");
+      assert(idx.back() == '\n' && idx.find("A medi") == std::string::npos);
+      uint8_t nc2 = torneos::competitions(cs, 8);
+      assert(nc2 == 3 && cs[0].totalEditions + cs[1].totalEditions + cs[2].totalEditions == count[KEYS[0]] + count[KEYS[1]] + count[KEYS[2]]);
+    }
+    // Descartar uno reciente: vuelve a memoria la siguiente edición más antigua.
+    assert(torneos::discard("t_e0498"));
+    assert(torneos::nSummaries == few && !torneos::summaryOf("t_e0498") && torneos::editionCount(KEYS[498 % 3]) == count[KEYS[498 % 3]] - 1);
+    free(cs);
+    torneos::guardado::setDir((std::string(ROOT) + "/torneos").c_str());
+    printf("500 torneos: memoria igual que con 100, páginas en orden, cuadro de honor completo y corte de luz OK\n");
+  }
   printf("Agente 2: torneos, índice, tipos, partidos de torneo, descartar y nube OK\n");
   torneos::release(t);
   return 0;

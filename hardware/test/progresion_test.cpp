@@ -120,10 +120,11 @@ static void loadTournaments(const char* path) {
     if (line.empty()) continue;
     progresion::TournamentInfo t;
     memset(&t, 0, sizeof(t));
-    char st[4], fin[64], champ[64];
-    assert(sscanf(line.c_str(), "%47s %3s %63s %63s", t.id, st, fin, champ) == 4);
+    char id[64], st[4], fin[64], champ[64];
+    assert(sscanf(line.c_str(), "%63s %3s %63s %63s", id, st, fin, champ) == 4);
+    t.id = progresion::idHash(id);
     t.active = st[0] == 'a';
-    if (strcmp(fin, "-")) snprintf(t.finalMatch, sizeof(t.finalMatch), "%s", fin);
+    if (strcmp(fin, "-")) t.finalMatch = progresion::idHash(fin);
     for (char* c = strtok(champ, ","); c && strcmp(c, "-") && t.nChampion < 2; c = strtok(nullptr, ","))
       t.champion[t.nChampion++] = (uint32_t)strtoul(c, nullptr, 16);
     list.push_back(t);

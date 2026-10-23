@@ -189,64 +189,80 @@ static const char* const DAYPART[4] = {"mañana", "mediodía", "tarde", "noche"}
 static int dayPart(int h) { return h >= 6 && h < 12 ? 0 : h >= 12 && h < 16 ? 1 : h >= 16 && h < 21 ? 2 : 3; }
 static const int RIVAL_MIN = 5, TOP = 12, LAST = 60;
 
-// Palmarés del jugador `id` (playerTournaments): abre cada torneo no descartado (pocos) para ver si juega y su puesto.
-struct Title { uint16_t s; uint64_t at; bool champion; uint8_t place, of; };
+// Palmarés del jugador `id` (playerTournaments), de todos los torneos del índice de la SD: con el resumen se ve en
+// cuáles ha jugado (los en juego, pocos, se abren para mirar sus equipos) y solo esos se abren para saber su puesto.
+struct Title {
+  char name[64], cup[40], logo[40], banner[40];
+  uint8_t format, status;
+  uint64_t at;
+  bool champion;
+  uint8_t place, of;
+};
 static void palmares(Out& o, const char* id) {
   using namespace torneos;
   static Tournament t;
-  Title* list = nSummaries ? (Title*)calloc(nSummaries, sizeof(Title)) : nullptr;
-  Place* ranking = (Place*)calloc(MAX_TEAMS_T, sizeof(Place));
-  int n = 0;
-  for (uint16_t i = 0; list && ranking && i < nSummaries; i++) {
-    const Summary& s = summaries[i];
-    if (s.status == Status::Cancelled || !load(s.id, t)) continue;
+  struct Acc { const char* id; Title* list; int n, cap; Place* ranking; } acc = {id, nullptr, 0, 0, (Place*)calloc(MAX_TEAMS_T, sizeof(Place))};
+  if (!acc.ranking) return;
+  auto visit = [](const Summary& s, void* a) -> bool {
+    Acc& x = *(Acc*)a;
+    if (s.status == Status::Cancelled) return true;
+    bool maybe = s.status == Status::Active;
+    for (uint8_t k = 0; k < s.nPlayers && !maybe; k++) maybe = !strcmp(s.players[k], x.id);
+    for (uint8_t k = 0; k < s.nChampion && !maybe; k++) maybe = !strcmp(s.championIds[k], x.id);
+    if (!maybe || !load(s.id, t)) return true;
     bool in = false;
     for (uint16_t k = 0; k < t.nTeams && !in; k++)
-      for (uint8_t j = 0; j < t.teams[k].n; j++) in |= !strcmp(t.teams[k].player[j], id);
-    for (uint8_t k = 0; k < t.nEntrants && !in; k++) in = !strcmp(t.entrants[k], id);
-    if (!in) continue;
-    Title& x = list[n++];
-    x.s = i;
-    x.at = s.finishedAt ? s.finishedAt : s.createdAt;
-    if (s.status != Status::Finished) continue;
-    x.champion = t.winner >= 0 && t.winner < (int16_t)t.nTeams;
-    if (x.champion) {
+      for (uint8_t j = 0; j < t.teams[k].n; j++) in |= !strcmp(t.teams[k].player[j], x.id);
+    for (uint8_t k = 0; k < t.nEntrants && !in; k++) in = !strcmp(t.entrants[k], x.id);
+    if (!in || !s3mem::reserve(x.list, x.cap, x.n + 1, 8)) return true;
+    Title& e = x.list[x.n++];
+    memset(&e, 0, sizeof(e));
+    memcpy(e.name, s.name, sizeof(e.name));
+    memcpy(e.cup, s.cup, 40), memcpy(e.logo, s.logo, 40), memcpy(e.banner, s.banner, 40);
+    e.format = (uint8_t)s.format;
+    e.status = (uint8_t)s.status;
+    e.at = s.finishedAt ? s.finishedAt : s.createdAt;
+    if (s.status != Status::Finished) return true;
+    if (t.winner >= 0 && t.winner < (int16_t)t.nTeams) {
       const torneos::Team& w = t.teams[t.winner];
-      x.champion = false;
-      for (uint8_t j = 0; j < w.n; j++) x.champion |= !strcmp(w.player[j], id);
+      for (uint8_t j = 0; j < w.n; j++) e.champion |= !strcmp(w.player[j], x.id);
     }
-    uint8_t nr = finalRanking(t, ranking, (uint8_t)(MAX_TEAMS_T > 255 ? 255 : MAX_TEAMS_T));
+    uint8_t nr = finalRanking(t, x.ranking, (uint8_t)(MAX_TEAMS_T > 255 ? 255 : MAX_TEAMS_T));
     for (uint8_t k = 0; k < nr; k++) {
-      if (ranking[k].place > x.of) x.of = ranking[k].place;
-      const torneos::Team& tm = t.teams[ranking[k].team];
+      if (x.ranking[k].place > e.of) e.of = x.ranking[k].place;
+      const torneos::Team& tm = t.teams[x.ranking[k].team];
       bool mine = false;
-      for (uint8_t j = 0; j < tm.n; j++) mine |= !strcmp(tm.player[j], id);
-      if (mine && !x.place) x.place = ranking[k].place;
+      for (uint8_t j = 0; j < tm.n; j++) mine |= !strcmp(tm.player[j], x.id);
+      if (mine && !e.place) e.place = x.ranking[k].place;
     }
-  }
+    return true;
+  };
+  if (eachSummary) eachSummary(visit, &acc);
+  else
+    for (uint16_t i = 0; i < nSummaries; i++) visit(summaries[i], &acc);
   // Lo más reciente arriba (con el mismo momento, en el orden de la lista).
-  for (int a = 1; a < n; a++)
-    for (int b = a; b > 0 && list[b].at > list[b - 1].at; b--) {
-      Title k = list[b];
-      list[b] = list[b - 1];
-      list[b - 1] = k;
+  for (int a = 1; a < acc.n; a++)
+    for (int b = a; b > 0 && acc.list[b].at > acc.list[b - 1].at; b--) {
+      Title k = acc.list[b];
+      acc.list[b] = acc.list[b - 1];
+      acc.list[b - 1] = k;
     }
   static const char* const FMT[3] = {"league", "bracket", "pool"};
   static const char* const ST[3] = {"active", "finished", "cancelled"};
-  for (int i = 0; i < n; i++) {
-    const Summary& s = summaries[list[i].s];
+  for (int i = 0; i < acc.n; i++) {
+    const Title& e = acc.list[i];
     o.add("%s{\"name\":", i ? "," : "");
-    o.str(s.name);
-    o.add(",\"format\":\"%s\",\"status\":\"%s\",\"champion\":%s,\"at\":%llu", FMT[(int)s.format], ST[(int)s.status],
-          list[i].champion ? "true" : "false", (unsigned long long)list[i].at);
-    if (s.cup[0]) o.add(",\"cup\":"), o.str(s.cup);
-    if (s.logo[0]) o.add(",\"logo\":"), o.str(s.logo);
-    if (s.banner[0]) o.add(",\"banner\":"), o.str(s.banner);
-    if (list[i].place) o.add(",\"place\":%u,\"of\":%u", list[i].place, list[i].of);
+    o.str(e.name);
+    o.add(",\"format\":\"%s\",\"status\":\"%s\",\"champion\":%s,\"at\":%llu", FMT[e.format % 3], ST[e.status % 3],
+          e.champion ? "true" : "false", (unsigned long long)e.at);
+    if (e.cup[0]) o.add(",\"cup\":"), o.str(e.cup);
+    if (e.logo[0]) o.add(",\"logo\":"), o.str(e.logo);
+    if (e.banner[0]) o.add(",\"banner\":"), o.str(e.banner);
+    if (e.place) o.add(",\"place\":%u,\"of\":%u", e.place, e.of);
     o.add("}");
   }
-  free(list);
-  free(ranking);
+  free(acc.list);
+  free(acc.ranking);
   release(t);
 }
 
@@ -480,11 +496,12 @@ static char* snapshot(uint32_t code, uint32_t nowUtc) {
     o.add("%s{\"at\":%llu,\"mode\":\"%s\",\"result\":\"%c\",\"mine\":%d,\"theirs\":%d", n ? "," : "", (unsigned long long)m.fin * 1000u,
           m.mode == 'c' ? "chaos" : m.mode == 'r' ? "ranked" : "quick", res > 0 ? 'G' : res < 0 ? 'P' : 'E', team ? m.b : m.w,
           team ? m.w : m.b);
-    if (const torneos::Summary* ts = m.tournament[0] ? torneos::summaryOf(m.tournament) : nullptr) {
+    static torneos::Summary ts;  // de memoria o, si es antiguo, del índice
+    if (m.tournament[0] && torneos::findSummary(m.tournament, ts)) {
       static const char* const FMT[3] = {"league", "bracket", "pool"};
       o.add(",\"tournament\":{\"name\":");
-      o.str(ts->name);
-      o.add(",\"format\":\"%s\"}", FMT[(int)ts->format]);
+      o.str(ts.name);
+      o.add(",\"format\":\"%s\"}", FMT[(int)ts.format]);
     }
     if (m.pw >= 0) o.add(",\"note\":\"Penaltis %d–%d\"", m.pw, m.pb);
     else if (m.reason == 'g') o.add(",\"note\":\"Gol de oro\"");
