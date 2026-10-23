@@ -72,6 +72,7 @@ static void workProgress(const char* what, int done, int total) {
   if (strcmp(lv_label_get_text(workText), b)) {
     lv_label_set_text(workText, b);
     lv_bar_set_value(workBar, pct, LV_ANIM_OFF);
+    uiport::resyncPanel();  // se está escribiendo en la memoria del chip: la imagen se realinea con cada avance
     lv_refr_now(uiport::display);
   }
 }

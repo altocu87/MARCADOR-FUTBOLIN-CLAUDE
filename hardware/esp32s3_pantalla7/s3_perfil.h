@@ -75,6 +75,7 @@ static bool credsFor(uint32_t code, Creds& c) {
   if (!w) return false;
   bool ok = w.write((const uint8_t*)all.data(), all.size()) == all.size();
   w.close();
+  s3flash::wrote();
   return ok;
 }
 

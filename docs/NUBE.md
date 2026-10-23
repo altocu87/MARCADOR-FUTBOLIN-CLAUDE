@@ -6,9 +6,12 @@ torneos y los ajustes de la mesa. Los demás jugadores no tienen cuenta: su fich
 - **App web:** Ajustes → Cuenta (entrar, crear cuenta, he olvidado la contraseña, sincronizar, cerrar sesión).
   Sin cuenta, la app funciona en local como siempre. En modo prueba no se sincroniza nada.
 - **Pantalla de 7":** AJUSTES → CUENTA (correo y contraseña con el teclado de la pantalla). Guarda solo el
-  «refresh token» (en la memoria del chip, `/ffat/nube.txt`), nunca la contraseña. Sincroniza con la placa parada
-  (al entrar, al encender, al acabar cada partido y cada 15 minutos; nunca durante un partido, porque mientras
-  está en el Wi-Fi la radio del mando no oye), en una tarea aparte para que la pantalla no se pare. Sube los
+  «refresh token» (en la memoria del chip, `/ffat/nube.txt`), nunca la contraseña. Sola, sincroniza solo
+  con la pantalla en reposo (atenuada, o 3 min sin tocar si no se atenúa nunca) y sin partido: lo jugado se guarda
+  al momento en la tarjeta y se sube en el siguiente reposo; si alguien toca la pantalla o el mando, se corta tras
+  la petición en curso y sigue en otro reposo (decisión del dueño, 23/10/2026: el Wi-Fi descoloca la imagen y la
+  radio del mando no oye mientras está conectada). Al entrar y con «Sincronizar ahora», en el momento. Va en una
+  tarea aparte para que la pantalla no se pare. Sube los
   partidos jugados en ella y los jugadores creados o cambiados en ella; baja jugadores (con foto) y partidos.
   Un jugador de la placa sin id de la app se une con el de la cuenta que tiene su mismo nombre (y sus partidos se
   corrigen y se vuelven a subir). Código: `hardware/esp32s3_pantalla7/s3_nube.h` y `ui_cuenta.h`; prueba con una

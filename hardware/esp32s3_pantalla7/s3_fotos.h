@@ -236,6 +236,12 @@ static bool request(int i, uint16_t* out) {
   return true;
 }
 
+// Descomprimiendo una foto ahora mismo (la pantalla se protege: ui_port.h, setNetwork).
+static bool busy() {
+  uint8_t s = jobState;
+  return s == QUEUED || s == BUSY;
+}
+
 // IDLE, BUSY, DONE o FAILED (al leer DONE o FAILED, vuelve a IDLE).
 static uint8_t poll() {
   uint8_t s = jobState;

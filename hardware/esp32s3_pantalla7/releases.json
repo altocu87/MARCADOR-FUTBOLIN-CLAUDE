@@ -1,7 +1,19 @@
 {
-  "version": "0.11",
+  "version": "0.12",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.12",
+      "date": "2026-10-23",
+      "title": "La nube espera al reposo",
+      "changes": [
+        "Los partidos se guardan al momento en la tarjeta y se suben a la nube solo con la pantalla en reposo, nunca mientras se usa.",
+        "Si alguien toca la pantalla o el mando mientras se sube, se para sin perder nada y sigue en el siguiente reposo.",
+        "La imagen se recoloca sola después de guardar fotos, fichas, equipos o ajustes, y al cargar fotos de jugadores.",
+        "Tocar el volumen, el brillo o JUGAR sin cambiar nada ya no hace saltar la imagen.",
+        "Las fotos de los jugadores se quedan cargadas aunque haya muchos jugadores."
+      ]
+    },
     {
       "version": "0.11",
       "date": "2026-10-23",
