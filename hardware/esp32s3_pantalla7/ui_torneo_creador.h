@@ -72,7 +72,7 @@ static void buildStepBar() {
   lv_obj_clean(stepBar);
   Step st[7];
   uint8_t n = stepsOf(tpl.format, st);
-  int idx = stepIndex(), gap = 4, w = (638 - (n - 1) * gap) / n;
+  int idx = stepIndex(), gap = 4, w = (628 - (n - 1) * gap) / n;
   for (uint8_t i = 0; i < n; i++) {
     bool on = (int)i == idx, done = (int)i < idx;
     lv_obj_t* p = ui::box(stepBar, i * (w + gap), 0, w, 44);
@@ -184,8 +184,8 @@ static void bodyKind() {
     lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(c, onTipo, LV_EVENT_CLICKED, (void*)(intptr_t)i);
     lv_obj_t* t = ui::text(c, kindTitle(FORMATS[i]), 900, 72, k, 2, true);
-    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 26);
-    icon(c, ICONS[i], 73, 150, 100, k);
+    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 56);
+    icon(c, ICONS[i], 73, 166, 100, k);
     helpBtn(c, 246 - 56, 12, 44, &KIND_HELP[i]);
   }
   paintTipo();
@@ -713,9 +713,9 @@ static void buildCreator() {
   lv_obj_set_style_border_width(band, 1, 0);
   lv_obj_set_style_border_color(band, ui::hex(ui::color::LINE), 0);
   backBtn(scr, 12, 8, onCreatorBack);
-  ui::text(scr, tplExisting ? "EDITAR" : "CREAR", 900, 20, ui::color::TEXT, 0.5f);
-  lv_obj_set_pos(lv_obj_get_child(scr, lv_obj_get_child_count(scr) - 1), 70, 20);
-  stepBar = ui::box(scr, 150, 10, 638, 44);
+  ui::text(scr, tplExisting ? "EDITAR" : "CREAR", 900, 20, ui::color::TEXT, 0);
+  lv_obj_set_pos(lv_obj_get_child(scr, lv_obj_get_child_count(scr) - 1), 68, 20);
+  stepBar = ui::box(scr, 160, 10, 628, 44);
   buildStepBar();
   memset(tipoCard, 0, sizeof(tipoCard));
   switch (cstep) {

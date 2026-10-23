@@ -181,7 +181,7 @@ static void buildCeremony() {
   else ui::gradient(scr, 0x10284a, 0x05090f);
   // Arriba: cuál va y SALTAR.
   char cnt[32];
-  if (cerStep < 0) snprintf(cnt, sizeof(cnt), "CAMPEÓN");
+  if (cerStep < 0) cnt[0] = 0;  // ya lo dice «¡CAMPEÓN!»
   else snprintf(cnt, sizeof(cnt), "PUESTO %u DE %u", restAt(cerStep)->place, totalPlaces());
   lv_obj_t* c = ui::text(scr, cnt, 800, 17, cerStep < 0 ? col::GOLD : ui::color::TEXT2, 2);
   lv_obj_set_pos(c, 24, 22);
@@ -243,7 +243,8 @@ static void buildCeremony() {
     lv_obj_update_layout(nl);
     lv_obj_t* o = ui::text(scr, "º", 900, 38, pc);
     lv_obj_set_pos(o, 42 + lv_obj_get_width(nl), 90);
-    const char* tag = last ? shame : pl->place == 2 ? "SUBCAMPEÓN" : nullptr;
+    // El título del último va sellado en su foto: aquí no se repite.
+    const char* tag = !last && pl->place == 2 ? "SUBCAMPEÓN" : nullptr;
     if (tag) chip(scr, tag, 30, 200, last ? 0xffb3bc : 0xd8dee8, last ? col::BAD : 0xd8dee8, 14);
     int x0 = 210, w0 = 566, y = 72;
     bool pair = tm.n > 1;
@@ -280,7 +281,7 @@ static void buildCeremony() {
   lv_obj_set_style_transform_pivot_x(lv_obj_get_child(prev, 1), 12, 0);
   lv_obj_set_style_transform_pivot_y(lv_obj_get_child(prev, 1), 12, 0);
   if (cerStep < 0) ui::setOpa(prev, 90);
-  int dw = rest * 18, dx = 400 - dw / 2 - 40;
+  int dw = rest * 18 - 8, dx = 302 - dw / 2;  // entre ◀ y SIGUIENTE
   for (uint8_t i = 0; i < rest; i++) {
     lv_obj_t* d = ui::box(scr, dx + i * 18, 436, 10, 10);
     lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);

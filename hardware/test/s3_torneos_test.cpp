@@ -467,7 +467,8 @@ int main() {
   shot("torneo-pool-ronda-terminada");
   same = lv_screen_active();
   assert(tapText("SIGUIENTE RONDA") && lv_screen_active() == same);
-  assert(shows("SIGUIENTE PARTIDO") && shows("Ronda 2 de 4") && shows("Pista 1"));
+  if (!(shows("SIGUIENTE PARTIDO") && shows("Ronda 2 de 4") && shows("PISTA 1"))) fprintf(stderr, "%s\n", screenText().c_str());
+  assert(shows("SIGUIENTE PARTIDO") && shows("Ronda 2 de 4") && shows("PISTA 1"));
   shot("torneo-pool");
 
   // ---- Descartar (papelera, con confirmación).
@@ -496,8 +497,15 @@ int main() {
   // ---- Liga terminada: banner del campeón, RESUMEN → ceremonia puesto a puesto.
   tor::go(tor::View::Honours);
   assert(tapText("Liga del Jueves") && tor::view == tor::View::Competition);
-  assert(tapText("1"));
-  run(200);
+  // La 1ª edición (la última de la lista, de la más nueva a la más antigua).
+  {
+    lv_obj_t* row = lv_obj_get_child(tor::edList, lv_obj_get_child_count(tor::edList) - 1);
+    lv_obj_scroll_to_view(row, LV_ANIM_OFF);
+    lv_area_t a;
+    lv_obj_get_coords(row, &a);
+    tap((a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+    run(200);
+  }
   assert(tor::view == tor::View::Detail && tor::cur.status == torneos::Status::Finished && tor::tab == 1);
   assert(shows("CAMPEÓN") && shows("MVP"));
   shot("torneo-ficha-terminado");

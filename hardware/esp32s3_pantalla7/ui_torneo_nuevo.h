@@ -317,8 +317,8 @@ static void buildKind() {
     lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(c, onKindCard, LV_EVENT_CLICKED, (void*)(intptr_t)i);
     lv_obj_t* t = ui::text(c, kindTitle(f), 900, 72, k, 2, true);
-    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 34);
-    icon(c, ICONS[i], 63, 140, 120, k);
+    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 58);
+    icon(c, ICONS[i], 68, 168, 110, k);
     // Cuántas hay para este número de jugadores, por qué no encaja ninguna, o crear la primera.
     uint8_t total = 0, ok = 0;
     const char* why = nullptr;
@@ -338,7 +338,7 @@ static void buildKind() {
       snprintf(s, sizeof(s), "× %s", why ? why : "Ninguna encaja");
       ink = ui::color::DANGER;
     }
-    para(c, s, 800, 17, ink, 16, 300, 214, LV_TEXT_ALIGN_CENTER);
+    para(c, s, 800, 17, ink, 16, 306, 214, LV_TEXT_ALIGN_CENTER);
     if (total && !ok) lv_obj_set_style_opa(t, 150, 0);
     helpBtn(c, 246 - 56, 12, 44, &KIND_HELP[i]);
     paintKindCard(i);
@@ -646,7 +646,7 @@ static void buildChoose() {
     iconBtn(list, 234, 110, 300, 72, Icon::Plus, cr, 20, Kind::Primary, onCreateTpl);
   }
   footer();
-  val(scr, 24, 418, 500, 800, 14, fillChooseNote, 0, ui::color::TEXT2, LV_TEXT_ALIGN_LEFT, true);
+  val(scr, 24, 424, 500, 800, 14, fillChooseNote, 0, ui::color::TEXT2, LV_TEXT_ALIGN_LEFT, true);
   chooseNext = iconBtn(scr, 560, 408, 224, 64, Icon::Play, "CONTINUAR", 20, Kind::Primary, onChooseNext);
   paintChoose();
 }
@@ -772,7 +772,7 @@ static void buildPairs() {
     }
   }
   footer();
-  val(scr, 24, 422, 330, 800, 14, fillPairsNote, 0, ui::color::TEXT2, LV_TEXT_ALIGN_LEFT, true);
+  val(scr, 24, 430, 330, 800, 14, fillPairsNote, 0, ui::color::TEXT2, LV_TEXT_ALIGN_LEFT, true);
   if (draftTpl->pairing == torneos::Pairing::Random)
     iconBtn(scr, 360, 412, 196, 60, Icon::Again, "SORTEAR OTRA VEZ", 14, Kind::Normal, onReshuffle);
   lv_obj_t* c = iconBtn(scr, 564, 408, 220, 64, Icon::Play, "CREAR TORNEO", 18, Kind::Primary, onCreate);

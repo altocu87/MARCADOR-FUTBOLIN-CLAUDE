@@ -308,6 +308,12 @@ static lv_obj_t* iconBtn(lv_obj_t* parent, int x, int y, int w, int h, Icon ic, 
   lv_obj_t* b = fichas::btn(parent, x, y, w, h, txt, fit(800, size), k, cb, user);
   lv_obj_t* l = lv_obj_get_child(b, 0);
   int s = size + 2, tw = textW(txt, 800, fit(800, size));
+  // Que quepa: la letra un poco más pequeña si hace falta.
+  while (tw > w - 24 - s - 10 && size > 12) {
+    size = fit(800, (uint16_t)(fit(800, size) - 1));
+    lv_obj_set_style_text_font(l, assets::font(800, size), 0);
+    tw = textW(txt, 800, size);
+  }
   int gap = txt[0] ? 10 : 0, total = s + gap + tw;
   lv_obj_align(l, LV_ALIGN_LEFT_MID, (w - total) / 2 + s + gap, 0);
   uint32_t c = icColor ? icColor : k == Kind::Primary ? col::ON_INK : k == Kind::Danger ? 0xffd2d8 : ui::color::TEXT;

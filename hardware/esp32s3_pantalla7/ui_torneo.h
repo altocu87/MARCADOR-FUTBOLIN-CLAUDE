@@ -297,7 +297,9 @@ static void leftLadder(lv_obj_t* p, int w, int h) {
   uint16_t round = nr ? nr - 1 : nx >= 0 ? cur.fix[nx].round : maxR;
   char lab[32], cap[48];
   torneos::roundLabel(cur, round, lab, sizeof(lab));
-  snprintf(cap, sizeof(cap), "PISTAS · %s", lab);
+  // Por rondas, el reloj ya dice «Ronda r de R»: aquí no se repite (salvo con la ronda anterior aún a la vista).
+  if (cur.ladder.byRounds && active_() && !nr) snprintf(cap, sizeof(cap), "PISTAS");
+  else snprintf(cap, sizeof(cap), "PISTAS · %s", lab);
   for (char* c = cap; *c; c++)
     if (*c >= 'a' && *c <= 'z') *c = (char)(*c - 32);
   caption(p, cap, 12, 12);
@@ -334,7 +336,7 @@ static void leftLadder(lv_obj_t* p, int w, int h) {
 
 static void leftLeague(lv_obj_t* p, int w, int h) {
   lv_obj_t* list = scroller(p, 0, 0, w, h);
-  caption(list, "CLASIFICACIÓN", 12, 12);
+  // (Sin rótulo «CLASIFICACIÓN»: ya lo dice la pestaña.)
   bool draws = cur.rules.allowDraw;
   // Columnas desde la derecha: Pts, Dif, P, (E), G, PJ.
   const char* head[6] = {"PJ", "G", "E", "P", "Dif", "Pts"};
@@ -350,12 +352,12 @@ static void leftLeague(lv_obj_t* p, int w, int h) {
   }
   int nameEnd = colX[0] - 6;
   for (int c = 0; c < 6; c++)
-    if (colX[c] >= 0) line(list, head[c], 800, 12, ui::color::TEXT3, colX[c], 36, c >= 4 ? CW + 4 : CW, LV_TEXT_ALIGN_CENTER);
-  line(list, "#", 800, 12, ui::color::TEXT3, 8, 36, 20, LV_TEXT_ALIGN_CENTER);
-  line(list, "EQUIPO", 800, 12, ui::color::TEXT3, 48, 36, 100);
+    if (colX[c] >= 0) line(list, head[c], 800, 12, ui::color::TEXT3, colX[c], 12, c >= 4 ? CW + 4 : CW, LV_TEXT_ALIGN_CENTER);
+  line(list, "#", 800, 12, ui::color::TEXT3, 8, 12, 20, LV_TEXT_ALIGN_CENTER);
+  line(list, "EQUIPO", 800, 12, ui::color::TEXT3, 48, 12, 100);
   static torneos::StandingRow rows[torneos::MAX_TEAMS];
   uint8_t n = torneos::standings(cur, rows, torneos::MAX_TEAMS);
-  int y = 54;
+  int y = 30;
   for (uint8_t i = 0; i < n; i++, y += 36) {
     const torneos::StandingRow& s = rows[i];
     bool lead = i == 0 && s.played > 0;
