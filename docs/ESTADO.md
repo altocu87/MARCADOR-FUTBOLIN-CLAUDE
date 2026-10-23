@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-## Preparación pantalla 0.11 · equipo B · 23/10/2026
+## Pantalla 0.11 instalada y verificada · equipo B · 23/10/2026
 
-Integra A 0.8/0.9 y 437 audios nuevos: paquete 560 (496 activos / 64 reservados de torneo). Rama B, sin fusionar main ni publicar OTA. Instalación física pendiente de verificación. Conserva Wi-Fi 0.9, ajustes 0.8 y los 123 audios anteriores. [Entrega y reglas para A](ENTREGA_SONIDOS_0_11_20261023.md). La 0.10 quedó como lote intermedio preparado; no se instaló por separado.
+**COM6, 560 WAV verificados (496 activos / 64 reservados de torneo), 123 anteriores y cuatro partidos conservados tras reiniciar.** Integra ajustes 0.8 y Wi-Fi 0.9 del equipo A. Todos los tests locales y los dos workflows de GitHub correctos para el código `63ad580`. El dueño autoriza la integración en main al terminar la verificación, preparada en [PR 21](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/21). [Entrega a A](ENTREGA_SONIDOS_0_11_20261023.md) · [Informe físico](VALIDACION_PLACA_0_11_20261023.md). La 0.10 no se instaló por separado. Revisión independiente de A y prueba acústica jugando pendientes. RTC válido al final sin ajuste de B; los dos partidos antiguos siguen sin fecha.
 
 ## Pantalla 0.9 · imagen estable con el Wi-Fi · 23/10/2026
 
