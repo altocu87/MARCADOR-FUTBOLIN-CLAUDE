@@ -2,6 +2,10 @@
 
 Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección que toque; el estado vigente está en `ESTADO.md`. Las entregas nuevas se apuntan aquí arriba del todo, no en el CLAUDE.md.
 
+## Entrega A 0.12 · nube en reposo y realineado de la imagen · 23/10/2026
+
+Auditoría (pantalla/PSRAM, red y nube, carga de datos, electrónica, app web) y fases 1 y 2 aplicadas; ver `docs/ESTADO.md`. Reglas nuevas: la nube automática solo en reposo y cancelable (`nube::sync(true)`, `abortBackground`, `networking()`); toda escritura en FFat avisa con `s3flash::wrote()`; en la app, `src/app/idle.ts` decide el reposo y `mergeAfterSync` une lo bajado con lo guardado mientras tanto. No probado en la placa. Fase 3 (sdkconfig propio: XIP desde PSRAM, ISR del RGB en IRAM) pendiente de decisión del dueño.
+
 ## Entrega B 0.11 · sonidos y conservación de A 0.9 · 23/10/2026
 
 Antes de continuar leer [la entrega 0.11](ENTREGA_SONIDOS_0_11_20261023.md) y el estado físico vigente en `docs/ESTADO.md`. Incluye la 0.9 de A sin modificar su corrección Wi-Fi y el lote intermedio 0.10. Instalación 0.11 completada y verificada en COM6: 560 WAV (496 activos, 64 de torneo reservados), 123 anteriores y cuatro partidos conservados. Ver [validación física](VALIDACION_PLACA_0_11_20261023.md). El dueño autoriza la integración en main al terminar estas comprobaciones, mediante PR 21; revisión independiente de A aún pendiente. No fusionar main ni publicar OTA sin autorización. Mantener versiones 0.x y registrar novedades siempre.

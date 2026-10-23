@@ -1,8 +1,9 @@
 /** Cuenta del dueño de la mesa y sincronización con la nube (Supabase simulado: nada contra la base real). */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   emptyState,
   fingerprint,
+  mergeAfterSync,
   freshSession,
   readSession,
   readRememberSession,
@@ -18,7 +19,7 @@ import {
   type CloudRow,
   type MesaData,
 } from '../src/services/cloud';
-import { DEFAULT_PREFERENCES, createMemoryStore, type Player, type StoredMatch } from '../src/services/persistence';
+import { DEFAULT_PREFERENCES, createLocalRepositories, createMemoryStore, type Player, type Repositories, type StoredMatch } from '../src/services/persistence';
 
 const conn = { url: 'https://nube.test', anonKey: 'anon' };
 
@@ -105,6 +106,104 @@ describe('sincronizar', () => {
     const rb = await syncOnce(c.api, data({ prefs: prefsB }), emptyState());
     expect(rb.data?.prefs.volume).toBe(0.3);
     expect(rb.data?.prefs.hardware.wsUrl).toBe('ws://b');
+  });
+});
+
+/** Lo que hay guardado en el aparato (como hace la app antes y después de sincronizar). */
+async function readRepos(repos: Repositories): Promise<MesaData> {
+  return { players: await repos.players.list(), matches: await repos.matches.list(), tournaments: await repos.tournaments.list(), prefs: await repos.preferences.load() };
+}
+
+describe('aplicar lo bajado sin perder lo de aquí', () => {
+  it('un partido guardado durante la sincronización no se borra y se sube en la siguiente', async () => {
+    const c = fakeCloud();
+    // Otro aparato ya ha subido un partido (m2).
+    await syncOnce(c.api, data({ players: [player('p1', 'Alex')], matches: [match('m2')] }), emptyState());
+
+    const repos = createLocalRepositories(createMemoryStore());
+    await repos.players.save(player('p1', 'Alex'));
+    await repos.matches.save(match('m1'));
+    const first = await syncOnce(c.api, await readRepos(repos), emptyState());
+    await repos.matches.saveAll(first.data!.matches);
+
+    // Llega otro partido de la nube (m4) y, MIENTRAS se sincroniza, aquí se termina un partido (m3).
+    const other = await syncOnce(c.api, data(), emptyState());
+    await syncOnce(c.api, { ...other.data!, matches: [...other.data!.matches, match('m4')] }, other.state);
+    const start = await readRepos(repos);
+    const slowApi: typeof c.api = {
+      pull: async (since) => {
+        const rows = await c.api.pull(since);
+        await repos.matches.save(match('m3'));  // matchFinalizer guarda el partido justo ahora
+        return rows;
+      },
+      push: c.api.push,
+    };
+    const r = await syncOnce(slowApi, start, first.state);
+    expect(r.data?.matches.map((m) => m.id).sort()).toEqual(['m1', 'm2', 'm4']);  // la copia de antes no lo tiene
+
+    const merged = mergeAfterSync(start, r.data!, await readRepos(repos));
+    await repos.matches.saveAll(merged.matches);
+    expect((await repos.matches.list()).map((m) => m.id).sort()).toEqual(['m1', 'm2', 'm3', 'm4']);
+
+    // Queda pendiente y se sube en la siguiente sincronización.
+    expect(c.rows.has('match:m3')).toBe(false);
+    const again = await syncOnce(c.api, await readRepos(repos), r.state);
+    expect(again.pushed).toBe(1);
+    expect(c.rows.has('match:m3')).toBe(true);
+  });
+
+  it('lo cambiado o borrado aquí durante la sincronización gana; lo que no se tocó se actualiza', () => {
+    const start = data({ players: [player('p1', 'Alex'), player('p2', 'José'), player('p3', 'Ana')] });
+    // La nube cambió a p1 y p2 y borró a p3.
+    const synced = data({ players: [player('p1', 'Álex', 2), player('p2', 'Jose', 2)] });
+    // Aquí, mientras tanto, se cambió a p2 (con otro objeto pero igual contenido para p1 y p3).
+    const current = data({ players: [player('p1', 'Alex'), player('p2', 'Pepe', 3), player('p3', 'Ana')] });
+    const merged = mergeAfterSync(start, synced, current);
+    expect(merged.players.map((p) => `${p.id}:${p.name}`)).toEqual(['p1:Álex', 'p2:Pepe']);
+  });
+
+  it('preferencias: se toma lo que cambió en la nube sin pisar lo cambiado aquí', () => {
+    const start = data({ prefs: { ...DEFAULT_PREFERENCES, volume: 0.5, muted: false } });
+    const synced = data({ prefs: { ...DEFAULT_PREFERENCES, volume: 0.2, muted: false } });
+    const current = data({ prefs: { ...DEFAULT_PREFERENCES, volume: 0.5, muted: true } });
+    const merged = mergeAfterSync(start, synced, current);
+    expect(merged.prefs.volume).toBe(0.2);
+    expect(merged.prefs.muted).toBe(true);
+  });
+});
+
+describe('cancelar y tiempo máximo', () => {
+  /** Una nube que no contesta nunca (hasta que se corta la petición). */
+  const hanging = (async (_url: string, init?: RequestInit) =>
+    new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('cortada', 'AbortError'))))) as unknown as typeof fetch;
+
+  it('al cancelar se corta la petición y sale «aplazada»', async () => {
+    const ctl = new AbortController();
+    const api = restApi(conn, async () => 'tok', hanging, { signal: ctl.signal });
+    const p = api.pull(null);
+    ctl.abort();
+    await expect(p).rejects.toMatchObject({ code: 'aborted' });
+  });
+
+  it('si la nube no contesta, se corta a los 15 s', async () => {
+    vi.useFakeTimers();
+    try {
+      const api = restApi(conn, async () => 'tok', hanging);
+      const p = api.pull(null);
+      const check = expect(p).rejects.toMatchObject({ code: 'timeout' });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await check;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('syncOnce no sigue si ya está cancelada', async () => {
+    const c = fakeCloud();
+    const ctl = new AbortController();
+    ctl.abort();
+    await expect(syncOnce(c.api, data({ players: [player('p1', 'Alex')] }), emptyState(), { signal: ctl.signal })).rejects.toMatchObject({ code: 'aborted' });
+    expect(c.rows.size).toBe(0);
   });
 });
 

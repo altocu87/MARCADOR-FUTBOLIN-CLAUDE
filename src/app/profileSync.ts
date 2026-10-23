@@ -1,9 +1,13 @@
 /**
- * Mantiene al día en internet el perfil de cada jugador: un rato después de cada cambio
- * (partido, torneo, nombre, foto…) se calcula su «foto» y se sube solo si ha cambiado. Sin conexión o sin
- * Supabase configurado no hace nada: se reintenta en el siguiente cambio o al volver a abrir la app.
+ * Mantiene al día en internet el perfil de cada jugador: cada cambio (partido, torneo, nombre, foto…) deja la
+ * subida pendiente y, cuando la app queda en reposo (ver idle.ts), se calcula su «foto» y se sube solo si ha
+ * cambiado. Un toque o empezar un partido la cancela. Pedido a mano (QR del perfil), se sube en el momento.
+ * Sin conexión o sin Supabase configurado no hace nada: se reintenta en el siguiente reposo.
  */
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { abortableHttp } from '../services/cloud';
+import type { IdleMonitor } from './idle';
+import { useAutoSync } from './useIdle';
 import { visibleItems, type Catalog, type RewardState } from '../services/events';
 import type { Player, StoredMatch, Tournament } from '../services/persistence';
 import {
@@ -28,9 +32,11 @@ interface Data {
   progression: ProgressionSnapshot | null;
   catalog: Catalog;
   rewards: RewardState;
+  /** Vigilante de reposo de la app. */
+  idle: IdleMonitor;
 }
 
-const DELAY_MS = 4000;
+const fetchAll: typeof fetch = (...a) => fetch(...a);
 
 export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow(playerId: string): Promise<boolean> } {
   // Sin conexión en modo prueba (sus jugadores son ficticios) ni sin Supabase configurado.
@@ -39,8 +45,9 @@ export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow
   latest.current = d;
   const running = useRef(false);
 
+  /** Sube el perfil de un jugador si ha cambiado. `signal`: subida automática (se cancela al tocar o al jugar). */
   const publishOne = useCallback(
-    async (player: Player, force = false): Promise<boolean> => {
+    async (player: Player, force = false, signal?: AbortSignal): Promise<boolean> => {
       if (!conn) return false;
       const { store, players, matches, tournaments, progression, catalog, rewards } = latest.current;
       const items = new Map(visibleItems(catalog).map((x) => [x.item.id, x]));
@@ -61,7 +68,7 @@ export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow
       const c = credentialsFor(store, player.id);
       if (!force && c.hash === hash) return true;
       try {
-        await publishProfile(conn, c, snap);
+        await publishProfile(conn, c, snap, abortableHttp(fetchAll, { signal }));
         const all = readCredentials(store);
         all[player.id] = { ...c, hash };
         writeCredentials(store, all);
@@ -73,35 +80,44 @@ export function useProfileSync(d: Data): { conn: SupabaseConn | null; publishNow
     [conn],
   );
 
-  const syncAll = useCallback(async () => {
-    if (!conn || running.current) return;
+  const syncAll = useCallback(async (signal: AbortSignal): Promise<boolean | null> => {
+    if (!conn || running.current) return null;
     running.current = true;
+    let ok = true;
     try {
       const { players, store } = latest.current;
-      for (const p of players) await publishOne(p);
+      for (const p of players) {
+        if (signal.aborted) return null;
+        if (!(await publishOne(p, false, signal))) ok = false;
+        // Un respiro entre jugador y jugador: calcular cada perfil cuesta.
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      if (signal.aborted) return null;
       // Jugadores que ya no están (borrados o fusionados): su perfil se retira.
       const all = readCredentials(store);
       const alive = new Set(players.map((p) => p.id));
       for (const [id, c] of Object.entries(all)) {
         if (alive.has(id)) continue;
+        if (signal.aborted) break;
         try {
-          await deleteProfile(conn, c);
+          await deleteProfile(conn, c, abortableHttp(fetchAll, { signal }));
           delete all[id];
         } catch {
-          /* se reintenta otro día */
+          ok = false;  // se reintenta otro día
         }
       }
       writeCredentials(store, all);
+      return signal.aborted ? null : ok;
     } finally {
       running.current = false;
     }
   }, [conn, publishOne]);
 
+  // Cada cambio solo deja la subida pendiente; se hace en reposo.
+  const auto = useAutoSync(d.idle, !!conn, syncAll, { checkEveryMs: null });
   useEffect(() => {
-    if (!conn) return;
-    const t = window.setTimeout(() => void syncAll(), DELAY_MS);
-    return () => window.clearTimeout(t);
-  }, [conn, syncAll, d.players, d.matches, d.tournaments, d.progression, d.rewards]);
+    if (conn) auto.markPending();
+  }, [conn, auto, d.players, d.matches, d.tournaments, d.progression, d.rewards]);
 
   const publishNow = useCallback(
     async (playerId: string) => {

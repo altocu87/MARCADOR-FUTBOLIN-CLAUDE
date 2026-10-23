@@ -1,9 +1,14 @@
 /**
- * Cuenta del dueño de la mesa y sincronización con la nube mientras la app está abierta: al entrar, al abrir la
- * app, un rato después de cada cambio (jugador, partido, torneo, ajustes), cada minuto y al volver la conexión.
+ * Cuenta del dueño de la mesa y sincronización con la nube mientras la app está abierta.
+ * Todo se guarda en este aparato al momento; con la nube solo se habla en reposo (ver idle.ts): los cambios
+ * marcan «pendiente» y se suben al quedar la app quieta; en reposo también se mira la nube cada 10 min.
+ * Un toque o empezar un partido cancela la sincronización automática. Inmediato, siempre: entrar en la cuenta,
+ * «Sincronizar ahora» y vincular la placa.
  * Sin Supabase configurado, en modo prueba o sin cuenta, no hace nada (la app sigue en local como siempre).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { IdleMonitor } from './idle';
+import { useAutoSync } from './useIdle';
 import type { Player, Preferences, Repositories, StoredMatch, Tournament } from '../services/persistence';
 import { supabaseConn } from '../services/profiles';
 import {
@@ -21,9 +26,11 @@ import {
   signIn as cloudSignIn,
   signOut as cloudSignOut,
   signUp as cloudSignUp,
+  mergeAfterSync,
   syncOnce,
   writeSession,
   writeState,
+  type MesaData,
   type Session,
 } from '../services/cloud';
 
@@ -63,10 +70,20 @@ interface Data {
   prefs: Preferences;
   loaded: boolean;
   refresh(): Promise<void>;
+  /** Vigilante de reposo de la app. */
+  idle: IdleMonitor;
 }
 
-const AFTER_CHANGE_MS = 3000;
-const EVERY_MS = 60_000;
+/** Lo que hay guardado ahora mismo en este aparato (no lo que se ve en pantalla, que puede ir un paso por detrás). */
+async function readLocal(repos: Repositories): Promise<MesaData> {
+  const [players, matches, tournaments, prefs] = await Promise.all([
+    repos.players.list(),
+    repos.matches.list(),
+    repos.tournaments.list(),
+    repos.preferences.load(),
+  ]);
+  return { players, matches, tournaments, prefs };
+}
 
 export function useCloudSync(d: Data): CloudSync {
   const conn = useMemo(() => supabaseConn(), []);
@@ -87,8 +104,9 @@ export function useCloudSync(d: Data): CloudSync {
   latest.current = d;
   const sessionRef = useRef(session);
   sessionRef.current = session;
-  const running = useRef<Promise<void> | null>(null);
-  const again = useRef(false);
+  const running = useRef<Promise<boolean | null> | null>(null);
+  const queued = useRef<Promise<boolean | null> | null>(null);
+  const lastSyncRef = useRef<number | null>(null);
 
   const keep = useCallback(
     (s: Session | null) => {
@@ -125,8 +143,7 @@ export function useCloudSync(d: Data): CloudSync {
       const next = await freshSession(conn!, s);
       if (version !== generation.current || !sessionRef.current) throw new CloudError('La cuenta ha cambiado', 'session_changed');
       const current = sessionRef.current;
-      // readSession crea un objeto nuevo incluso si los tokens no cambian. Publicarlo otra vez
-      // reactivaría el efecto de sincronización de 3 s de forma indefinida.
+      // readSession crea un objeto nuevo incluso si los tokens no cambian: no se publica otra vez si son iguales.
       if (next.accessToken !== current.accessToken || next.refreshToken !== current.refreshToken ||
           next.expiresAt !== current.expiresAt || next.userId !== current.userId || next.email !== current.email) keep(next);
       return next;
@@ -156,85 +173,104 @@ export function useCloudSync(d: Data): CloudSync {
     return () => window.removeEventListener('storage', changed);
   }, [temporary]);
 
-  const runSync = useCallback(async (): Promise<void> => {
+  /**
+   * Una sincronización. Con `signal` es automática: se cancela al tocar o al empezar a jugar, y lo bajado solo se
+   * guarda si no se ha cancelado. Sin él la ha pedido el usuario y llega hasta el final.
+   * Devuelve true si fue bien, false si falló y null si no se hizo (o se canceló).
+   */
+  const syncJob = useCallback(async (signal?: AbortSignal): Promise<boolean | null> => {
     const cur = latest.current;
-    if (!conn || !cur.enabled || !cur.loaded || !sessionRef.current) return;
-    if (running.current) {
-      again.current = true;  // ya hay una en marcha: otra al acabar
-      return running.current;
-    }
-    const job = (async () => {
-      const version = generation.current;
-      setStatus('syncing');
-      try {
-        let s = sessionRef.current!;
-        const api = restApi(conn, async () => {
-          s = await currentSession();
-          return s.accessToken;
-        });
-        const userId = s.userId;
-        const local = latest.current;
-        const r = await syncOnce(api, { players: local.players, matches: local.matches, tournaments: local.tournaments, prefs: local.prefs }, readState(local.store, userId));
-        if (version !== generation.current) return;
-        if (r.data) {
-          // Lo que llega de la nube se guarda aquí y se vuelve a cargar todo (ELO, XP… se recalculan solos).
-          await local.repos.players.saveAll(r.data.players);
-          await local.repos.matches.saveAll(r.data.matches);
-          await local.repos.tournaments.saveAll(r.data.tournaments);
-          await local.repos.preferences.save(r.data.prefs);
-          await local.refresh();
-        }
-        if (version !== generation.current) return;
-        writeState(local.store, userId, r.state);
-        setLastSync(Date.now());
-        setError(null);
-        setStatus('ok');
-      } catch (err) {
-        if (version !== generation.current) return;
-        const msg = err instanceof Error ? err.message : 'No se pudo sincronizar';
-        if (err instanceof CloudError && (err.code === '401' || err.code === 'session_expired')) {
-          keep(null);  // la sesión ya no vale: hay que volver a entrar
-          setStatus('off');
-          setError('La sesión ha caducado: vuelve a entrar');
-          return;
-        }
-        setError(err instanceof CloudError && err.code === 'offline' ? 'Sin conexión: se sincronizará al volver' : msg);
-        setStatus('error');
-      }
-    })();
-    running.current = job;
+    if (!conn || !cur.enabled || !cur.loaded || !sessionRef.current) return null;
+    const version = generation.current;
+    const { repos, store } = cur;
+    const aborted = () => new CloudError('Sincronización aplazada', 'aborted');
+    setStatus('syncing');
     try {
-      await job;
-    } finally {
-      running.current = null;
-      if (again.current) {
-        again.current = false;
-        void runSync();
+      let s = sessionRef.current;
+      const api = restApi(conn, async () => {
+        s = await currentSession();
+        return s.accessToken;
+      }, undefined, { signal });
+      const userId = s.userId;
+      const start = await readLocal(repos);
+      const r = await syncOnce(api, start, readState(store, userId), { signal });
+      if (version !== generation.current) return null;
+      if (signal?.aborted) throw aborted();
+      if (r.data) {
+        // Se vuelve a leer lo de aquí justo antes de guardar: lo guardado mientras tanto (un partido recién
+        // terminado…) se conserva y se sube en la siguiente. Luego se vuelve a cargar todo (ELO, XP… se recalculan solos).
+        const merged = mergeAfterSync(start, r.data, await readLocal(repos));
+        if (version !== generation.current) return null;
+        if (signal?.aborted) throw aborted();
+        await repos.players.saveAll(merged.players);
+        await repos.matches.saveAll(merged.matches);
+        await repos.tournaments.saveAll(merged.tournaments);
+        await repos.preferences.save(merged.prefs);
+        await latest.current.refresh();
       }
+      if (version !== generation.current) return null;
+      writeState(store, userId, r.state);
+      lastSyncRef.current = Date.now();
+      setLastSync(lastSyncRef.current);
+      setError(null);
+      setStatus('ok');
+      return true;
+    } catch (err) {
+      if (version !== generation.current) return null;
+      if (err instanceof CloudError && err.code === 'aborted') {
+        // Aplazada (se ha tocado la pantalla o se juega): se repite en el próximo reposo, sin avisar de nada.
+        setStatus(lastSyncRef.current ? 'ok' : 'idle');
+        return null;
+      }
+      const msg = err instanceof Error ? err.message : 'No se pudo sincronizar';
+      if (err instanceof CloudError && (err.code === '401' || err.code === 'session_expired')) {
+        keep(null);  // la sesión ya no vale: hay que volver a entrar
+        setStatus('off');
+        setError('La sesión ha caducado: vuelve a entrar');
+        return false;
+      }
+      setError(err instanceof CloudError && err.code === 'offline' ? 'Sin conexión: se sincronizará al volver' : msg);
+      setStatus('error');
+      return false;
     }
   }, [conn, keep, currentSession]);
 
-  // Al abrir (con la sesión guardada) y cada vez que cambian los datos de la mesa (un rato después).
-  const { players, matches, tournaments, prefs, loaded, enabled } = d;
-  useEffect(() => {
-    if (!session || !loaded || !enabled) return;
-    const t = window.setTimeout(() => void runSync(), AFTER_CHANGE_MS);
-    return () => window.clearTimeout(t);
-  }, [players, matches, tournaments, prefs, loaded, enabled, session, runSync]);
+  // Una sola a la vez. Si el usuario pide otra mientras hay una en marcha, se hace al acabar esa; si es automática, se deja.
+  const runSync = useCallback((signal?: AbortSignal): Promise<boolean | null> => {
+    if (running.current) {
+      if (signal) return Promise.resolve(null);
+      queued.current ??= running.current.then(() => {
+        queued.current = null;
+        return runSyncRef.current();
+      });
+      return queued.current;
+    }
+    const job = syncJob(signal).finally(() => {
+      if (running.current === job) running.current = null;
+    });
+    running.current = job;
+    return job;
+  }, [syncJob]);
+  const runSyncRef = useRef(runSync);
+  runSyncRef.current = runSync;
 
-  // Cada minuto (lo que se haya jugado en la placa u otro aparato) y al volver la conexión o la pestaña.
+  // Automática, solo en reposo (idle.ts): al quedar la app quieta si hay algo pendiente y cada 10 min a mirar la nube.
+  const { players, matches, tournaments, prefs, loaded, enabled } = d;
+  const userId = session?.userId ?? null;
+  const auto = useAutoSync(d.idle, !!conn && enabled && loaded && !!userId, (signal) => runSync(signal));
+
+  // Cada cambio de los datos de la mesa (y al abrir o entrar) solo deja la subida pendiente.
   useEffect(() => {
-    if (!session || !enabled) return;
-    const t = window.setInterval(() => void runSync(), EVERY_MS);
-    const now = () => void runSync();
-    window.addEventListener('online', now);
-    window.addEventListener('focus', now);
-    return () => {
-      window.clearInterval(t);
-      window.removeEventListener('online', now);
-      window.removeEventListener('focus', now);
-    };
-  }, [session, enabled, runSync]);
+    if (!userId || !loaded || !enabled) return;
+    auto.markPending();
+  }, [players, matches, tournaments, prefs, loaded, enabled, userId, auto]);
+
+  // Pedida por el usuario: en el momento y sin cancelarse por tocar la pantalla.
+  const syncNow = useCallback(async (): Promise<void> => {
+    const mark = auto.begin();
+    const ok = await runSync();
+    auto.end(mark, ok === true);
+  }, [auto, runSync]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -245,8 +281,9 @@ export function useCloudSync(d: Data): CloudSync {
       keep(s);
       setStatus('idle');
       setError(null);
+      void syncNow();  // al entrar, en el momento (lo ha pedido el usuario)
     },
-    [conn, keep],
+    [conn, keep, syncNow],
   );
 
   const signUp = useCallback(
@@ -258,10 +295,11 @@ export function useCloudSync(d: Data): CloudSync {
         refreshing.current = null;
         keep(r.session);
         setStatus('idle');
+        void syncNow();
       }
       return r.needsConfirm;
     },
-    [conn, keep],
+    [conn, keep, syncNow],
   );
 
   const doRecover = useCallback(
@@ -279,6 +317,7 @@ export function useCloudSync(d: Data): CloudSync {
     keep(null);
     setStatus('off');
     setLastSync(null);
+    lastSyncRef.current = null;
     setError(null);
     // Borrar primero aquí: una petición de renovación que llegue tarde no puede reabrir la cuenta.
     if (conn && s) await cloudSignOut(conn, s);
@@ -316,7 +355,7 @@ export function useCloudSync(d: Data): CloudSync {
     signUp,
     recover: doRecover,
     signOut,
-    syncNow: runSync,
+    syncNow,
     pendingBoard,
     setPendingBoard,
     linkBoard,

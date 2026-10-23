@@ -58,6 +58,8 @@ import {
 import { applyCatalogIcons } from './catalogIcons';
 import { useProfileSync } from './profileSync';
 import { useCloudSync, type CloudSync } from './cloudSync';
+import { activeMatchInProgress } from './idle';
+import { useIdleMonitor } from './useIdle';
 import { credentialsFor, profileUrl } from '../services/profiles';
 import type { Route } from './routes';
 
@@ -429,8 +431,24 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     [catalog, matches, tournaments, progression, visitDays],
   );
 
-  const cloud = useCloudSync({ enabled: !injected && !demoMode, store, repos, players, matches, tournaments, prefs, loaded, refresh });
-  const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards });
+  // ¿Se está jugando? (pantallas del partido o un partido a medias guardado): entonces nada de nube.
+  const inMatchRoute = route.name === 'prematch' || route.name === 'match';
+  const [activeSaved, setActiveSaved] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    repos.activeMatch
+      .load()
+      .then((snap) => alive && setActiveSaved(activeMatchInProgress(snap, Date.now())))
+      .catch(() => alive && setActiveSaved(false));
+    return () => {
+      alive = false;
+    };
+  }, [repos, route]);
+  // Reposo: la nube solo se usa con la app quieta y sin partido (idle.ts).
+  const idle = useIdleMonitor(inMatchRoute || activeSaved);
+
+  const cloud = useCloudSync({ enabled: !injected && !demoMode, store, repos, players, matches, tournaments, prefs, loaded, refresh, idle });
+  const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards, idle });
   const profileLink = useCallback(
     (playerId: string) => {
       const c = credentialsFor(store, playerId);
