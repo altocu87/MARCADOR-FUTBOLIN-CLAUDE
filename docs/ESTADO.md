@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Pantalla 0.11 instalada y verificada · equipo B · 23/10/2026
+
+**COM6, 560 WAV verificados (496 activos / 64 reservados de torneo), 123 anteriores y cuatro partidos conservados tras reiniciar.** Integra ajustes 0.8 y Wi-Fi 0.9 del equipo A. Todos los tests locales y los dos workflows de GitHub correctos para el código `63ad580`. El dueño autoriza la integración en main al terminar la verificación, preparada en [PR 21](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/21). [Entrega a A](ENTREGA_SONIDOS_0_11_20261023.md) · [Informe físico](VALIDACION_PLACA_0_11_20261023.md). La 0.10 no se instaló por separado. Revisión independiente de A y prueba acústica jugando pendientes. RTC válido al final sin ajuste de B; los dos partidos antiguos siguen sin fecha.
+
 ## Pantalla 0.9 · imagen estable con el Wi-Fi · 23/10/2026
 
 El dueño envió un vídeo: con el Wi-Fi activo (actualizar, entrar con QR) la imagen se corría y se partía. Causa: los búferes de red y el cifrado usan la PSRAM a la vez que la pantalla. Arreglo en `ui_port.h`: con red en marcha, el panel baja a 10 MHz (≈ 22 imágenes/s) y se realinea cada 250 ms; durante la descarga, tras cada avance; al acabar vuelve a 12,5 MHz. Pruebas simuladas y compilación real correctas. **Falta confirmarlo en la placa** (no se puede grabar desde la nube: se instala por Wi-Fi desde Actualizaciones).
@@ -14,7 +18,10 @@ Fusionada en main el 23/10/2026 con autorización del dueño; GitHub la publica 
 
 ## Variedad y paquete de sonidos 0.7 · equipo B · 22/10/2026
 
+**Recomprobado el 23/10/2026, solo lectura:** tamaño/CRC completos de los 123 WAV correctos; 98 activos, 25 reservados y ambos partidos conservados. Sin regrabar firmware ni catálogo ni reproducir audio. Ver la comprobación posterior al final del [informe físico](VALIDACION_PLACA_0_7_20261022.md).
+
 **0.7 instalada en COM6; 123 audios verificados en SD, 98 activos y 25 exclusivos de torneo reservados sin selección automática.** Rama `equipo-b/rendimiento-esp32s3`, código `642a4a0`; fusionada en main el 22/10/2026 tras la revisión de Cloud. Reparto 70 % específico / 30 % comodín y rondas completas por grupo sin repetir entre rondas si hay alternativas. Se conservaron 61 WAV y ambos partidos; se añadieron 62 y se comprobaron tamaño/CRC completo y catálogo después de reiniciar. [Entrega para A/Cloud](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md) · [Validación física](VALIDACION_PLACA_0_7_20261022.md). La pantalla aún no implementa Torneos. Regresión local y GitHub correctos; pruebas acústicas pendientes; revisión de Cloud hecha. El desfase del RTC cercano a dos minutos no se reajustó.
+
 
 
 ## Entrega anterior · corrección conjunta de sonidos 0.6 · equipo B · 22/10/2026

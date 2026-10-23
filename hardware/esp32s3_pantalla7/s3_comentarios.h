@@ -4,7 +4,7 @@
 #include <new>
 namespace comentarios {
 static const uint16_t MAX_FILES = 1024;
-enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, SiguePerdiendo, Ventaja2, MasDe8, PoolCount };
+enum Pool : uint8_t { Comodin, Encajados3, Empate, Respuesta2, Anulado, EmpateMovido, SiguePerdiendo, Ventaja2, MasDe8, VaGanando, Ultimos20, Intro, Descanso, FinalNormal, Remontada, EmpateTras3, Pierde4Ultimo60, Pierde4, PenaltyMiss, PenaltyGoal, PenaltyEqualizer, PenaltyEqualizer20, Ambience, Opening20, PoolCount };
 using PoolMask=uint32_t;
 static_assert(PoolCount<=32,"Ampliar las mascaras antes de añadir otro grupo");
 struct Catalog {
@@ -40,18 +40,19 @@ struct Catalog {
     codes[base+at]=codes[base+last];codes[base+last]=code;
     return code;
   }
-  uint32_t pick(PoolMask mask,uint32_t poolRandom,uint32_t clipRandom) {
+  uint32_t pick(PoolMask mask,uint32_t poolRandom,uint32_t clipRandom,uint8_t genericPool=Comodin) {
+    if(genericPool>=PoolCount)return 0;
     // Anulación nunca se mezcla con voces de gol, incluso ante una máscara errónea.
     if(mask&(1u<<Anulado))return counts[Anulado]?draw(Anulado,clipRandom):0;
     uint8_t pools[PoolCount],k=0;
-    for(uint8_t p=1;p<PoolCount;p++)if((mask&(1u<<p)) && counts[p])pools[k++]=p;
-    bool generic=(mask&(1u<<Comodin)) && counts[Comodin];
-    if(!k)return generic?draw(Comodin,clipRandom):0;
+    for(uint8_t p=0;p<PoolCount;p++)if(p!=genericPool && (mask&(1u<<p)) && counts[p])pools[k++]=p;
+    bool generic=(mask&(1u<<genericPool)) && counts[genericPool];
+    if(!k)return generic?draw(genericPool,clipRandom):0;
     uint8_t p;
     if(generic){
       // 7*k casillas específicas y 3*k comodín: 70/30 total, también con varios contextos.
       uint16_t ticket=index(poolRandom,10*k);
-      p=ticket<7*k?pools[ticket%k]:(uint8_t)Comodin;
+      p=ticket<7*k?pools[ticket%k]:genericPool;
     }else p=pools[index(poolRandom,k)];
     return draw(p,clipRandom);
   }
@@ -74,10 +75,47 @@ inline bool twoRecentGoals(const mfv3::Engine& e){
   }
   return false;
 }
+// Usar el instante registrado del gol: un gol ganador ya puede haber parado el reloj.
+// Nunca confundir fin de la primera parte ni partidos a goles con el final del partido.
+inline bool lastTwentySeconds(const mfv3::Engine& e){
+  if(e.config().endCondition==mfv3::EndCondition::Goals || !e.goalCount())return false;
+  const auto& g=e.goalAt(e.goalCount()-1);
+  if(g.annulled || !g.value || g.period!=e.period() ||
+     (g.period!=mfv3::Period::Second && g.period!=mfv3::Period::Overtime))return false;
+  uint32_t limit=e.periodLimitMs();
+  return limit && g.periodTimeMs<=limit && limit-g.periodTimeMs<=20000;
+}
+// Reconstruir déficits solo con goles válidos: anular también deshace el contexto.
+// Partido Loco conserva la simplificación de animales fuera de estos contextos.
+inline unsigned worstDeficit(const mfv3::Engine& e,mfv3::Team team){
+  int own=0,other=0;unsigned worst=0;
+  for(uint8_t i=0;i<e.goalCount();i++){
+    const auto& g=e.goalAt(i);if(g.annulled || !g.value)continue;
+    if(g.team==team){own+=g.value;if(g.steal && other>0)other--;}
+    else {other+=g.value;if(g.steal && own>0)own--;}
+    if(other-own>(int)worst)worst=(unsigned)(other-own);
+  }
+  return worst;
+}
+inline bool lastMinute(const mfv3::Engine& e){
+  if(e.config().endCondition==mfv3::EndCondition::Goals || !e.goalCount())return false;
+  const auto& g=e.goalAt(e.goalCount()-1);uint32_t limit=e.periodLimitMs();
+  return !g.annulled && g.value && g.period==e.period() &&
+    (g.period==mfv3::Period::Second || g.period==mfv3::Period::Overtime) &&
+    limit && g.periodTimeMs<=limit && limit-g.periodTimeMs<=60000;
+}
 inline PoolMask goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Team t) {
   auto s=e.score();if(b.phase==mfv3::Phase::Penalties || e.phase()==mfv3::Phase::Penalties || s.of(t)<=b.score.of(t))return 0;
   PoolMask mask=1u<<Comodin;
   uint16_t own=s.of(t),other=s.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White);
+  if(own>other)mask|=1u<<VaGanando;
+  if(lastTwentySeconds(e))mask|=1u<<Ultimos20;
+  if(!e.config().chaos){ // no inferir una remontada de las travesuras no registradas como goles
+    unsigned worst=worstDeficit(e,t);
+    if(own>other && b.score.of(t)<=b.score.of(t==mfv3::Team::White?mfv3::Team::Blue:mfv3::Team::White) && worst)mask|=1u<<Remontada;
+    if(own==other && worst>=3)mask|=1u<<EmpateTras3;
+  }
+  if(other>=own+4){mask|=1u<<Pierde4;if(lastMinute(e))mask|=1u<<Pierde4Ultimo60;}
   if(own<other)mask|=1u<<SiguePerdiendo;
   if(own>8)mask|=1u<<MasDe8;
   if(own>=other+2)mask|=1u<<Ventaja2; // criterio del dueño: DOS o más, tras sumar el gol
@@ -90,6 +128,34 @@ inline PoolMask goalMask(const mfv3::Engine& e,const mfv3snd::Before& b,mfv3::Te
   int streak=0;bool skipCurrent=true;
   for(int i=(int)e.goalCount()-1;i>=0;i--){const auto& g=e.goalAt((uint8_t)i);if(g.annulled || !g.value)continue;
     if(skipCurrent){skipCurrent=false;continue;}if(g.team==t)break;if(++streak>=2){mask|=1u<<Respuesta2;break;}}
+  return mask;
+}
+// Reloj de ambiente en tiempo de juego: no acumula frases ni consume tiempo en pausa.
+struct AmbienceClock {
+  uint32_t nextAt=0,lastScoreAt=0;bool openingDone=false,hasScore=false;
+  static uint32_t gap(uint32_t random){return 30000u+Catalog::index(random,30001);}
+  void reset(uint32_t random){nextAt=gap(random);lastScoreAt=0;openingDone=hasScore=false;}
+  void score(uint32_t play){lastScoreAt=play;hasScore=true;}
+  int due(uint32_t play,bool first,bool quiet,uint32_t random){
+    if(!first || play>20000)openingDone=true;
+    if(!quiet || (hasScore && play-lastScoreAt<10000))return -1;
+    if(!openingDone){openingDone=true;nextAt=play+gap(random);return Opening20;}
+    if(play<nextAt)return -1;
+    nextAt=play+gap(random);return Ambience;
+  }
+};
+inline uint32_t playTime(const mfv3::Engine& e,uint32_t now){
+  uint32_t at=e.periodElapsed(now);
+  for(uint8_t p=0;p<(uint8_t)e.period() && p<3;p++)at+=e.periodDuration((mfv3::Period)p);
+  return at;
+}
+// Los empates de penalti se refieren al partido, no a la cuenta de una tanda.
+inline PoolMask penaltyMask(const mfv3::Engine& e,bool scored){
+  if(!scored)return 1u<<PenaltyMiss;
+  PoolMask mask=1u<<PenaltyGoal;
+  if(e.period()!=mfv3::Period::Shootout && e.score().white==e.score().blue){
+    mask|=1u<<PenaltyEqualizer;if(lastTwentySeconds(e))mask|=1u<<PenaltyEqualizer20;
+  }
   return mask;
 }
 #if HAS_AUDIO
