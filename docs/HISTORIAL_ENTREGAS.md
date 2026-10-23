@@ -4,7 +4,7 @@ Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección q
 
 ## Entrega B 0.11 · sonidos y conservación de A 0.9 · 23/10/2026
 
-Antes de continuar leer [la entrega 0.11](ENTREGA_SONIDOS_0_11_20261023.md) y el estado físico vigente en `docs/ESTADO.md`. Incluye la 0.9 de A sin modificar su corrección Wi-Fi y el lote intermedio 0.10. Catálogo preparado: 273 WAV (209 activos, 64 de torneo reservados). La instalación se confirma aparte; no suponerla por existir el código. No fusionar main ni publicar OTA sin autorización. Mantener versiones 0.x y registrar novedades siempre.
+Antes de continuar leer [la entrega 0.11](ENTREGA_SONIDOS_0_11_20261023.md) y el estado físico vigente en `docs/ESTADO.md`. Incluye la 0.9 de A sin modificar su corrección Wi-Fi y el lote intermedio 0.10. Catálogo preparado: 560 WAV (496 activos, 64 de torneo reservados). La instalación se confirma aparte; no suponerla por existir el código. No fusionar main ni publicar OTA sin autorización. Mantener versiones 0.x y registrar novedades siempre.
 
 Decisión del dueño: en partidos a goles, el gol ganador muestra victoria inmediatamente. Queda pendiente buscar una frase específica «gol y final» o dos clips muy cortos; **no concatenar ahora frases largas ni retrasar la victoria**. Introducción durante la primera cuenta atrás, puede seguir mientras comienza el juego, cortada por gol/anulación. Voces de final normal solo al agotarse el reloj de segunda parte con ganador. Últimos 20 s o último minuto nunca significan fin de primera parte ni partido solo a goles. Remontada pasa a ir ganando tras cualquier déficit previo, incluso de uno. Los animales conservan el tratamiento simplificado de gol/anulación.
 

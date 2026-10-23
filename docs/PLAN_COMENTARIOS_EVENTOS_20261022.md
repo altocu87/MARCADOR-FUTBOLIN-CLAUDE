@@ -35,3 +35,12 @@ El dueño simplifica por ahora los animales: suma→gol comodín, resta→anulac
 El dueño aprueba 70 % específico / 30 % comodín y bolsas por grupo hasta agotar variantes, sin repetición entre rondas si hay alternativas. Nuevos pools: 6 seguir perdiendo, 7 ventaja de DOS o más, 8 más de OCHO (desde nueve). Se amplían máscaras a 32 bits; CMT1 conserva índices anteriores. Nueve pools declarados, límite 1.024 referencias en total. No añadir categorías sin actualizar la clasificación, mínimos de firmware y pruebas.
 
 Tanda preparada: 98 voces activas y 25 de torneo reservadas en SD sin catálogo automático. La placa aún no implementa torneos ni su contexto. No activar esas voces por analogía con un partido rápido ni afirmar que ya hay finales/avances de ronda nativos. Ver [entrega 0.7 y desglose completo](ENTREGA_VARIEDAD_SONIDOS_0_7_20261022.md). Al implementar torneos, resolver agregado/desempates del rival que necesita dos y precisar «ir ganando» en últimos 20 segundos.
+
+
+## Decisiones y ampliación 0.11 · 23/10/2026
+
+Actualiza los apartados históricos: índices hasta 23 y máscaras de 32 bits; CMT1 y límite total 1.024. Intro durante la primera cuenta atrás, continúa al jugar sin retrasar el inicio; descanso al acabar primera parte; final normal al agotarse el reloj de segunda parte con ganador. Voces recibidas y pruebas en [entrega 0.11](ENTREGA_SONIDOS_0_11_20261023.md); su instalación se confirma por separado. Torneos sigue sin implementar: sus 64 voces se reservan en SD. Los comodines de final/últimos segundos solo se usan en su contexto, no como comodín general.
+
+El gol ganador por objetivo va directo a victoria y mantiene su comentario de gol. El dueño buscará una voz «gol y final» o dos clips muy cortos que concatenar; **todavía no recibidos ni implementados como familia**. No añadir narraciones largas en cola ni retrasar la pantalla de ganador.
+
+El dueño añadió 287 voces más a la misma 0.11: penaltis fallados/acertados, empate de penalti, ambiente y primeros 20 s. Ambiente confirmado cada 30–60 s de juego, solo libre de otras voces, con 10 s sin cambios de marcador y sin acumular cola. Primeros 20 s: una vez tras la introducción, descartar si llega tarde. Gol/anulación/cambio de fase tienen prioridad. Catálogo final preparado: 560 WAV (496 activos, 64 de torneo reservados); comprobar instalación en el informe físico, no presuponerla.

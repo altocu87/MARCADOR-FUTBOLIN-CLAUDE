@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Preparación pantalla 0.11 · equipo B · 23/10/2026
+
+Integra A 0.8/0.9 y 437 audios nuevos: paquete 560 (496 activos / 64 reservados de torneo). Rama B, sin fusionar main ni publicar OTA. Instalación física pendiente de verificación. Conserva Wi-Fi 0.9, ajustes 0.8 y los 123 audios anteriores. [Entrega y reglas para A](ENTREGA_SONIDOS_0_11_20261023.md). La 0.10 quedó como lote intermedio preparado; no se instaló por separado.
+
 ## Pantalla 0.9 · imagen estable con el Wi-Fi · 23/10/2026
 
 El dueño envió un vídeo: con el Wi-Fi activo (actualizar, entrar con QR) la imagen se corría y se partía. Causa: los búferes de red y el cifrado usan la PSRAM a la vez que la pantalla. Arreglo en `ui_port.h`: con red en marcha, el panel baja a 10 MHz (≈ 22 imágenes/s) y se realinea cada 250 ms; durante la descarga, tras cada avance; al acabar vuelve a 12,5 MHz. Pruebas simuladas y compilación real correctas. **Falta confirmarlo en la placa** (no se puede grabar desde la nube: se instala por Wi-Fi desde Actualizaciones).

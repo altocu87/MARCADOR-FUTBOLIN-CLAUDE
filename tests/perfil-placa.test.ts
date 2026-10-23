@@ -14,7 +14,13 @@ it.skipIf(!process.env.MFV3_PERFIL_PLACA)('el perfil de la placa coincide con el
   const matches = readdirSync(dir).filter((f) => f.endsWith('.json') && f.length > 30).map((f) => JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')));
   const me = players[0];
   const app = buildProfileSnapshot({ player: me, players, matches, tournaments: [], now: board.generatedAt });
-  const pick = (s: any) => ({ stats: s.stats, sides: s.sides, habits: s.habits, rivals: s.rivals, teammates: s.teammates, favoriteRival: s.favoriteRival, nemesis: s.nemesis, matches: s.matches, people: Object.keys(s.people).sort() });
+  for (const snapshot of [app, board]) for (const rows of [snapshot.rivals, snapshot.teammates]) {
+    for (let i = 1; i < rows.length; i++) expect(rows[i - 1].played).toBeGreaterThanOrEqual(rows[i].played);
+  }
+  // C/C++ qsort no es estable al empatar. Comparar todas las filas con desempate por id,
+  // conservando la comprobación anterior del orden real por partidos jugados.
+  const equalRank = (rows: { id: string; played: number }[]) => [...rows].sort((a, b) => b.played - a.played || a.id.localeCompare(b.id));
+  const pick = (s: any) => ({ stats: s.stats, sides: s.sides, habits: s.habits, rivals: equalRank(s.rivals), teammates: equalRank(s.teammates), favoriteRival: s.favoriteRival, nemesis: s.nemesis, matches: s.matches, people: Object.keys(s.people).sort() });
   const a = pick(app), b = pick(board);
   for (const k of Object.keys(a) as (keyof typeof a)[]) expect(b[k], k).toEqual(a[k]);
   expect(matches.length).toBe(40);

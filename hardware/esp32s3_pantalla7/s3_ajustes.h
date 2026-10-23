@@ -69,14 +69,14 @@ static MandoUpd mandoUpd() {
   if (!mandoModel()) return MandoUpd::NeedsModel;
   return pubMando.ok() && pubMando.build > mandoBuild ? MandoUpd::Outdated : MandoUpd::UpToDate;
 }
-static bool screenOutdated() { return pubScreen.ok() && pubScreen.build > (uint32_t)MFV3_BUILD; }
+static updateInfo::Release publishedRelease, fetchedRelease;
+static bool screenOutdated() { return pubScreen.ok() && pubScreen.build > (uint32_t)MFV3_BUILD && !updateInfo::olderVersion(publishedRelease.version,FW_VERSION); }
 static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUpd::Outdated; }
 
 // Solo los resultados cruzan de la tarea de red a loop(); LVGL y el reloj quedan en loop().
 static std::atomic<bool> versionsDone{false};
 static bool versionsRunning = false, versionsOk = false;
 static mfv3::ota::Published fetchedScreen, fetchedMando[3];
-static updateInfo::Release publishedRelease, fetchedRelease;
 static reloj::Clock fetchedClock;
 static bool fetchedClockOk = false;
 static void fetchVersionsWork() {
