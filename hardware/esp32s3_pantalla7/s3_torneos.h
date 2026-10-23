@@ -263,6 +263,9 @@ struct Report {
   bool scorersReliable;
   char biggestWin[48], highestScoring[48];  // ids de partido
   char finalScore[32];
+  // CONTRATO (agente 1): como la ficha de la app, el partido más largo y cuántos se decidieron en prórroga o penaltis.
+  char longest[48];
+  uint16_t extraTime;
 };
 void report(const Tournament& t, Report& out);
 struct HonourRow { char id[40]; uint8_t titles, mvps, editions; };

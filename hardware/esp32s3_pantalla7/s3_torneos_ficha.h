@@ -143,6 +143,7 @@ void report(const Tournament& t, Report& out) {
     const MatchLine& m = ms[i];
     out.totalGoals += m.w + m.b;
     out.playTimeMs += m.totalMs;
+    if (m.reason == 'g' || m.reason == 'p') out.extraTime++;
     total += m.goalsValid;
     assigned += m.goalsAssigned;
     for (int s = 0; s < 2; s++)
@@ -194,13 +195,15 @@ void report(const Tournament& t, Report& out) {
     out.mvp = nl && out.players[0].played ? 0 : -1;
   }
   out.finishedAt = t.finishedAt ? t.finishedAt : n ? ms[n - 1].finishedAt : 0;
-  int best = -1, high = -1;
+  int best = -1, high = -1, longest = -1;
   for (uint16_t i = 0; i < n; i++) {
     int d = ms[i].w > ms[i].b ? ms[i].w - ms[i].b : ms[i].b - ms[i].w;
     int bd = best < 0 ? -1 : (ms[best].w > ms[best].b ? ms[best].w - ms[best].b : ms[best].b - ms[best].w);
     if (best < 0 || d > bd) best = i;
     if (high < 0 || ms[i].w + ms[i].b > ms[high].w + ms[high].b) high = i;
+    if (longest < 0 || ms[i].totalMs > ms[longest].totalMs) longest = i;
   }
+  if (longest >= 0) TORNEO_CPY(out.longest, ms[longest].id);
   if (best >= 0) TORNEO_CPY(out.biggestWin, ms[best].id);
   if (high >= 0) TORNEO_CPY(out.highestScoring, ms[high].id);
   if (out.scorersReliable) {  // pichichi: el que más goles tiene apuntados (el primero si empatan)

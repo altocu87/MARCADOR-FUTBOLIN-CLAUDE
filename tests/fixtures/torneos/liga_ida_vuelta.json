@@ -209,7 +209,7 @@
     "id": "m_liga_ida_vuelta_1",
     "fixture": "fx_1",
     "winner": "w",
-    "w": 2,
+    "w": 1,
     "b": 0,
     "reason": "r",
     "totalMs": 491531,
@@ -231,14 +231,14 @@
     },
     "scored": {
      "white": [
-      2
+      1
      ],
      "blue": [
       0
      ]
     },
-    "goalsValid": 2,
-    "goalsAssigned": 2
+    "goalsValid": 1,
+    "goalsAssigned": 1
    },
    "clockAt": 1791043840943,
    "lines": [
@@ -283,10 +283,10 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|1|1|0|0|3|2|0|2|1",
+    "S|Olga|1|1|0|0|3|1|0|1|1",
     "S|beto|0|0|0|0|0|0|0|0|-1",
     "S|Sara|0|0|0|0|0|0|0|0|0",
-    "S|Úrsula|1|0|0|1|0|0|2|-2|0",
+    "S|Úrsula|1|0|0|1|0|0|1|-1|0",
     "R|1|Olga|0",
     "R|2|beto|0",
     "R|3|Sara|0",
@@ -301,8 +301,8 @@
     "id": "m_liga_ida_vuelta_2",
     "fixture": "fx_2",
     "winner": "-",
-    "w": 5,
-    "b": 5,
+    "w": 3,
+    "b": 3,
     "reason": "r",
     "totalMs": 565571,
     "startedAt": 1791043840943,
@@ -323,14 +323,14 @@
     },
     "scored": {
      "white": [
-      5
+      3
      ],
      "blue": [
-      5
+      3
      ]
     },
-    "goalsValid": 10,
-    "goalsAssigned": 10
+    "goalsValid": 6,
+    "goalsAssigned": 6
    },
    "clockAt": 1791044465324,
    "lines": [
@@ -375,10 +375,10 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|1|1|0|0|3|2|0|2|0",
-    "S|beto|1|0|1|0|1|5|5|0|0",
-    "S|Sara|1|0|1|0|1|5|5|0|0",
-    "S|Úrsula|1|0|0|1|0|0|2|-2|0",
+    "S|Olga|1|1|0|0|3|1|0|1|0",
+    "S|beto|1|0|1|0|1|3|3|0|0",
+    "S|Sara|1|0|1|0|1|3|3|0|0",
+    "S|Úrsula|1|0|0|1|0|0|1|-1|0",
     "R|1|Olga|0",
     "R|2|beto|0",
     "R|3|Sara|0",
@@ -394,7 +394,7 @@
     "fixture": "fx_3",
     "winner": "b",
     "w": 1,
-    "b": 4,
+    "b": 2,
     "reason": "r",
     "totalMs": 501406,
     "startedAt": 1791044465324,
@@ -418,11 +418,11 @@
       1
      ],
      "blue": [
-      4
+      2
      ]
     },
-    "goalsValid": 5,
-    "goalsAssigned": 5
+    "goalsValid": 3,
+    "goalsAssigned": 3
    },
    "clockAt": 1791045028707,
    "lines": [
@@ -467,10 +467,10 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|2|2|0|0|6|6|1|5|0",
-    "S|Sara|1|0|1|0|1|5|5|0|1",
-    "S|beto|2|0|1|1|1|6|9|-3|-1",
-    "S|Úrsula|1|0|0|1|0|0|2|-2|0",
+    "S|Olga|2|2|0|0|6|3|1|2|0",
+    "S|Sara|1|0|1|0|1|3|3|0|1",
+    "S|beto|2|0|1|1|1|4|5|-1|-1",
+    "S|Úrsula|1|0|0|1|0|0|1|-1|0",
     "R|1|Olga|0",
     "R|2|Sara|0",
     "R|3|beto|0",
@@ -484,9 +484,9 @@
    "match": {
     "id": "m_liga_ida_vuelta_4",
     "fixture": "fx_4",
-    "winner": "-",
-    "w": 4,
-    "b": 4,
+    "winner": "b",
+    "w": 2,
+    "b": 3,
     "reason": "r",
     "totalMs": 539795,
     "startedAt": 1791045028707,
@@ -507,14 +507,14 @@
     },
     "scored": {
      "white": [
-      4
+      2
      ],
      "blue": [
-      4
+      3
      ]
     },
-    "goalsValid": 8,
-    "goalsAssigned": 8
+    "goalsValid": 5,
+    "goalsAssigned": 5
    },
    "clockAt": 1791045654915,
    "lines": [
@@ -530,7 +530,7 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
@@ -559,14 +559,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|2|2|0|0|6|6|1|5|0",
-    "S|Sara|2|0|2|0|2|9|9|0|0",
-    "S|Úrsula|2|0|1|1|1|4|6|-2|1",
-    "S|beto|2|0|1|1|1|6|9|-3|-1",
+    "S|Olga|2|2|0|0|6|3|1|2|0",
+    "S|Sara|2|1|1|0|4|6|5|1|0",
+    "S|beto|2|0|1|1|1|4|5|-1|0",
+    "S|Úrsula|2|0|0|2|0|2|4|-2|0",
     "R|1|Olga|0",
     "R|2|Sara|0",
-    "R|3|Úrsula|0",
-    "R|4|beto|0"
+    "R|3|beto|0",
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -577,8 +577,8 @@
     "id": "m_liga_ida_vuelta_5",
     "fixture": "fx_5",
     "winner": "b",
-    "w": 2,
-    "b": 3,
+    "w": 1,
+    "b": 2,
     "reason": "r",
     "totalMs": 554168,
     "startedAt": 1791045654915,
@@ -599,14 +599,14 @@
     },
     "scored": {
      "white": [
-      2
+      1
      ],
      "blue": [
-      3
+      2
      ]
     },
-    "goalsValid": 5,
-    "goalsAssigned": 5
+    "goalsValid": 3,
+    "goalsAssigned": 3
    },
    "clockAt": 1791046283169,
    "lines": [
@@ -622,7 +622,7 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_5|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
@@ -651,14 +651,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|3|2|0|1|6|8|4|4|0",
-    "S|Sara|3|1|2|0|5|12|11|1|0",
-    "S|Úrsula|2|0|1|1|1|4|6|-2|0",
-    "S|beto|2|0|1|1|1|6|9|-3|0",
-    "R|1|Olga|0",
-    "R|2|Sara|0",
-    "R|3|Úrsula|0",
-    "R|4|beto|0"
+    "S|Sara|3|2|1|0|7|8|6|2|1",
+    "S|Olga|3|2|0|1|6|4|3|1|-1",
+    "S|beto|2|0|1|1|1|4|5|-1|0",
+    "S|Úrsula|2|0|0|2|0|2|4|-2|0",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
+    "R|3|beto|0",
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -678,7 +678,7 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
@@ -707,14 +707,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|2|2|0|0|6|6|1|5|0",
-    "S|Sara|2|0|2|0|2|9|9|0|0",
-    "S|Úrsula|2|0|1|1|1|4|6|-2|1",
-    "S|beto|2|0|1|1|1|6|9|-3|-1",
+    "S|Olga|2|2|0|0|6|3|1|2|0",
+    "S|Sara|2|1|1|0|4|6|5|1|0",
+    "S|beto|2|0|1|1|1|4|5|-1|0",
+    "S|Úrsula|2|0|0|2|0|2|4|-2|0",
     "R|1|Olga|0",
     "R|2|Sara|0",
-    "R|3|Úrsula|0",
-    "R|4|beto|0"
+    "R|3|beto|0",
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -726,7 +726,7 @@
     "fixture": "fx_5",
     "winner": "b",
     "w": 0,
-    "b": 4,
+    "b": 3,
     "reason": "r",
     "totalMs": 526434,
     "startedAt": 1791046283169,
@@ -750,11 +750,11 @@
       0
      ],
      "blue": [
-      4
+      3
      ]
     },
-    "goalsValid": 4,
-    "goalsAssigned": 4
+    "goalsValid": 3,
+    "goalsAssigned": 3
    },
    "clockAt": 1791046863441,
    "lines": [
@@ -770,7 +770,7 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
@@ -799,14 +799,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|3|2|0|1|6|6|5|1|0",
-    "S|Sara|3|1|2|0|5|13|9|4|0",
-    "S|Úrsula|2|0|1|1|1|4|6|-2|0",
-    "S|beto|2|0|1|1|1|6|9|-3|0",
-    "R|1|Olga|0",
-    "R|2|Sara|0",
-    "R|3|Úrsula|0",
-    "R|4|beto|0"
+    "S|Sara|3|2|1|0|7|9|5|4|1",
+    "S|Olga|3|2|0|1|6|3|4|-1|-1",
+    "S|beto|2|0|1|1|1|4|5|-1|0",
+    "S|Úrsula|2|0|0|2|0|2|4|-2|0",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
+    "R|3|beto|0",
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -817,7 +817,7 @@
     "id": "m_liga_ida_vuelta_7",
     "fixture": "fx_6",
     "winner": "w",
-    "w": 5,
+    "w": 3,
     "b": 0,
     "reason": "r",
     "totalMs": 497793,
@@ -839,14 +839,14 @@
     },
     "scored": {
      "white": [
-      5
+      3
      ],
      "blue": [
       0
      ]
     },
-    "goalsValid": 5,
-    "goalsAssigned": 5
+    "goalsValid": 3,
+    "goalsAssigned": 3
    },
    "clockAt": 1791047439566,
    "lines": [
@@ -862,7 +862,7 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
@@ -891,12 +891,12 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|3|2|0|1|6|6|5|1|0",
-    "S|Sara|3|1|2|0|5|13|9|4|0",
-    "S|Úrsula|3|1|1|1|4|9|6|3|0",
-    "S|beto|3|0|1|2|1|6|14|-8|0",
-    "R|1|Olga|0",
-    "R|2|Sara|0",
+    "S|Sara|3|2|1|0|7|9|5|4|0",
+    "S|Olga|3|2|0|1|6|3|4|-1|0",
+    "S|Úrsula|3|1|0|2|3|5|4|1|1",
+    "S|beto|3|0|1|2|1|4|8|-4|-1",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
     "R|3|Úrsula|0",
     "R|4|beto|0"
    ]
@@ -908,9 +908,9 @@
    "match": {
     "id": "m_liga_ida_vuelta_8",
     "fixture": "fx_7",
-    "winner": "b",
+    "winner": "-",
     "w": 0,
-    "b": 1,
+    "b": 0,
     "reason": "r",
     "totalMs": 577097,
     "startedAt": 1791047439566,
@@ -934,11 +934,11 @@
       0
      ],
      "blue": [
-      1
+      0
      ]
     },
-    "goalsValid": 1,
-    "goalsAssigned": 1
+    "goalsValid": 0,
+    "goalsAssigned": 0
    },
    "clockAt": 1791048089936,
    "lines": [
@@ -954,13 +954,13 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
@@ -983,12 +983,12 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|4|3|0|1|9|7|5|2|0",
-    "S|Sara|3|1|2|0|5|13|9|4|0",
-    "S|Úrsula|4|1|1|2|4|9|7|2|0",
-    "S|beto|3|0|1|2|1|6|14|-8|0",
-    "R|1|Olga|0",
-    "R|2|Sara|0",
+    "S|Sara|3|2|1|0|7|9|5|4|0",
+    "S|Olga|4|2|1|1|7|3|4|-1|0",
+    "S|Úrsula|4|1|1|2|4|5|4|1|0",
+    "S|beto|3|0|1|2|1|4|8|-4|0",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
     "R|3|Úrsula|0",
     "R|4|beto|0"
    ]
@@ -1001,8 +1001,8 @@
     "id": "m_liga_ida_vuelta_9",
     "fixture": "fx_8",
     "winner": "b",
-    "w": 1,
-    "b": 2,
+    "w": 0,
+    "b": 1,
     "reason": "r",
     "totalMs": 596362,
     "startedAt": 1791048089936,
@@ -1023,14 +1023,14 @@
     },
     "scored": {
      "white": [
-      1
+      0
      ],
      "blue": [
-      2
+      1
      ]
     },
-    "goalsValid": 3,
-    "goalsAssigned": 3
+    "goalsValid": 1,
+    "goalsAssigned": 1
    },
    "clockAt": 1791048737130,
    "lines": [
@@ -1046,13 +1046,13 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
@@ -1075,12 +1075,12 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|4|3|0|1|9|7|5|2|0",
-    "S|Sara|4|1|2|1|5|14|11|3|0",
-    "S|Úrsula|4|1|1|2|4|9|7|2|0",
-    "S|beto|4|1|1|2|4|8|15|-7|0",
-    "R|1|Olga|0",
-    "R|2|Sara|0",
+    "S|Sara|4|2|1|1|7|9|6|3|0",
+    "S|Olga|4|2|1|1|7|3|4|-1|0",
+    "S|Úrsula|4|1|1|2|4|5|4|1|0",
+    "S|beto|4|1|1|2|4|5|8|-3|0",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
     "R|3|Úrsula|0",
     "R|4|beto|0"
    ]
@@ -1092,9 +1092,9 @@
    "match": {
     "id": "m_liga_ida_vuelta_10",
     "fixture": "fx_9",
-    "winner": "w",
-    "w": 4,
-    "b": 3,
+    "winner": "-",
+    "w": 2,
+    "b": 2,
     "reason": "r",
     "totalMs": 506996,
     "startedAt": 1791048737130,
@@ -1115,14 +1115,14 @@
     },
     "scored": {
      "white": [
-      4
+      2
      ],
      "blue": [
-      3
+      2
      ]
     },
-    "goalsValid": 7,
-    "goalsAssigned": 7
+    "goalsValid": 4,
+    "goalsAssigned": 4
    },
    "clockAt": 1791049326510,
    "lines": [
@@ -1138,17 +1138,17 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
     "F|fx_10|5|0|Sara|Úrsula|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
@@ -1167,14 +1167,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|5|4|0|1|12|11|8|3|0",
-    "S|Sara|4|1|2|1|5|14|11|3|0",
-    "S|Úrsula|4|1|1|2|4|9|7|2|0",
-    "S|beto|5|1|1|3|4|11|19|-8|0",
+    "S|Olga|5|2|2|1|8|5|6|-1|1",
+    "S|Sara|4|2|1|1|7|9|6|3|-1",
+    "S|beto|5|1|2|2|5|7|10|-3|1",
+    "S|Úrsula|4|1|1|2|4|5|4|1|-1",
     "R|1|Olga|0",
     "R|2|Sara|0",
-    "R|3|Úrsula|0",
-    "R|4|beto|0"
+    "R|3|beto|0",
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -1184,9 +1184,9 @@
    "match": {
     "id": "m_liga_ida_vuelta_11",
     "fixture": "fx_10",
-    "winner": "b",
+    "winner": "-",
     "w": 0,
-    "b": 1,
+    "b": 0,
     "reason": "r",
     "totalMs": 595193,
     "startedAt": 1791049326510,
@@ -1210,11 +1210,11 @@
       0
      ],
      "blue": [
-      1
+      0
      ]
     },
-    "goalsValid": 1,
-    "goalsAssigned": 1
+    "goalsValid": 0,
+    "goalsAssigned": 0
    },
    "clockAt": 1791050011493,
    "lines": [
@@ -1230,19 +1230,19 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_10|5|0|Sara|Úrsula|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
+    "F|fx_10|5|0|Sara|Úrsula|-|1|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
     "F|fx_11|6|0|Sara|Olga|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_11|4|JORNADA 6|-|time 5 4 1",
@@ -1259,13 +1259,13 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|5|4|0|1|12|11|8|3|0",
-    "S|Úrsula|5|2|1|2|7|10|7|3|1",
-    "S|Sara|5|1|2|2|5|14|12|2|-1",
-    "S|beto|5|1|1|3|4|11|19|-8|0",
-    "R|1|Olga|0",
-    "R|2|Úrsula|0",
-    "R|3|Sara|0",
+    "S|Sara|5|2|2|1|8|9|6|3|1",
+    "S|Olga|5|2|2|1|8|5|6|-1|-1",
+    "S|Úrsula|5|1|2|2|5|5|4|1|1",
+    "S|beto|5|1|2|2|5|7|10|-3|-1",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
+    "R|3|Úrsula|0",
     "R|4|beto|0"
    ]
   },
@@ -1276,9 +1276,9 @@
    "match": {
     "id": "m_liga_ida_vuelta_12",
     "fixture": "fx_11",
-    "winner": "b",
-    "w": 4,
-    "b": 5,
+    "winner": "-",
+    "w": 3,
+    "b": 3,
     "reason": "r",
     "totalMs": 593459,
     "startedAt": 1791050011493,
@@ -1299,14 +1299,14 @@
     },
     "scored": {
      "white": [
-      4
+      3
      ],
      "blue": [
-      5
+      3
      ]
     },
-    "goalsValid": 9,
-    "goalsAssigned": 9
+    "goalsValid": 6,
+    "goalsAssigned": 6
    },
    "clockAt": 1791050684725,
    "lines": [
@@ -1322,21 +1322,21 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_10|5|0|Sara|Úrsula|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
+    "F|fx_10|5|0|Sara|Úrsula|-|1|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_11|6|0|Sara|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
+    "F|fx_11|6|0|Sara|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
     "H|fx_11|4|JORNADA 6|-|time 5 4 1",
     "F|fx_12|6|0|beto|Úrsula|-|0|0|0|0|1|-|-|-|0|-|-",
     "H|fx_12|4|JORNADA 6|-|time 5 4 1",
@@ -1351,13 +1351,13 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|6|5|0|1|15|16|12|4|0",
-    "S|Úrsula|5|2|1|2|7|10|7|3|0",
-    "S|Sara|6|1|2|3|5|18|17|1|0",
-    "S|beto|5|1|1|3|4|11|19|-8|0",
-    "R|1|Olga|0",
-    "R|2|Úrsula|0",
-    "R|3|Sara|0",
+    "S|Sara|6|2|3|1|9|12|9|3|0",
+    "S|Olga|6|2|3|1|9|8|9|-1|0",
+    "S|Úrsula|5|1|2|2|5|5|4|1|0",
+    "S|beto|5|1|2|2|5|7|10|-3|0",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
+    "R|3|Úrsula|0",
     "R|4|beto|0"
    ]
   },
@@ -1369,8 +1369,8 @@
     "id": "m_liga_ida_vuelta_13",
     "fixture": "fx_12",
     "winner": "w",
-    "w": 3,
-    "b": 1,
+    "w": 2,
+    "b": 0,
     "reason": "r",
     "totalMs": 581229,
     "startedAt": 1791050684725,
@@ -1391,14 +1391,14 @@
     },
     "scored": {
      "white": [
-      3
+      2
      ],
      "blue": [
-      1
+      0
      ]
     },
-    "goalsValid": 4,
-    "goalsAssigned": 4
+    "goalsValid": 2,
+    "goalsAssigned": 2
    },
    "clockAt": 1791051325112,
    "lines": [
@@ -1414,25 +1414,25 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_10|5|0|Sara|Úrsula|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
+    "F|fx_10|5|0|Sara|Úrsula|-|1|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_11|6|0|Sara|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
+    "F|fx_11|6|0|Sara|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
     "H|fx_11|4|JORNADA 6|-|time 5 4 1",
     "F|fx_12|6|0|beto|Úrsula|beto|0|0|0|0|1|-|m_liga_ida_vuelta_13|-|0|-|-",
     "H|fx_12|4|JORNADA 6|-|time 5 4 1",
-    "F|fx_13|7|0|Olga|Úrsula|-|0|0|1|0|3|-|-|-|0|-|-",
+    "F|fx_13|7|0|Sara|Olga|-|0|0|1|0|3|-|-|-|0|-|-",
     "H|fx_13|0|GRAN FINAL|PARTIDO 1 · AL MEJOR DE 3|both 7 4 0",
     "N|fx_13",
     "P|12|13|1",
@@ -1443,14 +1443,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|6|5|0|1|15|16|12|4|0",
-    "S|Úrsula|6|2|1|3|7|11|10|1|0",
-    "S|beto|6|2|1|3|7|14|20|-6|1",
-    "S|Sara|6|1|2|3|5|18|17|1|-1",
-    "R|1|Olga|0",
-    "R|2|Úrsula|0",
+    "S|Sara|6|2|3|1|9|12|9|3|0",
+    "S|Olga|6|2|3|1|9|8|9|-1|0",
+    "S|beto|6|2|2|2|8|9|10|-1|1",
+    "S|Úrsula|6|1|2|3|5|5|6|-1|-1",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
     "R|3|beto|0",
-    "R|4|Sara|0"
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -1461,36 +1461,36 @@
     "id": "m_liga_ida_vuelta_14",
     "fixture": "fx_13",
     "winner": "b",
-    "w": 2,
-    "b": 3,
+    "w": 1,
+    "b": 2,
     "reason": "r",
     "totalMs": 482147,
     "startedAt": 1791051325112,
     "finishedAt": 1791051807259,
     "white": [
-     "p08"
+     "p11"
     ],
     "blue": [
-     "p13"
+     "p08"
     ],
     "names": {
      "white": [
-      "Olga"
+      "Sara"
      ],
      "blue": [
-      "Úrsula"
+      "Olga"
      ]
     },
     "scored": {
      "white": [
-      2
+      1
      ],
      "blue": [
-      3
+      2
      ]
     },
-    "goalsValid": 5,
-    "goalsAssigned": 5
+    "goalsValid": 3,
+    "goalsAssigned": 3
    },
    "clockAt": 1791051870796,
    "lines": [
@@ -1506,25 +1506,25 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_10|5|0|Sara|Úrsula|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
+    "F|fx_10|5|0|Sara|Úrsula|-|1|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_11|6|0|Sara|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
+    "F|fx_11|6|0|Sara|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
     "H|fx_11|4|JORNADA 6|-|time 5 4 1",
     "F|fx_12|6|0|beto|Úrsula|beto|0|0|0|0|1|-|m_liga_ida_vuelta_13|-|0|-|-",
     "H|fx_12|4|JORNADA 6|-|time 5 4 1",
-    "F|fx_13|7|0|Olga|Úrsula|-|0|0|1|0|3|0-1|m_liga_ida_vuelta_14|m_liga_ida_vuelta_14|0|-|-",
+    "F|fx_13|7|0|Sara|Olga|-|0|0|1|0|3|0-1|m_liga_ida_vuelta_14|m_liga_ida_vuelta_14|0|-|-",
     "H|fx_13|0|GRAN FINAL|PARTIDO 2 · AL MEJOR DE 3|both 7 4 0",
     "N|fx_13",
     "P|12|13|0",
@@ -1535,14 +1535,14 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|6|5|0|1|15|16|12|4|0",
-    "S|Úrsula|6|2|1|3|7|11|10|1|0",
-    "S|beto|6|2|1|3|7|14|20|-6|1",
-    "S|Sara|6|1|2|3|5|18|17|1|-1",
-    "R|1|Olga|0",
-    "R|2|Úrsula|0",
+    "S|Sara|6|2|3|1|9|12|9|3|0",
+    "S|Olga|6|2|3|1|9|8|9|-1|0",
+    "S|beto|6|2|2|2|8|9|10|-1|1",
+    "S|Úrsula|6|1|2|3|5|5|6|-1|-1",
+    "R|1|Sara|0",
+    "R|2|Olga|0",
     "R|3|beto|0",
-    "R|4|Sara|0"
+    "R|4|Úrsula|0"
    ]
   },
   {
@@ -1553,40 +1553,40 @@
     "id": "m_liga_ida_vuelta_15",
     "fixture": "fx_13",
     "winner": "b",
-    "w": 4,
-    "b": 5,
+    "w": 2,
+    "b": 3,
     "reason": "r",
     "totalMs": 506330,
     "startedAt": 1791051870796,
     "finishedAt": 1791052377126,
     "white": [
-     "p08"
+     "p11"
     ],
     "blue": [
-     "p13"
+     "p08"
     ],
     "names": {
      "white": [
-      "Olga"
+      "Sara"
      ],
      "blue": [
-      "Úrsula"
+      "Olga"
      ]
     },
     "scored": {
      "white": [
-      4
+      2
      ],
      "blue": [
-      5
+      3
      ]
     },
-    "goalsValid": 9,
-    "goalsAssigned": 9
+    "goalsValid": 5,
+    "goalsAssigned": 5
    },
    "clockAt": 1791052410826,
    "lines": [
-    "T|t_1|Ida y vuelta|finished|Úrsula|m_liga_ida_vuelta_15|1791052377126|1791043200000|1|Farolillo rojo|top2|0|-",
+    "T|t_1|Ida y vuelta|finished|Olga|m_liga_ida_vuelta_15|1791052377126|1791043200000|1|Farolillo rojo|top2|0|-",
     "C|time 5 4 1|both 7 4 0|3-1-0",
     "E|tt_2|Olga|p08|-|-",
     "E|tt_3|Sara|p11|-|-",
@@ -1598,25 +1598,25 @@
     "H|fx_2|4|JORNADA 1|-|time 5 4 1",
     "F|fx_3|2|0|beto|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_3|-|0|-|-",
     "H|fx_3|4|JORNADA 2|-|time 5 4 1",
-    "F|fx_4|2|0|Úrsula|Sara|-|1|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
+    "F|fx_4|2|0|Úrsula|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_4|-|0|-|-",
     "H|fx_4|4|JORNADA 2|-|time 5 4 1",
     "F|fx_5|3|0|Olga|Sara|Sara|0|0|0|0|1|-|m_liga_ida_vuelta_6|-|0|-|-",
     "H|fx_5|4|JORNADA 3|-|time 5 4 1",
     "F|fx_6|3|0|Úrsula|beto|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_7|-|0|-|-",
     "H|fx_6|4|JORNADA 3|-|time 5 4 1",
-    "F|fx_7|4|0|Úrsula|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
+    "F|fx_7|4|0|Úrsula|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_8|-|0|-|-",
     "H|fx_7|4|JORNADA 4|-|time 5 4 1",
     "F|fx_8|4|0|Sara|beto|beto|0|0|0|0|1|-|m_liga_ida_vuelta_9|-|0|-|-",
     "H|fx_8|4|JORNADA 4|-|time 5 4 1",
-    "F|fx_9|5|0|Olga|beto|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
+    "F|fx_9|5|0|Olga|beto|-|1|0|0|0|1|-|m_liga_ida_vuelta_10|-|0|-|-",
     "H|fx_9|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_10|5|0|Sara|Úrsula|Úrsula|0|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
+    "F|fx_10|5|0|Sara|Úrsula|-|1|0|0|0|1|-|m_liga_ida_vuelta_11|-|0|-|-",
     "H|fx_10|4|JORNADA 5|-|time 5 4 1",
-    "F|fx_11|6|0|Sara|Olga|Olga|0|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
+    "F|fx_11|6|0|Sara|Olga|-|1|0|0|0|1|-|m_liga_ida_vuelta_12|-|0|-|-",
     "H|fx_11|4|JORNADA 6|-|time 5 4 1",
     "F|fx_12|6|0|beto|Úrsula|beto|0|0|0|0|1|-|m_liga_ida_vuelta_13|-|0|-|-",
     "H|fx_12|4|JORNADA 6|-|time 5 4 1",
-    "F|fx_13|7|0|Olga|Úrsula|Úrsula|0|0|1|0|3|0-2|m_liga_ida_vuelta_15|m_liga_ida_vuelta_14,m_liga_ida_vuelta_15|0|-|-",
+    "F|fx_13|7|0|Sara|Olga|Olga|0|0|1|0|3|0-2|m_liga_ida_vuelta_15|m_liga_ida_vuelta_14,m_liga_ida_vuelta_15|0|-|-",
     "H|fx_13|0|GRAN FINAL|PARTIDO 3 · AL MEJOR DE 3|both 7 4 0",
     "N|-",
     "P|13|13|0",
@@ -1627,23 +1627,23 @@
     "L|5|Jornada 5",
     "L|6|Jornada 6",
     "L|7|Final",
-    "S|Olga|6|5|0|1|15|16|12|4|0",
-    "S|Úrsula|6|2|1|3|7|11|10|1|0",
-    "S|beto|6|2|1|3|7|14|20|-6|1",
-    "S|Sara|6|1|2|3|5|18|17|1|-1",
-    "R|1|Úrsula|1",
-    "R|2|Olga|0",
+    "S|Sara|6|2|3|1|9|12|9|3|0",
+    "S|Olga|6|2|3|1|9|8|9|-1|0",
+    "S|beto|6|2|2|2|8|9|10|-1|1",
+    "S|Úrsula|6|1|2|3|5|5|6|-1|-1",
+    "R|1|Olga|1",
+    "R|2|Sara|0",
     "R|3|beto|0",
-    "R|4|Sara|0"
+    "R|4|Úrsula|0"
    ]
   }
  ],
  "report": [
-  "r|14|73|7561343|1791043260000|1791052377126|p13|p08|1|m_liga_ida_vuelta_7|m_liga_ida_vuelta_2|2–0 en la serie",
-  "l|p13|8|4|1|3|19|16|19|1|16.5",
-  "l|p08|8|5|0|3|22|20|22|0|16.0",
-  "l|p11|6|1|2|3|18|17|18|0|5.5",
-  "l|p03|6|2|1|3|14|20|14|0|4.0"
+  "r|14|42|7561343|1791043260000|1791052377126|p08|p11|1|m_liga_ida_vuelta_6|m_liga_ida_vuelta_2|2–0 en la serie|m_liga_ida_vuelta_9|0",
+  "l|p08|8|4|3|1|13|12|13|1|17.5",
+  "l|p11|8|2|3|3|15|14|15|0|9.5",
+  "l|p03|6|2|2|2|9|10|9|0|7.5",
+  "l|p13|6|1|2|3|5|6|5|0|4.5"
  ],
  "key": "tpl_iv"
 }

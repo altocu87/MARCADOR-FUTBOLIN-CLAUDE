@@ -324,9 +324,9 @@ static std::vector<std::string> reportLines(const Tournament& t) {
   Report r;
   report(t, r);
   std::vector<std::string> out;
-  out.push_back(fmt("r|%u|%u|%u|%llu|%llu|%s|%s|%d|%s|%s|%s", r.matches, r.totalGoals, r.playTimeMs, (unsigned long long)r.startedAt,
+  out.push_back(fmt("r|%u|%u|%u|%llu|%llu|%s|%s|%d|%s|%s|%s|%s|%u", r.matches, r.totalGoals, r.playTimeMs, (unsigned long long)r.startedAt,
                     (unsigned long long)r.finishedAt, r.mvp >= 0 ? r.players[r.mvp].id : "-", r.topScorer >= 0 ? r.players[r.topScorer].id : "-",
-                    r.scorersReliable ? 1 : 0, dash(r.biggestWin), dash(r.highestScoring), dash(r.finalScore)));
+                    r.scorersReliable ? 1 : 0, dash(r.biggestWin), dash(r.highestScoring), dash(r.finalScore), dash(r.longest), r.extraTime));
   for (uint8_t i = 0; i < r.nPlayers; i++) {
     const PlayerLine& l = r.players[i];
     out.push_back(fmt("l|%s|%u|%u|%u|%u|%d|%d|%d|%d|%.1f", l.id, l.played, l.wins, l.draws, l.losses, l.gf, l.ga, l.scored, l.champion ? 1 : 0,

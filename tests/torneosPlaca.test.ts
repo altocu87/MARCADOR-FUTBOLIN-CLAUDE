@@ -87,7 +87,8 @@ const BASE: Omit<TournamentTemplate, 'id' | 'name' | 'format'> = {
   finalGoals: null,
 };
 
-/** p juega el siguiente · x lo juega en empate (solo vale en la fase regular de una liga) · u deshace · a abandona. */
+/** p juega el siguiente · x lo juega empatado (a goles, empate: solo vale en la fase regular de una liga; a tiempo,
+ * igualados al acabar: empate en liga y, si no, prórroga o penaltis) · u deshace · a abandona. */
 type Op = 'p' | 'x' | 'u' | 'a' | 'rest' | { rules: MatchRules; final: MatchRules | null; bestOf?: 1 | 3 };
 
 interface Scenario {
@@ -233,16 +234,16 @@ const SCENARIOS: Scenario[] = [
     cancel: true,
   },
   {
-    // Pool de 6 parejas por tiempo: cuando ya solo da para un partido se llama a la final.
+    // Pool de 6 parejas por tiempo (30 min): cuando ya solo da para un partido se llama a la final.
     name: 'pool_tiempo',
-    template: tpl('tpl_p3', 'Pool 20', 'pool', { teamSize: 2, pairing: 'elo', poolSwap: true, poolLimit: 'time', poolMinutes: 20, endCondition: 'time', minutesPerPeriod: 3, finalGoals: 3, finalEndCondition: 'goals' }),
+    template: tpl('tpl_p3', 'Pool 30', 'pool', { teamSize: 2, pairing: 'elo', poolSwap: true, poolLimit: 'time', poolMinutes: 30, endCondition: 'time', minutesPerPeriod: 3, finalGoals: 3, finalEndCondition: 'goals' }),
     selected: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(pid),
     tournamentName: 'Pool exprés',
     competition: 'Pool exprés',
     now: Date.UTC(2026, 9, 7, 18, 0, 0),
     scorerChance: 0.6,
     matchMinutes: 3,
-    ops: ['p', 'p', 'p', 'p', 'u', 'rest'],
+    ops: ['p', 'x', 'p', 'p', 'u', 'rest'],
   },
 ];
 
@@ -278,14 +279,14 @@ function makeMatch(t: Tournament, f: Fixture, k: number, rnd: () => number, s: S
     const loser = Math.floor(rnd() * cfg.goalsPerPeriod);
     [w, b] = rnd() < 0.5 ? [cfg.goalsPerPeriod, loser] : [loser, cfg.goalsPerPeriod];
   } else {
-    w = Math.floor(rnd() * 6);
-    b = Math.floor(rnd() * 6);
+    w = Math.floor(rnd() * 4);
+    b = Math.floor(rnd() * 4);
     if (cfg.endCondition === 'both') {
       w = Math.min(w, cfg.goalsPerPeriod);
       b = Math.min(b, cfg.goalsPerPeriod);
     }
     if (forceDraw) b = w;
-    else if (w === b && !draws) {
+    if (w === b && !draws) {
       if (rnd() < 0.5) reason = 'golden_goal';
       else reason = 'penalties';
       if (reason === 'golden_goal') (rnd() < 0.5 ? (w += 1) : (b += 1));
@@ -437,7 +438,7 @@ function snapshot(t: Tournament, matches: StoredMatch[], clockAt: number): strin
 function reportLines(t: Tournament, matches: StoredMatch[]): string[] {
   const r = tournamentReport(t, matches, players);
   const out = [
-    `r|${r.matches.length}|${r.totalGoals}|${r.playTimeMs}|${r.startedAt ?? 0}|${r.finishedAt ?? 0}|${r.mvp?.playerId ?? '-'}|${r.topScorer?.playerId ?? '-'}|${r.scorersReliable ? 1 : 0}|${r.biggestWin?.match.id ?? '-'}|${r.highestScoring?.match.id ?? '-'}|${r.finalScore ?? '-'}`,
+    `r|${r.matches.length}|${r.totalGoals}|${r.playTimeMs}|${r.startedAt ?? 0}|${r.finishedAt ?? 0}|${r.mvp?.playerId ?? '-'}|${r.topScorer?.playerId ?? '-'}|${r.scorersReliable ? 1 : 0}|${r.biggestWin?.match.id ?? '-'}|${r.highestScoring?.match.id ?? '-'}|${r.finalScore ?? '-'}|${r.longest?.match.id ?? '-'}|${r.extraTime}`,
   ];
   for (const l of r.players) out.push(`l|${l.playerId}|${l.played}|${l.wins}|${l.draws}|${l.losses}|${l.goalsFor}|${l.goalsAgainst}|${l.scored}|${l.champion ? 1 : 0}|${l.mvp.toFixed(1)}`);
   return out;
@@ -582,6 +583,7 @@ describe('torneos de la placa', () => {
     expect(steps.some((x) => x.match?.winner === '-' && x.accepted)).toBe(true);  // empates en liga
     expect(steps.some((x) => x.match?.winner === '-' && !x.accepted)).toBe(true);  // y fuera de la fase regular, no
     expect(all.every((p) => p.t.status !== 'active')).toBe(true);
+    expect(steps.some((x) => x.accepted && x.match && x.match.reason !== 'r')).toBe(true);  // prórroga o penaltis
     expect(all.find((p) => p.json.name === 'pool_tiempo')!.t.fixtures.some((f) => f.skipped)).toBe(true);
     expect(all.find((p) => p.json.name === 'liga_ida_vuelta')!.t.fixtures.some((f) => f.stage === 'final' && (f.matchIds?.length ?? 0) >= 2)).toBe(true);
   });
