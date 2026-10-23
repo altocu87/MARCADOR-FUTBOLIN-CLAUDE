@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Torneos en la pantalla · 0.10 · rama `claude/torneos-placa` · 23/10/2026
+
+Liga, copa y pool en la placa como en la app: creador completo, clasificación/cuadro/pistas, cartel de fase, empate en liga a tiempo, ceremonia del campeón, ficha y palmarés casi ilimitado en la SD (10 ediciones en memoria, el resto por páginas; la nube de respaldo). Pruebas del PC y cruzadas con la app correctas. **Sin fusionar, sin publicar y sin probar en la placa.** [Entrega](ENTREGA_TORNEOS_PLACA_0_10_20261023.md) · [Plan](PLAN_TORNEOS_PLACA.md).
+
 ## Pantalla 0.9 · imagen estable con el Wi-Fi · 23/10/2026
 
 El dueño envió un vídeo: con el Wi-Fi activo (actualizar, entrar con QR) la imagen se corría y se partía. Causa: los búferes de red y el cifrado usan la PSRAM a la vez que la pantalla. Arreglo en `ui_port.h`: con red en marcha, el panel baja a 10 MHz (≈ 22 imágenes/s) y se realinea cada 250 ms; durante la descarga, tras cada avance; al acabar vuelve a 12,5 MHz. Pruebas simuladas y compilación real correctas. **Falta confirmarlo en la placa** (no se puede grabar desde la nube: se instala por Wi-Fi desde Actualizaciones).

@@ -2259,7 +2259,11 @@ void setup() {
   tor::hooks.players = tourPlayers;
   tor::hooks.play = tourPlay;
   tor::hooks.start = tourStart;
-  tor::hooks.removeMatch = [](const char* id) { partidos::remove(id); };  // CONTRATO: y borrarlo de la nube (agente 2)
+  // Repetir el último partido: fuera de la tarjeta y, con cuenta, también de la nube.
+  tor::hooks.removeMatch = [](const char* id) {
+    partidos::remove(id);
+    torneos::guardado::matchGone(id);
+  };
   tor::hooks.sound = tourSound;
   tor::hooks.nowMs = tourNow;
   torneos::playerName = tourPlayerName;

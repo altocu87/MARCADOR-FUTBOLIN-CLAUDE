@@ -1,7 +1,19 @@
 {
-  "version": "0.9",
+  "version": "0.10",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.10",
+      "date": "2026-10-23",
+      "title": "Torneos en la pantalla",
+      "changes": [
+        "TORNEO en Inicio: liga, copa y pool como en la app, desde elegir quién juega hasta el campeón.",
+        "Crea, edita, duplica y borra tus ligas, copas y pools en la propia pantalla, sin la app.",
+        "Clasificación, cuadro o pistas, el siguiente partido con pronóstico, repetir el último y cambiar las reglas.",
+        "Cartel de cada fase (gran final, semifinal, pista…), empates en la liga a tiempo y la ceremonia del campeón con la experiencia ganada.",
+        "Ficha del torneo con MVP y palmarés de cada competición; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."
+      ]
+    },
     {
       "version": "0.9",
       "date": "2026-10-23",

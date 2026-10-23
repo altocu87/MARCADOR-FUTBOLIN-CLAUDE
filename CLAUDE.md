@@ -65,3 +65,7 @@ Leer [la entrega](docs/ENTREGA_AJUSTES_PLACA_0_8_20261022.md). Menú de AJUSTES 
 ## Pantalla 0.9 · Wi-Fi e imagen (23/10/2026)
 
 Con el Wi-Fi activo la imagen se corría (vídeo del dueño). `uiport::setNetwork()` baja el panel a `PCLK_NET_HZ` y realinea cada 250 ms mientras hay red; no quitarlo sin medir en la placa. Pendiente confirmar en la placa.
+
+## Torneos en la pantalla · 0.10 · rama `claude/torneos-placa` (23/10/2026)
+
+Leer [la entrega](docs/ENTREGA_TORNEOS_PLACA_0_10_20261023.md) y [el plan](docs/PLAN_TORNEOS_PLACA.md). Contrato en `s3_torneos.h`; reglas en `s3_torneos_reglas.h`/`s3_torneos_ficha.h` (prueba cruzada `tests/torneosPlaca.test.ts` ↔ `hardware/test/torneos_test.cpp`: si la app cambia una regla, cambiar las dos); guardado y nube en `s3_torneos_datos.h`; pantallas `ui_torneo*.h`. Historial en la SD sin tope: en memoria solo lo en juego y 10 ediciones por competición. Sin fusionar ni publicar hasta que el dueño lo autorice; voces de torneo aún sin activar.
