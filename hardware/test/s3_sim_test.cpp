@@ -2,7 +2,9 @@
 // se juega un partido completo con toques y con líneas del protocolo MFV3 (USB y UART auxiliar).
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include "Arduino.h"
@@ -90,6 +92,17 @@ static void mandoInfo(uint32_t build, uint8_t model = mfv3::ota::MODEL_SUPER_MIN
 }
 
 int main() {
+  // Cada placa simulada escribe en un almacén propio; no depender de una carpeta
+  // build preexistente ni dar por bueno el contador cuando el JSON no se guardó.
+  struct MatchStore {
+    std::filesystem::path dir;
+    MatchStore() {
+      dir = "mfv3sim-" + std::to_string(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+      assert(std::filesystem::create_directory(dir));
+      partidos::setDir(dir.generic_string().c_str());
+    }
+    ~MatchStore() { std::filesystem::remove_all(dir); }
+  } matchStore;
   sim::now = 1000;
   assets::setRoot("../build/placa/fat");  // capas y letras (si no están, se ve sin ellas)
   setup();

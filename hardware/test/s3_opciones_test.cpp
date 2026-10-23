@@ -105,12 +105,26 @@ static void askYes() { tap(90 + 326 + 135, 100 + 190 + 34); }
 int main() {
   assets::setRoot(getenv("MFV3_ASSETS") ? getenv("MFV3_ASSETS") : "../build/placa/fat");
   sim::now = 1000;
+  prefs.putString("wssid", "ArranquePrueba");
+  int beginsBeforeBoot = sim::wifiBegins;
   setup();
+  // Aunque haya credenciales, la precarga termina sin iniciar conexión.
+  assert(sim::wifiBegins == beginsBeforeBoot && bootCheckPending && s3net::link == s3net::Link::Off);
   test.active = false;
   nube::logout();  // sin la cuenta que pudiera dejar una prueba anterior
   nube::phase = nube::OFF;
   goHome();
+  uint32_t bootFrame = uiport::presented;
   run(300);
+  assert(!bootCheckPending && inicio::active() && uiport::presented != bootFrame);
+  assert(sim::wifiBegins == beginsBeforeBoot + 1);
+  // Restaurar el escenario sin Wi-Fi de las pruebas de Ajustes.
+  s3net::stop();
+  checkState = CheckState::Never;
+  forgetWifi();
+  rtc.clockOk = false;
+  render();
+  assert(shows("Hora sin ajustar") && !shows("conecta Wi-Fi"));
 
   // ---- Menú: nueve botones grandes, con su valor debajo.
   tap(750, 46);  // engranaje
@@ -428,20 +442,24 @@ int main() {
   tapBtn(ui::BACK);
   assert(opciones::view == opciones::View::Menu);
 
-  // ---- Wi-Fi en marcha: la pantalla va a menos ritmo y se realinea a menudo; al acabar, como antes.
+  // ---- Wi-Fi no cambia el reloj ni reinicia periódicamente; la recuperación tras flash sigue activa.
   assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
   s3net::link = s3net::Link::Connecting;
   loop();
-  assert(uiport::netMode && uiport::pcPclk == uiport::PCLK_NET_HZ);
+  assert(uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
   uint32_t resyncs = uiport::pcResyncs;
   run(1100);
-  assert(uiport::pcResyncs >= resyncs + 4);  // cada 250 ms
+  assert(uiport::pcResyncs == resyncs);
+  prefs.putUChar("brillo", userBrightness);
+  loop();
+  assert(uiport::pcResyncs == resyncs + 1);
+  resyncs = uiport::pcResyncs;
   s3net::link = s3net::Link::Off;
   loop();
   assert(!uiport::netMode && uiport::pcPclk == uiport::PCLK_HZ);
   resyncs = uiport::pcResyncs;
   run(1100);
-  assert(uiport::pcResyncs <= resyncs + 1);  // sin red, solo cuando hace falta
+  assert(uiport::pcResyncs == resyncs);  // terminar la red tampoco solicita recuperación
 
   // Volver: menú y después Inicio.
   assert(opciones::view == opciones::View::Menu);

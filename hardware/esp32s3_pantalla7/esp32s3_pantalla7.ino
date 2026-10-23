@@ -208,6 +208,7 @@ static mfv3snd::Event commentaryFallback = mfv3snd::Event::Goal;
 static const char* commentaryOutcome="idle";
 static uint32_t commentaryRequestedCode=0;
 static bool resultPending=false,resultSaving=false;
+static bool resultSaveFailed=false;
 static uint32_t resultFrame=0,resultQueuedAt=0,resultEndMs=0,resultEndEpoch=0,resultStamp=0;
 static void serviceAudio(){
 #if HAS_AUDIO
@@ -274,11 +275,15 @@ static void saveConfig() {
   prefs.putUChar("pfirst", cfg.penaltyFirst == Team::Blue ? 1 : 0);
 }
 
-static void saveMatchFile();
+static bool saveMatchFile();
 static uint32_t nextCloudSync = 20000;  // la primera, al poco de encender
-static void saveResult() {
+static bool saveResult() {
   serviceAudio();
-  saveMatchFile();
+  resultSaveFailed = !saveMatchFile();
+  if (resultSaveFailed) {
+    ui::toast("Partido sin guardar. Revisa la tarjeta");
+    return false;
+  }
   serviceAudio();
   nextCloudSync = millis() + 8000;  // al volver a Inicio, se sube
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
@@ -292,6 +297,7 @@ static void saveResult() {
   serviceAudio();
   prefs.putULong("played", matchesPlayed);
   serviceAudio();
+  return true;
 }
 
 // ---------------------------------------------------------------- salida hacia placas auxiliares
@@ -594,6 +600,7 @@ static void startMatch() {
   hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
+  resultSaveFailed = false;
   ambienceClock.reset(esp_random());ambienceQuietAt=ambienceCheckedAt=0;
   matchStartMs = startedAt;
   matchFixedDirty = streakDirty = true;
@@ -697,7 +704,7 @@ static void inputPause() {
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
-static void saveMatchFile() {
+static bool saveMatchFile() {
   static partidos::Match m;
   m = partidos::Match();
   m.mode = chosenMode == inicio::CHAOS ? 'c' : chosenMode == inicio::RANKED ? 'r' : 'q';
@@ -719,8 +726,12 @@ static void saveMatchFile() {
       jugadores.idOf(p->code, w.id, sizeof(w.id));
       snprintf(w.name, sizeof(w.name), "%s", p->name);
     }
-  if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
-  else if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  if (!partidos::save(eng, m, serviceAudio)) {
+    LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+    return false;
+  }
+  if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  return true;
 }
 
 static void sendHello() {
@@ -823,7 +834,7 @@ static void handleBoardLine(const char* line) {
   if((inMatch && (soundMutation || soundScan || soundPreview)) ||
      (soundInspection.active && (soundMutation || soundScan || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
   if((comentarios::staging && (soundMutation || soundPreview)) || (sndCmd.receiving() && (boardCommand(line,"SONIDO_BORRAR") || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
-  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[310];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts);sendLine(b);return;}
+  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[350];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu resync_error=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts,(unsigned long)uiport::resyncFailures);sendLine(b);return;}
   if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
@@ -1067,6 +1078,8 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 #include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
 #include "s3_perfil.h"    // el QR del perfil de cada jugador
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
+// La comprobación automática espera al primer Inicio presentado: no compite con la precarga.
+static bool bootCheckPending = true;
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -1406,6 +1419,8 @@ static void drawFinished() {
   uint32_t secs = eng.totalTimeMs() / 1000;
   snprintf(buf, sizeof(buf), "Duracion %02lu:%02lu", (unsigned long)(secs / 60), (unsigned long)(secs % 60));
   text(buf, 400, 290, &lgfx::fonts::FreeSans12pt7b, C_TEXT2);
+  if (resultSaveFailed)
+    text("Partido sin guardar. Revisa la tarjeta", 400, 330, &lgfx::fonts::FreeSansBold9pt7b, C_GOLD);
   button(ui::FINISHED[0].r, "INICIO", C_CARD, C_TEXT, C_LINE, &lgfx::fonts::FreeSansBold18pt7b);
   button(ui::FINISHED[1].r, "REVANCHA", C_ACCENT, C_BG, C_ACCENT, &lgfx::fonts::FreeSansBold18pt7b);
 }
@@ -1427,6 +1442,7 @@ static uint32_t screenKey(uint32_t now) {
   uint32_t k = ((uint32_t)eng.phase() << 28) | ((uint32_t)eng.period() << 25) | ((uint32_t)s.white << 17) | ((uint32_t)s.blue << 9) |
                ((uint32_t)eng.kickCount() << 2) | (eng.canUndo() ? 2 : 0) | (confirmAbandon ? 1 : 0);
   k ^= (uint32_t)eng.matchPoint() << 30;
+  if (resultSaveFailed) k ^= 0x00800000UL;
   if (now < flashUntil) k ^= 0x00400000UL;  // celebración del gol
   return k;
 }
@@ -1852,6 +1868,7 @@ static void victoryView(victoria::View& v) {
     snprintf(b, sizeof(b), "Penaltis %u–%u", p.white, p.blue);
     add(b);
   }
+  if (resultSaveFailed) snprintf(v.facts, sizeof(v.facts), "Partido sin guardar. Revisa la tarjeta");
 }
 
 // Reposo (ui_reposo.h): «Último: BLANCO 5 – 3 AZUL» con el último resultado guardado.
@@ -1871,10 +1888,11 @@ static void render() {
     inicio::show();
     char warn[32];
     bool low = rtc.lowBattery();
-    if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    if (resultSaveFailed) snprintf(warn, sizeof(warn), "Partido sin guardar");
+    else if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
-    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
-    inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
+    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Hora sin ajustar");
+    inicio::setStatus(remoteLinked(), updateAvailable(), resultSaveFailed || low || datos::demo || !rtc.clockOk ? warn : nullptr,
                       nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
@@ -2229,7 +2247,6 @@ void setup() {
   nube::clubsIn = [](const char* arr) { equipos::fromJson(arr); };
   nube::clubsDone = equipos::pushed;
   radioBegin();
-  startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
   // con su porcentaje (unos 7 s al encender).
@@ -2290,7 +2307,7 @@ void loop() {
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
-  // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
+  // Estado de red informativo: el panel mantiene el mismo reloj con y sin Wi-Fi.
   uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::busy() || versionsRunning ||
                      screen == Screen::Install);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
@@ -2302,7 +2319,7 @@ void loop() {
   bool calm = !inMatch && !test.active && !managementBusy &&
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
-  if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
+  if (calm && !bootCheckPending && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
       s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {
     nextCloudSync = now + 15u * 60u * 1000u;
     nube::sync();
@@ -2350,6 +2367,10 @@ void loop() {
   bool resultBeforeRender=resultPending;
   render();
   uiport::step();
+  if (bootCheckPending && !test.active && !inMatch && inicio::active() && uiport::presented != frameBefore) {
+    bootCheckPending = false;
+    startCheck();  // sin credenciales, no inicia conexión; se conserva BUSCAR en Actualizaciones
+  }
 #if HAS_AUDIO
   if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || uiport::presented!=frameBefore)){
     uint32_t code=pendingCommentary;pendingCommentary=0;

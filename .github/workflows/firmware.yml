@@ -45,6 +45,9 @@ jobs:
       - name: Núcleo de la placa
         run: |
           CORE=$(echo "${{ matrix.placa.fqbn }}" | cut -d: -f1,2)
+          # El controlador RGB y su recuperación dependen del núcleo precompilado.
+          # Mantener el mismo ESP32 que se compila y revisa localmente (auditoría 0.13).
+          if [ "$CORE" = "esp32:esp32" ]; then CORE="$CORE@3.3.12"; fi
           arduino-cli core update-index --additional-urls "$URLS"
           arduino-cli core install "$CORE" --additional-urls "$URLS"
       - name: Bibliotecas
