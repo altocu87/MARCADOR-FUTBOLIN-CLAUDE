@@ -65,6 +65,7 @@ Equipo A (Cloud), por encargo del dueño: llevar los torneos de la app web a la 
 - `check_copies.sh` genera ahora las letras de `fuentes.txt` en `/tmp` antes de la prueba de pantallas, con `placa_recursos.py --fuentes`. Así funciona también en GitHub.
 - `npx vitest run`: 327 pruebas. Son nuevas `torneosPlaca`, `torneosDatosPlaca` y las ampliaciones de `boardMatches`, `progresionPlaca` y `perfil-placa`.
 - `npx tsc --noEmit`, sin errores. `native-release.mjs check`: «0.10 correcto».
+- GitHub (rama, commit `36b65c2`): Pruebas y Firmware correctos en todas las placas. Para que la Elecrow de 4 MB siga cabiendo (se pasaba por 33 KB), `lv_conf.h` desactiva las piezas de LVGL que el programa no usa (calendario, gráficas, menús, ventanas, interruptores, tablas, pestañas…); no cambia nada de lo que se ve.
 - Capturas del PC en `docs/capturas-placa/torneos/` (42). Son de la placa simulada en el PC, no fotografías de la placa.
 
 ## Pendiente
