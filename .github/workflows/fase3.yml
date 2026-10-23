@@ -27,7 +27,7 @@ jobs:
           key: pio-fase3-${{ hashFiles('hardware/fase3/platformio.ini') }}
       - name: PlatformIO
         run: pip install platformio==6.2.0
-      - name: Compilar (la primera vez recompila las bibliotecas de Arduino: tarda)
+      - name: Compilar (la primera vez recompila las bibliotecas de Arduino, tarda)
         run: pio run -d hardware/fase3
       - name: Programa y datos
         run: |
