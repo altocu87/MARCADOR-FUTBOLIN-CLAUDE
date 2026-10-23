@@ -106,11 +106,22 @@ static LegacyGfx gfx;  // pantallas aún sin rehacer: su dibujo antiguo pasa a o
 Engine eng;
 mfv3::Config cfg;
 // Ajustes en la NVS. Cada escritura en la flash descoloca un momento la imagen (ui_port.h): se avisa para realinearla.
+// Si el valor ya era ese, la NVS no escribe nada: tampoco se realinea (se veía un salto al pulsar JUGAR o al tocar
+// el volumen, sin haber cambiado nada).
 class PrefsW : public Preferences {
  public:
-  template <typename... A> void putBool(A... a) { Preferences::putBool(a...), mark(); }
-  template <typename... A> void putUChar(A... a) { Preferences::putUChar(a...), mark(); }
-  template <typename... A> void putULong(A... a) { Preferences::putULong(a...), mark(); }
+  void putBool(const char* k, bool v) {
+    if (isKey(k) && getBool(k, !v) == v) return;
+    Preferences::putBool(k, v), mark();
+  }
+  void putUChar(const char* k, uint8_t v) {
+    if (isKey(k) && getUChar(k, 0) == v) return;
+    Preferences::putUChar(k, v), mark();
+  }
+  void putULong(const char* k, uint32_t v) {
+    if (isKey(k) && getULong(k, 0) == v) return;
+    Preferences::putULong(k, v), mark();
+  }
   template <typename... A> void putString(A... a) { Preferences::putString(a...), mark(); }
   template <typename... A> void putBytes(A... a) { Preferences::putBytes(a...), mark(); }
 
@@ -287,14 +298,14 @@ static bool tourSavedOk = false;
 static mfv3::Config cfgBeforeTour;
 static bool fichasToTour = false;  // + JUGADOR desde «¿Quién juega?»: al volver, al torneo
 static void saveMatchFile();
-static uint32_t nextCloudSync = 20000;  // la primera, al poco de encender
+static uint32_t nextCloudSync = 0;  // la primera, en el primer reposo tras encender
 static void recordTourResult();
 static void saveResult() {
   serviceAudio();
   saveMatchFile();
   serviceAudio();
   if (tourMatch) recordTourResult();  // el resultado, al torneo (y se guarda)
-  nextCloudSync = millis() + 8000;  // al volver a Inicio, se sube
+  nextCloudSync = millis();  // se sube en el siguiente reposo (nunca mientras se usa la placa)
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.draw() ? 2 : eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
                   resultSaving ? resultStamp : (rtc.clockOk ? reloj::stamp(rtc.now) : 0)};
@@ -381,6 +392,7 @@ static void leaveTest();
 
 static void wakeScreen() {
   lastActivity = millis();
+  nube::abortBackground();  // vuelven a usar la placa: la nube espera al siguiente reposo
   if (dimmed) {
     dimmed = false;
     lcd.backlight(backlightLevel());
@@ -597,7 +609,11 @@ static void startMatch() {
   if(soundManagementBusy()){ui::toast("Espera a que terminen los sonidos");return;}
 #endif
   queueCommentary(0);
-  if (nube::busy() || s3net::scanning) { ui::toast("Espera a que termine la conexión"); return; }
+  if (nube::networking() || s3net::scanning) {
+    nube::abortBackground();
+    ui::toast("Espera a que termine la conexión");
+    return;
+  }
   prepareMatchNetwork();
   // Partido Loco: hándicaps y visitas; algunos dependen de cuántos juegan en cada equipo.
   cfg.chaos = chosenMode == inicio::CHAOS;
@@ -1550,7 +1566,19 @@ static nube::Resp nubeHttp(const char* method, const char* url, const char* bear
   http.end();
   return r;
 }
-static bool nubeWifiUp() { return wifiSsid[0] && s3net::connectWait(wifiSsid, wifiPass, nullptr); }
+// Como s3net::connectWait, pero deja de esperar si se corta la sincronización de fondo (alguien usa la placa).
+static bool nubeWifiUp() {
+  if (!wifiSsid[0]) return false;
+  s3net::connect(wifiSsid, wifiPass);
+  while (s3net::poll() == s3net::Link::Connecting) {
+    if (nube::abortJob.load()) {
+      s3net::stop();
+      return false;
+    }
+    delay(50);
+  }
+  return s3net::link == s3net::Link::Up;
+}
 static bool nubeWifiDown() {
   s3net::stop();
   return true;
@@ -2248,6 +2276,7 @@ static void pollIsolatedInputs(uint32_t now) {
 // El primer toque con la pantalla atenuada solo la despierta (LVGL no lo ve).
 static bool onTouchDown() {
   lastActivity = millis();
+  nube::abortBackground();
   if (!dimmed) return false;
   dimmed = false;
   lcd.backlight(backlightLevel());
@@ -2338,7 +2367,8 @@ void setup() {
   nube::hooks.playerGone = nubePlayerGone;
   nube::nowUtc = nubeNow;
   nube::hooks.finished = [](bool ok) {
-    if (ok && nube::pendingCount) nextCloudSync = millis() + 3000;  // lo que quedó apuntado mientras tanto
+    // Lo que quedó apuntado mientras tanto, o lo que no dio tiempo: en el siguiente reposo.
+    if ((ok && nube::pendingCount) || nube::lastAborted) nextCloudSync = millis();
   };
 #ifdef ARDUINO
   nube::http = nubeHttp;
@@ -2382,6 +2412,7 @@ void setup() {
   nube::clubsGone = equipos::goneIds;
   nube::clubsIn = [](const char* arr) { equipos::fromJson(arr); };
   nube::clubsDone = equipos::pushed;
+  s3flash::hook = []() { uiport::needResync = true; };  // escrituras en la memoria del chip (s3_flash.h)
   radioBegin();
   startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
@@ -2445,10 +2476,16 @@ void loop() {
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
   ajustesLoop(now);
   // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
-  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::busy() || versionsRunning ||
-                     screen == Screen::Install);
+  // También al descomprimir fotos de jugadores (usan la PSRAM igual que la red); medio segundo más, para no cambiar
+  // de ritmo entre una foto y la siguiente de la galería.
+  static uint32_t photosAt = 0;
+  if (fotos::busy()) photosAt = now | 1;
+  if (photosAt && now - photosAt > 500) photosAt = 0;
+  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::networking() || versionsRunning ||
+                     screen == Screen::Install || photosAt);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
-  // CUENTA); y se sincroniza con la placa parada (nunca en un partido: el Wi-Fi saca a la radio del mando de su canal).
+  // CUENTA). Sola, solo se sincroniza en reposo (pantalla atenuada, o 3 min sin tocar si no se atenúa nunca) y sin
+  // partido; al volver a usar la placa se corta (wakeScreen, onTouchDown) y sigue en el siguiente reposo.
   bool managementBusy=false;
 #if HAS_AUDIO
   managementBusy=soundManagementBusy();
@@ -2456,10 +2493,11 @@ void loop() {
   bool calm = !inMatch && !test.active && !managementBusy &&
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
-  if (calm && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
+  bool resting = calm && (dimmed || (!sleepAfterMs() && now - lastActivity > 3u * 60u * 1000u));
+  if (resting && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
       s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {
     nextCloudSync = now + 15u * 60u * 1000u;
-    nube::sync();
+    nube::sync(true);
   }
 
   if (buzzerUntil && now > buzzerUntil) {

@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "mfv3_engine.h"
 #include "s3_reloj.h"
+#include "s3_flash.h"
 
 namespace partidos {
 
@@ -777,6 +778,7 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   appendIndex(r);
   cooperate();
   push(r);
+  s3flash::wroteTo(dir);  // sin tarjeta, los partidos van a la memoria del chip
   return true;
 }
 

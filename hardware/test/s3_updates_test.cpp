@@ -65,12 +65,12 @@ int main() {
   strcpy(pubScreen.md5, "0123456789abcdef0123456789abcdef");
   strcpy(publishedRelease.version,"0.9");assert(!screenOutdated()); // incluso con build mayor
   strcpy(publishedRelease.version,"0.10");assert(!screenOutdated());
-  strcpy(publishedRelease.version,"0.12");assert(screenOutdated());
+  strcpy(publishedRelease.version,"0.99");assert(screenOutdated());  // una versión siempre futura
   assert(updateInfo::olderVersion("0.9","0.11") && !updateInfo::olderVersion("0.11","0.9"));
   assert(updateInfo::olderVersion("0.11","0.11.1") && !updateInfo::olderVersion("0.11.0","0.11"));
   assert(!updateInfo::olderVersion("","0.11") && !updateInfo::olderVersion("0..9","0.11"));
   assert(!updateInfo::olderVersion("0.9.1.1","0.11") && !updateInfo::olderVersion("0.9.","0.11"));
-  strcpy(publishedRelease.version, "0.12"); strcpy(publishedRelease.notes, "Una version ficticia para comprobar el aviso.");
+  strcpy(publishedRelease.version, "0.99"); strcpy(publishedRelease.notes, "Una version ficticia para comprobar el aviso.");
   updateTab = UpdateTab::Overview; render(); assert(canInstallUpdate()); shot("actualizaciones-disponible");
   inMatch = true; startInstall(); assert(screen == Screen::Update); inMatch = false;
   tapRect(ui::UPDATE[2].r); assert(screen == Screen::Update && updateTab == UpdateTab::Confirm);

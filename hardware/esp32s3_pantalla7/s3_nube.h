@@ -4,8 +4,10 @@
 // token», nunca la contraseña), subir los partidos que se juegan aquí y los jugadores creados o cambiados aquí, y
 // bajar los jugadores (con su foto) y los partidos de la cuenta. Todo va a la tabla `mesa_datos`.
 //
-// Cuándo: con la placa parada (nunca en un partido: mientras está en el Wi-Fi la radio del mando no oye), al
-// entrar, al encender, al acabar cada partido, cada 15 minutos y con «Sincronizar ahora». En la placa el trabajo
+// Cuándo: sola, solo con la pantalla en reposo y sin partido (decisión del dueño, 23/10/2026: el Wi-Fi descoloca la
+// imagen y saca a la radio del mando de su canal). Lo que se juega se guarda al momento en la tarjeta y se sube en el
+// siguiente reposo; si alguien toca la pantalla o el mando, se corta (abortBackground) y sigue en otro reposo. Al
+// entrar en la cuenta y con «Sincronizar ahora», en el momento. En la placa el trabajo
 // de red va en una tarea aparte (núcleo 0) para que la pantalla siga respondiendo; lo que llega se aplica después,
 // poco a poco, desde loop() (apply()). En el PC (pruebas) se hace todo seguido.
 //
@@ -28,6 +30,7 @@
 #include "s3_fotos.h"
 #include "s3_jugadores.h"
 #include "s3_partidos.h"
+#include "s3_flash.h"
 
 namespace nube {
 
@@ -92,6 +95,7 @@ static bool saveState() {
     } else ::remove(backup);
   }
   if (!ok) ::remove(tmp);
+  s3flash::wroteTo(stateFile);
   return ok;
 }
 static void loadState() {
@@ -166,6 +170,7 @@ static void addPending(const char* line) {
   if (!f) return;
   fprintf(f, "%s\n", line);
   fclose(f);
+  s3flash::wroteTo(p);
   pendingCount++;
 }
 // ¿Está esta línea en lo pendiente? (desde loop(): lo cambiado aquí mientras se bajaba no se pisa).
@@ -355,6 +360,10 @@ static char newLastPull[40];
 static char jobError[96];
 static std::atomic<bool> jobDone{false};
 static std::atomic<bool> jobReady{false};
+// Sincronización de fondo (en reposo): se puede cortar al volver a usar la placa. Lo pedido a mano, no.
+static bool background = false;
+static std::atomic<bool> abortJob{false};
+static bool lastAborted = false;  // la última se cortó (no es un fallo: se sigue en el siguiente reposo)
 static bool pendingTrimmed = false;
 static bool jobOk = false;
 static const char* ffatRoot = "/ffat";
@@ -816,9 +825,17 @@ static bool takeRow(const char* o) {
   return true;
 }
 
+// ¿Hay que cortar ya? (entre petición y petición; lo subido hasta aquí queda hecho)
+static bool stopped() {
+  if (!abortJob.load()) return false;
+  snprintf(jobError, sizeof(jobError), "Se seguirá con la pantalla en reposo");
+  return true;
+}
+
 // Baja lo cambiado desde `since` de los tipos dados, de `page` en `page` filas (los torneos pesan más: menos por vez).
 static bool pull(const char* since, const char* tipos = "player,match,prefs", int page = 20) {
   for (int offset = 0;; offset += page) {
+    if (stopped()) return false;
     char url[400];
     snprintf(url, sizeof(url),
              "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(%s)&order=actualizado.asc,tipo.asc,id.asc&limit=%d&offset=%d%s%s",
@@ -866,7 +883,7 @@ static void runJob() {
   }
 
   if (wifiUp && !wifiUp()) {
-    snprintf(jobError, sizeof(jobError), "No se pudo conectar al Wi-Fi");
+    if (!stopped()) snprintf(jobError, sizeof(jobError), "No se pudo conectar al Wi-Fi");
     if (wifiDown) wifiDown();
     jobDone = true;
     return;
@@ -909,11 +926,13 @@ static void runJob() {
       for (int k = 0; k < nChanges && !joins; k++)
         joins = changes[k].kind == 'p' && strcmp(changes[k].id, upPlayers[i].id) && !strcasecmp(changes[k].name, upPlayers[i].name);
       if (joins) continue;
+      if (stopped()) { jobOk = false; break; }
       bool d = false;
       jobOk = pushPlayer(upPlayers[i], &d);
     }
     for (int i = 0; jobOk && i < nUps; i++) {
       const char* l = ups[i].line;
+      if (stopped()) { jobOk = false; break; }
       if (l[0] == 'm') jobOk = pushMatch(l + 2, &ups[i].done);
       else if (l[0] == 'b') jobOk = pushDeleted(l + 2, &ups[i].done);
       else if (l[0] == 'x') jobOk = pushDeleted(l + 2, &ups[i].done, "match");
@@ -953,7 +972,10 @@ static void startWorker(bool external = true) {
 #endif
 }
 
-static void startJob(Job j) {
+static void startJob(Job j, bool inBackground = false) {
+  background = inBackground;
+  abortJob = false;
+  lastAborted = false;
   jobDone = false;
   pendingTrimmed = false;
   jobSaved = saved;
@@ -975,6 +997,12 @@ static void startJob(Job j) {
 
 // ---------------------------------------------------------------- desde loop()
 static bool busy() { return phase == BUSY; }
+// Usando el Wi-Fi ahora mismo (después, lo que llegó aún puede estar aplicándose: busy() sigue).
+static bool networking() { return phase == BUSY && !jobDone.load(); }
+// Se ha vuelto a usar la placa: la sincronización de fondo se corta en cuanto acabe la petición en curso.
+static void abortBackground() {
+  if (background && networking()) abortJob = true;
+}
 
 static void begin(jug::Store* s, const char* stateDir) {
   store = s;
@@ -1042,7 +1070,7 @@ static bool publishProfile(char* body) {
 
 // Modo prueba (s3_datos.h): no se sube ni se baja nada; lo de prueba no llega nunca a la cuenta.
 static bool paused = false;
-static void sync() {
+static void sync(bool inBackground = false) {
   if (paused || phase == BUSY || !loggedIn()) return;
   freeUploads();
   recoverPending();
@@ -1109,7 +1137,7 @@ static void sync() {
   templatesUp = templatesOut ? templatesOut() : nullptr;
   free(templatesGoneIds);
   templatesGoneIds = templatesUp && templatesGone ? templatesGone() : nullptr;
-  startJob(SYNC);
+  startJob(SYNC, inBackground);
 }
 
 static bool logout() {
@@ -1172,7 +1200,8 @@ static void trimPending() {
 }
 
 // La tarea conserva la propiedad de changes y sus fotos hasta publicar jobDone.
-// Después loop() aplica como máximo cuatro cambios por vuelta, sin realloc concurrente.
+// Después loop() aplica como máximo cuatro cambios por vuelta (un solo jugador: su foto se escribe en la memoria del
+// chip y eso traba la pantalla), sin realloc concurrente.
 static void apply() {
   if (phase != BUSY || !jobDone.load()) return;
   // En cuanto acaba el trabajo, lo subido sale de la lista (antes de aplicar lo que llega, que puede apuntar más).
@@ -1181,8 +1210,9 @@ static void apply() {
     trimPending();
   }
   int budget = 4;
-  while (applied < nChanges && budget-- > 0) {
+  while (applied < nChanges && budget > 0) {
     Change& c = changes[applied++];
+    budget -= c.kind == 'p' ? 4 : 1;
     if (c.kind == 'm' && hooks.matchArrived) hooks.matchArrived(c.id);
     else if (c.kind == 'x' && hooks.matchGone) hooks.matchGone(c.id);
     else if (c.kind == 'p' && hooks.player) hooks.player(c);
@@ -1250,18 +1280,21 @@ static void apply() {
     sync();  // y la primera sincronización, ya
     return;
   }
+  lastAborted = !jobOk && abortJob.load();
   if (jobOk) {
     snprintf(saved.lastPull, sizeof(saved.lastPull), "%s", newLastPull);
     if (tournamentsDir[0]) saved.tournaments = true;
     lastOkAt = millis();
     message[0] = 0;
+  } else if (lastAborted) {
+    message[0] = 0;  // cortada a propósito: no es un error
   } else {
     snprintf(message, sizeof(message), "%s", jobError);
     if (strstr(jobError, "caducado")) memset(saved.refresh, 0, sizeof(saved.refresh));
   }
   saveState();  // el refresh token cambia en cada renovación: hay que guardarlo siempre
   countPending();
-  phase = !loggedIn() ? OFF : jobOk ? OK : FAILED;
+  phase = !loggedIn() ? OFF : jobOk ? OK : lastAborted ? IDLE : FAILED;
   job = NONE;
   if (hooks.finished) hooks.finished(jobOk);
 }

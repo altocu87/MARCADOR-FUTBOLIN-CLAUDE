@@ -118,6 +118,7 @@ static bool save(bool fromHere) {
     dirty = true;
   }
   revision++;
+  s3flash::wrote();
   return true;
 }
 

@@ -135,10 +135,40 @@ int main() {
   assert(appliedPlayers == 0 && !strcmp(nube::saved.refresh, "old"));
   releaseGet = true;
   worker.join();
-  nube::apply(); assert(appliedPlayers == 4 && nube::busy());
+  nube::apply(); assert(appliedPlayers == 1 && nube::busy());  // un jugador por vuelta (su foto va a la flash)
   drain(); assert(appliedPlayers == 70 && nube::phase == nube::OK);
   assert(!strcmp(nube::saved.lastPull, "2026-10-19T00:00:00Z") && !nube::changes);
+
+  // Sincronización de fondo cortada al volver a usar la placa: acaba tras la petición en curso, sin error, aplica lo
+  // que ya llegó y conserva el cursor para repetir la bajada en el siguiente reposo.
+  prepare("");
+  pulled = "[";
+  for (int i = 0; i < 25; ++i) {
+    if (i) pulled += ',';
+    pulled += "{\"tipo\":\"player\",\"id\":\"q" + std::to_string(i) +
+              "\",\"datos\":{\"name\":\"Dos\",\"active\":true},\"actualizado\":\"2026-10-20T00:00:00Z\"}";
+  }
+  pulled += ']';
+  insideGet = false; releaseGet = false;
+  nube::jobSaved = nube::saved; nube::job = nube::SYNC;
+  nube::background = true; nube::abortJob = false;
+  nube::jobDone = false; nube::phase = nube::BUSY; nube::pendingTrimmed = false;
+  std::thread bg([] { nube::runJob(); });
+  while (!insideGet) std::this_thread::yield();
+  assert(nube::networking());
+  nube::abortBackground();
+  releaseGet = true;
+  bg.join();
+  assert(!nube::networking() && nube::busy());
+  drain();
+  assert(nube::lastAborted && nube::phase == nube::IDLE && !nube::message[0]);
+  assert(appliedPlayers == 25 && !strcmp(nube::saved.lastPull, "2026-10-18T00:00:00Z"));
+  // Lo pedido a mano no se corta.
+  nube::background = false; nube::phase = nube::BUSY; nube::jobDone = false; nube::abortJob = false;
+  nube::abortBackground(); assert(!nube::abortJob.load());
+  nube::jobDone = true; nube::phase = nube::IDLE;
   holdGet = false;
+  printf("Nube en reposo: se corta al usar la placa sin perder nada OK\n");
 
   // Conversión por filas: mismos bytes BMP que antes (cabecera, colores y orientación).
   assert(nube::photoDataUrl(nullptr) == nullptr);

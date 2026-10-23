@@ -23,6 +23,7 @@
 #include <string.h>
 #include <strings.h>
 #include "mfv3_sound.h"
+#include "s3_flash.h"
 
 namespace jug {
 
@@ -440,6 +441,7 @@ class Store {
     crc = mfv3snd::crc32Update(crc, (const uint8_t*)px, PHOTO_BYTES - 12);
     bool ok = f.write(h, sizeof(h)) == sizeof(h) && f.write((const uint8_t*)px, PHOTO_BYTES - 12) == PHOTO_BYTES - 12;
     f.close();
+    s3flash::wrote();
     if (!ok || !crc) {
       fs_->remove(path);
       return 0;
@@ -454,6 +456,7 @@ class Store {
     fs_->remove(path);
     snprintf(path, sizeof(path), "%s/%08lx.crc", DIR, (unsigned long)code);
     fs_->remove(path);
+    s3flash::wrote();
   }
 
   static void newUuid(char* out) {
@@ -491,6 +494,7 @@ class Store {
         }
       g.close();
     }
+    s3flash::wrote();
     return true;
   }
 
@@ -561,6 +565,7 @@ class Store {
     if (f) {
       f.write((const uint8_t*)b, 8);
       f.close();
+      s3flash::wrote();
     }
   }
 
