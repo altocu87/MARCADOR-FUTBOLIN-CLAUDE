@@ -1,6 +1,7 @@
 """Prepara la memoria FAT de la pantalla de 7" (19,9 MB): capas de la app, letras e imágenes.
 
   python scripts/placa_recursos.py            -> build/placa/fat/ (carpeta) y build/placa/ffat.bin (imagen para grabar)
+  python scripts/placa_recursos.py --fuentes <carpeta>  -> solo las letras en <carpeta>/fuentes (pruebas del PC)
 
 Entradas:
   - build/placa/capas/*.png y build/placa/capas.json   (node scripts/placa-capas.mjs)
@@ -14,13 +15,16 @@ Salidas:
 import json
 import os
 
-import lz4.block
 import shutil
 import struct
 import subprocess
 import sys
 
-from PIL import Image
+try:  # solo para las capas: las letras (--fuentes) no los necesitan
+    import lz4.block
+    from PIL import Image
+except ImportError:
+    lz4 = Image = None
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, "build", "placa")
@@ -197,4 +201,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 3 and sys.argv[1] == "--fuentes":
+        FAT = sys.argv[2]
+        print(f"{len(fuentes())} letras en {FAT}/fuentes")
+    else:
+        main()

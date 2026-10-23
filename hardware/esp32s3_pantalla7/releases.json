@@ -1,17 +1,29 @@
 {
-  "version": "0.12",
+  "version": "0.13",
   "majorOneAuthorized": false,
   "releases": [
     {
-      "version": "0.12",
+      "version": "0.13",
       "date": "2026-10-23",
       "title": "La nube espera al reposo",
       "changes": [
-        "Los partidos se guardan al momento en la tarjeta y se suben a la nube solo con la pantalla en reposo, nunca mientras se usa.",
+        "Los partidos y torneos se guardan al momento en la tarjeta y se suben a la nube solo con la pantalla en reposo, nunca mientras se usa.",
         "Si alguien toca la pantalla o el mando mientras se sube, se para sin perder nada y sigue en el siguiente reposo.",
         "La imagen se recoloca sola después de guardar fotos, fichas, equipos o ajustes, y al cargar fotos de jugadores.",
         "Tocar el volumen, el brillo o JUGAR sin cambiar nada ya no hace saltar la imagen.",
         "Las fotos de los jugadores se quedan cargadas aunque haya muchos jugadores."
+      ]
+    },
+    {
+      "version": "0.12",
+      "date": "2026-10-23",
+      "title": "Torneos en la pantalla",
+      "changes": [
+        "TORNEO en Inicio: liga, copa y pool como en la app, desde elegir quién juega hasta el campeón.",
+        "Crea, edita, duplica y borra tus ligas, copas y pools en la propia pantalla, sin la app.",
+        "Clasificación, cuadro o pistas, el siguiente partido con pronóstico, repetir el último y cambiar las reglas.",
+        "Cartel de cada fase (gran final, semifinal, pista…), empates en la liga a tiempo y la ceremonia del campeón con la experiencia ganada.",
+        "Ficha del torneo con MVP y palmarés de cada competición; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."
       ]
     },
     {

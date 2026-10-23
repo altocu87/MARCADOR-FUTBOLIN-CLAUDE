@@ -1,8 +1,12 @@
 # Estado del proyecto
 
-## Pantalla 0.12 y app · nube solo en reposo y realineado · equipo A · 23/10/2026
+## Pantalla 0.13 y app · nube solo en reposo y realineado · equipo A · 23/10/2026
 
 **Código hecho y probado en el PC; sin instalar ni probar en la placa.** Auditoría de cinco perfiles (pantalla, red, datos, electrónica, web) sobre los saltos de imagen con Wi-Fi y cargas. Decisión del dueño: guardar al momento y subir a la nube solo en reposo. Pantalla: la sincronización sola arranca con la pantalla atenuada y sin partido, y se corta al tocar la pantalla o el mando; realineado tras cada escritura en la memoria del chip (`s3_flash.h`) y al descomprimir fotos; la NVS no escribe ni realinea si el valor no cambia; caché de imágenes de 96 a 320. App: sincroniza tras 90 s quieta (o pestaña oculta) y nunca jugando, se cancela al tocar; arreglado el fallo que podía borrar un partido guardado durante una sincronización. Todas las pruebas locales correctas. Pendiente: instalar 0.12 y grabar con el móvil si la imagen aún salta (con Wi-Fi, editando una ficha y en la galería de fotos). Pendiente de decisión del dueño: compilar con configuración propia (arreglo de raíz del panel). Comprobaciones físicas sugeridas: cargador 5 V ≥ 2 A, canal del router (el mando va en el 1), cinta del panel.
+
+## Torneos en la pantalla · 0.12 · en main · 23/10/2026
+
+Liga, copa y pool en la placa como en la app: creador completo, clasificación/cuadro/pistas, cartel de fase, empate en liga a tiempo, ceremonia del campeón, ficha y palmarés casi ilimitado en la SD (10 ediciones en memoria, el resto por páginas; la nube de respaldo). Fusionada en main con autorización del dueño, encima de la 0.11 del equipo B; GitHub la publica como actualización. Pruebas del PC, cruzadas con la app y de GitHub correctas. **Sin instalar ni probar en la placa.** Voces de torneo aún sin activar. [Entrega](ENTREGA_TORNEOS_PLACA_0_12_20261023.md) · [Plan](PLAN_TORNEOS_PLACA.md).
 
 ## Pantalla 0.11 instalada y verificada · equipo B · 23/10/2026
 

@@ -14,6 +14,8 @@
 //   - AJUSTES: Wi-Fi de casa (se elige la red y se escribe la clave en la pantalla), volumen, prueba y
 //     ACTUALIZAR: al encender mira si hay versión nueva de la pantalla o del mando; se instala cuando se pulse
 //     (el mando, por radio desde la pantalla). Ver s3_ajustes.h y s3_net.h.
+//   - TORNEOS (liga, copa y pool) como en la app: crear, jugar cruce a cruce, ficha, palmarés y ceremonia
+//     (ui_torneo*.h; reglas en s3_torneos_reglas.h y s3_torneos_ficha.h; guardado en s3_torneos_datos.h).
 //   - Sonidos propios (Waveshare 7C, con sus dos altavoces): cada momento del partido (gol, remontada, victoria…)
 //     suena con el sonido elegido en la app, guardado en la memoria del chip o en la tarjeta SD; si no hay ninguno,
 //     suena el de siempre. La app los pasa por el USB (ver mfv3_audio.h y mfv3_sound.h).
@@ -66,6 +68,10 @@
 #include "s3_partidos.h"
 #include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
+// Torneos: reglas y ficha (agente 1), guardado y nube (agente 2) y sus pantallas (agente 3).
+#include "s3_torneos_ficha.h"
+#include "s3_torneos_datos.h"
+#include "ui_torneo.h"
 
 using mfv3::Engine;
 using mfv3::Phase;
@@ -285,15 +291,23 @@ static void saveConfig() {
   prefs.putUChar("pfirst", cfg.penaltyFirst == Team::Blue ? 1 : 0);
 }
 
+// Partido de torneo: el cruce que se juega y la configuración de antes (las reglas del cruce no se guardan).
+static bool tourMatch = false;
+static int16_t tourFixture = -1;
+static bool tourSavedOk = false;
+static mfv3::Config cfgBeforeTour;
+static bool fichasToTour = false;  // + JUGADOR desde «¿Quién juega?»: al volver, al torneo
 static void saveMatchFile();
 static uint32_t nextCloudSync = 0;  // la primera, en el primer reposo tras encender
+static void recordTourResult();
 static void saveResult() {
   serviceAudio();
   saveMatchFile();
   serviceAudio();
+  if (tourMatch) recordTourResult();  // el resultado, al torneo (y se guarda)
   nextCloudSync = millis();  // se sube en el siguiente reposo (nunca mientras se usa la placa)
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
-  LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
+  LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.draw() ? 2 : eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
                   resultSaving ? resultStamp : (rtc.clockOk ? reloj::stamp(rtc.now) : 0)};
   for (int i = 7; i > 0; i--) history[i] = history[i - 1];
   history[0] = r;
@@ -497,7 +511,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     sendEvent(buf);
   }
   if (now.phase == Phase::Finished && snap.phase != Phase::Finished) {
-    sendEvent(eng.winner() == Team::White ? "WIN BLANCO" : "WIN AZUL");
+    sendEvent(eng.draw() ? "DRAW" : eng.winner() == Team::White ? "WIN BLANCO" : "WIN AZUL");  // DRAW: empate de liga
     resultPending=true;resultFrame=uiport::presented;resultQueuedAt=millis();
     resultEndMs=millis();resultEndEpoch=rtc.clockOk?partidos::epoch(rtc.now):0;
     resultStamp=rtc.clockOk?reloj::stamp(rtc.now):0;
@@ -629,11 +643,18 @@ static void startMatch() {
   lastKey = 0xFFFFFFFF;
 }
 
+static void endTourMatch() {
+  if (tourMatch) cfg = cfgBeforeTour;
+  tourMatch = false;
+  tourFixture = -1;
+}
+
 static void goHome() {
 #if HAS_AUDIO
   if(ambientCommentary){queueCommentary(0);player.stop();}
 #endif
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  endTourMatch();
   queueCommentary(0);
   inMatch = false;
   homeCards = true;
@@ -735,8 +756,17 @@ static void saveMatchFile() {
       jugadores.idOf(p->code, w.id, sizeof(w.id));
       snprintf(w.name, sizeof(w.name), "%s", p->name);
     }
+  // Partido de torneo: se guarda con «tournament»: {id, fixtureId}, como la app.
+  if (tourMatch && tourFixture >= 0) {
+    snprintf(m.tournament, sizeof(m.tournament), "%s", tor::cur.id);
+    snprintf(m.fixture, sizeof(m.fixture), "%s", tor::cur.fix[tourFixture].id);
+  }
+  tourSavedOk = false;
   if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
-  else if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  else {
+    tourSavedOk = true;
+    if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  }
 }
 
 static void sendHello() {
@@ -1411,8 +1441,8 @@ static void drawFinished() {
   for (int r = 0; r < 6; r++) gfx.drawCircle(400, 200, 180 + r * 18, gfx.color565(30 + r * 6, 26 + r * 4, 10));
   Team w = eng.winner();
   text("FINAL DEL PARTIDO", 400, 60, &lgfx::fonts::FreeSansBold12pt7b, C_TEXT2);
-  text(w == Team::White ? "VICTORIA BLANCO" : "VICTORIA AZUL", 400, 140, &lgfx::fonts::FreeSansBold24pt7b,
-       w == Team::White ? C_WHITE_TEAM : C_ACCENT, 1.4f);
+  text(eng.draw() ? "EMPATE" : w == Team::White ? "VICTORIA BLANCO" : "VICTORIA AZUL", 400, 140, &lgfx::fonts::FreeSansBold24pt7b,
+       eng.draw() ? C_GOLD : w == Team::White ? C_WHITE_TEAM : C_ACCENT, 1.4f);
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   char buf[48];
   if (eng.reason() == mfv3::Reason::Penalties) snprintf(buf, sizeof(buf), "%u-%u   Penaltis %u-%u", s.white, s.blue, p.white, p.blue);
@@ -1491,8 +1521,11 @@ static void onHomeMenu(uint8_t which) {
   if (which == inicio::RANKING) {
     screen = Screen::Ranking;
     rankingFresh = true;
+  } else if (which == inicio::TOURNAMENT) {
+    screen = Screen::Tournament;
+    tor::open(&jugadores);
   } else {
-    ui::toast(which == inicio::TOURNAMENT ? "Los torneos llegan más adelante" : "Los retos llegan más adelante");
+    ui::toast("Los retos llegan más adelante");
   }
 }
 static void onRankingBack() { goHome(); }
@@ -1618,7 +1651,8 @@ static void onFichaRemoved(const char* id) {
 
 static void onFichasBack() {
   fichas::leave();
-  screen = Screen::Settings;
+  screen = fichasToTour ? Screen::Tournament : Screen::Settings;
+  fichasToTour = false;
 }
 static void onPlayersBack() {
   choosingPlayers = false;
@@ -1631,6 +1665,95 @@ static void onPlayersDone(const elegir::Teams& t) {
   choosingPlayers = false;
   startMatch();
 }
+// ---------------------------------------------------------------- torneos (ui_torneo*.h)
+static uint64_t tourNow() { return rtc.clockOk ? (uint64_t)partidos::epoch(rtc.now) * 1000ull : 0; }
+// Jugar un cruce: las reglas del cruce (fixtureRules, con allowDraw) y sus jugadores; antes, el cartel de fase.
+static void tourPlay(int16_t fi) {
+  if (fi < 0 || fi >= (int16_t)tor::cur.nFix) return;
+  const torneos::Fixture& f = tor::cur.fix[fi];
+  if (!tourMatch) cfgBeforeTour = cfg;
+  tourMatch = true;
+  tourFixture = fi;
+  torneos::Rules r = torneos::fixtureRules(tor::cur, f);
+  cfg.endCondition = r.end == torneos::End::Goals ? mfv3::EndCondition::Goals
+                     : r.end == torneos::End::Time ? mfv3::EndCondition::Time
+                                                   : mfv3::EndCondition::Both;
+  cfg.goalsPerPeriod = r.goals;
+  cfg.minutesPerPeriod = r.minutes;
+  cfg.allowDraw = r.allowDraw;
+  chosenMode = tor::cur.ranked ? inicio::RANKED : inicio::QUICK;
+  memset(&chosenTeams, 0, sizeof(chosenTeams));
+  for (int s = 0; s < 2; s++) {
+    int16_t tm = s ? f.blue : f.white;
+    if (tm < 0) continue;
+    for (uint8_t k = 0; k < tor::cur.teams[tm].n && chosenTeams.n[s] < elegir::MAX_PER_TEAM; k++) {
+      const jug::Player* p = jugadores.findById(tor::cur.teams[tm].player[k]);
+      if (p) chosenTeams.code[s][chosenTeams.n[s]++] = p->code;
+    }
+  }
+  haveTeams = chosenTeams.n[0] + chosenTeams.n[1] > 0;
+  matchFixedDirty = true;
+  tor::go(tor::View::Poster);
+}
+static void tourStart() {
+  startMatch();
+  if (!inMatch) {  // no se pudo empezar (guardando, sonidos, conexión): de vuelta al torneo
+    endTourMatch();
+    tor::go(tor::View::Detail);
+  }
+}
+// El resultado del partido recién guardado, al cruce del torneo.
+static void recordTourResult() {
+  if (!tourSavedOk || !partidos::count || tourFixture < 0) return;
+  const partidos::Row& row = partidos::rows[partidos::count - 1];
+  torneos::Result r = {};
+  snprintf(r.matchId, sizeof(r.matchId), "%s", row.id);
+  mfv3::Score sc = eng.score();
+  r.winner = eng.draw() ? '-' : eng.winner() == Team::White ? 'w' : 'b';
+  r.w = sc.white;
+  r.b = sc.blue;
+  uint32_t wall = resultEndMs - matchStartMs;
+  r.finishedAt = row.fin ? (uint64_t)row.fin * 1000ull : tourNow();
+  r.startedAt = r.finishedAt > wall ? r.finishedAt - wall : 0;
+  if (torneos::recordFixtureResult(tor::cur, tourFixture, r) && !torneos::save(tor::cur)) LV_LOG_WARN("No se pudo guardar el torneo");
+}
+// De la victoria (o del abandono) al torneo; si el partido lo cerró, a la ceremonia.
+static void backToTournament() {
+  if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  bool champion = tor::curOk && tor::cur.status == torneos::Status::Finished;
+  endTourMatch();
+  queueCommentary(0);
+  inMatch = false;
+  confirmAbandon = false;
+  screen = Screen::Tournament;
+  sendEvent("STATE idle");
+  lastKey = 0xFFFFFFFF;
+  tor::backFromMatch(&jugadores, champion);
+}
+// Abandonar: en un torneo el cruce queda «a medias» (se empieza de cero) y se vuelve al torneo.
+static void abandonMatch() {
+  if (!tourMatch) return goHome();
+  torneos::markAbandoned(tor::cur, tourFixture, tourNow());
+  torneos::save(tor::cur);
+  backToTournament();
+}
+static void tourPlayers() {
+  fichasToTour = true;
+  openPlayers();
+}
+// Sonidos de la ceremonia. CONTRATO: la app tiene «tournamentWin» y la sirena; mientras mfv3_sound no los traiga,
+// el de victoria y el de gol anulado.
+static void tourSound(uint8_t what) {
+  if (what == 1) return;
+  mfv3snd::EventList l;
+  l.add(what == 0 ? mfv3snd::Event::Victory : mfv3snd::Event::GoalAnnulled);
+  playEvents(l);
+}
+static const char* tourPlayerName(const char* id) {
+  const jug::Player* p = jugadores.findById(id);
+  return p ? p->name : nullptr;
+}
+
 // ---------------------------------------------------------------- partido (ui_partido.h)
 static const char* const PERIOD_LABEL[4] = {"1ª PARTE", "2ª PARTE", "PRÓRROGA", "PENALTIS"};
 static void goalsText(char* out, size_t n, uint8_t g) { snprintf(out, n, "%u %s", g, g == 1 ? "gol" : "goles"); }
@@ -1667,6 +1790,13 @@ static void prepareMatchFixed() {
   bool showGoals = c.endCondition != mfv3::EndCondition::Time && !overtime;
   snprintf(v.info, sizeof(v.info), "%s%s%s%s", showPeriod ? PERIOD_LABEL[(int)eng.period()] : "",
            showPeriod && showGoals ? " · " : "", showGoals ? "A " : "", showGoals ? g : "");
+  // En un torneo, delante su nombre (si cabe en la línea).
+  if (tourMatch && tor::curOk) {
+    const char* tn = tor::compName();
+    char both[80];
+    snprintf(both, sizeof(both), "%s%s%s", tn, v.info[0] ? " · " : "", v.info);
+    if (strlen(both) < sizeof(v.info) && tor::textW(both, 800, 17) < 470) snprintf(v.info, sizeof(v.info), "%s", both);
+  }
   if (c.endCondition == mfv3::EndCondition::Goals) snprintf(v.cond, sizeof(v.cond), "Gana quien llegue a %s", g);
   else if (c.endCondition == mfv3::EndCondition::Time) snprintf(v.cond, sizeof(v.cond), "2 partes de %u min", c.minutesPerPeriod);
   else snprintf(v.cond, sizeof(v.cond), "A %s o 2 partes de %u min", g, c.minutesPerPeriod);
@@ -1807,7 +1937,7 @@ static void onMatchNext() {
   afterChange(false, Team::White);
 }
 static void onMatchAskAbandon(bool on) { confirmAbandon = on; }
-static void onMatchAbandon() { goHome(); }  // el partido se descarta (no se guarda)
+static void onMatchAbandon() { abandonMatch(); }  // el partido se descarta (no se guarda); en un torneo, «a medias»
 
 // ---------------------------------------------------------------- penaltis (ui_penaltis.h)
 static void penaltyView(penaltis::View& v) {
@@ -1842,6 +1972,9 @@ static void victoryView(victoria::View& v) {
   memset(&v, 0, sizeof(v));
   mfv3::Score s = eng.score();
   v.winner = (uint8_t)eng.winner();
+  v.draw = eng.draw();
+  // En un torneo: VOLVER AL TORNEO (o VER CAMPEÓN si este partido lo ha cerrado) en vez de REVANCHA.
+  if (tourMatch) v.tour = tor::curOk && tor::cur.status == torneos::Status::Finished ? 2 : 1;
   v.white = s.white;
   v.blue = s.blue;
   clubNames(v.team);
@@ -1917,6 +2050,12 @@ static void render() {
   if (!test.active && !inMatch && screen == Screen::Home && !sleepClock()) {
     config::show(configState());
     config::tickClock(rtc.clockOk, rtc.now.hour, rtc.now.minute, rtc.now.second);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (!test.active && !inMatch && screen == Screen::Tournament && !sleepClock()) {
+    tor::show(&jugadores);
+    tor::tick();
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2076,7 +2215,7 @@ static void onTap(int16_t x, int16_t y) {
       Btn b = ui::hit(ui::PAUSED, x, y);
       if (b == Btn::Resume) { confirmAbandon = false; inputPause(); }
       else if (b == Btn::Abandon) {
-        if (confirmAbandon) goHome();  // el partido se descarta (no se guarda)
+        if (confirmAbandon) abandonMatch();  // el partido se descarta (no se guarda)
         else confirmAbandon = true;
       } else {
         // En pausa siguen disponibles −1 y DESHACER.
@@ -2200,6 +2339,19 @@ void setup() {
   penaltis::hooks.kick = onPenaltyKick;
   penaltis::hooks.undo = onPenaltyUndo;
   victoria::hooks.home = goHome;
+  victoria::hooks.tournament = backToTournament;
+  tor::hooks.home = goHome;
+  tor::hooks.players = tourPlayers;
+  tor::hooks.play = tourPlay;
+  tor::hooks.start = tourStart;
+  // Repetir el último partido: fuera de la tarjeta y, con cuenta, también de la nube.
+  tor::hooks.removeMatch = [](const char* id) {
+    partidos::remove(id);
+    torneos::guardado::matchGone(id);
+  };
+  tor::hooks.sound = tourSound;
+  tor::hooks.nowMs = tourNow;
+  torneos::playerName = tourPlayerName;
   elegir::hooks.back = onPlayersBack;
   fichas::hooks.back = onFichasBack;
   fichas::hooks.qr = opciones::openQr;
@@ -2240,6 +2392,8 @@ void setup() {
 #else
   partidos::begin(false);
 #endif
+  torneos::begin(!strncmp(partidos::dir, "/sdcard", 7));  // torneos y plantillas (con los partidos)
+  torneos::loadIndex();
 #ifdef ARDUINO
   nube::startWorker(!strncmp(partidos::dir, "/sdcard", 7));  // pila en la PSRAM si los partidos van a la tarjeta
   nube::begin(&jugadores, "/ffat");

@@ -13,6 +13,9 @@
 //
 // Lo pendiente de subir se apunta en la tarjeta: <partidos>/subir.txt (partidos) y /jugadores en la memoria del
 // chip (jugadores, en subir.txt dentro de la carpeta de partidos: «j <código>» o «b <id>» si se borró).
+// Torneos (s3_torneos_datos.h): «t <id>» torneo guardado aquí, «T <id>» torneo descartado aquí y «x <id>» partido
+// borrado aquí (los de un torneo descartado). Bajan como filas «tournament»; los tipos de torneo van en las
+// preferencias («tournamentTemplates»), unidos con los de la cuenta como los equipos fijos.
 
 #ifndef MFV3_S3_NUBE_H
 #define MFV3_S3_NUBE_H
@@ -56,6 +59,7 @@ struct Saved {
   char userId[48];
   char refresh[160];
   char lastPull[40];
+  bool tournaments;  // ya se han bajado todos los torneos (una vez: antes de los torneos no se bajaban)
 };
 static Saved saved;
 static Saved jobSaved;  // copia privada de la tarea; se publica al terminar
@@ -76,8 +80,8 @@ static bool saveState() {
   snprintf(backup, sizeof(backup), "%s.bak", stateFile);
   FILE* f = fopen(tmp, "wb");
   if (!f) return false;
-  bool ok = fprintf(f, "%s\n%s\n%s\n%s\n%d\n", saved.email, saved.userId,
-                    rememberSession ? saved.refresh : "", saved.lastPull, rememberSession ? 1 : 0) >= 0;
+  bool ok = fprintf(f, "%s\n%s\n%s\n%s\n%d\n%d\n", saved.email, saved.userId,
+                    rememberSession ? saved.refresh : "", saved.lastPull, rememberSession ? 1 : 0, saved.tournaments ? 1 : 0) >= 0;
   ok = fclose(f) == 0 && ok;
   bool hadOriginal = false;
   if (ok) {
@@ -108,6 +112,7 @@ static void loadState() {
   }
   char remember[8];
   if (fgets(remember, sizeof(remember), f)) rememberSession = remember[0] != '0';
+  if (fgets(remember, sizeof(remember), f)) saved.tournaments = remember[0] == '1';
   if (!rememberSession) saved.refresh[0] = 0;
   fclose(f);
 }
@@ -168,6 +173,22 @@ static void addPending(const char* line) {
   s3flash::wroteTo(p);
   pendingCount++;
 }
+// ¿Está esta línea en lo pendiente? (desde loop(): lo cambiado aquí mientras se bajaba no se pisa).
+static bool isPending(const char* line) {
+  recoverPending();
+  char p[96], l[80];
+  pendingPath(p, sizeof(p));
+  FILE* f = fopen(p, "rb");
+  if (!f) return false;
+  bool found = false;
+  while (!found && fgets(l, sizeof(l), f)) {
+    l[strcspn(l, "\r\n")] = 0;
+    found = !strcmp(l, line);
+  }
+  fclose(f);
+  return found;
+}
+
 // Partido recién guardado (s3_partidos.h) / jugador cambiado o borrado aquí (ui_fichas.h).
 static void matchSaved(const char* id) {
   char l[64];
@@ -289,7 +310,8 @@ static bool photoFromDataUrl(const char* url, size_t len, uint16_t* out) {
 
 // ---------------------------------------------------------------- cambios que llegan (los aplica loop())
 struct Change {
-  uint8_t kind;  // 'm' partido nuevo (ya escrito en la tarjeta), 'x' partido borrado, 'p' jugador, 'q' jugador borrado
+  uint8_t kind;  // 'm' partido nuevo (ya escrito en la tarjeta), 'x' partido borrado, 'p' jugador, 'q' jugador borrado,
+                 // 'u' torneo (ya escrito como <id>.nube), 'y' torneo borrado
   char id[48];
   char name[28];
   uint16_t* px;  // foto (malloc) o nullptr
@@ -440,13 +462,27 @@ static char* (*clubsOut)() = nullptr;          // loop(): los equipos en JSON si
 static char* (*clubsGone)() = nullptr;         // loop(): los borrados aquí sin subir
 static void (*clubsIn)(const char*) = nullptr;  // loop(): llegaron de la cuenta
 static void (*clubsDone)() = nullptr;           // loop(): ya están en la cuenta
+// Tipos de torneo: lo mismo con el campo «tournamentTemplates» (los pone s3_torneos_datos.h).
+static char* templatesUp = nullptr;
+static char* templatesDown = nullptr;
+static char* templatesGoneIds = nullptr;
+static bool templatesPushedOk = false;
+static char* (*templatesOut)() = nullptr;
+static char* (*templatesGone)() = nullptr;
+static void (*templatesIn)(const char*) = nullptr;
+static void (*templatesDone)() = nullptr;
+// Torneos (los pone s3_torneos_datos.h): su carpeta (la tarea escribe ahí lo que baja) y qué hacer en loop().
+static char tournamentsDir[64] = "";
+static void (*tournamentArrived)(const char* id) = nullptr;  // <id>.nube listo
+static void (*tournamentGone)(const char* id) = nullptr;
+static void (*tournamentsLoggedIn)() = nullptr;               // recién entrado: todos arriba
 
 static bool post(const char* body);
 
 // Los de la placa más los de la cuenta que la placa no tiene (ni ha borrado, ni son de una pareja que ya tiene).
 // Así un equipo creado en la app mientras tanto no se pierde. malloc.
 static bool hasText(const char* hay, const char* needle) { return hay && needle[0] && strstr(hay, needle); }
-static char* mergeClubs(const char* mine, const char* cloud) {
+static char* mergeList(const char* mine, const char* cloud, const char* goneIds, bool pairs) {
   size_t cap = strlen(mine) + (cloud ? strlen(cloud) : 0) + 8;
   char* out = (char*)malloc(cap);
   if (!out) return nullptr;
@@ -472,12 +508,12 @@ static char* mergeClubs(const char* mine, const char* cloud) {
       snprintf(key, sizeof(key), "\"id\":\"%s\"", id);
       if (!id[0] || hasText(mine, key)) continue;
       snprintf(key, sizeof(key), "%s\n", id);
-      if (clubsGoneIds && !strncmp(clubsGoneIds, key, strlen(key))) continue;
+      if (goneIds && !strncmp(goneIds, key, strlen(key))) continue;
       snprintf(key, sizeof(key), "\n%s\n", id);
-      if (hasText(clubsGoneIds, key)) continue;
+      if (hasText(goneIds, key)) continue;
       char pair[110];
       snprintf(pair, sizeof(pair), "[\"%s\",\"%s\"]", a, b);
-      if (hasText(mine, pair)) continue;
+      if (pairs && hasText(mine, pair)) continue;
       const char* end = partidos::closeOf(o);
       size_t n = (size_t)(end - o + 1);
       if (k + n + 4 > cap) break;
@@ -490,9 +526,33 @@ static char* mergeClubs(const char* mine, const char* cloud) {
   out[k] = 0;
   return out;
 }
+static char* mergeClubs(const char* mine, const char* cloud) { return mergeList(mine, cloud, clubsGoneIds, true); }
 
-// Sube los equipos sin tocar lo demás de las preferencias: se lee la fila, se cambia solo «clubs» y se guarda.
-static bool pushClubs() {
+// El objeto `datos` (o nada) con el campo `field` cambiado a `value` (o añadido delante). malloc.
+static char* withField(const char* datos, const char* field, const char* value) {
+  size_t cap = strlen(value) + strlen(field) + 16 + (datos ? strlen(datos) : 0);
+  char* out = (char*)malloc(cap);
+  if (!out) return nullptr;
+  if (datos && *datos == '{') {
+    const char* end = partidos::closeOf(datos);
+    const char* old = partidos::keyIn(datos, field);
+    if (old && (*old == '[' || *old == 'n')) {  // se cambia su valor
+      const char* oldEnd = *old == '[' ? partidos::closeOf(old) + 1 : old + 4;
+      snprintf(out, cap, "%.*s%s%.*s", (int)(old - datos), datos, value, (int)(end - oldEnd + 1), oldEnd);
+    } else {  // no estaba: delante de lo demás
+      const char* rest = datos + 1;
+      while (*rest == ' ' || *rest == '\n') rest++;
+      snprintf(out, cap, "{\"%s\":%s%s%.*s", field, value, *rest == '}' ? "" : ",", (int)(end - rest + 1), rest);
+    }
+  } else {
+    snprintf(out, cap, "{\"%s\":%s}", field, value);
+  }
+  return out;
+}
+
+// Sube los equipos y los tipos de torneo sin tocar lo demás de las preferencias: se lee la fila, se cambian solo
+// «clubs» y «tournamentTemplates» (cada uno unido con lo que ya tenga la cuenta) y se guarda.
+static bool pushPrefs() {
   char url[200];
   snprintf(url, sizeof(url), "%s/rest/v1/mesa_datos?select=datos&tipo=eq.prefs&id=eq.mesa", URL);
   Resp r = http("GET", url, access, nullptr, nullptr);
@@ -505,41 +565,52 @@ static bool pushClubs() {
   while (*arr && *arr != '[') arr++;
   const char* row = partidos::nextIn(arr, nullptr);
   const char* datos = row ? partidos::keyIn(row, "datos") : nullptr;
-  const char* cloudClubs = datos && *datos == '{' ? partidos::keyIn(datos, "clubs") : nullptr;
-  char* merged = mergeClubs(clubsUp, cloudClubs);
-  if (!merged) {
-    free(r.body);
-    snprintf(jobError, sizeof(jobError), "Sin memoria para subir los equipos");
-    return false;
+  if (datos && *datos != '{') datos = nullptr;
+  char* clubs = nullptr;
+  char* tpls = nullptr;
+  char* cur = nullptr;  // las preferencias con los campos ya cambiados
+  bool ok = true;
+  if (clubsUp) {
+    clubs = mergeClubs(clubsUp, datos ? partidos::keyIn(datos, "clubs") : nullptr);
+    cur = clubs ? withField(datos, "clubs", clubs) : nullptr;
+    ok = cur != nullptr;
   }
-  size_t up = strlen(merged), cap = up + 120 + (datos ? strlen(datos) : 0);
-  char* body = (char*)malloc(cap);
-  bool ok = false;
-  if (body) {
-    int k = snprintf(body, cap, "[{\"tipo\":\"prefs\",\"id\":\"mesa\",\"borrado\":false,\"datos\":");
-    if (datos && *datos == '{') {
-      const char* end = partidos::closeOf(datos);
-      const char* old = partidos::keyIn(datos, "clubs");
-      if (old && (*old == '[' || *old == 'n')) {  // se cambia su valor
-        const char* oldEnd = *old == '[' ? partidos::closeOf(old) + 1 : old + 4;
-        k += snprintf(body + k, cap - k, "%.*s%s%.*s", (int)(old - datos), datos, merged, (int)(end - oldEnd + 1), oldEnd);
-      } else {  // no estaba: delante de lo demás
-        const char* rest = datos + 1;
-        while (*rest == ' ' || *rest == '\n') rest++;
-        k += snprintf(body + k, cap - k, "{\"clubs\":%s%s%.*s", merged, *rest == '}' ? "" : ",", (int)(end - rest + 1), rest);
-      }
+  if (ok && templatesUp) {
+    const char* base = cur ? cur : datos;
+    tpls = mergeList(templatesUp, base ? partidos::keyIn(base, "tournamentTemplates") : nullptr, templatesGoneIds, false);
+    char* next = tpls ? withField(base, "tournamentTemplates", tpls) : nullptr;
+    free(cur);
+    cur = next;
+    ok = cur != nullptr;
+  }
+  if (!ok) snprintf(jobError, sizeof(jobError), "Sin memoria para subir los equipos");
+  char* body = nullptr;
+  if (ok && cur) {
+    size_t cap = strlen(cur) + 80;
+    body = (char*)malloc(cap);
+    if (body) {
+      snprintf(body, cap, "[{\"tipo\":\"prefs\",\"id\":\"mesa\",\"borrado\":false,\"datos\":%s}]", cur);
+      ok = post(body);
     } else {
-      k += snprintf(body + k, cap - k, "{\"clubs\":%s}", merged);
+      ok = false;
     }
-    snprintf(body + k, cap - k, "}]");
-    ok = post(body);
   }
   free(body);
+  free(cur);
   free(r.body);
-  // loop() se queda con la lista unida (la de la cuenta ya es esta).
-  free(clubsDown);
-  clubsDown = ok ? merged : nullptr;
-  if (!ok) free(merged);
+  // loop() se queda con las listas unidas (las de la cuenta ya son estas).
+  if (clubsUp) {
+    free(clubsDown);
+    clubsDown = ok ? clubs : nullptr;
+    clubsPushedOk = ok;
+    if (!ok) free(clubs);
+  }
+  if (templatesUp) {
+    free(templatesDown);
+    templatesDown = ok ? tpls : nullptr;
+    templatesPushedOk = ok;
+    if (!ok) free(tpls);
+  }
   return ok;
 }
 
@@ -602,11 +673,45 @@ static bool pushPlayer(const UpPlayer& p, bool* done) {
   return ok;
 }
 
-static bool pushDeleted(const char* id, bool* done) {
+static bool pushDeleted(const char* id, bool* done, const char* tipo = "player") {
   char body[200];
-  snprintf(body, sizeof(body), "[{\"tipo\":\"player\",\"id\":\"%s\",\"borrado\":true,\"datos\":{}}]", id);
+  snprintf(body, sizeof(body), "[{\"tipo\":\"%s\",\"id\":\"%s\",\"borrado\":true,\"datos\":{}}]", tipo, id);
   *done = post(body);
   return *done;
+}
+
+// Un torneo de la carpeta de torneos → la nube (si ya no está, se descartó: no hay nada que subir).
+static bool pushTournament(const char* id, bool* done) {
+  char path[120];
+  snprintf(path, sizeof(path), "%s/%s.json", tournamentsDir, id);
+  char* datos = partidos::readAll(path);
+  if (!datos) {
+    FILE* exists = fopen(path, "rb");
+    bool missing = !exists && errno == ENOENT;
+    if (exists) fclose(exists);
+    *done = missing;
+    if (!missing) snprintf(jobError, sizeof(jobError), "No se pudo leer el torneo; se conserva pendiente");
+    return missing;
+  }
+  size_t n = strlen(datos);
+  while (n && (datos[n - 1] == '\n' || datos[n - 1] == '\r')) datos[--n] = 0;
+  char* body = (char*)malloc(n + 160);
+  bool ok = false;
+  if (body) {
+    snprintf(body, n + 160, "[{\"tipo\":\"tournament\",\"id\":\"%s\",\"borrado\":false,\"datos\":%s}]", id, datos);
+    ok = post(body);
+  }
+  free(body);
+  free(datos);
+  *done = ok;
+  return ok;
+}
+
+// ¿Está «<kind> <id>» en lo que había pendiente al empezar? (lo de aquí gana a lo que baja, como en la app)
+static bool upPending(char kind, const char* id) {
+  for (int i = 0; i < nUps; i++)
+    if (ups[i].line[0] == kind && ups[i].line[1] == ' ' && !strcmp(ups[i].line + 2, id)) return true;
+  return false;
 }
 
 // Una fila de la nube → cambio para loop() (los partidos se escriben ya en la tarjeta).
@@ -658,6 +763,41 @@ static bool takeRow(const char* o) {
       free(clubsDown);
       clubsDown = copy;
     }
+    const char* tpls = !del && !strcmp(id, "mesa") && datos && *datos == '{' ? partidos::keyIn(datos, "tournamentTemplates") : nullptr;
+    if (tpls && *tpls == '[') {
+      const char* end = partidos::closeOf(tpls);
+      size_t n = (size_t)(end - tpls + 1);
+      char* copy = (char*)malloc(n + 1);
+      if (!copy) return false;
+      memcpy(copy, tpls, n);
+      copy[n] = 0;
+      free(templatesDown);
+      templatesDown = copy;
+    }
+    return true;
+  } else if (!strcmp(tipo, "tournament")) {
+    // Cambiado o descartado aquí sin subir: lo de aquí gana (se sube después).
+    if (!tournamentsDir[0] || upPending('t', id) || upPending('T', id)) return true;
+    if (del) {
+      c.kind = 'y';
+      return pushChange(c);
+    }
+    if (!datos || *datos != '{') return false;
+    const char* end = partidos::closeOf(datos);
+    if (!end || *end != '}') return false;
+    char path[120];
+    snprintf(path, sizeof(path), "%s/%s.nube", tournamentsDir, id);
+    FILE* f = fopen(path, "wb");
+    if (!f) return false;
+    size_t len = (size_t)(end - datos + 1);
+    bool written = fwrite(datos, 1, len, f) == len;
+    written = fputc('\n', f) != EOF && written;
+    written = fclose(f) == 0 && written;
+    c.kind = 'u';
+    if (!written || !pushChange(c)) {
+      ::remove(path);
+      return false;
+    }
     return true;
   } else if (!strcmp(tipo, "player")) {
     if (del) {
@@ -692,13 +832,14 @@ static bool stopped() {
   return true;
 }
 
-static bool pull(const char* since) {
-  for (int offset = 0;; offset += 20) {
+// Baja lo cambiado desde `since` de los tipos dados, de `page` en `page` filas (los torneos pesan más: menos por vez).
+static bool pull(const char* since, const char* tipos = "player,match,prefs", int page = 20) {
+  for (int offset = 0;; offset += page) {
     if (stopped()) return false;
     char url[400];
     snprintf(url, sizeof(url),
-             "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(player,match,prefs)&order=actualizado.asc,tipo.asc,id.asc&limit=20&offset=%d%s%s",
-             URL, offset, since[0] ? "&actualizado=gt." : "", since);
+             "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(%s)&order=actualizado.asc,tipo.asc,id.asc&limit=%d&offset=%d%s%s",
+             URL, tipos, page, offset, since[0] ? "&actualizado=gt." : "", since);
     // «+» de la hora (zona) en la dirección: %2B
     char enc[480];
     size_t k = 0;
@@ -728,7 +869,7 @@ static bool pull(const char* since) {
       if (strcmp(a, newLastPull) > 0) snprintf(newLastPull, sizeof(newLastPull), "%s", a);
     }
     free(r.body);
-    if (rows < 20) return true;
+    if (rows < page) return true;
   }
 }
 
@@ -775,6 +916,10 @@ static void runJob() {
     // Primero bajar (para unir los jugadores que ya estén en la cuenta) y luego subir lo pendiente.
     snprintf(newLastPull, sizeof(newLastPull), "%s", jobSaved.lastPull);
     if (jobOk) jobOk = pull(jobSaved.lastPull);
+    // Torneos (después de sus partidos). La primera vez, todos: antes de los torneos la placa no los bajaba (y las
+    // preferencias, por sus tipos de torneo).
+    if (jobOk && tournamentsDir[0]) jobOk = pull(jobSaved.tournaments ? jobSaved.lastPull : "", "tournament", 4);
+    if (jobOk && tournamentsDir[0] && !jobSaved.tournaments) jobOk = pull("", "prefs");
     for (int i = 0; jobOk && i < nUpPlayers; i++) {
       // Si en la cuenta ya hay uno con su nombre, la placa lo va a unir con ese (no se sube otro igual).
       bool joins = false;
@@ -790,10 +935,13 @@ static void runJob() {
       if (stopped()) { jobOk = false; break; }
       if (l[0] == 'm') jobOk = pushMatch(l + 2, &ups[i].done);
       else if (l[0] == 'b') jobOk = pushDeleted(l + 2, &ups[i].done);
+      else if (l[0] == 'x') jobOk = pushDeleted(l + 2, &ups[i].done, "match");
+      else if (l[0] == 't') jobOk = pushTournament(l + 2, &ups[i].done);
+      else if (l[0] == 'T') jobOk = pushDeleted(l + 2, &ups[i].done, "tournament");
       else ups[i].done = true;  // «j»: los jugadores ya van arriba
     }
     if (jobOk) for (int i = 0; i < nUps; i++) if (ups[i].line[0] == 'j') ups[i].done = true;
-    if (jobOk && clubsUp) jobOk = clubsPushedOk = pushClubs();
+    if (jobOk && (clubsUp || templatesUp)) jobOk = pushPrefs();
   }
   if (wifiDown) wifiDown();
   jobDone = true;
@@ -982,6 +1130,13 @@ static void sync(bool inBackground = false) {
   clubsUp = clubsOut ? clubsOut() : nullptr;
   free(clubsGoneIds);
   clubsGoneIds = clubsUp && clubsGone ? clubsGone() : nullptr;
+  free(templatesUp);
+  free(templatesDown);
+  templatesDown = nullptr;
+  templatesPushedOk = false;
+  templatesUp = templatesOut ? templatesOut() : nullptr;
+  free(templatesGoneIds);
+  templatesGoneIds = templatesUp && templatesGone ? templatesGone() : nullptr;
   startJob(SYNC, inBackground);
 }
 
@@ -1062,6 +1217,8 @@ static void apply() {
     else if (c.kind == 'x' && hooks.matchGone) hooks.matchGone(c.id);
     else if (c.kind == 'p' && hooks.player) hooks.player(c);
     else if (c.kind == 'q' && hooks.playerGone) hooks.playerGone(c.id);
+    else if (c.kind == 'u' && tournamentArrived) tournamentArrived(c.id);
+    else if (c.kind == 'y' && tournamentGone) tournamentGone(c.id);
     free(c.px);
     c.px = nullptr;
   }
@@ -1072,6 +1229,10 @@ static void apply() {
       if (clubsDown && clubsIn) clubsIn(clubsDown);
       if (clubsDone) clubsDone();
     } else if (!clubsUp && clubsDown && clubsIn) clubsIn(clubsDown);
+    if (templatesUp && templatesPushedOk) {
+      if (templatesDown && templatesIn) templatesIn(templatesDown);
+      if (templatesDone) templatesDone();
+    } else if (!templatesUp && templatesDown && templatesIn) templatesIn(templatesDown);
   }
   free(clubsGoneIds);
   clubsGoneIds = nullptr;
@@ -1079,6 +1240,11 @@ static void apply() {
   free(clubsDown);
   clubsUp = clubsDown = nullptr;
   clubsPushedOk = false;
+  free(templatesGoneIds);
+  free(templatesUp);
+  free(templatesDown);
+  templatesGoneIds = templatesUp = templatesDown = nullptr;
+  templatesPushedOk = false;
   // Trabajo terminado y todo aplicado.
   saved = jobSaved;
   freeUploads();
@@ -1105,7 +1271,9 @@ static void apply() {
       return;
     }
     saved.lastPull[0] = 0;
+    saved.tournaments = false;
     saveState();
+    if (tournamentsLoggedIn) tournamentsLoggedIn();
     if (hooks.loggedIn) hooks.loggedIn();
     phase = IDLE;
     message[0] = 0;
@@ -1115,6 +1283,7 @@ static void apply() {
   lastAborted = !jobOk && abortJob.load();
   if (jobOk) {
     snprintf(saved.lastPull, sizeof(saved.lastPull), "%s", newLastPull);
+    if (tournamentsDir[0]) saved.tournaments = true;
     lastOkAt = millis();
     message[0] = 0;
   } else if (lastAborted) {

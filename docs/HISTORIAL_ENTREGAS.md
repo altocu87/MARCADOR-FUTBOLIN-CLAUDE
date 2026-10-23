@@ -2,9 +2,13 @@
 
 Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección que toque; el estado vigente está en `ESTADO.md`. Las entregas nuevas se apuntan aquí arriba del todo, no en el CLAUDE.md.
 
-## Entrega A 0.12 · nube en reposo y realineado de la imagen · 23/10/2026
+## Entrega A 0.13 · nube en reposo y realineado de la imagen · 23/10/2026
 
 Auditoría (pantalla/PSRAM, red y nube, carga de datos, electrónica, app web) y fases 1 y 2 aplicadas; ver `docs/ESTADO.md`. Reglas nuevas: la nube automática solo en reposo y cancelable (`nube::sync(true)`, `abortBackground`, `networking()`); toda escritura en FFat avisa con `s3flash::wrote()`; en la app, `src/app/idle.ts` decide el reposo y `mergeAfterSync` une lo bajado con lo guardado mientras tanto. No probado en la placa. Fase 3 (sdkconfig propio: XIP desde PSRAM, ISR del RGB en IRAM) pendiente de decisión del dueño.
+
+## Torneos en la pantalla · A 0.12 · 23/10/2026
+
+Leer [la entrega](ENTREGA_TORNEOS_PLACA_0_12_20261023.md) y [el plan](PLAN_TORNEOS_PLACA.md). Contrato en `s3_torneos.h`; reglas en `s3_torneos_reglas.h`/`s3_torneos_ficha.h` (prueba cruzada con la app); guardado y nube en `s3_torneos_datos.h`; pantallas `ui_torneo*.h`. Fusionada en main encima de la 0.11 de B con autorización del dueño. Sin instalar ni probar en la placa; voces de torneo (64 reservadas en la SD) aún sin activar.
 
 ## Entrega B 0.11 · sonidos y conservación de A 0.9 · 23/10/2026
 

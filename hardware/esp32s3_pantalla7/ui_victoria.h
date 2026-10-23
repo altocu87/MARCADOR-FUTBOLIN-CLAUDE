@@ -4,6 +4,8 @@
 // y encima el marcador final («BLANCO 5 – 1 AZUL», el ganador en dorado), la duración y el confeti cayendo.
 // Los rayos de la app giran despacio (24 s por vuelta); aquí están quietos (girar una imagen de pantalla entera
 // a cada momento sería demasiado para la placa).
+// Partido de torneo: en vez de REVANCHA, VOLVER AL TORNEO (o VER CAMPEÓN si el partido cerró el torneo). Empate de
+// liga: su propia pantalla, «¡EMPATE!» dibujado por la placa (las capas de la app son de victoria).
 
 #ifndef MFV3_UI_VICTORIA_H
 #define MFV3_UI_VICTORIA_H
@@ -17,11 +19,14 @@ struct View {
   uint8_t white, blue;
   char facts[64];  // «Duración 00:17 · …»
   char team[2][28];  // equipo fijo de cada lado (vacío: BLANCO / AZUL)
+  bool draw;         // empate (liga de torneo a tiempo)
+  uint8_t tour;      // 0 partido suelto, 1 VOLVER AL TORNEO, 2 VER CAMPEÓN
 };
 
 struct Hooks {
   void (*home)() = nullptr;
   void (*rematch)() = nullptr;
+  void (*tournament)() = nullptr;  // VOLVER AL TORNEO / VER CAMPEÓN
 };
 static Hooks hooks;
 
@@ -29,6 +34,7 @@ static lv_obj_t* scr = nullptr;
 static lv_obj_t *box, *teamL[2], *num[2], *sep, *facts, *pulRematch, *pulHome;
 static View shown;
 static uint8_t builtFor = 255;
+static uint8_t builtTour = 0;
 
 // --num de la app para esta pantalla: 118,15 px (cifras); rótulos al 20 % y guion al 70 %.
 const float NUM = 118.15f, TEAM = 23.63f, GAP = NUM * 0.25f, PAD = NUM * 0.4f;
@@ -37,11 +43,13 @@ static void onBtn(lv_event_t* e) {
   int which = (int)(intptr_t)lv_event_get_user_data(e);  // 0 = inicio, 1 = revancha
   lv_event_code_t c = lv_event_get_code(e);
   lv_obj_t* pul = which ? pulRematch : pulHome;
-  if (c == LV_EVENT_PRESSED) ui::reveal(pul);
-  else if (c == LV_EVENT_RELEASED || c == LV_EVENT_PRESS_LOST) lv_obj_add_flag(pul, LV_OBJ_FLAG_HIDDEN);
+  bool drawn = builtTour || builtFor == 2;  // botones dibujados (sin la capa de «pulsado»)
+  if (c == LV_EVENT_PRESSED && pul && !(drawn && which)) ui::reveal(pul);
+  else if ((c == LV_EVENT_RELEASED || c == LV_EVENT_PRESS_LOST) && pul) lv_obj_add_flag(pul, LV_OBJ_FLAG_HIDDEN);
   else if (c == LV_EVENT_CLICKED) {
     if (which == 0 && hooks.home) hooks.home();
-    if (which == 1 && hooks.rematch) hooks.rematch();
+    if (which == 1 && builtTour && hooks.tournament) hooks.tournament();
+    else if (which == 1 && !builtTour && hooks.rematch) hooks.rematch();
   }
 }
 
@@ -86,12 +94,47 @@ static void onDelete(lv_event_t*) {
   builtFor = 255;
 }
 
-static void build(uint8_t winner) {
+// Botón dibujado (en el sitio de REVANCHA o, en el empate, también el de inicio).
+static lv_obj_t* drawnBtn(int x, int y, int w, int h, const char* txt, bool gold) {
+  lv_obj_t* b = ui::box(scr, x, y, w, h);
+  lv_obj_set_style_radius(b, ui::RADIUS_SM, 0);
+  lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(b, ui::hex(gold ? 0x3a2c08 : 0x1aa3dc), 0);
+  lv_obj_set_style_bg_color(b, ui::hex(gold ? 0x241a04 : 0x13789f), LV_STATE_PRESSED);
+  lv_obj_set_style_border_width(b, 2, 0);
+  lv_obj_set_style_border_color(b, ui::hex(gold ? ui::color::RANKED : ui::color::ACCENT), 0);
+  lv_obj_t* l = ui::text(b, txt, 800, 17, gold ? ui::color::RANKED : 0x03121e, 0.7f);
+  lv_obj_center(l);
+  return b;
+}
+
+// winner: 0 Blanco, 1 Azul, 2 empate.
+static void build(uint8_t winner, uint8_t tour) {
   scr = ui::screen();
   lv_obj_add_event_cb(scr, onDelete, LV_EVENT_DELETE, nullptr);
-  ui::layer(scr, winner ? capas::VICTORIA_AZUL : capas::VICTORIA_BLANCO);
-  pulRematch = ui::layer(scr, capas::VICTORIA_PUL_REVANCHA, false);
-  pulHome = ui::layer(scr, capas::VICTORIA_PUL_INICIO, false);
+  builtTour = tour;
+  if (winner == 2) {
+    // Empate: fondo en degradado y el título dibujado.
+    ui::gradient(scr, 0x2a2410, 0x05090f);
+    lv_obj_t* t = ui::text(scr, "¡EMPATE!", 900, 96, ui::color::RANKED, 2, true);
+    lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 14);
+    pulRematch = pulHome = nullptr;
+    lv_obj_t* hb = drawnBtn(16, 8, 56, 56, "", false);
+    lv_obj_set_style_bg_color(hb, ui::hex(ui::color::CARD), 0);
+    lv_obj_set_style_border_color(hb, ui::hex(ui::color::LINE), 0);
+    static lv_point_precise_t chev[3] = {{33, 16}, {23, 28}, {33, 40}};
+    lv_obj_t* a = lv_line_create(hb);
+    lv_line_set_points(a, chev, 3);
+    lv_obj_set_style_line_width(a, 3, 0);
+    lv_obj_set_style_line_rounded(a, true, 0);
+    lv_obj_set_style_line_color(a, ui::hex(ui::color::TEXT), 0);
+  } else {
+    ui::layer(scr, winner ? capas::VICTORIA_AZUL : capas::VICTORIA_BLANCO);
+    pulRematch = ui::layer(scr, capas::VICTORIA_PUL_REVANCHA, false);
+    pulHome = ui::layer(scr, capas::VICTORIA_PUL_INICIO, false);
+  }
+  // En un torneo, encima de REVANCHA: VOLVER AL TORNEO o VER CAMPEÓN.
+  lv_obj_t* tourBtn = tour ? drawnBtn(540, 8, 244, 56, tour == 2 ? "VER CAMPEÓN" : "VOLVER AL TORNEO", tour == 2) : nullptr;
   // Recuadro del marcador (.vic-score): fondo oscuro, borde claro tenue y esquinas de 14 px.
   box = ui::box(scr, 88, 135, 624, 130);
   lv_obj_set_style_radius(box, 14, 0);
@@ -101,7 +144,7 @@ static void build(uint8_t winner) {
   lv_obj_set_style_border_color(box, lv_color_white(), 0);
   lv_obj_set_style_border_opa(box, 38, 0);
   for (int t = 0; t < 2; t++) {
-    bool won = t == winner;
+    bool won = t == winner || winner == 2;  // en el empate (2), los dos
     teamL[t] = ui::text(scr, t ? "AZUL" : "BLANCO", 900, 24, t ? 0x6fb6f5 : ui::color::WHITE_TEAM, TEAM * 0.2f);
     if (!won) lv_obj_set_style_text_opa(teamL[t], 140, 0);
     num[t] = ui::text(scr, "0", 900, 118, won ? ui::color::RANKED : ui::color::TEXT2);
@@ -112,10 +155,15 @@ static void build(uint8_t winner) {
   lv_obj_t* h = ui::box(scr, 16, 8, 56, 56);
   lv_obj_add_flag(h, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(h, onBtn, LV_EVENT_ALL, (void*)0);
-  lv_obj_t* r = ui::box(scr, 656, 8, 128, 56);
+  lv_obj_t* r = tour ? tourBtn : ui::box(scr, 656, 8, 128, 56);
   lv_obj_add_flag(r, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(r, onBtn, LV_EVENT_ALL, (void*)1);
   builtFor = winner;
+  if (tour) {
+    lv_obj_t* n = ui::text(scr, "Partido de torneo: la experiencia y los logros se dan al terminar el torneo.", 400, 13,
+                           ui::color::TEXT2);
+    lv_obj_align(n, LV_ALIGN_TOP_MID, 0, 294);
+  }
 }
 
 static bool active() { return scr && lv_screen_active() == scr; }
@@ -158,8 +206,9 @@ static void layout(const View& v) {
 }
 
 static void update(const View& v) {
-  if (!active() || builtFor != v.winner) {
-    build(v.winner);
+  uint8_t w = v.draw ? 2 : v.winner;
+  if (!active() || builtFor != w || builtTour != v.tour) {
+    build(w, v.tour);
     ui::show(scr);
     layout(v);
   } else if (v.white != shown.white || v.blue != shown.blue || strcmp(v.facts, shown.facts) ||
