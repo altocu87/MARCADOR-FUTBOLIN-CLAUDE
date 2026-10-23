@@ -18,6 +18,8 @@ g++ -std=c++11 -Wall -Wextra -Icommon test/sound_test.cpp -o /tmp/mfv3_sound_tes
 g++ -std=c++17 -Wall -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/jugadores_test.cpp -o /tmp/mfv3_jug_test && /tmp/mfv3_jug_test
 # Cola y coordinación de la nube: transporte falso, fallos de memoria y dos tareas reales del PC.
 g++ -std=c++17 -pthread -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_memory_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_nube_test && /tmp/mfv3_nube_test
+# Torneos: JSON igual que la app, índice, tipos de torneo, partidos de torneo, descartar y nube simulada.
+g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/torneos_datos_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_torneos_datos_test && /tmp/mfv3_torneos_datos_test
 
 # ELO, XP, niveles y logros de la placa = los de la app (tests/fixtures/progresion)
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp -o /tmp/mfv3_prog_test && /tmp/mfv3_prog_test

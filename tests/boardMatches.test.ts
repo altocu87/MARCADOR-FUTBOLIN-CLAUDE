@@ -1,14 +1,15 @@
 /**
  * Partidos guardados por la pantalla de 7" (hardware/esp32s3_pantalla7/s3_partidos.h) en la tarjeta SD: tienen que
  * servirle a la app tal cual (copia de seguridad, estadísticas y progresión). Los de tests/fixtures/partidos-placa
- * salen de la simulación del PC (hardware/test/s3_capturas.cpp).
+ * salen de la simulación del PC (hardware/test/s3_capturas.cpp); torneo.json, un partido de torneo, de
+ * hardware/test/torneos_datos_test.cpp (su torneo es la liga en juego de tests/fixtures/progresion/torneos-app.json).
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validGoalsFromEvents } from '../src/match-engine';
 import { parseBackup } from '../src/services/persistence/backup';
-import { DEFAULT_PROGRESSION, type StoredMatch } from '../src/services/persistence';
+import { DEFAULT_PROGRESSION, type StoredMatch, type Tournament } from '../src/services/persistence';
 import { computeProgression } from '../src/services/progression';
 
 const DIR = join(__dirname, 'fixtures', 'partidos-placa');
@@ -50,5 +51,33 @@ describe('partidos guardados por la placa', () => {
     const ids = [...new Set(matches.flatMap((m) => m.participants.map((p) => p.playerId)))];
     const snap = computeProgression(ids, matches, DEFAULT_PROGRESSION);
     for (const id of ids) expect(snap.players.get(id)).toBeTruthy();
+  });
+});
+
+describe('partido de torneo guardado por la placa', () => {
+  const m = matches.find((x) => x.tournament);
+  const tournaments = JSON.parse(readFileSync(join(__dirname, 'fixtures', 'progresion', 'torneos-app.json'), 'utf8')) as Tournament[];
+
+  it('lleva su torneo y su cruce como la app', () => {
+    expect(m).toBeTruthy();
+    const t = tournaments.find((x) => x.id === m!.tournament!.id);
+    expect(t).toBeTruthy();
+    expect(t!.fixtures.some((f) => f.id === m!.tournament!.fixtureId)).toBe(true);
+    expect(m!.config.testMode).toBe(false);
+  });
+
+  it('entra en una copia de seguridad con su torneo', () => {
+    const backup = { app: 'marcador-futbolin-v3', formatVersion: 1, exportedAt: '', players: [], matches: [m], tournaments };
+    expect(parseBackup(JSON.stringify(backup)).ok).toBe(true);
+  });
+
+  it('con el torneo en juego, la app deja su XP en espera', () => {
+    const ids = m!.participants.map((p) => p.playerId);
+    const snap = computeProgression(ids, [m!], DEFAULT_PROGRESSION, { tournaments });
+    for (const id of ids) {
+      const e = snap.byMatch.get(m!.id)!.get(id)!;
+      expect(e.deferred).toBe(true);
+      expect(e.xpGained).toBe(0);
+    }
   });
 });

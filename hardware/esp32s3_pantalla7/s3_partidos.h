@@ -901,8 +901,12 @@ static bool loadDetail(const char* id, Detail& d) {
   return true;
 }
 
+// Lo avisa a los torneos (s3_torneos_datos.h), que también guardan los ids de sus jugadores.
+static void (*playerIdChanged)(const char* oldId, const char* newId) = nullptr;
+
 // Un jugador ha cambiado de id (se ha unido con su ficha de la cuenta): se cambia en sus partidos guardados.
 static int replacePlayerId(uint32_t oldCode, const char* oldId, const char* newId) {
+  if (playerIdChanged) playerIdChanged(oldId, newId);
   int changed = 0;
   char from[64], to[64];
   snprintf(from, sizeof(from), "\"%s\"", oldId);

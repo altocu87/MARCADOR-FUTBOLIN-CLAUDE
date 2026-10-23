@@ -165,6 +165,9 @@ struct Summary {
   char mvpId[40];            // solo si terminado
   char logo[40], cup[40], banner[40];
   bool ranked;
+  // CONTRATO: añadido por el agente 2. Partido que cerró el torneo (vacío si no ha terminado): la progresión da
+  // «Ganar torneo» en ese partido sin abrir el torneo.
+  char finalMatchId[48];
 };
 
 // ---------------------------------------------------------------- memoria
