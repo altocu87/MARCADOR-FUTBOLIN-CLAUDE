@@ -4,6 +4,8 @@
 //   - POR GOLES / POR TIEMPO / AMBAS: final de cada parte por goles totales del periodo o tiempo.
 //   - Cuenta atrás 3 s antes de cada parte y de la prórroga (se puede saltar).
 //   - Empate tras la 2ª parte → prórroga de 60 s con gol de oro → penaltis (5 + muerte súbita).
+//     Con Config::allowDraw (liga de un torneo a tiempo o «ambas»), igualados al acabar la 2ª parte es empate: se
+//     acaba ahí, sin prórroga ni penaltis (draw() = true; winner() no vale nada).
 //   - Bloqueo global de 3.000 ms tras cada gol; deshacer, −1, pausa o cambio de parte no lo eluden.
 //   - −1 anula el último gol del equipo en la parte actual; DESHACER revierte la última acción.
 //   - El reloj usa tiempo real (millis()), la pausa lo detiene y las correcciones no lo retroceden.
@@ -72,6 +74,7 @@ struct Config {
   Team penaltyFirst = Team::White;
   bool chaos = false;             // Partido Loco: hándicaps y visitas
   uint8_t players[2] = {1, 1};    // jugadores de cada equipo (para algunos hándicaps; 1 si no se eligieron)
+  bool allowDraw = false;         // se puede empatar (liga de torneo): solo cuenta a tiempo o «ambas»
 
   bool valid() const {
     return goalsPerPeriod >= 1 && goalsPerPeriod <= 20 && minutesPerPeriod >= 1 && minutesPerPeriod <= 30 &&
@@ -214,7 +217,8 @@ class Engine {
     return a.white >= cfg_.penaltyRounds && a.blue >= cfg_.penaltyRounds;
   }
 
-  Team winner() const { return winner_; }
+  Team winner() const { return winner_; }  // con draw() no hay ganador: mirar draw() antes
+  bool draw() const { return draw_; }
   Reason reason() const { return reason_; }
   uint32_t totalTimeMs() const { return closedMs_; }
   // Tiempo de juego que duró cada parte ya cerrada (0 si no se jugó), para guardar el partido como la app.
@@ -810,6 +814,10 @@ class Engine {
       finish(s.white > s.blue ? Team::White : Team::Blue, Reason::Regulation, at);
     } else if (period_ == Period::Second && s.white != s.blue) {
       finish(s.white > s.blue ? Team::White : Team::Blue, Reason::Regulation, at);
+    } else if (period_ == Period::Second && cfg_.allowDraw) {
+      // Liga: igualados al final del tiempo, empate (sin prórroga ni penaltis).
+      finish(Team::White, Reason::Regulation, at);
+      draw_ = true;
     } else if (period_ == Period::Overtime && by == PeriodEndBy::GoldenGoal) {
       finish(s.white > s.blue ? Team::White : Team::Blue, Reason::GoldenGoal, at);
     }
@@ -817,6 +825,7 @@ class Engine {
 
   void finish(Team w, Reason r, uint32_t) {
     winner_ = w;
+    draw_ = false;
     reason_ = r;
     phase_ = Phase::Finished;
     undoCount_ = 0;
@@ -841,6 +850,7 @@ class Engine {
   Kick kicks_[MAX_KICKS];
   uint8_t kickCount_ = 0;
   Team winner_ = Team::White;
+  bool draw_ = false;
   Reason reason_ = Reason::Regulation;
   // Partido Loco
   uint32_t rng_ = 1;
