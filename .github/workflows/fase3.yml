@@ -1,0 +1,45 @@
+# Fase 3 (prueba): la pantalla de 7" compilada con sdkconfig propio (hardware/fase3/platformio.ini).
+# Solo deja el programa como artefacto para probarlo a mano en la placa; NO publica nada ni toca firmware-latest.
+name: Fase 3 (prueba)
+
+on:
+  push:
+    branches: ['equipo-a/fase3-**']
+    paths:
+      - 'hardware/esp32s3_pantalla7/**'
+      - 'hardware/fase3/**'
+      - '.github/workflows/fase3.yml'
+  workflow_dispatch:
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            hardware/fase3/.pio/libdeps
+          key: pio-fase3-${{ hashFiles('hardware/fase3/platformio.ini') }}
+      - name: PlatformIO
+        run: pip install platformio==6.2.0
+      - name: Compilar (la primera vez recompila las bibliotecas de Arduino: tarda)
+        run: pio run -d hardware/fase3
+      - name: Programa y datos
+        run: |
+          B=hardware/fase3/.pio/build/waveshare7c
+          mkdir -p salida
+          cp "$B/firmware.bin" salida/waveshare-7c-fase3-ota.bin
+          cp "$B/firmware.elf" salida/ 2>/dev/null || true
+          [ -f "$B/sdkconfig.waveshare7c" ] && cp "$B/sdkconfig.waveshare7c" salida/ || cp hardware/fase3/sdkconfig.* salida/ 2>/dev/null || true
+          ls -la salida
+          grep -E "XIP_FROM_PSRAM|LCD_RGB_ISR_IRAM_SAFE|LCD_RGB_RESTART_IN_VSYNC|DATA_CACHE_LINE_64B" salida/sdkconfig* || true
+          echo "Tamaño del programa: $(stat -c %s salida/waveshare-7c-fase3-ota.bin) bytes (hueco de 6291456)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fase3-waveshare-7c
+          path: salida
