@@ -32,7 +32,7 @@ struct View {
   uint32_t lockMs;              // bloqueo que queda (0 = libre)
   uint8_t matchPoint;           // bit 0 = Blanco, bit 1 = Azul
   uint8_t streakTeam, streak;   // racha: goles seguidos del último que marcó (se ve con 3 o más)
-  char info[40];                // bajo el tipo de partido: «A 5 goles», «2ª PARTE · A 5 goles»…
+  char info[72];                // bajo el tipo de partido: «A 5 goles», «2ª PARTE · A 5 goles»… (en torneo, con su nombre)
   char cond[64];                // «Gana quien llegue a 5 goles»…
   // Cuenta atrás
   uint8_t countdownN;
