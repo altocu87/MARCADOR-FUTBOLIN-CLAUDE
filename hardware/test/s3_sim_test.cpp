@@ -433,6 +433,29 @@ int main() {
     sim::gaugeRegs[0x0C] = (uint16_t)-300;
     run(SLEEP_AFTER_MS + 11000);
     assert(dimmed && reposo::active() && shows("Sábado, 17 de octubre") && shows("BATERÍA BAJA: CONECTA EL CARGADOR"));
+    // Subiendo a la nube en reposo: el reloj pide que no se toque (tocar la cortaría) en vez de «toca para despertar».
+    assert(shows("TOCA PARA DESPERTAR") && !shows("SINCRONIZANDO"));
+    uint8_t phaseBefore = nube::phase;
+    nube::background = true; nube::jobDone = false; nube::phase = nube::BUSY;
+    run(1100);
+    assert(reposo::active() && shows("SINCRONIZANDO · NO TOQUES LA PANTALLA") && !shows("TOCA PARA DESPERTAR"));
+    if (getenv("MFV3_CAPTURA_REPOSO")) {
+      lv_obj_update_layout(lv_screen_active());
+      lv_draw_buf_t* buf = lv_snapshot_take(lv_screen_active(), LV_COLOR_FORMAT_RGB888);
+      FILE* f = fopen(getenv("MFV3_CAPTURA_REPOSO"), "wb");
+      fprintf(f, "P6\n%u %u\n255\n", buf->header.w, buf->header.h);
+      for (uint32_t y = 0; y < buf->header.h; ++y) for (uint32_t x = 0; x < buf->header.w; ++x) {
+        const uint8_t* q = buf->data + y * buf->header.stride + x * 3;
+        uint8_t rgb[] = {q[2], q[1], q[0]}; fwrite(rgb, 1, 3, f);
+      }
+      fclose(f); lv_draw_buf_destroy(buf);
+    }
+    nube::background = false; nube::jobDone = true; nube::phase = phaseBefore;
+    run(1100);
+    assert(shows("TOCA PARA DESPERTAR") && !shows("SINCRONIZANDO"));
+    // Fuera del reloj (sin hora o sin atenuar): la misma franja abajo, encima de cualquier pantalla.
+    reposo::syncBanner(true); assert(shows("SINCRONIZANDO · NO TOQUES LA PANTALLA"));
+    reposo::syncBanner(false); assert(!shows("SINCRONIZANDO"));
     tap(400, 240);
     assert(!dimmed && !inMatch && inicio::active());
     // Hora de Internet al conectarse al Wi-Fi (zona horaria de España).

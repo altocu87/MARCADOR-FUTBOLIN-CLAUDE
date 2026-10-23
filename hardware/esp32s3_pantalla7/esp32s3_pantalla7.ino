@@ -2021,7 +2021,7 @@ static void sleepView() {
   if (historyCount)
     snprintf(last, sizeof(last), "Último: #4f7ea3 BLANCO %u – %u AZUL#", history[0].white, history[0].blue);
   reposo::update(rtc.now.hour, rtc.now.minute, rtc.now.second, reloj::weekday(rtc.now), rtc.now.day, rtc.now.month, last,
-                 rtc.lowBattery());
+                 rtc.lowBattery(), nube::background && nube::networking());
 }
 
 static void onConfigRefused() { ui::toast("Deja activa al menos una: goles o tiempo"); }
@@ -2493,6 +2493,8 @@ void loop() {
   bool calm = !inMatch && !test.active && !managementBusy &&
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
+  // Aviso de «no toques» mientras sube en reposo (en el reloj lo pone el propio reloj, sleepView).
+  reposo::syncBanner(nube::background && nube::networking() && !reposo::active());
   bool resting = calm && (dimmed || (!sleepAfterMs() && now - lastActivity > 3u * 60u * 1000u));
   if (resting && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
       s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {

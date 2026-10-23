@@ -3,7 +3,7 @@
 // Diseño propio de la placa (Alex, 18/10/2026), más moderno y ligero que el SleepOverlay de la app: la hora grande
 // en el centro de un aro que se va llenando segundo a segundo (el secundero, con un punto naranja en la punta), los
 // segundos y la fecha dentro del aro, el último partido arriba y «Toca para despertar» abajo. El primer toque solo
-// despierta.
+// despierta. Mientras se sincroniza con la nube (solo en reposo), abajo pone que no se toque: tocar la corta.
 // Ligero a propósito: cada segundo solo se repinta el trocito de aro nuevo, el punto y los dos números de los
 // segundos (el reloj anterior repintaba el reloj grande, las 60 marcas con sombra y una animación, y la imagen
 // daba saltos). La hora y la fecha, una vez por minuto.
@@ -16,7 +16,7 @@
 namespace reposo {
 
 static lv_obj_t* scr = nullptr;
-static lv_obj_t *ring, *timeLbl, *sec, *date, *last, *hint, *battery;
+static lv_obj_t *ring, *timeLbl, *sec, *date, *last, *hint, *battery, *syncing;
 static int lastSec = -1, lastMinute = -1;
 static char lastText[64] = "";
 
@@ -26,6 +26,7 @@ static const char* const MESES[12] = {"enero", "febrero", "marzo", "abril", "may
 
 const int CX = 400, CY = 236, R = 222;  // centro y radio del aro
 const uint32_t CYAN = 0x4fd8ff, ORANGE = 0xff9a3c;
+static const char* const SYNC_TEXT = "SINCRONIZANDO · NO TOQUES LA PANTALLA";
 
 static void onDelete(lv_event_t*) { scr = nullptr; }
 
@@ -63,6 +64,9 @@ static void build() {
   lv_label_set_recolor(last, true);
   hint = ui::text(scr, "TOCA PARA DESPERTAR", 400, 12, 0x2c4058, 1.68f);
   ui::place(hint, 400 + 0.84f, 463, 0);
+  syncing = ui::text(scr, SYNC_TEXT, 900, 20, CYAN, 1.2f);
+  ui::place(syncing, 400, 452, 24);
+  lv_obj_add_flag(syncing, LV_OBJ_FLAG_HIDDEN);
   // Solo en la placa (la app no tiene batería): aviso en rojo arriba a la derecha.
   battery = ui::text(scr, "BATERÍA BAJA: CONECTA EL CARGADOR", 800, 13, ui::color::DANGER, 1.3f);
   ui::place(battery, 784, 12, 0, ui::Align::Right);
@@ -75,7 +79,7 @@ static bool active() { return scr && lv_screen_active() == scr; }
 
 // `lastMatch`: «Último: BLANCO 5 – 3 AZUL» o vacío. Fecha: día de la semana (0 = domingo), día y mes.
 static void update(uint8_t hour, uint8_t minute, uint8_t second, uint8_t weekday, uint8_t day, uint8_t month,
-                   const char* lastMatch, bool lowBattery = false) {
+                   const char* lastMatch, bool lowBattery = false, bool syncNow = false) {
   if (!active()) {
     build();
     ui::show(scr);
@@ -98,11 +102,32 @@ static void update(uint8_t hour, uint8_t minute, uint8_t second, uint8_t weekday
     lastSec = second;
   }
   ui::setVisible(battery, lowBattery);
+  ui::setVisible(syncing, syncNow);
+  ui::setVisible(hint, !syncNow);
   if (strcmp(lastMatch ? lastMatch : "", lastText)) {
     snprintf(lastText, sizeof(lastText), "%s", lastMatch ? lastMatch : "");
     lv_label_set_text(last, lastText);
     ui::place(last, 16, 10, 19, ui::Align::Left);
   }
+}
+
+// Fuera del reloj (placa sin hora, o que no se atenúa nunca): el mismo aviso en una franja abajo, encima de todo.
+static lv_obj_t* banner = nullptr;
+static void syncBanner(bool on) {
+  if (on == (banner != nullptr)) return;
+  if (!on) {
+    lv_obj_delete(banner);
+    banner = nullptr;
+    return;
+  }
+  banner = lv_obj_create(lv_layer_top());
+  lv_obj_remove_style_all(banner);
+  lv_obj_set_size(banner, 800, 48);
+  lv_obj_set_pos(banner, 0, 432);
+  lv_obj_set_style_bg_color(banner, ui::hex(0x050a14), 0);
+  lv_obj_set_style_bg_opa(banner, LV_OPA_COVER, 0);
+  lv_obj_t* l = ui::text(banner, SYNC_TEXT, 900, 20, CYAN, 1.2f);
+  ui::place(l, 400, 12, 24);
 }
 
 }  // namespace reposo

@@ -1,7 +1,16 @@
 {
-  "version": "0.13",
+  "version": "0.14",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.14",
+      "date": "2026-10-23",
+      "title": "Aviso mientras se sincroniza",
+      "changes": [
+        "Mientras la pantalla en reposo sube los datos a la nube, abajo pone «SINCRONIZANDO · NO TOQUES LA PANTALLA».",
+        "Si se toca igualmente, la subida se para sin perder nada y sigue en el siguiente reposo."
+      ]
+    },
     {
       "version": "0.13",
       "date": "2026-10-23",
