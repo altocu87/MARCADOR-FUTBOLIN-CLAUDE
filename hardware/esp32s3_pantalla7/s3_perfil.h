@@ -5,6 +5,8 @@
 // rivales, compañeros, hábitos, nivel, ELO y logros) y lo publica en internet (RPC publicar_perfil_jugador, con
 // la clave pública: no hace falta cuenta). El móvil, al leer el QR, abre «…/perfil/#código» y lo ve.
 // Lo calcula loop() (son los datos de la placa); lo envía la tarea de la nube (s3_nube.h, trabajo PROFILE).
+// Palmarés (playerTournaments de report.ts): los torneos no descartados donde juega, del más reciente al más viejo,
+// con el puesto en que quedó si ha terminado. Cada partido de torneo lleva el nombre y el tipo de su torneo.
 
 #ifndef MFV3_S3_PERFIL_H
 #define MFV3_S3_PERFIL_H
@@ -186,6 +188,67 @@ static const char* const WEEKDAY[7] = {"Dom", "Lun", "Mar", "Mié", "Jue", "Vie"
 static const char* const DAYPART[4] = {"mañana", "mediodía", "tarde", "noche"};
 static int dayPart(int h) { return h >= 6 && h < 12 ? 0 : h >= 12 && h < 16 ? 1 : h >= 16 && h < 21 ? 2 : 3; }
 static const int RIVAL_MIN = 5, TOP = 12, LAST = 60;
+
+// Palmarés del jugador `id` (playerTournaments): abre cada torneo no descartado (pocos) para ver si juega y su puesto.
+struct Title { uint16_t s; uint64_t at; bool champion; uint8_t place, of; };
+static void palmares(Out& o, const char* id) {
+  using namespace torneos;
+  static Tournament t;
+  Title* list = nSummaries ? (Title*)calloc(nSummaries, sizeof(Title)) : nullptr;
+  Place* ranking = (Place*)calloc(MAX_TEAMS_T, sizeof(Place));
+  int n = 0;
+  for (uint16_t i = 0; list && ranking && i < nSummaries; i++) {
+    const Summary& s = summaries[i];
+    if (s.status == Status::Cancelled || !load(s.id, t)) continue;
+    bool in = false;
+    for (uint16_t k = 0; k < t.nTeams && !in; k++)
+      for (uint8_t j = 0; j < t.teams[k].n; j++) in |= !strcmp(t.teams[k].player[j], id);
+    for (uint8_t k = 0; k < t.nEntrants && !in; k++) in = !strcmp(t.entrants[k], id);
+    if (!in) continue;
+    Title& x = list[n++];
+    x.s = i;
+    x.at = s.finishedAt ? s.finishedAt : s.createdAt;
+    if (s.status != Status::Finished) continue;
+    x.champion = t.winner >= 0 && t.winner < (int16_t)t.nTeams;
+    if (x.champion) {
+      const torneos::Team& w = t.teams[t.winner];
+      x.champion = false;
+      for (uint8_t j = 0; j < w.n; j++) x.champion |= !strcmp(w.player[j], id);
+    }
+    uint8_t nr = finalRanking(t, ranking, (uint8_t)(MAX_TEAMS_T > 255 ? 255 : MAX_TEAMS_T));
+    for (uint8_t k = 0; k < nr; k++) {
+      if (ranking[k].place > x.of) x.of = ranking[k].place;
+      const torneos::Team& tm = t.teams[ranking[k].team];
+      bool mine = false;
+      for (uint8_t j = 0; j < tm.n; j++) mine |= !strcmp(tm.player[j], id);
+      if (mine && !x.place) x.place = ranking[k].place;
+    }
+  }
+  // Lo más reciente arriba (con el mismo momento, en el orden de la lista).
+  for (int a = 1; a < n; a++)
+    for (int b = a; b > 0 && list[b].at > list[b - 1].at; b--) {
+      Title k = list[b];
+      list[b] = list[b - 1];
+      list[b - 1] = k;
+    }
+  static const char* const FMT[3] = {"league", "bracket", "pool"};
+  static const char* const ST[3] = {"active", "finished", "cancelled"};
+  for (int i = 0; i < n; i++) {
+    const Summary& s = summaries[list[i].s];
+    o.add("%s{\"name\":", i ? "," : "");
+    o.str(s.name);
+    o.add(",\"format\":\"%s\",\"status\":\"%s\",\"champion\":%s,\"at\":%llu", FMT[(int)s.format], ST[(int)s.status],
+          list[i].champion ? "true" : "false", (unsigned long long)list[i].at);
+    if (s.cup[0]) o.add(",\"cup\":"), o.str(s.cup);
+    if (s.logo[0]) o.add(",\"logo\":"), o.str(s.logo);
+    if (s.banner[0]) o.add(",\"banner\":"), o.str(s.banner);
+    if (list[i].place) o.add(",\"place\":%u,\"of\":%u", list[i].place, list[i].of);
+    o.add("}");
+  }
+  free(list);
+  free(ranking);
+  release(t);
+}
 
 // El perfil (snapshot.ts) del jugador `code`, en JSON. malloc; nullptr si no hay memoria.
 static char* snapshot(uint32_t code, uint32_t nowUtc) {
@@ -403,7 +466,10 @@ static char* snapshot(uint32_t code, uint32_t nowUtc) {
   if (nem >= 0) idOf(rivals[nem].code, id, sizeof(id)), o.str(id);
   else o.add("null");
   // Últimos partidos, del más nuevo al más viejo.
-  o.add(",\"palmares\":[],\"matches\":[");
+  o.add(",\"palmares\":[");
+  idOf(code, id, sizeof(id));
+  palmares(o, id);
+  o.add("],\"matches\":[");
   for (int k = nmine - 1, n = 0; k >= 0 && n < LAST; k--, n++) {
     const partidos::Row& m = partidos::rows[mine[k]];
     int team = 0, slot = 0;
@@ -414,6 +480,12 @@ static char* snapshot(uint32_t code, uint32_t nowUtc) {
     o.add("%s{\"at\":%llu,\"mode\":\"%s\",\"result\":\"%c\",\"mine\":%d,\"theirs\":%d", n ? "," : "", (unsigned long long)m.fin * 1000u,
           m.mode == 'c' ? "chaos" : m.mode == 'r' ? "ranked" : "quick", res > 0 ? 'G' : res < 0 ? 'P' : 'E', team ? m.b : m.w,
           team ? m.w : m.b);
+    if (const torneos::Summary* ts = m.tournament[0] ? torneos::summaryOf(m.tournament) : nullptr) {
+      static const char* const FMT[3] = {"league", "bracket", "pool"};
+      o.add(",\"tournament\":{\"name\":");
+      o.str(ts->name);
+      o.add(",\"format\":\"%s\"}", FMT[(int)ts->format]);
+    }
     if (m.pw >= 0) o.add(",\"note\":\"Penaltis %d–%d\"", m.pw, m.pb);
     else if (m.reason == 'g') o.add(",\"note\":\"Gol de oro\"");
     for (int side = 0; side < 2; side++) {

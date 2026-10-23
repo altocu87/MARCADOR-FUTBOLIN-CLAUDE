@@ -36,6 +36,7 @@ static const uint8_t MAX_TEMPLATES = 24;                 // tipos de torneo guar
 static const uint16_t MAX_SUMMARIES = 200;               // torneos que se recuerdan (palmarés)
 static const uint8_t POOL_MINUTES[4] = {20, 30, 45, 60};
 static const uint8_t POOL_ROUNDS[6] = {3, 4, 5, 6, 8, 10};
+static const uint16_t MAX_PLAYED = MAX_FIXTURES + 16;   // CONTRATO (agente 1): partidos apuntados (con las series)
 
 enum class Format : uint8_t { League, Bracket, Pool };       // 'league' | 'bracket' | 'pool'
 enum class FinalKind : uint8_t { None, Top2 };               // 'none' | 'top2'
@@ -84,6 +85,14 @@ struct Fixture {
   char resting[2][40];             // Pool: pareja en el banquillo
 };
 
+// CONTRATO (agente 1): el resultado se define aquí arriba (antes iba junto a recordFixtureResult) porque el torneo
+// guarda la lista de los partidos apuntados (`played`).
+// Resultado de un partido ya guardado (s3_partidos Row con su id).
+struct Result { char matchId[48]; char winner; /* 'w','b','-' */ uint8_t w, b; uint64_t startedAt, finishedAt; };
+// Partido apuntado en un cruce: lo que la app saca de sus StoredMatch para la clasificación (marcador), el reloj del
+// Pool (inicio y fin), el premio del campeón (su último partido) y deshacer (se vuelven a apuntar todos en orden).
+struct Played { char fixture[64]; Result r; };
+
 struct Ladder {
   bool swap = true;
   bool byRounds = false;  // false = por tiempo
@@ -124,6 +133,11 @@ struct Tournament {
   Team* teams = nullptr;       // PSRAM, MAX_TEAMS_T
   uint16_t nFix = 0;
   Fixture* fix = nullptr;      // PSRAM, MAX_FIXTURES
+  // CONTRATO (agente 1): partidos apuntados, del más antiguo al último (por `finishedAt`), PSRAM, MAX_PLAYED. Al
+  // cargar un torneo (s3_torneos_datos.h) se rellena con addPlayed() con los partidos de partidos::rows que sean de
+  // este torneo y estén en algún cruce (matchId o matchIds); recordFixtureResult y undoLast lo mantienen solos.
+  uint16_t nPlayed = 0;
+  Played* played = nullptr;
 };
 
 struct Template {  // TournamentTemplate
@@ -168,6 +182,9 @@ struct Summary {
   // CONTRATO: añadido por el agente 2. Partido que cerró el torneo (vacío si no ha terminado): la progresión da
   // «Ganar torneo» en ese partido sin abrir el torneo.
   char finalMatchId[48];
+  // CONTRATO (agente 1): para el palmarés (ediciones jugadas de cada uno). Lo rellena summarize().
+  uint8_t nPlayers;
+  char players[MAX_ENTRANTS][40];  // jugadores con algún partido jugado
 };
 
 // ---------------------------------------------------------------- memoria
@@ -183,6 +200,7 @@ struct Draft {  // TournamentDraft (lo que sale de draftFromTemplate + nombre/ed
   struct DTeam { uint8_t n; char player[2][40]; char name[48]; char logo[40]; char clubId[48]; } teams[MAX_ENTRANTS];
   uint16_t edition;
   char logo[40], banner[40], cup[40];
+  char competition[28];  // CONTRATO (agente 1): nombre propio de la competición (vacío: la del tipo de torneo)
 };
 typedef int (*EloFn)(const char* playerId);       // ELO actual (s3_progresion)
 typedef const char* (*NameFn)(const char* playerId);
@@ -195,6 +213,8 @@ void describeTemplate(const Template& t, char* out, size_t n);
 uint8_t draftFromTemplate(const Template& t, const char* name, const char (*selected)[40], uint8_t n, EloFn elo,
                           const char* seed, const char (*fixedPairs)[2][40], uint8_t nFixed, Draft& out,
                           char (*leftover)[40]);
+// CONTRATO (agente 1): validateDraft suelto (el creador lo enseña antes de crear). false si hay error (en `err`).
+bool validateDraft(const Draft& d, char* err, size_t errN);
 // Valida (validateDraft): 0 errores → crea. `err` recibe el primer error en español.
 bool createTournament(const Draft& d, EloFn elo, NameFn name, uint64_t nowMs, const char* seed, Tournament& out,
                       char* err, size_t errN);
@@ -203,7 +223,6 @@ void fixtureProgress(const Tournament& t, uint16_t& done, uint16_t& total);
 bool isFinalFixture(const Tournament& t, const Fixture& f);
 Rules fixtureRules(const Tournament& t, const Fixture& f);       // fixtureConfig (la final nunca empata)
 // Apunta el resultado de un partido ya guardado (s3_partidos Row con su id). false si no cambia nada.
-struct Result { char matchId[48]; char winner; /* 'w','b','-' */ uint8_t w, b; uint64_t startedAt, finishedAt; };
 bool recordFixtureResult(Tournament& t, int16_t fixture, const Result& r);
 bool undoLast(Tournament& t, char* removedMatchId, size_t n);    // undoMatch del último; devuelve qué partido borrar
 void updateRules(Tournament& t, const Rules& r, const Rules* finalR, uint8_t finalBestOf);  // updateTournamentRules
@@ -222,6 +241,22 @@ struct Clock { bool started; int32_t remainingMs; int32_t avgMs; };
 Clock ladderClock(const Tournament& t, uint64_t nowMs);
 void ladderMoves(const Tournament& t, uint16_t round, const char* playerId, int8_t& move);  // ▲ ▼
 
+// CONTRATO (agente 1): añadidos para cargar, para las pantallas y para la prueba cruzada con la app.
+bool fixtureDone(const Fixture& f);                                // con ganador o empate
+int16_t fixtureIndex(const Tournament& t, const char* fixtureId);  // -1 si no está
+// Al cargar: apunta en `played` un partido que ya figura en sus cruces (no cambia los cruces).
+void addPlayed(Tournament& t, const char* fixtureId, const Result& r);
+void rulesShort(const Rules& r, char* out, size_t n);              // «a 5 goles», «5 min», «a 5 goles o 5 min»
+Points pointsOf(const Tournament& t);                              // los del torneo o 3-1-0
+bool timeForFinal(const Tournament& t);                            // Pool por tiempo: ya solo da para la final
+// Pistas de una ronda del Pool (pista 1 primero) y cómo llegan las parejas a la siguiente (LadderRoundShow).
+struct Lineup { uint8_t nCourts; char court[POOL_MAX_PAIRS / 2][2][2][40]; bool bench; char benchIds[2][40]; };
+void lineupOfRound(const Tournament& t, uint16_t round, Lineup& out);
+void arrivalLineup(const Tournament& t, uint16_t round, Lineup& out);
+// Nombre de un jugador (s3_jugadores) para la ficha, el palmarés y los desempates por nombre; sin él, el de su
+// equipo de 1 en el torneo o el que guardó el partido.
+static NameFn playerName = nullptr;
+
 // ---------------------------------------------------------------- ficha y palmarés (s3_torneos_ficha.h · agente 1)
 struct PlayerLine { char id[40]; uint8_t played, wins, draws, losses; int16_t gf, ga, scored; bool champion; float mvp; };
 struct Report {
@@ -231,6 +266,9 @@ struct Report {
   bool scorersReliable;
   char biggestWin[48], highestScoring[48];  // ids de partido
   char finalScore[32];
+  // CONTRATO (agente 1): como la ficha de la app, el partido más largo y cuántos se decidieron en prórroga o penaltis.
+  char longest[48];
+  uint16_t extraTime;
 };
 void report(const Tournament& t, Report& out);
 struct HonourRow { char id[40]; uint8_t titles, mvps, editions; };
@@ -243,6 +281,30 @@ struct Competition {
 uint8_t competitions(Competition* out, uint8_t max);     // PSRAM: cada Competition es grande
 uint16_t nextEdition(const char* key);
 int16_t activeEdition(const char* key);                   // índice en summaries o -1
+
+// CONTRATO (agente 1): de dónde salen los partidos de la ficha (todos los guardados con ese torneo, como
+// tournamentReport de la app). Lo pone el guardado (agente 2) con las filas de partidos::rows; sin él, la ficha usa
+// `played` (sin goleadores ni prórrogas). `code` = partidos::codeOf del id del jugador; `scored` = Row::pg.
+struct MatchLine {
+  char id[48];
+  char winner;              // 'w', 'b', '-'
+  uint8_t w, b;
+  char reason;              // 'r' normal, 'g' gol de oro, 'p' penaltis
+  uint32_t totalMs;
+  uint64_t startedAt, finishedAt;  // ms
+  uint8_t n[2];
+  uint32_t code[2][2];
+  char name[2][2][20];      // nameSnapshot
+  uint8_t scored[2][2];     // goles apuntados a cada uno
+  uint8_t goalsValid, goalsAssigned;
+};
+typedef uint16_t (*MatchesFn)(const char* tournamentId, MatchLine* out, uint16_t max);
+static MatchesFn matchSource = nullptr;
+// Resumen de un torneo (lo llama save() para el índice): clave y nombre de competición, progreso, campeón, MVP…
+void summarize(const Tournament& t, Summary& out);
+void competitionKey(const Tournament& t, char* out, size_t n);
+const char* competitionName(const Tournament& t);
+uint32_t playerCode(const char* id);                      // = partidos::codeOf
 
 // ---------------------------------------------------------------- guardado y nube (s3_torneos_datos.h · agente 2)
 // /sdcard/torneos/<id>.json (o el chip sin SD) + /sdcard/torneos/indice.txt; plantillas en /jugadores/tipos.txt

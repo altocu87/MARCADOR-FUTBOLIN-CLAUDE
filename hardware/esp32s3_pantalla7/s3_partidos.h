@@ -537,11 +537,10 @@ struct Match {
   Who who[2][4];
   uint32_t startEpoch = 0, endEpoch = 0;  // segundos (0 = sin hora)
   uint32_t buildId = 0;
-  // Partido de un torneo: se guarda con «tournament»: {id, fixtureId} (vacíos: no es de torneo). `allowDraw`: liga a
-  // tiempo que puede acabar en empate (config.allowDraw, como la app).
+  // Partido de un torneo: se guarda con «tournament»: {id, fixtureId} (vacíos: no es de torneo). El empate de la liga
+  // a tiempo va en cfg.allowDraw (config.allowDraw, como la app).
   char tournament[48] = "";
   char fixture[64] = "";
-  bool allowDraw = false;
 };
 
 static void newId(char* out) {  // UUID v4
@@ -598,7 +597,7 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
           "\"config\":{\"mode\":\"%s\",\"endCondition\":\"%s\",\"goalsPerPeriod\":%u,\"minutesPerPeriod\":%u,"
           "\"overtimeSeconds\":%u,\"penaltyRounds\":%u,\"penaltyFirstTeam\":\"%s\",\"testMode\":false%s},",
           mode, cond, c.goalsPerPeriod, c.minutesPerPeriod, c.overtimeSeconds, c.penaltyRounds, TEAM[c.penaltyFirst == Team::Blue],
-          m.allowDraw ? ",\"allowDraw\":true" : "");
+          c.allowDraw ? ",\"allowDraw\":true" : "");
   fputs("\"participants\":[", f);
   bool first = true;
   for (int t = 0; t < 2; t++)
@@ -617,8 +616,8 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   mfv3::Score s = e.score(), ps = e.penaltyScore();
   const char* reason = e.reason() == mfv3::Reason::GoldenGoal ? "golden_goal" : e.reason() == mfv3::Reason::Penalties ? "penalties" : "regulation";
   bool pens = e.kickCount() > 0;
-  // Empate (liga con empates, a tiempo): sin ganador, «winner»: null como la app. Solo acaba igualado así.
-  bool draw = m.allowDraw && !pens && s.white == s.blue;
+  // Empate (liga con empates, a tiempo): sin ganador, «winner»: null como la app (y la fila, '-').
+  bool draw = e.draw();
   if (draw) fprintf(f, "\"result\":{\"winner\":null,\"reason\":\"%s\",\"score\":{\"white\":%u,\"blue\":%u},", reason, s.white, s.blue);
   else fprintf(f, "\"result\":{\"winner\":\"%s\",\"reason\":\"%s\",\"score\":{\"white\":%u,\"blue\":%u},", TEAM[e.winner() == Team::Blue],
                reason, s.white, s.blue);

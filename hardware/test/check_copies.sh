@@ -23,6 +23,9 @@ g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -I
 
 # ELO, XP, niveles y logros de la placa = los de la app (tests/fixtures/progresion)
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp -o /tmp/mfv3_prog_test && /tmp/mfv3_prog_test
+# Torneos de la placa (reglas, ficha y palmarés) = los de la app (tests/fixtures/torneos)
+(cd .. && npx vitest run tests/torneosPlaca.test.ts)
+g++ -std=c++17 -Wall -Wextra -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/torneos_test.cpp -o /tmp/mfv3_torneos_test && /tmp/mfv3_torneos_test
 g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO -Itest/mock -Iarduino_usb -x c++ test/arduino_sim_test.cpp -o /tmp/mfv3_ard_sim && /tmp/mfv3_ard_sim
 # ESP32 clásico, C3, S3 y S2 (este último sin Bluetooth)
 for t in CONFIG_IDF_TARGET_ESP32 CONFIG_IDF_TARGET_ESP32C3 CONFIG_IDF_TARGET_ESP32S3 CONFIG_IDF_TARGET_ESP32S2; do

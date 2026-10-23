@@ -1,0 +1,871 @@
+{
+ "name": "pool_rondas_fijas",
+ "players": [
+  {
+   "id": "p01",
+   "name": "Álvaro",
+   "elo": 1210
+  },
+  {
+   "id": "p02",
+   "name": "Ana",
+   "elo": 1180
+  },
+  {
+   "id": "p03",
+   "name": "beto",
+   "elo": 1305
+  },
+  {
+   "id": "p04",
+   "name": "Carla",
+   "elo": 1180
+  },
+  {
+   "id": "p05",
+   "name": "Ñete",
+   "elo": 990
+  },
+  {
+   "id": "p06",
+   "name": "Nico",
+   "elo": 1250
+  },
+  {
+   "id": "p07",
+   "name": "Óscar",
+   "elo": 1100
+  },
+  {
+   "id": "p08",
+   "name": "Olga",
+   "elo": 1420
+  },
+  {
+   "id": "p09",
+   "name": "Pablo",
+   "elo": 1050
+  },
+  {
+   "id": "p10",
+   "name": "Rosa",
+   "elo": 1180
+  },
+  {
+   "id": "p11",
+   "name": "Sara",
+   "elo": 1333
+  },
+  {
+   "id": "p12",
+   "name": "Tomás",
+   "elo": 960
+  },
+  {
+   "id": "p13",
+   "name": "Úrsula",
+   "elo": 1275
+  },
+  {
+   "id": "p14",
+   "name": "Vera",
+   "elo": 1120
+  },
+  {
+   "id": "p15",
+   "name": "Wences",
+   "elo": 1005
+  },
+  {
+   "id": "p16",
+   "name": "Ximena",
+   "elo": 1190
+  }
+ ],
+ "template": {
+  "teamSize": 2,
+  "pairing": "manual",
+  "seeding": "elo",
+  "final": "none",
+  "finalBestOf": 1,
+  "ranked": false,
+  "endCondition": "goals",
+  "goalsPerPeriod": 5,
+  "minutesPerPeriod": 5,
+  "finalGoals": null,
+  "id": "tpl_p2",
+  "name": "Pool fijo",
+  "format": "pool",
+  "poolSwap": false,
+  "poolLimit": "rounds",
+  "poolRounds": 3
+ },
+ "selected": [
+  "p03",
+  "p06",
+  "p09",
+  "p12",
+  "p13",
+  "p14",
+  "p15",
+  "p16"
+ ],
+ "fixedPairs": [
+  [
+   "p03",
+   "p06"
+  ],
+  [
+   "p09",
+   "p12"
+  ],
+  [
+   "p13",
+   "p14"
+  ],
+  [
+   "p15",
+   "p16"
+  ]
+ ],
+ "tournamentName": "Pool fijo",
+ "draftSeed": "pool_rondas_fijas-borrador",
+ "createSeed": "pool_rondas_fijas-crear",
+ "now": 1791309600000,
+ "edition": 0,
+ "competition": "",
+ "logo": "",
+ "cup": "",
+ "banner": "",
+ "cancel": true,
+ "describe": "Pool · sin cambio de pareja · 3 rondas · final en la pista 1 · a 5 goles",
+ "fit": [
+  "fit|2|0|Mínimo 4 jugadores|-",
+  "fit|3|0|Necesita número par de jugadores|-",
+  "fit|4|1|-|2 parejas · 1 pista · 3 rondas · final en la pista 1",
+  "fit|5|0|Necesita número par de jugadores|-",
+  "fit|6|1|-|3 parejas · 1 pista + banquillo · 3 rondas · final en la pista 1",
+  "fit|7|0|Necesita número par de jugadores|-",
+  "fit|8|1|-|4 parejas · 2 pistas · 3 rondas · final en la pista 1",
+  "fit|9|0|Necesita número par de jugadores|-",
+  "fit|10|1|-|5 parejas · 2 pistas + banquillo · 3 rondas · final en la pista 1",
+  "fit|11|0|Necesita número par de jugadores|-",
+  "fit|12|1|-|6 parejas · 3 pistas · 3 rondas · final en la pista 1",
+  "fit|13|0|Necesita número par de jugadores|-",
+  "fit|14|1|-|7 parejas · 3 pistas + banquillo · 3 rondas · final en la pista 1",
+  "fit|15|0|Necesita número par de jugadores|-",
+  "fit|16|1|-|8 parejas · 4 pistas · 3 rondas · final en la pista 1",
+  "fit|17|0|Necesita número par de jugadores|-"
+ ],
+ "draft": [
+  "D|-|p03+p06;p09+p12;p13+p14;p15+p16"
+ ],
+ "validate": [
+  "V|-",
+  "V|Ponle un nombre al torneo.",
+  "V|El Pool necesita entre 2 y 8 parejas (4 a 16 jugadores)."
+ ],
+ "created": [
+  "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+  "C|goals 5 5 0|-|-",
+  "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+  "E|tt_1|beto|p03|-|-",
+  "E|tt_2|Nico|p06|-|-",
+  "E|tt_3|Pablo|p09|-|-",
+  "E|tt_4|Tomás|p12|-|-",
+  "E|tt_5|Úrsula|p13|-|-",
+  "E|tt_6|Vera|p14|-|-",
+  "E|tt_7|Wences|p15|-|-",
+  "E|tt_8|Ximena|p16|-|-",
+  "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+  "E|tt_10|beto + Nico|p03,p06|-|-",
+  "E|tt_11|Wences + Ximena|p15,p16|-|-",
+  "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+  "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+  "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+  "N|t_1-r1-p2",
+  "P|0|2|1",
+  "L|1|Ronda 1",
+  "S|beto|0|0|0|0|0|0|0|0|0",
+  "S|beto + Nico|0|0|0|0|0|0|0|0|0",
+  "S|Nico|0|0|0|0|0|0|0|0|0",
+  "S|Pablo|0|0|0|0|0|0|0|0|0",
+  "S|Pablo + Tomás|0|0|0|0|0|0|0|0|0",
+  "S|Tomás|0|0|0|0|0|0|0|0|0",
+  "S|Úrsula|0|0|0|0|0|0|0|0|0",
+  "S|Úrsula + Vera|0|0|0|0|0|0|0|0|0",
+  "S|Vera|0|0|0|0|0|0|0|0|0",
+  "S|Wences|0|0|0|0|0|0|0|0|0",
+  "S|Wences + Ximena|0|0|0|0|0|0|0|0|0",
+  "S|Ximena|0|0|0|0|0|0|0|0|0",
+  "R|1|Úrsula + Vera|0",
+  "R|1|beto + Nico|0",
+  "R|3|Wences + Ximena|0",
+  "R|3|Pablo + Tomás|0",
+  "K|0|1800000|0|0",
+  "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+  "M|1|p03|0",
+  "M|1|p06|0",
+  "M|1|p09|0",
+  "M|1|p12|0",
+  "M|1|p13|0",
+  "M|1|p14|0",
+  "M|1|p15|0",
+  "M|1|p16|0"
+ ],
+ "steps": [
+  {
+   "op": "play",
+   "fixture": "t_1-r1-p2",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_1",
+    "fixture": "t_1-r1-p2",
+    "winner": "w",
+    "w": 5,
+    "b": 2,
+    "reason": "r",
+    "totalMs": 398493,
+    "startedAt": 1791309660000,
+    "finishedAt": 1791310058493,
+    "white": [
+     "p15",
+     "p16"
+    ],
+    "blue": [
+     "p09",
+     "p12"
+    ],
+    "names": {
+     "white": [
+      "Wences",
+      "Ximena"
+     ],
+     "blue": [
+      "Pablo",
+      "Tomás"
+     ]
+    },
+    "scored": {
+     "white": [
+      3,
+      2
+     ],
+     "blue": [
+      2,
+      0
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 7
+   },
+   "clockAt": 1791310139711,
+   "lines": [
+    "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "N|t_1-r1-p1",
+    "P|1|2|1",
+    "L|1|Ronda 1",
+    "S|Wences + Ximena|1|1|0|0|3|5|2|3|1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|beto + Nico|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|-1",
+    "S|Pablo|0|0|0|0|0|0|0|0|-1",
+    "S|Tomás|0|0|0|0|0|0|0|0|0",
+    "S|Úrsula|0|0|0|0|0|0|0|0|0",
+    "S|Úrsula + Vera|0|0|0|0|0|0|0|0|0",
+    "S|Vera|0|0|0|0|0|0|0|0|0",
+    "S|Wences|0|0|0|0|0|0|0|0|0",
+    "S|Ximena|0|0|0|0|0|0|0|0|1",
+    "S|Pablo + Tomás|1|0|0|1|0|2|5|-3|-1",
+    "R|1|Úrsula + Vera|0",
+    "R|1|beto + Nico|0",
+    "R|3|Wences + Ximena|0",
+    "R|4|Pablo + Tomás|0",
+    "K|1|1320289|398493|0",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "M|1|p03|0",
+    "M|1|p06|0",
+    "M|1|p09|0",
+    "M|1|p12|0",
+    "M|1|p13|0",
+    "M|1|p14|0",
+    "M|1|p15|0",
+    "M|1|p16|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "t_1-r1-p1",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_2",
+    "fixture": "t_1-r1-p1",
+    "winner": "b",
+    "w": 1,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 370204,
+    "startedAt": 1791310139711,
+    "finishedAt": 1791310509915,
+    "white": [
+     "p13",
+     "p14"
+    ],
+    "blue": [
+     "p03",
+     "p06"
+    ],
+    "names": {
+     "white": [
+      "Úrsula",
+      "Vera"
+     ],
+     "blue": [
+      "beto",
+      "Nico"
+     ]
+    },
+    "scored": {
+     "white": [
+      1,
+      0
+     ],
+     "blue": [
+      1,
+      4
+     ]
+    },
+    "goalsValid": 6,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1791310568497,
+   "lines": [
+    "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|beto + Nico|0|0|0|0|1|-|m_pool_rondas_fijas_2|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r2-p2|2|2|Úrsula + Vera|Pablo + Tomás|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|t_1-r2-p2|4|PISTA 2 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r2-p1|2|1|beto + Nico|Wences + Ximena|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|t_1-r2-p1|4|PISTA 1 · RONDA 2|-|goals 5 5 0",
+    "N|t_1-r2-p2",
+    "P|2|4|1",
+    "L|1|Ronda 1",
+    "L|2|Ronda 2",
+    "S|beto + Nico|1|1|0|0|3|5|1|4|1",
+    "S|Wences + Ximena|1|1|0|0|3|5|2|3|-1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|0",
+    "S|Pablo|0|0|0|0|0|0|0|0|0",
+    "S|Tomás|0|0|0|0|0|0|0|0|0",
+    "S|Úrsula|0|0|0|0|0|0|0|0|0",
+    "S|Vera|0|0|0|0|0|0|0|0|1",
+    "S|Wences|0|0|0|0|0|0|0|0|1",
+    "S|Ximena|0|0|0|0|0|0|0|0|1",
+    "S|Pablo + Tomás|1|0|0|1|0|2|5|-3|1",
+    "S|Úrsula + Vera|1|0|0|1|0|1|5|-4|-1",
+    "R|1|beto + Nico|0",
+    "R|1|Wences + Ximena|0",
+    "R|3|Úrsula + Vera|0",
+    "R|3|Pablo + Tomás|0",
+    "K|1|891503|424957|0",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "A|1|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "U|2|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "M|2|p03|0",
+    "M|2|p06|0",
+    "M|2|p09|0",
+    "M|2|p12|0",
+    "M|2|p13|-1",
+    "M|2|p14|-1",
+    "M|2|p15|1",
+    "M|2|p16|1"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "t_1-r2-p2",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_3",
+    "fixture": "t_1-r2-p2",
+    "winner": "b",
+    "w": 0,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 314063,
+    "startedAt": 1791310568497,
+    "finishedAt": 1791310882560,
+    "white": [
+     "p13",
+     "p14"
+    ],
+    "blue": [
+     "p09",
+     "p12"
+    ],
+    "names": {
+     "white": [
+      "Úrsula",
+      "Vera"
+     ],
+     "blue": [
+      "Pablo",
+      "Tomás"
+     ]
+    },
+    "scored": {
+     "white": [
+      0,
+      0
+     ],
+     "blue": [
+      0,
+      5
+     ]
+    },
+    "goalsValid": 5,
+    "goalsAssigned": 5
+   },
+   "clockAt": 1791310930984,
+   "lines": [
+    "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|beto + Nico|0|0|0|0|1|-|m_pool_rondas_fijas_2|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r2-p2|2|2|Úrsula + Vera|Pablo + Tomás|Pablo + Tomás|0|0|0|0|1|-|m_pool_rondas_fijas_3|-|0|-|-",
+    "H|t_1-r2-p2|4|PISTA 2 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r2-p1|2|1|beto + Nico|Wences + Ximena|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|t_1-r2-p1|4|PISTA 1 · RONDA 2|-|goals 5 5 0",
+    "N|t_1-r2-p1",
+    "P|3|4|1",
+    "L|1|Ronda 1",
+    "L|2|Ronda 2",
+    "S|beto + Nico|1|1|0|0|3|5|1|4|0",
+    "S|Wences + Ximena|1|1|0|0|3|5|2|3|0",
+    "S|Pablo + Tomás|2|1|0|1|3|7|5|2|1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|-1",
+    "S|Pablo|0|0|0|0|0|0|0|0|-1",
+    "S|Tomás|0|0|0|0|0|0|0|0|-1",
+    "S|Úrsula|0|0|0|0|0|0|0|0|-1",
+    "S|Vera|0|0|0|0|0|0|0|0|-1",
+    "S|Wences|0|0|0|0|0|0|0|0|-1",
+    "S|Ximena|0|0|0|0|0|0|0|0|-1",
+    "S|Úrsula + Vera|2|0|0|2|0|1|10|-9|0",
+    "R|1|beto + Nico|0",
+    "R|1|Wences + Ximena|0",
+    "R|3|Pablo + Tomás|0",
+    "R|4|Úrsula + Vera|0",
+    "K|1|529016|407520|1",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "A|1|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "U|2|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "M|2|p03|0",
+    "M|2|p06|0",
+    "M|2|p09|0",
+    "M|2|p12|0",
+    "M|2|p13|-1",
+    "M|2|p14|-1",
+    "M|2|p15|1",
+    "M|2|p16|1"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "t_1-r2-p1",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_4",
+    "fixture": "t_1-r2-p1",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 312555,
+    "startedAt": 1791310930984,
+    "finishedAt": 1791311243539,
+    "white": [
+     "p03",
+     "p06"
+    ],
+    "blue": [
+     "p15",
+     "p16"
+    ],
+    "names": {
+     "white": [
+      "beto",
+      "Nico"
+     ],
+     "blue": [
+      "Wences",
+      "Ximena"
+     ]
+    },
+    "scored": {
+     "white": [
+      2,
+      2
+     ],
+     "blue": [
+      1,
+      4
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791311296240,
+   "lines": [
+    "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|beto + Nico|0|0|0|0|1|-|m_pool_rondas_fijas_2|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r2-p2|2|2|Úrsula + Vera|Pablo + Tomás|Pablo + Tomás|0|0|0|0|1|-|m_pool_rondas_fijas_3|-|0|-|-",
+    "H|t_1-r2-p2|4|PISTA 2 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r2-p1|2|1|beto + Nico|Wences + Ximena|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_4|-|0|-|-",
+    "H|t_1-r2-p1|4|PISTA 1 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r3-p2|3|2|beto + Nico|Úrsula + Vera|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|t_1-r3-p2|4|PISTA 2 · RONDA 3|-|goals 5 5 0",
+    "F|t_1-r3-p1|3|1|Wences + Ximena|Pablo + Tomás|-|0|0|1|0|1|-|-|-|0|-|-",
+    "H|t_1-r3-p1|0|GRAN FINAL|-|goals 5 5 0",
+    "N|t_1-r3-p2",
+    "P|4|6|1",
+    "L|1|Ronda 1",
+    "L|2|Ronda 2",
+    "L|3|Ronda 3",
+    "S|Wences + Ximena|2|2|0|0|6|10|6|4|1",
+    "S|beto + Nico|2|1|0|1|3|9|6|3|-1",
+    "S|Pablo + Tomás|2|1|0|1|3|7|5|2|0",
+    "S|beto|0|0|0|0|0|0|0|0|0",
+    "S|Nico|0|0|0|0|0|0|0|0|0",
+    "S|Pablo|0|0|0|0|0|0|0|0|0",
+    "S|Tomás|0|0|0|0|0|0|0|0|0",
+    "S|Úrsula|0|0|0|0|0|0|0|0|0",
+    "S|Vera|0|0|0|0|0|0|0|0|0",
+    "S|Wences|0|0|0|0|0|0|0|0|0",
+    "S|Ximena|0|0|0|0|0|0|0|0|0",
+    "S|Úrsula + Vera|2|0|0|2|0|1|10|-9|0",
+    "R|1|Wences + Ximena|0",
+    "R|1|Pablo + Tomás|0",
+    "R|3|beto + Nico|0",
+    "R|3|Úrsula + Vera|0",
+    "K|1|163760|395884|1",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "A|1|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "U|2|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "A|2|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "U|3|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "M|3|p03|-1",
+    "M|3|p06|-1",
+    "M|3|p09|1",
+    "M|3|p12|1",
+    "M|3|p13|0",
+    "M|3|p14|0",
+    "M|3|p15|0",
+    "M|3|p16|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "t_1-r3-p2",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_5",
+    "fixture": "t_1-r3-p2",
+    "winner": "b",
+    "w": 2,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 355520,
+    "startedAt": 1791311296240,
+    "finishedAt": 1791311651760,
+    "white": [
+     "p03",
+     "p06"
+    ],
+    "blue": [
+     "p13",
+     "p14"
+    ],
+    "names": {
+     "white": [
+      "beto",
+      "Nico"
+     ],
+     "blue": [
+      "Úrsula",
+      "Vera"
+     ]
+    },
+    "scored": {
+     "white": [
+      1,
+      1
+     ],
+     "blue": [
+      2,
+      3
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 7
+   },
+   "clockAt": 1791311725695,
+   "lines": [
+    "T|t_1|Pool fijo|active|-|-|0|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|beto + Nico|0|0|0|0|1|-|m_pool_rondas_fijas_2|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r2-p2|2|2|Úrsula + Vera|Pablo + Tomás|Pablo + Tomás|0|0|0|0|1|-|m_pool_rondas_fijas_3|-|0|-|-",
+    "H|t_1-r2-p2|4|PISTA 2 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r2-p1|2|1|beto + Nico|Wences + Ximena|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_4|-|0|-|-",
+    "H|t_1-r2-p1|4|PISTA 1 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r3-p2|3|2|beto + Nico|Úrsula + Vera|Úrsula + Vera|0|0|0|0|1|-|m_pool_rondas_fijas_5|-|0|-|-",
+    "H|t_1-r3-p2|4|PISTA 2 · RONDA 3|-|goals 5 5 0",
+    "F|t_1-r3-p1|3|1|Wences + Ximena|Pablo + Tomás|-|0|0|1|0|1|-|-|-|0|-|-",
+    "H|t_1-r3-p1|0|GRAN FINAL|-|goals 5 5 0",
+    "N|t_1-r3-p1",
+    "P|5|6|1",
+    "L|1|Ronda 1",
+    "L|2|Ronda 2",
+    "L|3|Ronda 3",
+    "S|Wences + Ximena|2|2|0|0|6|10|6|4|0",
+    "S|Pablo + Tomás|2|1|0|1|3|7|5|2|1",
+    "S|beto + Nico|3|1|0|2|3|11|11|0|-1",
+    "S|Úrsula + Vera|3|1|0|2|3|6|12|-6|1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|-1",
+    "S|Pablo|0|0|0|0|0|0|0|0|-1",
+    "S|Tomás|0|0|0|0|0|0|0|0|-1",
+    "S|Úrsula|0|0|0|0|0|0|0|0|-1",
+    "S|Vera|0|0|0|0|0|0|0|0|-1",
+    "S|Wences|0|0|0|0|0|0|0|0|-1",
+    "S|Ximena|0|0|0|0|0|0|0|0|-1",
+    "R|1|Wences + Ximena|0",
+    "R|1|Pablo + Tomás|0",
+    "R|3|Úrsula + Vera|0",
+    "R|4|beto + Nico|0",
+    "K|1|-265695|398352|1",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "A|1|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "U|2|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "A|2|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "U|3|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "M|3|p03|-1",
+    "M|3|p06|-1",
+    "M|3|p09|1",
+    "M|3|p12|1",
+    "M|3|p13|0",
+    "M|3|p14|0",
+    "M|3|p15|0",
+    "M|3|p16|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "t_1-r3-p1",
+   "accepted": true,
+   "match": {
+    "id": "m_pool_rondas_fijas_6",
+    "fixture": "t_1-r3-p1",
+    "winner": "w",
+    "w": 5,
+    "b": 4,
+    "reason": "r",
+    "totalMs": 337486,
+    "startedAt": 1791311725695,
+    "finishedAt": 1791312063181,
+    "white": [
+     "p15",
+     "p16"
+    ],
+    "blue": [
+     "p09",
+     "p12"
+    ],
+    "names": {
+     "white": [
+      "Wences",
+      "Ximena"
+     ],
+     "blue": [
+      "Pablo",
+      "Tomás"
+     ]
+    },
+    "scored": {
+     "white": [
+      5,
+      0
+     ],
+     "blue": [
+      2,
+      2
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 9
+   },
+   "clockAt": 1791312144344,
+   "lines": [
+    "T|t_1|Pool fijo|finished|Wences + Ximena|m_pool_rondas_fijas_6|1791312063181|1791309600000|2|-|none|0|-",
+    "C|goals 5 5 0|-|-",
+    "G|0|rounds|30|3|1|p13+p14;p03+p06;p15+p16;p09+p12|p03,p06,p09,p12,p13,p14,p15,p16",
+    "E|tt_1|beto|p03|-|-",
+    "E|tt_2|Nico|p06|-|-",
+    "E|tt_3|Pablo|p09|-|-",
+    "E|tt_4|Tomás|p12|-|-",
+    "E|tt_5|Úrsula|p13|-|-",
+    "E|tt_6|Vera|p14|-|-",
+    "E|tt_7|Wences|p15|-|-",
+    "E|tt_8|Ximena|p16|-|-",
+    "E|tt_9|Úrsula + Vera|p13,p14|-|-",
+    "E|tt_10|beto + Nico|p03,p06|-|-",
+    "E|tt_11|Wences + Ximena|p15,p16|-|-",
+    "E|tt_12|Pablo + Tomás|p09,p12|-|-",
+    "F|t_1-r1-p2|1|2|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_1|-|0|-|-",
+    "H|t_1-r1-p2|4|PISTA 2 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r1-p1|1|1|Úrsula + Vera|beto + Nico|beto + Nico|0|0|0|0|1|-|m_pool_rondas_fijas_2|-|0|-|-",
+    "H|t_1-r1-p1|4|PISTA 1 · RONDA 1|-|goals 5 5 0",
+    "F|t_1-r2-p2|2|2|Úrsula + Vera|Pablo + Tomás|Pablo + Tomás|0|0|0|0|1|-|m_pool_rondas_fijas_3|-|0|-|-",
+    "H|t_1-r2-p2|4|PISTA 2 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r2-p1|2|1|beto + Nico|Wences + Ximena|Wences + Ximena|0|0|0|0|1|-|m_pool_rondas_fijas_4|-|0|-|-",
+    "H|t_1-r2-p1|4|PISTA 1 · RONDA 2|-|goals 5 5 0",
+    "F|t_1-r3-p2|3|2|beto + Nico|Úrsula + Vera|Úrsula + Vera|0|0|0|0|1|-|m_pool_rondas_fijas_5|-|0|-|-",
+    "H|t_1-r3-p2|4|PISTA 2 · RONDA 3|-|goals 5 5 0",
+    "F|t_1-r3-p1|3|1|Wences + Ximena|Pablo + Tomás|Wences + Ximena|0|0|1|0|1|-|m_pool_rondas_fijas_6|-|0|-|-",
+    "H|t_1-r3-p1|0|GRAN FINAL|-|goals 5 5 0",
+    "N|-",
+    "P|6|6|0",
+    "L|1|Ronda 1",
+    "L|2|Ronda 2",
+    "L|3|Ronda 3",
+    "S|Wences + Ximena|2|2|0|0|6|10|6|4|0",
+    "S|Pablo + Tomás|2|1|0|1|3|7|5|2|1",
+    "S|beto + Nico|3|1|0|2|3|11|11|0|-1",
+    "S|Úrsula + Vera|3|1|0|2|3|6|12|-6|1",
+    "S|beto|0|0|0|0|0|0|0|0|-1",
+    "S|Nico|0|0|0|0|0|0|0|0|-1",
+    "S|Pablo|0|0|0|0|0|0|0|0|-1",
+    "S|Tomás|0|0|0|0|0|0|0|0|-1",
+    "S|Úrsula|0|0|0|0|0|0|0|0|-1",
+    "S|Vera|0|0|0|0|0|0|0|0|-1",
+    "S|Wences|0|0|0|0|0|0|0|0|-1",
+    "S|Ximena|0|0|0|0|0|0|0|0|-1",
+    "R|1|Wences + Ximena|1",
+    "R|2|Pablo + Tomás|0",
+    "R|3|Úrsula + Vera|0",
+    "R|4|beto + Nico|0",
+    "K|1|-684344|400530|1",
+    "U|1|p13+p14 v p03+p06;p15+p16 v p09+p12",
+    "A|1|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "U|2|p03+p06 v p15+p16;p13+p14 v p09+p12",
+    "A|2|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "U|3|p15+p16 v p09+p12;p03+p06 v p13+p14",
+    "A|3|p15+p16 v p13+p14;p09+p12 v p03+p06",
+    "M|3|p03|-1",
+    "M|3|p06|-1",
+    "M|3|p09|1",
+    "M|3|p12|1",
+    "M|3|p13|0",
+    "M|3|p14|0",
+    "M|3|p15|0",
+    "M|3|p16|0"
+   ]
+  }
+ ],
+ "report": [
+  "r|6|43|2088321|1791309660000|1791312063181|p15|p15|1|m_pool_rondas_fijas_3|m_pool_rondas_fijas_4|5–4|m_pool_rondas_fijas_1|0",
+  "l|p15|3|3|0|0|15|10|9|1|13.5",
+  "l|p16|3|3|0|0|15|10|6|1|13.5",
+  "l|p09|3|1|0|2|11|10|4|0|3.5",
+  "l|p12|3|1|0|2|11|10|7|0|3.5",
+  "l|p03|3|1|0|2|11|11|4|0|3.0",
+  "l|p06|3|1|0|2|11|11|7|0|3.0",
+  "l|p13|3|1|0|2|6|12|3|0|0.0",
+  "l|p14|3|1|0|2|6|12|3|0|0.0"
+ ],
+ "key": "tpl_p2"
+}

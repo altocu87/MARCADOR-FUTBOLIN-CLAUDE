@@ -179,6 +179,33 @@ int main() {
   assert(bracket && pool);
   printf("torneos de la app: se leen, se resumen y se vuelven a guardar igual (%zu)\n", ids.size());
 
+  // Con sus partidos en el historial: al abrir cada torneo, `played` tiene sus partidos (en orden) y la ficha también.
+  {
+    std::string all = readFile("../tests/fixtures/progresion/partidos-torneos.jsonl");
+    size_t at = 0;
+    while (at < all.size()) {
+      size_t e = all.find('\n', at);
+      std::string line = all.substr(at, e - at);
+      at = e == std::string::npos ? all.size() : e + 1;
+      partidos::Row row;
+      if (!line.empty() && partidos::rowFromText(line.c_str(), row)) partidos::push(row);
+    }
+    for (size_t i = 0; i < ids.size(); i++) {
+      assert(torneos::load(ids[i].c_str(), t));
+      int inFix = 0;
+      for (uint16_t k = 0; k < t.nFix; k++) inFix += t.fix[k].nMatches;
+      assert(t.nPlayed == inFix && inFix > 0);
+      for (uint16_t k = 1; k < t.nPlayed; k++) assert(t.played[k - 1].r.finishedAt <= t.played[k].r.finishedAt);
+      torneos::Summary s;
+      torneos::guardado::summarizeAll(t, s);
+      assert(s.nPlayers > 0);
+      if (t.status == torneos::Status::Finished) assert(s.mvpId[0] && s.finalMatchId[0]);
+    }
+    partidos::count = 0;
+    ++partidos::revision;
+  }
+  printf("torneos abiertos con sus partidos: lista de jugados, MVP y jugadores del palmarés\n");
+
   // ------------------------------------------------ índice: se rehace si falta y recoge restos de un corte
   std::string ip = std::string(ROOT) + "/torneos/indice.txt";
   std::string before = readFile(ip);

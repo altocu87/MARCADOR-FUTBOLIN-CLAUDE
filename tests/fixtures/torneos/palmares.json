@@ -1,0 +1,134 @@
+{
+ "order": [
+  "liga5",
+  "liga5b",
+  "liga_parejas",
+  "liga_ida_vuelta",
+  "copa5_elo",
+  "copa8_azar",
+  "pool_rondas_cambio",
+  "pool_rondas_fijas",
+  "pool_tiempo"
+ ],
+ "labels": {
+  "league": "Liga",
+  "bracket": "Copa",
+  "pool": "Pool"
+ },
+ "seeds": [
+  {
+   "seed": "t_1-r2",
+   "values": [
+    0.716169,
+    0.364821,
+    0.191658,
+    0.047407,
+    0.701515,
+    0.600483
+   ]
+  },
+  {
+   "seed": "Ñandú-r3",
+   "values": [
+    0.863022,
+    0.071094,
+    0.178823,
+    0.199854,
+    0.954591,
+    0.707839
+   ]
+  },
+  {
+   "seed": "🦅 águila",
+   "values": [
+    0.271573,
+    0.484723,
+    0.411201,
+    0.260264,
+    0.282087,
+    0.199196
+   ]
+  },
+  {
+   "seed": "",
+   "values": [
+    0.675959,
+    0.064033,
+    0.692801,
+    0.362618,
+    0.169569,
+    0.513912
+   ]
+  }
+ ],
+ "lines": [
+  "Q|name:copa del almacén|copa del   ALMACÉN|Copa|escudo-09|copa-1|banner-1|t_copa8_azar:3:Vera + Wences:p14,t_copa5_elo:1:Ana:p02|t_copa8_azar",
+  "h|name:copa del almacén|p02|1|1|2",
+  "h|name:copa del almacén|p14|1|1|1",
+  "h|name:copa del almacén|p15|1|0|1",
+  "h|name:copa del almacén|p04|0|0|2",
+  "h|name:copa del almacén|p07|0|0|2",
+  "h|name:copa del almacén|p10|0|0|2",
+  "h|name:copa del almacén|p16|0|0|2",
+  "h|name:copa del almacén|p01|0|0|1",
+  "h|name:copa del almacén|p03|0|0|1",
+  "h|name:copa del almacén|p06|0|0|1",
+  "h|name:copa del almacén|p05|0|0|1",
+  "h|name:copa del almacén|p08|0|0|1",
+  "h|name:copa del almacén|p09|0|0|1",
+  "h|name:copa del almacén|p11|0|0|1",
+  "h|name:copa del almacén|p12|0|0|1",
+  "h|name:copa del almacén|p13|0|0|1",
+  "Q|tpl_liga|Liga del jueves|Liga|-|-|-|t_liga5b:2:Carla:p04,t_liga5:1:Nico:p06|t_liga5b",
+  "h|tpl_liga|p06|1|1|2",
+  "h|tpl_liga|p04|1|1|1",
+  "h|tpl_liga|p01|0|0|2",
+  "h|tpl_liga|p02|0|0|2",
+  "h|tpl_liga|p03|0|0|2",
+  "h|tpl_liga|p05|0|0|1",
+  "h|tpl_liga|p08|0|0|1",
+  "Q|name:pool exprés|Pool exprés|Pool|-|-|-|t_pool_tiempo:1:Óscar + Ñete:p07|t_pool_tiempo",
+  "h|name:pool exprés|p07|1|1|1",
+  "h|name:pool exprés|p05|1|0|1",
+  "h|name:pool exprés|p01|0|0|1",
+  "h|name:pool exprés|p02|0|0|1",
+  "h|name:pool exprés|p03|0|0|1",
+  "h|name:pool exprés|p04|0|0|1",
+  "h|name:pool exprés|p06|0|0|1",
+  "h|name:pool exprés|p08|0|0|1",
+  "h|name:pool exprés|p09|0|0|1",
+  "h|name:pool exprés|p10|0|0|1",
+  "h|name:pool exprés|p11|0|0|1",
+  "h|name:pool exprés|p12|0|0|1",
+  "Q|tpl_p1|Pool rondas|Pool|-|-|-|t_pool_rondas_cambio:1:Rosa + Pablo:p10|t_pool_rondas_cambio",
+  "h|tpl_p1|p10|1|1|1",
+  "h|tpl_p1|p09|1|0|1",
+  "h|tpl_p1|p01|0|0|1",
+  "h|tpl_p1|p02|0|0|1",
+  "h|tpl_p1|p03|0|0|1",
+  "h|tpl_p1|p04|0|0|1",
+  "h|tpl_p1|p06|0|0|1",
+  "h|tpl_p1|p05|0|0|1",
+  "h|tpl_p1|p08|0|0|1",
+  "h|tpl_p1|p07|0|0|1",
+  "Q|tpl_iv|Ida y vuelta|Liga|escudo-04|copa-2|-|t_liga_ida_vuelta:1:Olga:p08|t_liga_ida_vuelta",
+  "h|tpl_iv|p08|1|1|1",
+  "h|tpl_iv|p03|0|0|1",
+  "h|tpl_iv|p11|0|0|1",
+  "h|tpl_iv|p13|0|0|1",
+  "Q|name:trofeo otoño|Trofeo Otoño|Liga|-|-|-|t_liga_parejas:1:Nico + Óscar:p06|t_liga_parejas",
+  "h|name:trofeo otoño|p06|1|1|1",
+  "h|name:trofeo otoño|p07|1|0|1",
+  "h|name:trofeo otoño|p02|0|0|1",
+  "h|name:trofeo otoño|p03|0|0|1",
+  "h|name:trofeo otoño|p04|0|0|1",
+  "h|name:trofeo otoño|p05|0|0|1",
+  "X|tpl_liga|3|-",
+  "X|name:trofeo otoño|2|-",
+  "X|tpl_iv|2|-",
+  "X|name:copa del almacén|4|-",
+  "X|tpl_p1|2|-",
+  "X|tpl_p2|1|-",
+  "X|name:pool exprés|2|-"
+ ]
+}

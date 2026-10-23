@@ -144,6 +144,40 @@ static void a10_golden_goal() {
   assert(s.e.phase() == Phase::Finished && s.e.winner() == Team::Blue && s.e.reason() == Reason::GoldenGoal);
 }
 
+// Liga de torneo con empate (allowDraw): igualados al acabar la 2ª parte a tiempo (o «ambas») es empate, sin
+// prórroga ni penaltis. A goles siempre hay ganador; con allowDraw y sin empate gana el que va por delante.
+static void draws() {
+  Config c = cfg(EndCondition::Time, 5, 1);
+  c.allowDraw = true;
+  Sim s(c);
+  s.startPeriod(); s.goalLater(Team::White);
+  s.wait(60000); assert(s.e.phase() == Phase::PeriodEnd && !s.e.draw());  // la 1ª parte no acaba en empate
+  assert(s.e.next(s.t) == R::Accepted && s.e.period() == Period::Second);
+  s.startPeriod(); s.goalLater(Team::Blue);
+  s.wait(60000);
+  assert(s.e.phase() == Phase::Finished && s.e.draw() && s.e.reason() == Reason::Regulation);
+  assert(s.e.score().white == 1 && s.e.score().blue == 1 && s.e.kickCount() == 0);
+  assert(s.e.totalTimeMs() == 120000);
+  // Ambas: igualados al acabar el tiempo de la 2ª, empate; llegar a los goles sigue ganando.
+  Config b = cfg(EndCondition::Both, 3, 1);
+  b.allowDraw = true;
+  Sim x(b);
+  x.startPeriod(); x.wait(60000); x.e.next(x.t); x.startPeriod(); x.wait(60000);
+  assert(x.e.phase() == Phase::Finished && x.e.draw());
+  Sim y(b);
+  y.startPeriod(); y.goalLater(Team::Blue); y.goalLater(Team::Blue); y.goalLater(Team::Blue);
+  assert(y.e.phase() == Phase::Finished && !y.e.draw() && y.e.winner() == Team::Blue);
+  // Con ventaja al final no es empate.
+  Sim z(c);
+  z.startPeriod(); z.wait(60000); z.e.next(z.t); z.startPeriod(); z.goalLater(Team::Blue); z.wait(60000);
+  assert(z.e.phase() == Phase::Finished && !z.e.draw() && z.e.winner() == Team::Blue);
+  // Sin allowDraw, igualados → prórroga (como siempre); y un partido nuevo no arrastra el empate.
+  Sim w(cfg(EndCondition::Time, 5, 1));
+  w.startPeriod(); w.wait(60000); w.e.next(w.t); w.startPeriod(); w.wait(60000);
+  assert(w.e.phase() == Phase::PeriodEnd && !w.e.draw());
+  assert(s.e.start(cfg(EndCondition::Goals, 1), s.t) && !s.e.draw());
+}
+
 static void kicks(Sim& s, const char* seq) {
   for (const char* c = seq; *c; c++) assert(s.e.penalty(s.e.nextKicker(), *c == 'G', s.t) == R::Accepted);
 }
@@ -348,6 +382,7 @@ int main() {
   a08_nothing_bypasses_lock();
   a09_corrections();
   a10_golden_goal();
+  draws();
   a11_a12_a13_penalties();
   pause_keeps_time();
   match_point();

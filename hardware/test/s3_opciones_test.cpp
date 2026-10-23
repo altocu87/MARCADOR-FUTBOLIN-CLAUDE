@@ -413,6 +413,7 @@ int main() {
   {
     datos::removeStdioTree("../build/perfil-demo");
     datos::copyStdio(partidos::dir, "../build/perfil-demo");
+    datos::copyStdio(torneos::guardado::dir, "../build/perfil-demo/torneos");  // con sus torneos (palmarés)
     char* snap = perfil::snapshot(jugadores.list[0].code, 1792000000u);
     assert(snap);
     FILE* f = fopen("../build/perfil-demo/perfil.json", "wb");

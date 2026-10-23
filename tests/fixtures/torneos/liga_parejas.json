@@ -1,0 +1,410 @@
+{
+ "name": "liga_parejas",
+ "players": [
+  {
+   "id": "p01",
+   "name": "Álvaro",
+   "elo": 1210
+  },
+  {
+   "id": "p02",
+   "name": "Ana",
+   "elo": 1180
+  },
+  {
+   "id": "p03",
+   "name": "beto",
+   "elo": 1305
+  },
+  {
+   "id": "p04",
+   "name": "Carla",
+   "elo": 1180
+  },
+  {
+   "id": "p05",
+   "name": "Ñete",
+   "elo": 990
+  },
+  {
+   "id": "p06",
+   "name": "Nico",
+   "elo": 1250
+  },
+  {
+   "id": "p07",
+   "name": "Óscar",
+   "elo": 1100
+  },
+  {
+   "id": "p08",
+   "name": "Olga",
+   "elo": 1420
+  },
+  {
+   "id": "p09",
+   "name": "Pablo",
+   "elo": 1050
+  },
+  {
+   "id": "p10",
+   "name": "Rosa",
+   "elo": 1180
+  },
+  {
+   "id": "p11",
+   "name": "Sara",
+   "elo": 1333
+  },
+  {
+   "id": "p12",
+   "name": "Tomás",
+   "elo": 960
+  },
+  {
+   "id": "p13",
+   "name": "Úrsula",
+   "elo": 1275
+  },
+  {
+   "id": "p14",
+   "name": "Vera",
+   "elo": 1120
+  },
+  {
+   "id": "p15",
+   "name": "Wences",
+   "elo": 1005
+  },
+  {
+   "id": "p16",
+   "name": "Ximena",
+   "elo": 1190
+  }
+ ],
+ "template": {
+  "teamSize": 2,
+  "pairing": "elo",
+  "seeding": "random",
+  "final": "none",
+  "finalBestOf": 1,
+  "ranked": false,
+  "endCondition": "goals",
+  "goalsPerPeriod": 5,
+  "minutesPerPeriod": 5,
+  "finalGoals": null,
+  "id": "tpl_lp",
+  "name": "Parejas",
+  "format": "league",
+  "points": {
+   "win": 2,
+   "draw": 1,
+   "loss": 0
+  }
+ },
+ "selected": [
+  "p01",
+  "p02",
+  "p03",
+  "p04",
+  "p05",
+  "p06",
+  "p07"
+ ],
+ "fixedPairs": [
+  [
+   "p04",
+   "p02"
+  ],
+  [
+   "p09",
+   "p01"
+  ]
+ ],
+ "tournamentName": "Parejas de otoño",
+ "draftSeed": "liga_parejas-borrador",
+ "createSeed": "liga_parejas-crear",
+ "now": 1790964000000,
+ "edition": 0,
+ "competition": "Trofeo Otoño",
+ "logo": "",
+ "cup": "",
+ "banner": "",
+ "cancel": false,
+ "describe": "Liga · parejas equilibradas · 2-0 pts · sin final · a 5 goles",
+ "fit": [
+  "fit|2|0|Mínimo 6 jugadores (3 parejas)|-",
+  "fit|3|0|Necesita número par de jugadores|-",
+  "fit|4|0|Mínimo 6 jugadores (3 parejas)|-",
+  "fit|5|0|Necesita número par de jugadores|-",
+  "fit|6|1|-|3 partidos · 3 parejas, todos contra todos",
+  "fit|7|0|Necesita número par de jugadores|-",
+  "fit|8|1|-|6 partidos · 4 parejas, todos contra todos",
+  "fit|9|0|Necesita número par de jugadores|-",
+  "fit|10|1|-|10 partidos · 5 parejas, todos contra todos",
+  "fit|11|0|Necesita número par de jugadores|-",
+  "fit|12|1|-|15 partidos · 6 parejas, todos contra todos",
+  "fit|13|0|Necesita número par de jugadores|-",
+  "fit|14|1|-|21 partidos · 7 parejas, todos contra todos",
+  "fit|15|0|Necesita número par de jugadores|-",
+  "fit|16|1|-|28 partidos · 8 parejas, todos contra todos",
+  "fit|17|0|Necesita número par de jugadores|-"
+ ],
+ "draft": [
+  "D|p01|p04+p02;p03+p05;p06+p07"
+ ],
+ "validate": [
+  "V|-",
+  "V|Ponle un nombre al torneo.",
+  "V|Entre 3 y 8 equipos."
+ ],
+ "created": [
+  "T|t_1|Parejas de otoño|active|-|-|0|1790964000000|2|-|none|0|Trofeo Otoño",
+  "C|goals 5 5 0|-|2-1-0",
+  "E|tt_1|Carla + Ana|p04,p02|-|-",
+  "E|tt_3|Nico + Óscar|p06,p07|-|-",
+  "E|tt_2|beto + Ñete|p03,p05|-|-",
+  "F|fx_1|1|0|beto + Ñete|Nico + Óscar|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+  "F|fx_2|2|0|beto + Ñete|Carla + Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_2|4|JORNADA 2|-|goals 5 5 0",
+  "F|fx_3|3|0|Carla + Ana|Nico + Óscar|-|0|0|0|0|1|-|-|-|0|-|-",
+  "H|fx_3|4|JORNADA 3|-|goals 5 5 0",
+  "N|fx_1",
+  "P|0|3|1",
+  "L|1|Jornada 1",
+  "L|2|Jornada 2",
+  "L|3|Jornada 3",
+  "S|beto + Ñete|0|0|0|0|0|0|0|0|0",
+  "S|Carla + Ana|0|0|0|0|0|0|0|0|0",
+  "S|Nico + Óscar|0|0|0|0|0|0|0|0|0",
+  "R|1|beto + Ñete|0",
+  "R|2|Carla + Ana|0",
+  "R|3|Nico + Óscar|0"
+ ],
+ "steps": [
+  {
+   "op": "play",
+   "fixture": "fx_1",
+   "accepted": true,
+   "match": {
+    "id": "m_liga_parejas_1",
+    "fixture": "fx_1",
+    "winner": "b",
+    "w": 4,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 476255,
+    "startedAt": 1790964060000,
+    "finishedAt": 1790964536255,
+    "white": [
+     "p03",
+     "p05"
+    ],
+    "blue": [
+     "p06",
+     "p07"
+    ],
+    "names": {
+     "white": [
+      "beto",
+      "Ñete"
+     ],
+     "blue": [
+      "Nico",
+      "Óscar"
+     ]
+    },
+    "scored": {
+     "white": [
+      2,
+      1
+     ],
+     "blue": [
+      1,
+      2
+     ]
+    },
+    "goalsValid": 9,
+    "goalsAssigned": 6
+   },
+   "clockAt": 1790964621727,
+   "lines": [
+    "T|t_1|Parejas de otoño|active|-|-|0|1790964000000|2|-|none|0|Trofeo Otoño",
+    "C|goals 5 5 0|-|2-1-0",
+    "E|tt_1|Carla + Ana|p04,p02|-|-",
+    "E|tt_3|Nico + Óscar|p06,p07|-|-",
+    "E|tt_2|beto + Ñete|p03,p05|-|-",
+    "F|fx_1|1|0|beto + Ñete|Nico + Óscar|Nico + Óscar|0|0|0|0|1|-|m_liga_parejas_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|2|0|beto + Ñete|Carla + Ana|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_2|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_3|3|0|Carla + Ana|Nico + Óscar|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_3|4|JORNADA 3|-|goals 5 5 0",
+    "N|fx_2",
+    "P|1|3|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "S|Nico + Óscar|1|1|0|0|2|5|4|1|1",
+    "S|Carla + Ana|0|0|0|0|0|0|0|0|0",
+    "S|beto + Ñete|1|0|0|1|0|4|5|-1|-1",
+    "R|1|Nico + Óscar|0",
+    "R|2|Carla + Ana|0",
+    "R|3|beto + Ñete|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_2",
+   "accepted": true,
+   "match": {
+    "id": "m_liga_parejas_2",
+    "fixture": "fx_2",
+    "winner": "b",
+    "w": 2,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 503717,
+    "startedAt": 1790964621727,
+    "finishedAt": 1790965125444,
+    "white": [
+     "p03",
+     "p05"
+    ],
+    "blue": [
+     "p04",
+     "p02"
+    ],
+    "names": {
+     "white": [
+      "beto",
+      "Ñete"
+     ],
+     "blue": [
+      "Carla",
+      "Ana"
+     ]
+    },
+    "scored": {
+     "white": [
+      0,
+      1
+     ],
+     "blue": [
+      1,
+      3
+     ]
+    },
+    "goalsValid": 7,
+    "goalsAssigned": 5
+   },
+   "clockAt": 1790965214515,
+   "lines": [
+    "T|t_1|Parejas de otoño|active|-|-|0|1790964000000|2|-|none|0|Trofeo Otoño",
+    "C|goals 5 5 0|-|2-1-0",
+    "E|tt_1|Carla + Ana|p04,p02|-|-",
+    "E|tt_3|Nico + Óscar|p06,p07|-|-",
+    "E|tt_2|beto + Ñete|p03,p05|-|-",
+    "F|fx_1|1|0|beto + Ñete|Nico + Óscar|Nico + Óscar|0|0|0|0|1|-|m_liga_parejas_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|2|0|beto + Ñete|Carla + Ana|Carla + Ana|0|0|0|0|1|-|m_liga_parejas_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_3|3|0|Carla + Ana|Nico + Óscar|-|0|0|0|0|1|-|-|-|0|-|-",
+    "H|fx_3|4|JORNADA 3|-|goals 5 5 0",
+    "N|fx_3",
+    "P|2|3|1",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "S|Carla + Ana|1|1|0|0|2|5|2|3|1",
+    "S|Nico + Óscar|1|1|0|0|2|5|4|1|-1",
+    "S|beto + Ñete|2|0|0|2|0|6|10|-4|0",
+    "R|1|Carla + Ana|0",
+    "R|2|Nico + Óscar|0",
+    "R|3|beto + Ñete|0"
+   ]
+  },
+  {
+   "op": "play",
+   "fixture": "fx_3",
+   "accepted": true,
+   "match": {
+    "id": "m_liga_parejas_3",
+    "fixture": "fx_3",
+    "winner": "b",
+    "w": 3,
+    "b": 5,
+    "reason": "r",
+    "totalMs": 477991,
+    "startedAt": 1790965214515,
+    "finishedAt": 1790965692506,
+    "white": [
+     "p04",
+     "p02"
+    ],
+    "blue": [
+     "p06",
+     "p07"
+    ],
+    "names": {
+     "white": [
+      "Carla",
+      "Ana"
+     ],
+     "blue": [
+      "Nico",
+      "Óscar"
+     ]
+    },
+    "scored": {
+     "white": [
+      0,
+      2
+     ],
+     "blue": [
+      3,
+      0
+     ]
+    },
+    "goalsValid": 8,
+    "goalsAssigned": 5
+   },
+   "clockAt": 1790965747285,
+   "lines": [
+    "T|t_1|Parejas de otoño|finished|Nico + Óscar|m_liga_parejas_3|1790965692506|1790964000000|2|-|none|0|Trofeo Otoño",
+    "C|goals 5 5 0|-|2-1-0",
+    "E|tt_1|Carla + Ana|p04,p02|-|-",
+    "E|tt_3|Nico + Óscar|p06,p07|-|-",
+    "E|tt_2|beto + Ñete|p03,p05|-|-",
+    "F|fx_1|1|0|beto + Ñete|Nico + Óscar|Nico + Óscar|0|0|0|0|1|-|m_liga_parejas_1|-|0|-|-",
+    "H|fx_1|4|JORNADA 1|-|goals 5 5 0",
+    "F|fx_2|2|0|beto + Ñete|Carla + Ana|Carla + Ana|0|0|0|0|1|-|m_liga_parejas_2|-|0|-|-",
+    "H|fx_2|4|JORNADA 2|-|goals 5 5 0",
+    "F|fx_3|3|0|Carla + Ana|Nico + Óscar|Nico + Óscar|0|0|0|0|1|-|m_liga_parejas_3|-|0|-|-",
+    "H|fx_3|4|JORNADA 3|-|goals 5 5 0",
+    "N|-",
+    "P|3|3|0",
+    "L|1|Jornada 1",
+    "L|2|Jornada 2",
+    "L|3|Jornada 3",
+    "S|Nico + Óscar|2|2|0|0|4|10|7|3|1",
+    "S|Carla + Ana|2|1|0|1|2|8|7|1|-1",
+    "S|beto + Ñete|2|0|0|2|0|6|10|-4|0",
+    "R|1|Nico + Óscar|1",
+    "R|2|Carla + Ana|0",
+    "R|3|beto + Ñete|0"
+   ]
+  }
+ ],
+ "report": [
+  "r|3|24|1457963|1790964060000|1790965692506|p06|-|0|m_liga_parejas_2|m_liga_parejas_1|-|m_liga_parejas_2|0",
+  "l|p06|2|2|0|0|10|7|4|1|9.5",
+  "l|p07|2|2|0|0|10|7|2|1|9.5",
+  "l|p02|2|1|0|1|8|7|5|0|3.5",
+  "l|p04|2|1|0|1|8|7|1|0|3.5",
+  "l|p03|2|0|0|2|6|10|2|0|-2.0",
+  "l|p05|2|0|0|2|6|10|2|0|-2.0"
+ ],
+ "key": "name:trofeo otoño"
+}

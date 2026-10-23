@@ -33,16 +33,10 @@
 #include "s3_progresion.h"
 #include "s3_nube.h"
 
-// Las reglas y la ficha (agente 1) si ya están: con ellas el resumen lleva el MVP, el perfil del QR los puestos y el
-// modo prueba crea torneos de demostración.
-#if __has_include("s3_torneos_reglas.h")
+// Las reglas, la memoria (alloc/release/clear), la ficha y el resumen (summarize) son del agente 1.
 #include "s3_torneos_reglas.h"
-#define MFV3_TORNEOS_REGLAS 1
-#endif
-#if __has_include("s3_torneos_ficha.h")
 #include "s3_torneos_ficha.h"
-#define MFV3_TORNEOS_FICHA 1
-#endif
+#define MFV3_TORNEOS_REGLAS 1
 
 namespace torneos {
 
@@ -52,32 +46,6 @@ uint32_t revision = 0;
 Template* templates = nullptr;
 uint8_t nTemplates = 0;
 
-// ---------------------------------------------------------------- memoria
-// CONTRATO: alloc/release/clear no tenían dueño en el reparto; se definen aquí. Si las reglas también las definen,
-// que definan MFV3_TORNEOS_MEMORIA antes de incluir este archivo y se queda una sola copia.
-#ifndef MFV3_TORNEOS_MEMORIA
-#define MFV3_TORNEOS_MEMORIA 1
-bool alloc(Tournament& t) {
-  if (!t.teams) t.teams = (Team*)calloc(MAX_TEAMS_T, sizeof(Team));
-  if (!t.fix) t.fix = (Fixture*)calloc(MAX_FIXTURES, sizeof(Fixture));
-  return t.teams && t.fix;
-}
-void release(Tournament& t) {
-  free(t.teams);
-  free(t.fix);
-  t = Tournament();  // Tournament() deja también los textos a cero
-}
-void clear(Tournament& t) {
-  Team* teams = t.teams;
-  Fixture* fix = t.fix;
-  t = Tournament();
-  t.teams = teams;
-  t.fix = fix;
-  if (teams) memset(teams, 0, MAX_TEAMS_T * sizeof(Team));
-  if (fix)
-    for (uint16_t i = 0; i < MAX_FIXTURES; i++) fix[i] = Fixture();
-}
-#endif
 
 namespace guardado {
 
@@ -219,6 +187,72 @@ static int teamIndex(const Tournament& t, const char* id) {
   return -1;
 }
 
+// La lista de partidos apuntados (Tournament::played) sale del historial: los partidos de este torneo que están en
+// algún cruce (matchId o matchIds), del más antiguo al último.
+static void addPlayedFromRows(Tournament& t) {
+  t.nPlayed = 0;
+  if (!t.played) return;
+  int* idx = partidos::count ? (int*)malloc(sizeof(int) * (size_t)partidos::count) : nullptr;
+  int n = 0;
+  for (int i = 0; idx && i < partidos::count; i++)
+    if (!strcmp(partidos::rows[i].tournament, t.id)) idx[n++] = i;
+  for (int a = 1; a < n; a++)  // por fin (y por id si coinciden)
+    for (int b = a; b > 0; b--) {
+      const partidos::Row &x = partidos::rows[idx[b]], &y = partidos::rows[idx[b - 1]];
+      if (x.finishedAt > y.finishedAt || (x.finishedAt == y.finishedAt && strcmp(x.id, y.id) >= 0)) break;
+      int k = idx[b]; idx[b] = idx[b - 1]; idx[b - 1] = k;
+    }
+  for (int k = 0; k < n; k++) {
+    const partidos::Row& r = partidos::rows[idx[k]];
+    int16_t fi = fixtureIndex(t, r.fixture);
+    if (fi < 0) continue;
+    const Fixture& f = t.fix[fi];
+    bool inFixture = !strcmp(f.matchId, r.id);
+    for (uint8_t m = 0; m < f.nMatches && !inFixture; m++) inFixture = !strcmp(f.matchIds[m], r.id);
+    if (!inFixture) continue;
+    Result res;
+    memset(&res, 0, sizeof(res));
+    copyText(res.matchId, sizeof(res.matchId), r.id);
+    res.winner = r.winner;
+    res.w = r.w;
+    res.b = r.b;
+    res.startedAt = r.startedAt;
+    res.finishedAt = r.finishedAt;
+    addPlayed(t, f.id, res);
+  }
+  free(idx);
+}
+
+// Los partidos de un torneo para la ficha (matchSource de las reglas), desde partidos::rows.
+static uint16_t matchesOf(const char* tournamentId, MatchLine* out, uint16_t max) {
+  uint16_t n = 0;
+  for (int i = 0; i < partidos::count && n < max; i++) {
+    const partidos::Row& r = partidos::rows[i];
+    if (strcmp(r.tournament, tournamentId)) continue;
+    MatchLine& m = out[n++];
+    memset(&m, 0, sizeof(m));
+    copyText(m.id, sizeof(m.id), r.id);
+    m.winner = r.winner;
+    m.w = r.w;
+    m.b = r.b;
+    m.reason = r.reason;
+    m.totalMs = r.totalMs;
+    m.startedAt = r.startedAt;
+    m.finishedAt = r.finishedAt;
+    for (int t = 0; t < 2; t++) {
+      m.n[t] = r.n[t] > 2 ? 2 : r.n[t];
+      for (int k = 0; k < m.n[t]; k++) {
+        m.code[t][k] = r.code[t][k];
+        memcpy(m.name[t][k], r.name[t][k], sizeof(m.name[t][k]));
+        m.scored[t][k] = r.pg[t][k];
+      }
+    }
+    m.goalsValid = r.goalsValid;
+    m.goalsAssigned = r.goalsAssigned;
+  }
+  return n;
+}
+
 // Lee un torneo de la app (o de la placa). false si no es un torneo o no cabe en la placa.
 static bool fromJson(const char* txt, Tournament& t) {
   while (*txt == ' ' || *txt == '\n' || *txt == '\r' || *txt == '\t') txt++;
@@ -286,6 +320,7 @@ static bool fromJson(const char* txt, Tournament& t) {
   for (const char* o = partidos::nextIn(teams, nullptr); o; o = partidos::nextIn(teams, o)) {
     if (t.nTeams >= MAX_TEAMS_T) return false;
     Team& x = t.teams[t.nTeams++];
+    x = Team();
     strField(o, "id", x.id, sizeof(x.id));
     strField(o, "name", x.name, sizeof(x.name));
     int n = strArray(partidos::keyIn(o, "playerIds"), x.player, 2);
@@ -353,6 +388,7 @@ static bool fromJson(const char* txt, Tournament& t) {
       if (!strcmp(t.fix[k].id, next[i])) t.fix[i].next = (int16_t)k;
   }
   free(next);
+  if (ok) addPlayedFromRows(t);
   return ok;
 }
 
@@ -476,73 +512,10 @@ static bool toJson(FILE* f, const Tournament& t, const char* old) {
 }
 
 // ---------------------------------------------------------------- resúmenes
-// competitionNameKey de report.ts: «name:» + nombre sin espacios de más, en minúsculas (también Á, Ñ…).
-static void nameKey(const char* name, char* out, size_t n) {
-  size_t k = snprintf(out, n, "name:");
-  while (*name == ' ' || *name == '\t' || *name == '\n') name++;
-  bool space = false;
-  for (const uint8_t* p = (const uint8_t*)name; *p && k + 3 < n; p++) {
-    if (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
-      space = true;
-      continue;
-    }
-    if (space) out[k++] = ' ', space = false;
-    uint8_t c = *p;
-    if (c >= 'A' && c <= 'Z') c = (uint8_t)(c + 32);
-    if (c == 0xC3 && p[1] >= 0x80 && p[1] <= 0x9E && p[1] != 0x97) {  // À–Þ (sin ×) → à–þ
-      out[k++] = (char)c;
-      out[k++] = (char)(p[1] + 0x20);
-      p++;
-      continue;
-    }
-    out[k++] = (char)c;
-  }
-  out[k] = 0;
-}
-static void competitionKeyOf(const Tournament& t, char* out, size_t n) {
-  if (t.competition[0]) nameKey(t.competition, out, n);
-  else if (t.templateId[0]) snprintf(out, n, "%s", t.templateId);
-  else nameKey(t.templateName[0] ? t.templateName : t.name, out, n);
-}
-
-static void summarize(const Tournament& t, Summary& s) {
-  memset(&s, 0, sizeof(s));
-  memcpy(s.id, t.id, sizeof(s.id));
-  memcpy(s.name, t.name, sizeof(s.name));
-  competitionKeyOf(t, s.competitionKey, sizeof(s.competitionKey));
-  copyText(s.competition, sizeof(s.competition), t.competition[0] ? t.competition : t.templateName[0] ? t.templateName : t.name);
-  s.format = t.format;
-  s.status = t.status;
-  s.edition = t.edition;
-  s.createdAt = t.createdAt;
-  s.finishedAt = t.finishedAt;
-  for (uint16_t i = 0; i < t.nFix; i++) {  // fixtureProgress
-    const Fixture& f = t.fix[i];
-    if (f.bye || f.skipped) continue;
-    s.total++;
-    if (f.winner >= 0 || f.draw) s.done++;
-  }
-  if (t.winner >= 0 && t.winner < (int16_t)t.nTeams) {
-    const Team& w = t.teams[t.winner];
-    copyText(s.champion, sizeof(s.champion), w.name);
-    s.nChampion = w.n > 2 ? 2 : w.n;
-    for (uint8_t k = 0; k < s.nChampion; k++) memcpy(s.championIds[k], w.player[k], sizeof(s.championIds[k]));
-  }
+// El resumen del índice: el de las reglas (summarize) y el partido que cerró el torneo.
+static void summarizeAll(const Tournament& t, Summary& s) {
+  torneos::summarize(t, s);
   memcpy(s.finalMatchId, t.finalMatchId, sizeof(s.finalMatchId));
-#ifdef MFV3_TORNEOS_FICHA
-  if (t.status == Status::Finished) {
-    Report* r = (Report*)calloc(1, sizeof(Report));
-    if (r) {
-      report(t, *r);
-      if (r->mvp >= 0 && r->mvp < r->nPlayers) memcpy(s.mvpId, r->players[r->mvp].id, sizeof(s.mvpId));
-      free(r);
-    }
-  }
-#endif
-  memcpy(s.logo, t.logo, sizeof(s.logo));
-  memcpy(s.cup, t.cup, sizeof(s.cup));
-  memcpy(s.banner, t.banner, sizeof(s.banner));
-  s.ranked = t.ranked;
 }
 
 static bool allocSummaries() {
@@ -897,7 +870,7 @@ static void cloudArrived(const char* id) {
     return;
   }
   Summary s;
-  summarize(work, s);
+  summarizeAll(work, s);
   putSummary(s);
   writeIndex();
   syncProgresion();
@@ -1013,7 +986,7 @@ bool loadIndex() {
       jsonPath(id, jp, sizeof(jp));
       if (!alloc(work) || !readFileInto(jp, work)) continue;
       Summary s;
-      summarize(work, s);
+      summarizeAll(work, s);
       if (putSummary(s)) dirty = true;
     }
     closedir(d);
@@ -1057,6 +1030,7 @@ void begin(bool sd) {
   };
   nube::templatesDone = templatesPushed;
   partidos::playerIdChanged = playerIdChanged;
+  matchSource = matchesOf;
 }
 
 bool load(const char* id, Tournament& t) {
@@ -1086,7 +1060,7 @@ bool save(Tournament& t) {
     return false;
   }
   Summary s;
-  summarize(t, s);
+  guardado::summarizeAll(t, s);
   putSummary(s);
   writeIndex();
   syncProgresion();
