@@ -289,7 +289,12 @@ static void eloChart(lv_obj_t* parent, int y) {
   // Como mucho 120 puntos (con muchos partidos, uno de cada varios; el último siempre).
   int step = (n + 119) / 120;
   int np = 0;
-  static lv_point_precise_t pts[122];
+  // Los puntos viven lo que la línea (LVGL no los copia): memoria dinámica, que se devuelve al borrarla.
+  lv_point_precise_t* pts = (lv_point_precise_t*)malloc(sizeof(lv_point_precise_t) * 122);
+  if (!pts) {
+    free(elo);
+    return;
+  }
   for (int i = 0; i < n; i += step) {
     pts[np].x = 8 + (lv_value_precise_t)i * (W - 16) / (n - 1);
     pts[np].y = H - 10 - (lv_value_precise_t)(elo[i] - lo) * (H - 20) / (hi - lo);
@@ -313,6 +318,7 @@ static void eloChart(lv_obj_t* parent, int y) {
   textAt(area, t, 400, 11, ui::color::TEXT3, W - 8 - 60, yi - 16, 60, LV_TEXT_ALIGN_RIGHT);
   lv_obj_t* line = lv_line_create(area);
   lv_line_set_points_mutable(line, pts, (uint32_t)np);
+  lv_obj_add_event_cb(line, [](lv_event_t* e) { free(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, pts);
   lv_obj_set_style_line_width(line, 2, 0);
   lv_obj_set_style_line_color(line, ui::hex(ui::color::ACCENT), 0);
   lv_obj_set_style_line_rounded(line, true, 0);
