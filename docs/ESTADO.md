@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Mando sin bloquear la pantalla · rama `equipo-b/mando-no-bloquea` · 24/10/2026
+
+**0.17 publicada instalada por USB en COM6 a petición del dueño (archivo de la web, MD5 comprobado; la anterior queda en el otro hueco). El arreglo de abajo está hecho y probado en el PC, sin instalar ni publicar.** Su mando (C3-Zero, programa 54, que no dice su modelo) estaba marcado como Super Mini: cambiado a C3-ZERO en la placa. Diagnóstico en la placa: la descarga del programa del mando y la radio funcionan y llega a «Mantén pulsados los dos botones». Dos fallos corregidos: (1) un fallo del mando paraba también la pantalla; ahora el mando se queda como estaba y la pantalla se actualiza igual; (2) «Necesita una primera actualización por cable» salía en cuanto se perdían saludos del mando durante 90 s; ahora solo sale si en más de un minuto oyéndole nunca ha dicho su versión, y si no se usa la última que dijo. Sin subir versión: hay que añadir la 0.18 a `releases.json` antes de publicar. Pendiente del dueño: autorizar la publicación y probar en la placa los botones del mando.
+
 ## Auditoría conjunta · 0.17 · equipo B · 24/10/2026
 
 **Código de la auditoría preparado; 0.17 sin instalar en la placa.** Reúne Torneos y sincronización en reposo de 0.15, las 870 voces/archivos de la entrega 0.16 (806 activos y 64 reservados) y correcciones de arranque, aviso de hora, audio de empate, errores al guardar, reintento explícito de torneo y deshacer con recuperación del estado anterior. Conserva el núcleo normal; no promueve la fase 3 retirada por poco margen de RAM. Tres agentes contrastaron el diagnóstico y las pruebas. Publicación en main autorizada por el dueño en el chat de auditoría, después de los nuevos sonidos. La evidencia física vigente procede de la entrega 0.16 de abajo; estabilidad jugando con Wi-Fi, acústica y torneo completo siguen pendientes. [Entrega, validación y decisiones pendientes](ENTREGA_AUDITORIA_0_17_20261024.md).

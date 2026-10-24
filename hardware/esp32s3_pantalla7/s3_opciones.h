@@ -467,7 +467,7 @@ static void onModel(lv_event_t* e) {
 }
 static void fillLink(char* b, size_t n, int) {
   if (!remoteLinked()) snprintf(b, n, "!Sin señal: pulsa un botón del mando");
-  else if (mandoInfoFresh() && mandoBuild) snprintf(b, n, "Conectado · programa %lu", (unsigned long)mandoBuild);
+  else if (mandoInfoAt && mandoBuild) snprintf(b, n, "Conectado · programa %lu", (unsigned long)mandoBuild);
   else snprintf(b, n, "Conectado");
 }
 static void fillMandoUpd(char* b, size_t n, int) {

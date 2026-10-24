@@ -223,7 +223,10 @@ static void drawInstall() {
   }
   if (inst == Inst::Error) {
     updateText(gfx.scr, "Vuelve a buscar antes de reintentar. No se borran tus partidos para actualizar.", 36, 292, 728);
-  } else if (inst != Inst::Done && inst != Inst::Cancelled) updateText(gfx.scr, "Mantén los equipos encendidos hasta terminar.", 36, 366, 728, 18);
+  } else if (inst != Inst::Done && inst != Inst::Cancelled) {
+    updateText(gfx.scr, instMandoFailed ? "El mando no se actualizó y sigue como estaba. Mantén la pantalla encendida."
+                                        : "Mantén los equipos encendidos hasta terminar.", 36, 366, 728, 18);
+  }
   if (inst == Inst::MandoRadio && sender.state() == mfv3::ota::Sender::State::Offering)
     updateButton(ui::INSTALL[0].r, instScreen ? "SALTAR EL MANDO" : "CANCELAR", C_SURFACE, C_TEXT, C_LINE);
   if (inst == Inst::Done || inst == Inst::Error || inst == Inst::Cancelled) updateButton(ui::INSTALL[1].r, "VOLVER", C_ACCENT, C_BG, C_ACCENT);
