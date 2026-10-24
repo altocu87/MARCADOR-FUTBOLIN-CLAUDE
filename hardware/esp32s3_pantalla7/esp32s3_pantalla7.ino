@@ -596,7 +596,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       phaseMask=comentarios::secondHalfMask(eng);phaseGeneric=comentarios::SecondHalf;
       fallback=mfv3snd::Event::MatchStart;
     }
-    else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished &&
+    else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished && !eng.draw() &&
             eng.period()==Period::Second && eng.config().endCondition!=mfv3::EndCondition::Goals &&
             eng.clockMs(millis())==0 && eng.reason()==mfv3::Reason::Regulation){
       pool=comentarios::FinalNormal;fallback=sounds.has(mfv3snd::Event::Rout)?mfv3snd::Event::Rout:mfv3snd::Event::Victory;
@@ -886,7 +886,7 @@ static void handleBoardLine(const char* line) {
   if((inMatch && (soundMutation || soundScan || soundPreview)) ||
      (soundInspection.active && (soundMutation || soundScan || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
   if((comentarios::staging && (soundMutation || soundPreview)) || (sndCmd.receiving() && (boardCommand(line,"SONIDO_BORRAR") || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
-  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[310];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts);sendLine(b);return;}
+  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[350];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu resync_error=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts,(unsigned long)uiport::resyncFailures);sendLine(b);return;}
   if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
@@ -1135,6 +1135,8 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 #include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
 #include "s3_perfil.h"    // el QR del perfil de cada jugador
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
+// Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
+static bool bootCheckPending = true;
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -2056,7 +2058,7 @@ static void render() {
     bool low = rtc.lowBattery();
     if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
-    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
+    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Hora sin ajustar");
     inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
                       nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
@@ -2439,7 +2441,6 @@ void setup() {
   nube::clubsDone = equipos::pushed;
   s3flash::hook = []() { uiport::needResync = true; };  // escrituras en la memoria del chip (s3_flash.h)
   radioBegin();
-  startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
   // con su porcentaje (unos 7 s al encender).
@@ -2564,6 +2565,10 @@ void loop() {
   bool resultBeforeRender=resultPending;
   render();
   uiport::step();
+  if (bootCheckPending && !test.active && !inMatch && inicio::active() && uiport::presented != frameBefore) {
+    bootCheckPending = false;
+    startCheck();  // sin credenciales no conecta; la sincronización automática sigue reservada al reposo
+  }
 #if HAS_AUDIO
   if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || uiport::presented!=frameBefore)){
     uint32_t code=pendingCommentary;pendingCommentary=0;

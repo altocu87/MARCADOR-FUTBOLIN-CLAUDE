@@ -131,7 +131,8 @@ inline EventList detect(const Engine& e, const Before& b, bool goalAccepted) {
     if (!finished) out.add(goalEvent(e, b));
     else if (b.period == Period::Overtime) out.add(Event::GoldenGoal);
   }
-  if (finished) out.add(isRout(e) ? Event::Rout : Event::Victory);
+  // Una liga puede acabar empatada: no anunciar ganador ni usar su preferencia.
+  if (finished) out.add(e.draw() ? Event::PeriodEnd : isRout(e) ? Event::Rout : Event::Victory);
   if (!finished && e.matchPoint() && e.period() != Period::Overtime &&
       (b.matchPoint == 0 || scoreChanged || b.period != e.period()))
     out.add(Event::MatchPoint);

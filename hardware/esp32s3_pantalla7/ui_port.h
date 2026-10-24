@@ -24,7 +24,7 @@ static volatile int16_t fakeX = 0, fakeY = 0;
 static volatile uint32_t fakeUntil = 0;
 static uint32_t lastTouchAt = 0;  // último toque real o simulado (para el reposo)
 static uint32_t presented = 0;
-static uint32_t presentFailures=0,vsyncTimeouts=0;
+static uint32_t presentFailures=0,vsyncTimeouts=0,resyncFailures=0;
 static uint16_t* shown = nullptr;  // la imagen de pantalla que se está viendo ahora
 // Al empezar cada toque: si devuelve true, el toque entero se ignora (p. ej. el que despierta la pantalla).
 static bool (*touchDownHook)() = nullptr;
@@ -159,7 +159,7 @@ static bool readTouch(int16_t& x, int16_t& y) { return gt911Read(x, y); }
 // Tras escribir en la memoria flash (ajustes, resultados, fotos) la imagen puede quedar descolocada: mientras se
 // escribe, el ESP32-S3 no puede rellenar los búferes de la pantalla. Se vuelve a alinear en el siguiente retorno.
 static void resyncPanel() {
-  if (panel) esp_lcd_rgb_panel_restart(panel);
+  if (panel && esp_lcd_rgb_panel_restart(panel) != ESP_OK) resyncFailures++;
 }
 
 // Pines y tiempos del panel: los de board_config.h (perfil de cada placa), leídos de la configuración LovyanGFX.

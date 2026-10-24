@@ -45,6 +45,8 @@ jobs:
       - name: Núcleo de la placa
         run: |
           CORE=$(echo "${{ matrix.placa.fqbn }}" | cut -d: -f1,2)
+          # Controlador RGB y recuperación iguales al núcleo normal probado en la placa.
+          if [ "$CORE" = "esp32:esp32" ]; then CORE="$CORE@3.3.12"; fi
           arduino-cli core update-index --additional-urls "$URLS"
           arduino-cli core install "$CORE" --additional-urls "$URLS"
       - name: Bibliotecas

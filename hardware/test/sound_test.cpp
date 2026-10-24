@@ -100,6 +100,19 @@ static void testDetect() {
   Config tc;
   tc.endCondition = EndCondition::Time;
   tc.minutesPerPeriod = 1;
+  // Liga: el empate permitido termina con aviso neutro, nunca victoria/prórroga.
+  for (EndCondition condition : {EndCondition::Time, EndCondition::Both}) {
+    for (bool scored : {false, true}) {
+      Config league = tc; league.allowDraw = true; league.endCondition = condition;
+      Sim draw(league); draw.start();
+      if (scored) draw.goals("WB");
+      assert(eq(draw.wait(60000), {Event::PeriodEnd}));
+      draw.e.next(draw.t); draw.start();
+      assert(eq(draw.wait(60000), {Event::PeriodEnd}));
+      assert(draw.e.phase() == Phase::Finished && draw.e.draw());
+      assert(draw.wait(100).empty()); // no repetir el aviso en el siguiente tick
+    }
+  }
   Sim g(tc);
   g.start();
   g.goal(Team::White);
