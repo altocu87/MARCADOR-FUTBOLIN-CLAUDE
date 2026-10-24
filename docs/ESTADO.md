@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Integración A/B · 0.15 · 24/10/2026
+
+**Preparando y comprobando; todavía no instalada.** Torneos y fase 3 de A reunidos con los 210 sonidos nuevos de B. SD sigue sin detectarse en COM6; no se ha iniciado la copia. Versiones históricas conservadas: el paquete que el dueño llama sonidos 0.13 se integra como 0.15 porque A ya publicó 0.14. [Entrega y límites](INTEGRACION_A_B_0_15_20261024.md).
+
 ## Fase 3 · compilación con sdkconfig propio · rama `equipo-a/fase3-sdkconfig` · 23/10/2026
 
 **Compilada en GitHub (workflow «Fase 3 (prueba)»); sin instalar ni probar en la placa; no publicada.** Misma 0.14 y Arduino 3.3.12, con XIP desde PSRAM, ISR del panel en IRAM, realineado en cada retorno y caché de 64 B. Se instala en el hueco libre con `placa.py probar` y se vuelve con el botón «VOLVER A LA ANTERIOR», `placa.py volver` o sola tras tres fallos seguidos. Pasos en [PRUEBA_FASE3](PRUEBA_FASE3.md). Pendiente: probarla en la placa.

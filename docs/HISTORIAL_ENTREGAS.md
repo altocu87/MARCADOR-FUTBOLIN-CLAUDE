@@ -1,5 +1,7 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+- 24/10/2026 · A/B 0.15: integración de Torneos, fase 3 y 210 sonidos, pendiente de compilación e instalación. SD no detectada. [Detalle](INTEGRACION_A_B_0_15_20261024.md).
+
 Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección que toque; el estado vigente está en `ESTADO.md`. Las entregas nuevas se apuntan aquí arriba del todo, no en el CLAUDE.md.
 
 ## Entrega A 0.13 · nube en reposo y realineado de la imagen · 23/10/2026

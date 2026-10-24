@@ -51,7 +51,7 @@ Equipo A = Cloud (Claude); equipo B = esta rama. «master» significa la rama `m
 
 ## Trampas conocidas (no repetir)
 
-- Wi-Fi: `uiport::setNetwork()` baja el panel a `PCLK_NET_HZ` y realinea; no quitarlo sin medir en la placa.
+- Pantalla 0.12: reloj fijo a 12,5 MHz; no recuperar cambios de reloj/reinicios periódicos de 0.9. Ver `docs/INCIDENTE_PANEL_0_11_20261023.md`.
 - Capacidad de la SD: usar `FsStore::sdSpace` (ruta `/sdcard`), nunca `SD_MMC.totalBytes/usedBytes`.
 - Solo letras de `fuentes.txt`: una actualización por Wi-Fi no lleva letras nuevas.
 - Tablas grandes en PSRAM (memoria dinámica), no como globales.
