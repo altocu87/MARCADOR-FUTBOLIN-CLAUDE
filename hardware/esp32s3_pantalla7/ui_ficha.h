@@ -8,12 +8,12 @@
 //       GENERAL: TODOS / CLASIFICATORIOS con sus números, rachas, tiempo, goles apuntados (con «?»), los últimos
 //                resultados y la evolución del ELO.
 //       HÁBITOS: lado de la mesa, franja horaria y días de la semana.
-//       RIVALES: rival favorito, némesis, enfrentamientos directos y compañeros.
+//       RIVALES: rival favorito, némesis, enfrentamientos directos y compañeros (tocar un rival abre el cara a
+//                cara, ui_duelo.h; los compañeros no se tocan, como en la app).
 //       HISTORIAL: sus últimos 50 partidos (tocar uno abre su detalle, el del RANKING).
 //       TORNEOS: los torneos en que ha jugado, con filtros por tipo y «ganados».
 //       LOGROS: todos, por apartados; los secretos se revelan al conseguirlos.
-// Diferencias con la app: sin «Opciones» (el QR está en AJUSTES), sin cara a cara (la placa no lo tiene) y los
-// escudos, copas, rangos e iconos de logro van dibujados (una actualización por Wi-Fi no lleva imágenes nuevas).
+// Diferencias con la app: sin «Opciones» (el QR está en AJUSTES) y los escudos, copas, rangos e iconos de logro van dibujados (una actualización por Wi-Fi no lleva imágenes nuevas).
 // Las cuentas son las del QR del perfil (perfil::stats, igual que la app) y la progresión (s3_progresion.h).
 // Solo letras de fuentes.txt. Se incluye después de ui_historial.h, ui_torneo.h y s3_perfil.h.
 
@@ -30,6 +30,7 @@ namespace ficha {
 struct Hooks {
   void (*back)() = nullptr;                    // volver a donde se abrió
   void (*openMatch)(const char* id) = nullptr;  // HISTORIAL: el detalle de un partido
+  void (*openDuel)(uint32_t rival) = nullptr;   // RIVALES: el cara a cara con un rival
 };
 static Hooks hooks;
 
@@ -128,7 +129,8 @@ static void avatar(lv_obj_t* parent, uint32_t c, const char* name, int x, int y,
   }
   char ini[8];
   jug::initials(name, ini, sizeof(ini));
-  lv_obj_t* l = ui::text(b, ini, 800, size >= 44 ? 18 : 12, ui::color::TEXT);
+  // Como la app (38 % de la foto): la grande, con letra grande.
+  lv_obj_t* l = size >= 72 ? ui::text(b, ini, 900, 26, ui::color::TEXT) : ui::text(b, ini, 800, size >= 44 ? 18 : 12, ui::color::TEXT);
   lv_obj_center(l);
 }
 // Tamaño de foto que la placa tiene preparado (historial::prewarm): 24, 32, 44 o 64; 72 (el de la ficha) también.
@@ -442,6 +444,33 @@ static void buildHabits() {
 }
 
 // ---------------------------------------------------------------- RIVALES
+static void onDuel(lv_event_t* e) {
+  if (hooks.openDuel) hooks.openDuel((uint32_t)(uintptr_t)lv_event_get_user_data(e));
+}
+// Un rival se toca para ver el cara a cara (se ilumina al apretar, como .card-btn de la app).
+static void duelTap(lv_obj_t* o, uint32_t rival) {
+  lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_bg_color(o, ui::hex(ui::color::CARD2), LV_STATE_PRESSED);
+  lv_obj_set_style_border_color(o, ui::hex(ui::color::ACCENT), LV_STATE_PRESSED);
+  lv_obj_add_event_cb(o, onDuel, LV_EVENT_CLICKED, (void*)(uintptr_t)rival);
+}
+// «›» al final de la fila de un rival (dibujado: no gasta objetos).
+static void drawChevron(lv_event_t* e) {
+  lv_obj_t* o = lv_event_get_current_target_obj(e);
+  lv_area_t a;
+  lv_obj_get_coords(o, &a);
+  lv_draw_line_dsc_t l;
+  lv_draw_line_dsc_init(&l);
+  l.color = ui::hex(ui::color::TEXT2);
+  l.width = 2;
+  l.round_start = l.round_end = 1;
+  int x = a.x1 + 752, y = a.y1 + 26;
+  l.p1 = {(lv_value_precise_t)x, (lv_value_precise_t)(y - 4)};
+  l.p2 = {(lv_value_precise_t)(x + 4), (lv_value_precise_t)y};
+  lv_draw_line(lv_event_get_layer(e), &l);
+  l.p1 = {(lv_value_precise_t)x, (lv_value_precise_t)(y + 4)};
+  lv_draw_line(lv_event_get_layer(e), &l);
+}
 static void personCard(int x, const char* title, int idx, bool fav) {
   lv_obj_t* c = card(host, x, 0, 379, 91);
   label(c, title, 13, 13);
@@ -453,6 +482,7 @@ static void personCard(int x, const char* title, int idx, bool fav) {
     return;
   }
   const perfil::Other& o = st.rivals[idx];
+  duelTap(c, o.code);
   avatarOf(c, o.code, o.name, 13, 29, 44);
   lv_obj_t* n = textAt(c, o.name, 800, 18, ui::color::TEXT, 69, 33, 290);
   lv_label_set_long_mode(n, LV_LABEL_LONG_MODE_DOTS);
@@ -460,21 +490,27 @@ static void personCard(int x, const char* title, int idx, bool fav) {
   else snprintf(t, sizeof(t), "te gana el %ld %%", lround((double)o.r.losses / o.r.played * 100));
   textAt(c, t, 800, 14, ui::color::TEXT2, 69, 55);
 }
-static int otherRows(int y, const perfil::Other* list, int n) {
+// Filas de rivales (se tocan: cara a cara, con «›») o de compañeros.
+static int otherRows(int y, const perfil::Other* list, int n, bool rivals) {
+  int dx = rivals ? -16 : 0;  // los números dejan sitio a la «›»
   for (int i = 0; i < n; i++, y += 58) {
     const perfil::Other& o = list[i];
     lv_obj_t* r = panel(host, 0, y, 768, 52);
+    if (rivals) {
+      duelTap(r, o.code);
+      lv_obj_add_event_cb(r, drawChevron, LV_EVENT_DRAW_MAIN_END, nullptr);
+    }
     avatarOf(r, o.code, o.name, 11, 10, 32);
     lv_obj_t* nm = textAt(r, o.name, 700, 15, ui::color::TEXT, 51, 15, 360);
     lv_label_set_long_mode(nm, LV_LABEL_LONG_MODE_DOTS);
     char t[40];
     snprintf(t, sizeof(t), "%d PJ", o.r.played);
-    textAt(r, t, 400, 16, ui::color::TEXT2, 470, 14, 100, LV_TEXT_ALIGN_RIGHT);
+    textAt(r, t, 400, 16, ui::color::TEXT2, 470 + dx, 14, 100, LV_TEXT_ALIGN_RIGHT);
     if (o.r.draws) snprintf(t, sizeof(t), "%dG · %dE · %dP", o.r.wins, o.r.draws, o.r.losses);
     else snprintf(t, sizeof(t), "%dG · %dP", o.r.wins, o.r.losses);
-    textAt(r, t, 400, 16, ui::color::TEXT, 578, 14, 100, LV_TEXT_ALIGN_RIGHT);
+    textAt(r, t, 400, 16, ui::color::TEXT, 578 + dx, 14, 100, LV_TEXT_ALIGN_RIGHT);
     snprintf(t, sizeof(t), "%.0f %%", o.r.played ? (double)o.r.wins / o.r.played * 100 : 0.0);
-    textAt(r, t, 700, 15, ui::color::TEXT, 686, 14, 66, LV_TEXT_ALIGN_RIGHT);
+    textAt(r, t, 700, 15, ui::color::TEXT, 686 + dx, 14, 66, LV_TEXT_ALIGN_RIGHT);
   }
   return y;
 }
@@ -487,11 +523,11 @@ static void buildRivals() {
     textAt(host, "Sin enfrentamientos.", 400, 16, ui::color::TEXT2, 0, y);
     y += 30;
   } else {
-    y = otherRows(y, st.rivals, st.nr);
+    y = otherRows(y, st.rivals, st.nr, true);
   }
   if (st.nt) {
     label(host, "Compañeros (2 vs 2)", 0, y + 2);
-    otherRows(y + 25, st.mates, st.nt);
+    otherRows(y + 25, st.mates, st.nt, false);
   }
 }
 
@@ -908,12 +944,13 @@ static void onBack(lv_event_t*) {
   if (hooks.back) hooks.back();
 }
 
-static void buildHead() {
-  ui::gradient(scr, 0x0d1d36, 0x04080f);
-  lv_obj_t* head = ui::box(scr, 0, 0, 800, 56);
+// Fondo, franja de arriba con volver y el título (ScreenFrame de la app). También la usa el cara a cara.
+static void frame(lv_obj_t* s, const char* title, lv_event_cb_t onBack) {
+  ui::gradient(s, 0x0d1d36, 0x04080f);
+  lv_obj_t* head = ui::box(s, 0, 0, 800, 56);
   lv_obj_set_style_bg_color(head, ui::hex(ui::color::BG_DEEP), 0);
   lv_obj_set_style_bg_opa(head, 140, 0);
-  lv_obj_t* back = ui::box(scr, 12, 4, 48, 48);
+  lv_obj_t* back = ui::box(s, 12, 4, 48, 48);
   lv_obj_set_style_radius(back, ui::RADIUS_SM, 0);
   lv_obj_set_style_border_width(back, 1, 0);
   lv_obj_set_style_border_color(back, ui::hex(ui::color::LINE), 0);
@@ -928,7 +965,11 @@ static void buildHead() {
   lv_obj_remove_flag(arrow, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_flag(back, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(back, onBack, LV_EVENT_CLICKED, nullptr);
-  textAt(scr, "PERFIL", 900, 20, ui::color::TEXT, 70, 15);
+  textAt(s, title, 900, 20, ui::color::TEXT, 70, 15);
+}
+
+static void buildHead() {
+  frame(scr, "PERFIL", onBack);
 
   // Tarjeta del jugador, con el color de su rango.
   const jug::Player* p = store->find(code);

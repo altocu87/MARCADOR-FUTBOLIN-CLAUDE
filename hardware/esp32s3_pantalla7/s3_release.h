@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.20";
+static const char VERSION[] = "0.21";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.21", "2026-10-24", "Cara a cara entre dos jugadores\n\n• En la ficha de un jugador, pestaña Rivales, tocar a un rival (favorito, némesis o de la lista) abre el cara a cara.\n\n• Se ve quién ha ganado más veces de los dos y sus números lado a lado: ELO, nivel, victorias, racha, goles y logros.\n\n• Tocar al rival abre su ficha; volver lleva a la ficha de antes.\n\n• Conserva todo lo de la 0.20."},
   {"0.20", "2026-10-24", "Ficha del jugador más ligera\n\n• La ficha del jugador gasta mucha menos memoria: Logros e Historial ya no dejan la placa al límite.\n\n• Tocar un partido en el Historial de la ficha abre siempre su detalle.\n\n• Conserva todo lo de la 0.19."},
   {"0.19", "2026-10-24", "Retos y ficha de cada jugador\n\n• El botón RETOS ya funciona: el reto de hoy y los tres de la semana, con lo que lleva cada jugador.\n\n• Tocar a un jugador en Retos o en el Ranking abre su ficha: nivel, ELO, números, hábitos, rivales, partidos, torneos y logros.\n\n• Desde la ficha, tocar un partido abre su detalle.\n\n• Conserva todo lo de la 0.18."},
   {"0.18", "2026-10-24", "El mando ya no frena la actualización\n\n• Si el mando no se puede actualizar, se queda como estaba y sigue funcionando, y la pantalla se actualiza igual.\n\n• El aviso «Necesita una primera actualización por cable» solo sale con mandos muy antiguos que de verdad lo necesitan.\n\n• Conserva todo lo de la 0.17."},

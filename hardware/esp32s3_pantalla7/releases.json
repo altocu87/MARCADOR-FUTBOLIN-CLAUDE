@@ -1,7 +1,18 @@
 {
-  "version": "0.20",
+  "version": "0.21",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.21",
+      "date": "2026-10-24",
+      "title": "Cara a cara entre dos jugadores",
+      "changes": [
+        "En la ficha de un jugador, pestaña Rivales, tocar a un rival (favorito, némesis o de la lista) abre el cara a cara.",
+        "Se ve quién ha ganado más veces de los dos y sus números lado a lado: ELO, nivel, victorias, racha, goles y logros.",
+        "Tocar al rival abre su ficha; volver lleva a la ficha de antes.",
+        "Conserva todo lo de la 0.20."
+      ]
+    },
     {
       "version": "0.20",
       "date": "2026-10-24",

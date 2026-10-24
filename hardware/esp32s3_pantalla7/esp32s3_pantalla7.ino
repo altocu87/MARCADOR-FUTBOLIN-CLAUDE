@@ -1204,6 +1204,26 @@ static void onProfileMatchBack() {
   screen = Screen::Profile;
   profileFresh = false;
 }
+#include "ui_duelo.h"     // CARA A CARA (desde RIVALES de la ficha)
+// Contra quién; lo abre render(). Volver lleva a la ficha como estaba; tocar al rival abre la suya (y volver de ella
+// lleva a donde se abrió la primera ficha).
+static uint32_t duelCode = 0;
+static bool duelFresh = false;
+static void onProfileDuel(uint32_t rival) {
+  duelCode = rival;
+  duelFresh = true;
+  screen = Screen::Duel;
+}
+static void onDuelBack() {
+  screen = Screen::Profile;
+  profileFresh = false;
+}
+static void onDuelPlayer(uint32_t c) {
+  if (c == profileCode) return onDuelBack();
+  profileCode = c;
+  profileFresh = true;
+  screen = Screen::Profile;
+}
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
 // Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
 static bool bootCheckPending = true;
@@ -2191,6 +2211,12 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Duel && !sleepClock()) {
+    if (!duelo::active() || duelFresh) duelo::show(&jugadores, profileCode, duelCode, duelFresh);
+    duelFresh = false;
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Challenges && !sleepClock()) {
     if (!retos::active() || retosFresh) retos::show(&jugadores);
     retosFresh = false;
@@ -2461,6 +2487,9 @@ void setup() {
   historial::hooks.openPlayer = openProfile;
   ficha::hooks.back = onProfileBack;
   ficha::hooks.openMatch = onProfileMatch;
+  ficha::hooks.openDuel = onProfileDuel;
+  duelo::hooks.back = onDuelBack;
+  duelo::hooks.openPlayer = onDuelPlayer;
   config::hooks.back = onConfigBack;
   config::hooks.next = onConfigNext;
   config::hooks.changed = onConfigChanged;
