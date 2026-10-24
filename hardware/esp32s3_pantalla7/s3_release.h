@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.16";
+static const char VERSION[] = "0.17";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.17", "2026-10-24", "Arranque y guardado más claros\n\n• La búsqueda de actualizaciones espera a que Inicio esté dibujado. El aviso de hora dice «Hora sin ajustar».\n\n• Los empates de liga usan un aviso neutro y respetan las preferencias de sonido.\n\n• Un fallo al guardar el partido o el torneo muestra un aviso; el torneo pendiente se reintenta al pulsar volver.\n\n• Deshacer un resultado guarda primero el torneo y avisa si falla, antes de intentar borrar el partido.\n\n• El historial conserva las partes realmente jugadas y corrige el tiempo de los eventos de penaltis.\n\n• Conserva los torneos y las voces de la 0.16. Las interferencias con Wi-Fi intenso siguen pendientes de comprobar jugando."},
   {"0.16", "2026-10-24", "Voces para las tandas de penaltis\n\n• Añade 100 sonidos: avisos antes de lanzar, goles, fallos y victorias de la tanda, más ambiente durante el partido.\n\n• El primer lanzamiento se anuncia una sola vez por tanda. Los avisos decisivos tienen en cuenta los tiros restantes y la muerte súbita.\n\n• La voz de campeón suena al ganar la final, también si se juega al mejor de varios partidos."},
   {"0.15", "2026-10-24", "Torneos y nuevas voces reunidos\n\n• Reúne los torneos y la sincronización en reposo de A con las nuevas voces de B.\n\n• Nuevas frases de anulación, segunda parte, prórroga, penaltis, gol de oro y ventaja exacta de tres.\n\n• Paquete preparado de 770 sonidos. Para escucharlos debe detectarse la tarjeta y completarse la copia.\n\n• Pantalla con ritmo fijo. La prueba fase 3 añade las optimizaciones de memoria del equipo A."},
   {"0.14", "2026-10-23", "Aviso mientras se sincroniza\n\n• Mientras la pantalla en reposo sube los datos a la nube, abajo pone «SINCRONIZANDO · NO TOQUES LA PANTALLA».\n\n• Si se toca igualmente, la subida se para sin perder nada y sigue en el siguiente reposo."},

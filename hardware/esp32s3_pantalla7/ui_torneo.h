@@ -475,11 +475,20 @@ static void onNextRound(lv_event_t*) {
 }
 static void onRulesEdit(lv_event_t*) { go(View::Rules); }
 static void undoYes() {
+  CurSnapshot before;
+  if (!before.capture(cur)) return ui::toast("No hay memoria para guardar el cambio");
   char removed[48] = "";
-  if (!torneos::undoLast(cur, removed, sizeof(removed))) return ui::toast("No se pudo deshacer");
-  if (removed[0] && hooks.removeMatch) hooks.removeMatch(removed);
-  torneos::save(cur);
-  ui::toast("Resultado borrado: el partido vuelve a estar pendiente");
+  if (!torneos::undoLast(cur, removed, sizeof(removed))) {
+    before.restore(cur);
+    return ui::toast("No se pudo deshacer");
+  }
+  if (!torneos::save(cur)) {
+    before.restore(cur);
+    return ui::toast("No se pudo guardar el torneo");
+  }
+  bool removedOk = !removed[0] || (hooks.removeMatch && hooks.removeMatch(removed));
+  ui::toast(removedOk ? "Resultado borrado: el partido vuelve a estar pendiente"
+                      : "Cruce pendiente. No se pudo borrar el partido del historial");
   go(View::Detail);
 }
 // Un partido del historial en una línea: fotos, nombres y marcador.
@@ -798,9 +807,14 @@ static void onEdBestOf(lv_event_t* e) {
 }
 static void onRulesCancel(lv_event_t*) { go(View::Detail); }
 static void onRulesSave(lv_event_t*) {
+  CurSnapshot before;
+  if (!before.capture(cur)) return ui::toast("No hay memoria para guardar el cambio");
   bool fin = curHasFinal();
   torneos::updateRules(cur, edRules, fin ? &edFinal : nullptr, seriesEditable() ? edBestOf : 0);
-  torneos::save(cur);
+  if (!torneos::save(cur)) {
+    before.restore(cur);
+    return ui::toast("No se pudieron guardar las reglas");
+  }
   ui::toast("Reglas cambiadas para los partidos que quedan");
   go(View::Detail);
 }

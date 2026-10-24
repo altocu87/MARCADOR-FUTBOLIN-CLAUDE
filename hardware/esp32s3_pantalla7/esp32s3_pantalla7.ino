@@ -298,6 +298,8 @@ static void saveConfig() {
 static bool tourMatch = false;
 static int16_t tourFixture = -1;
 static bool tourSavedOk = false;
+static bool resultSaveFailed = false;
+static bool tourSavePending = false, tourResultApplied = false;
 static mfv3::Config cfgBeforeTour;
 // La final puede ser una serie: solo anunciar campeón cuando esta victoria la cierra.
 static bool shootoutWinsTournament(){
@@ -308,14 +310,21 @@ static bool shootoutWinsTournament(){
   return f.bestOf<=1 || won+1>=(unsigned)(f.bestOf+1)/2;
 }
 static bool fichasToTour = false;  // + JUGADOR desde «¿Quién juega?»: al volver, al torneo
-static void saveMatchFile();
+static bool saveMatchFile();
 static uint32_t nextCloudSync = 0;  // la primera, en el primer reposo tras encender
-static void recordTourResult();
-static void saveResult() {
+static bool recordTourResult();
+static bool saveResult() {
   serviceAudio();
-  saveMatchFile();
+  resultSaveFailed = !saveMatchFile();
+  if (resultSaveFailed) {
+    ui::toast("Partido sin guardar. Revisa la tarjeta");
+    return false;
+  }
   serviceAudio();
-  if (tourMatch) recordTourResult();  // el resultado, al torneo (y se guarda)
+  if (tourMatch) {
+    tourSavePending = true;
+    recordTourResult();  // si falla, sólo se reintenta al pulsar volver
+  }
   nextCloudSync = millis();  // se sube en el siguiente reposo (nunca mientras se usa la placa)
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.draw() ? 2 : eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
@@ -328,6 +337,7 @@ static void saveResult() {
   serviceAudio();
   prefs.putULong("played", matchesPlayed);
   serviceAudio();
+  return !tourSavePending;
 }
 
 // ---------------------------------------------------------------- salida hacia placas auxiliares
@@ -640,6 +650,7 @@ static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (so
 static uint16_t hcIntroSeq = 0;
 static void prepareMatchNetwork();
 static void startMatch() {
+  if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
 #if HAS_AUDIO
   if(soundManagementBusy()){ui::toast("Espera a que terminen los sonidos");return;}
@@ -660,6 +671,8 @@ static void startMatch() {
   hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
+  resultSaveFailed = false;
+  tourResultApplied = false;
   shootoutPreviewPending=shootoutPreviewVoice=false;
   ambienceClock.reset(esp_random());ambienceQuietAt=ambienceCheckedAt=0;
   matchStartMs = startedAt;
@@ -691,6 +704,7 @@ static void goHome() {
   if(ambientCommentary){queueCommentary(0);player.stop();}
 #endif
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  if (tourSavePending && !recordTourResult()) return;
   endTourMatch();
   queueCommentary(0);
   inMatch = false;
@@ -771,7 +785,7 @@ static void inputPause() {
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
-static void saveMatchFile() {
+static bool saveMatchFile() {
   static partidos::Match m;
   m = partidos::Match();
   m.mode = chosenMode == inicio::CHAOS ? 'c' : chosenMode == inicio::RANKED ? 'r' : 'q';
@@ -799,11 +813,13 @@ static void saveMatchFile() {
     snprintf(m.fixture, sizeof(m.fixture), "%s", tor::cur.fix[tourFixture].id);
   }
   tourSavedOk = false;
-  if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
-  else {
-    tourSavedOk = true;
-    if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  if (!partidos::save(eng, m, serviceAudio)) {
+    LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+    return false;
   }
+  tourSavedOk = true;
+  if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  return true;
 }
 
 static void sendHello() {
@@ -1747,8 +1763,8 @@ static void tourStart() {
   }
 }
 // El resultado del partido recién guardado, al cruce del torneo.
-static void recordTourResult() {
-  if (!tourSavedOk || !partidos::count || tourFixture < 0) return;
+static bool recordTourResult() {
+  if (!tourSavedOk || !partidos::count || tourFixture < 0 || tourFixture >= tor::cur.nFix) return false;
   const partidos::Row& row = partidos::rows[partidos::count - 1];
   torneos::Result r = {};
   snprintf(r.matchId, sizeof(r.matchId), "%s", row.id);
@@ -1759,11 +1775,25 @@ static void recordTourResult() {
   uint32_t wall = resultEndMs - matchStartMs;
   r.finishedAt = row.fin ? (uint64_t)row.fin * 1000ull : tourNow();
   r.startedAt = r.finishedAt > wall ? r.finishedAt - wall : 0;
-  if (torneos::recordFixtureResult(tor::cur, tourFixture, r) && !torneos::save(tor::cur)) LV_LOG_WARN("No se pudo guardar el torneo");
+  if (!tourResultApplied) {
+    if (!torneos::recordFixtureResult(tor::cur, tourFixture, r)) {
+      ui::toast("No se pudo anotar el resultado del torneo");
+      return false;
+    }
+    tourResultApplied = true;
+  }
+  // La mutación ya está aplicada: reintentar sólo el guardado, nunca sumar otra victoria.
+  if (!torneos::save(tor::cur)) {
+    ui::toast("Torneo sin guardar. Vuelve para reintentar");
+    return false;
+  }
+  tourSavePending = false;
+  return true;
 }
 // De la victoria (o del abandono) al torneo; si el partido lo cerró, a la ceremonia.
 static void backToTournament() {
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  if (tourSavePending && !recordTourResult()) return;
   bool champion = tor::curOk && tor::cur.status == torneos::Status::Finished;
   endTourMatch();
   queueCommentary(0);
@@ -1777,8 +1807,13 @@ static void backToTournament() {
 // Abandonar: en un torneo el cruce queda «a medias» (se empieza de cero) y se vuelve al torneo.
 static void abandonMatch() {
   if (!tourMatch) return goHome();
+  tor::CurSnapshot before;
+  if (!before.capture(tor::cur)) return ui::toast("No hay memoria para guardar el cambio");
   torneos::markAbandoned(tor::cur, tourFixture, tourNow());
-  torneos::save(tor::cur);
+  if (!torneos::save(tor::cur)) {
+    before.restore(tor::cur);
+    return ui::toast("No se pudo guardar el torneo");
+  }
   backToTournament();
 }
 static void tourPlayers() {
@@ -2018,7 +2053,7 @@ static void victoryView(victoria::View& v) {
   v.winner = (uint8_t)eng.winner();
   v.draw = eng.draw();
   // En un torneo: VOLVER AL TORNEO (o VER CAMPEÓN si este partido lo ha cerrado) en vez de REVANCHA.
-  if (tourMatch) v.tour = tor::curOk && tor::cur.status == torneos::Status::Finished ? 2 : 1;
+  if (tourMatch) v.tour = !tourSavePending && tor::curOk && tor::cur.status == torneos::Status::Finished ? 2 : 1;
   v.white = s.white;
   v.blue = s.blue;
   clubNames(v.team);
@@ -2057,6 +2092,8 @@ static void victoryView(victoria::View& v) {
     snprintf(b, sizeof(b), "Penaltis %u–%u", p.white, p.blue);
     add(b);
   }
+  if (resultSaveFailed) snprintf(v.facts, sizeof(v.facts), "Partido sin guardar. Revisa la tarjeta");
+  else if (tourSavePending) snprintf(v.facts, sizeof(v.facts), "Torneo sin guardar. Vuelve para reintentar");
 }
 
 // Reposo (ui_reposo.h): «Último: BLANCO 5 – 3 AZUL» con el último resultado guardado.
@@ -2076,10 +2113,11 @@ static void render() {
     inicio::show();
     char warn[32];
     bool low = rtc.lowBattery();
-    if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    if (resultSaveFailed) snprintf(warn, sizeof(warn), "Partido sin guardar");
+    else if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
     else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Hora sin ajustar");
-    inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
+    inicio::setStatus(remoteLinked(), updateAvailable(), resultSaveFailed || low || datos::demo || !rtc.clockOk ? warn : nullptr,
                       nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
@@ -2389,9 +2427,10 @@ void setup() {
   tor::hooks.play = tourPlay;
   tor::hooks.start = tourStart;
   // Repetir el último partido: fuera de la tarjeta y, con cuenta, también de la nube.
-  tor::hooks.removeMatch = [](const char* id) {
-    partidos::remove(id);
+  tor::hooks.removeMatch = [](const char* id) -> bool {
+    if (!partidos::remove(id)) return false;
     torneos::guardado::matchGone(id);
+    return true;
   };
   tor::hooks.sound = tourSound;
   tor::hooks.nowMs = tourNow;

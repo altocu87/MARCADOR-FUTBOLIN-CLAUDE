@@ -1,7 +1,20 @@
 {
-  "version": "0.16",
+  "version": "0.17",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.17",
+      "date": "2026-10-24",
+      "title": "Arranque y guardado más claros",
+      "changes": [
+        "La búsqueda de actualizaciones espera a que Inicio esté dibujado. El aviso de hora dice «Hora sin ajustar».",
+        "Los empates de liga usan un aviso neutro y respetan las preferencias de sonido.",
+        "Un fallo al guardar el partido o el torneo muestra un aviso; el torneo pendiente se reintenta al pulsar volver.",
+        "Deshacer un resultado guarda primero el torneo y avisa si falla, antes de intentar borrar el partido.",
+        "El historial conserva las partes realmente jugadas y corrige el tiempo de los eventos de penaltis.",
+        "Conserva los torneos y las voces de la 0.16. Las interferencias con Wi-Fi intenso siguen pendientes de comprobar jugando."
+      ]
+    },
     {
       "version": "0.16",
       "date": "2026-10-24",

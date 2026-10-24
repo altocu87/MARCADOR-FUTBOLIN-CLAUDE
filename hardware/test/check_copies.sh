@@ -43,8 +43,12 @@ sh test/s3_build.sh 4 test/s3_lightweight_test.cpp
 sh test/s3_build.sh 4 test/s3_updates_test.cpp
 sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
+sh test/s3_build.sh 4 test/s3_history_storage_test.cpp
+sh test/s3_build.sh 4 test/s3_history_save_feedback_test.cpp
+sh test/s3_build.sh 4 test/s3_torneo_storage_failure_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_draw_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_012_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_016_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_ambient_test.cpp

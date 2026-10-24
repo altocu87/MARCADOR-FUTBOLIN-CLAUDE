@@ -803,8 +803,11 @@ static void createNow() {
     curOk = false;
     return ui::toast(err[0] ? err : "No se pudo crear");
   }
+  if (!torneos::save(cur)) {
+    curOk = false;
+    return ui::toast("No se pudo guardar el torneo");
+  }
   curOk = true;
-  if (!torneos::save(cur)) ui::toast("No se pudo guardar el torneo");
   nManual = nEdits = 0;
   pickA[0] = 0;
   openTournament(cur.id);
