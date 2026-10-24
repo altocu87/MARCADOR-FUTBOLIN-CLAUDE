@@ -30,7 +30,7 @@ static const char* dirPath = "/sdcard/FOTOS";
 static const char* dirPath = "../build/placa/fotos-sd";  // el PC pone aquí unas fotos de prueba
 #endif
 
-static MFV3_UI_DATA char names[MAX_FILES][64];
+static s3mem::ExternalArray<char[64], MAX_FILES> names;
 static int count = 0;
 
 static bool isJpeg(const char* n) {
@@ -42,6 +42,7 @@ static bool isJpeg(const char* n) {
 // Lista de fotos de la carpeta, en orden alfabético. false si no hay carpeta (o tarjeta).
 static bool scan() {
   count = 0;
+  if (!names.ensure()) return false;
   DIR* d = opendir(dirPath);
   if (!d) return false;
   while (struct dirent* e = readdir(d)) {

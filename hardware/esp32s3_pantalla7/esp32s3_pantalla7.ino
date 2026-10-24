@@ -748,7 +748,7 @@ static void inputPause() {
   afterChange(false, Team::White);
 }
 
-static MFV3_UI_DATA jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
+static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
 static void saveMatchFile() {
@@ -1001,6 +1001,8 @@ static void handleBoardLine(const char* line) {
     sendLine(b);
     snprintf(b, sizeof(b), "MEMORIA psram mayor hueco %u, cache %u KB", (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
              (unsigned)(assets::cachedBytes / 1024));
+    sendLine(b);
+    snprintf(b, sizeof(b), "MEMORIA tablas_UI psram %u bytes, %u tablas", (unsigned)s3mem::uiBytes, s3mem::uiArrays);
     sendLine(b);
   }
 #endif

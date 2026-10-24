@@ -904,6 +904,12 @@ static void onDelete(lv_event_t* e) {
 }
 
 static void go(View v) {
+  // Antes de cambiar de pantalla: reserva persistente en PSRAM, nunca en cada gol.
+  if (!opts.ensure() || !manual.ensure() || !edits.ensure() || !selIds.ensure() ||
+      !kindFits.ensure() || !leftover.ensure() || !draftFixed.ensure()) {
+    ui::toast("No hay memoria para abrir el torneo");
+    return;
+  }
   if ((v == View::Detail || v == View::Rules || v == View::Ceremony || v == View::Poster) && !curOk) v = View::Players;
   if (v == View::Rules && view != View::Rules) openRules();
   if (v != View::Poster && posterTimer) {

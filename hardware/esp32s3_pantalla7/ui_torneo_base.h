@@ -354,7 +354,7 @@ struct Vis {
   int arg;
   int8_t shown;
 };
-static MFV3_UI_DATA Opt opts[96];
+static s3mem::ExternalArray<Opt, 96> opts;
 static Val vals[24];
 static Vis viss[32];
 static uint8_t optCount = 0, valCount = 0, visCount = 0;
@@ -397,7 +397,7 @@ static int argOf(lv_event_t* e) { return (int)(intptr_t)lv_event_get_user_data(e
 static lv_obj_t* opt(lv_obj_t* parent, int x, int y, int w, int h, const char* txt, uint16_t size, bool (*on)(int), int arg,
                      lv_event_cb_t cb, bool (*dis)(int) = nullptr) {
   lv_obj_t* b = tbtn(parent, x, y, w, h, txt, size, Kind::Normal, cb, (void*)(intptr_t)arg);
-  if (optCount < sizeof(opts) / sizeof(opts[0])) opts[optCount++] = {b, on, dis, arg, -1};
+  if (optCount < opts.capacity()) opts[optCount++] = {b, on, dis, arg, -1};
   return b;
 }
 static lv_obj_t* val(lv_obj_t* parent, int x, int y, int w, uint16_t weight, uint16_t size, void (*fill)(char*, size_t, int),

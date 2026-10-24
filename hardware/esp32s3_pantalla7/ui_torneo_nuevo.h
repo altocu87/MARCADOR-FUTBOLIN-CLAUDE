@@ -20,13 +20,13 @@ static Format kind = Format::League;
 static char chosenTpl[48] = "";
 static char seed[24] = "1";
 // Parejas hechas a mano y nombres puestos aquí (se guardan como equipos al crear el torneo).
-static MFV3_UI_DATA char manual[torneos::MAX_ENTRANTS / 2][2][40];
+static s3mem::ExternalArray<char[2][40], torneos::MAX_ENTRANTS / 2> manual;
 static uint8_t nManual = 0;
 static char pickA[40] = "";
 struct PairEdit {
   char a[40], b[40], name[28];
 };
-static MFV3_UI_DATA PairEdit edits[torneos::MAX_ENTRANTS / 2];
+static s3mem::ExternalArray<PairEdit, torneos::MAX_ENTRANTS / 2> edits;
 static uint8_t nEdits = 0;
 static int8_t renaming = -1;  // pareja del borrador a la que se pone nombre
 
@@ -288,7 +288,8 @@ static void onKindCard(lv_event_t* e) {
 static void onBackToPlayers(lv_event_t*) { go(View::Players); }
 
 // Ids de los marcados (para el contrato).
-static MFV3_UI_DATA char selIds[jug::MAX][40];
+static s3mem::ExternalArray<char[40], jug::MAX> selIds;
+static s3mem::ExternalArray<torneos::Fit, torneos::MAX_TEMPLATES> kindFits;
 static uint8_t selCount() {
   uint8_t n = 0;
   for (uint8_t i = 0; i < nPicked && store; i++) {
@@ -322,7 +323,7 @@ static void buildKind() {
     // Cuántas hay para este número de jugadores, por qué no encaja ninguna, o crear la primera.
     uint8_t total = 0, ok = 0;
     const char* why = nullptr;
-    static MFV3_UI_DATA torneos::Fit fits[torneos::MAX_TEMPLATES];
+    auto* fits = kindFits.data();
     for (uint8_t t2 = 0; t2 < torneos::nTemplates; t2++) {
       if (torneos::templates[t2].format != f) continue;
       total++;
@@ -379,7 +380,8 @@ static void buildEmpty() {
 // ---------------------------------------------------------------- 3b · ELIGE LA LIGA
 // El borrador de esta edición (lo que se va a crear): se rehace con cada cambio (es barato).
 static torneos::Draft draft;
-static MFV3_UI_DATA char leftover[torneos::MAX_ENTRANTS][40];
+static s3mem::ExternalArray<char[40], torneos::MAX_ENTRANTS> leftover;
+static s3mem::ExternalArray<char[2][40], (equipos::MAX > torneos::MAX_ENTRANTS ? equipos::MAX : torneos::MAX_ENTRANTS)> draftFixed;
 static uint8_t nLeft = 0;
 static const torneos::Template* draftTpl = nullptr;
 static uint16_t draftEdition = 1;
@@ -433,7 +435,7 @@ static void buildDraft() {
   char name[64];
   snprintf(name, sizeof(name), "%s · %uª edición", t->name, draftEdition);
   // Parejas: las hechas aquí (a mano), ninguna con cambio de pareja, o los equipos guardados.
-  static MFV3_UI_DATA char fixed[equipos::MAX > torneos::MAX_ENTRANTS ? equipos::MAX : torneos::MAX_ENTRANTS][2][40];
+  auto* fixed = draftFixed.data();
   uint8_t nFixed = 0;
   if (manualOf(*t)) {
     for (uint8_t i = 0; i < nManual; i++) {
