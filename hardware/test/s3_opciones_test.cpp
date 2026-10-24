@@ -105,12 +105,31 @@ static void askYes() { tap(90 + 326 + 135, 100 + 190 + 34); }
 int main() {
   assets::setRoot(getenv("MFV3_ASSETS") ? getenv("MFV3_ASSETS") : "../build/placa/fat");
   sim::now = 1000;
+  prefs.putString("wssid", "ArranquePrueba");
+  int beginsBeforeBoot = sim::wifiBegins;
   setup();
+  assert(sim::wifiBegins == beginsBeforeBoot && bootCheckPending && s3net::link == s3net::Link::Off);
   test.active = false;
   nube::logout();  // sin la cuenta que pudiera dejar una prueba anterior
   nube::phase = nube::OFF;
   goHome();
+  uint32_t bootFrame = uiport::presented;
   run(300);
+  assert(!bootCheckPending && inicio::active() && uiport::presented != bootFrame);
+  assert(sim::wifiBegins == beginsBeforeBoot + 1);
+  s3net::stop();
+  checkState = CheckState::Never;
+  forgetWifi();  // las pruebas de Ajustes empiezan sin red guardada
+  rtc.clockOk = false;
+  render();
+  assert(shows("Hora sin ajustar") && !shows("conecta Wi-Fi"));
+#if HAS_AUDIO
+  sim::out.clear();
+  uiport::resyncFailures = 7;
+  handleBoardLine("COMENTARIO_ESTADO?");
+  assert(sim::out.find("resync_error=7") != std::string::npos);
+  uiport::resyncFailures = 0;
+#endif
 
   // ---- Menú: nueve botones grandes, con su valor debajo.
   tap(750, 46);  // engranaje

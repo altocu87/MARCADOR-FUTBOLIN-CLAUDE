@@ -75,7 +75,7 @@ int main(){
   e.tick(64000);assert(e.phase()==Phase::PeriodEnd);e.next(65000);e.tick(69000);
   b=mfv3snd::before(e);assert(e.goal(Team::Blue,72000)==mfv3::Result::Accepted);assert(goalMask(e,b,Team::Blue)&(1u<<EmpateMovido));
   { // Variedad: rondas completas por grupo, independientes y sin repetir en el borde.
-  static_assert(sizeof(Catalog)<=MAX_FILES*4+PoolCount*4+8,"No añadir otro vector para las bolsas");
+  static_assert(sizeof(Catalog)<=MAX_FILES*4+PoolCount*4+16,"Solo mascara de 64 bits y alineacion; no añadir otro vector para las bolsas");
   Catalog bag;for(unsigned i=1;i<=46;i++)assert(bag.add(Comodin,i));
   for(unsigned i=0;i<3;i++)assert(bag.add(Empate,100+i));
   uint32_t rng=0x81234567;auto random32=[&](){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;};

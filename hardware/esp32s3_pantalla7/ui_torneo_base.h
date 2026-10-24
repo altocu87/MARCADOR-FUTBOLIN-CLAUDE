@@ -35,7 +35,7 @@ struct Hooks {
   void (*start)() = nullptr;                   // tras el cartel de fase: empieza el partido
   bool (*pending)() = nullptr;                 // la placa guarda un partido a medias de este torneo
   void (*resume)() = nullptr;                  // seguir ese partido
-  void (*removeMatch)(const char* id) = nullptr;  // borrar un partido del historial (repetir el último)
+  bool (*removeMatch)(const char* id) = nullptr;  // confirma el borrado antes de anunciarlo
   void (*sound)(uint8_t what) = nullptr;       // 0 campeón, 1 siguiente puesto, 2 sirena (el último)
   uint64_t (*nowMs)() = nullptr;               // hora (ms UTC; 0 sin hora)
 };
@@ -53,6 +53,44 @@ static lv_obj_t* pop = nullptr;  // ventana encima (ayuda, confirmación, colore
 // El torneo abierto (en la PSRAM: equipos y cruces con calloc, torneos::alloc).
 static torneos::Tournament cur;
 static bool curOk = false;
+
+// Sólo al gestionar un torneo: copia profunda temporal y exclusivamente en PSRAM.
+// No se reserva en el gol ni se usa RAM interna como alternativa si falta PSRAM.
+class CurSnapshot {
+  struct Data {
+    torneos::Tournament state;
+    torneos::Team teams[torneos::MAX_TEAMS_T];
+    torneos::Fixture fixtures[torneos::MAX_FIXTURES];
+    torneos::Played played[torneos::MAX_PLAYED];
+  };
+  Data* data_ = nullptr;
+ public:
+  CurSnapshot() = default;
+  CurSnapshot(const CurSnapshot&) = delete;
+  CurSnapshot& operator=(const CurSnapshot&) = delete;
+  ~CurSnapshot() { if (data_) { data_->~Data(); free(data_); } }
+  bool capture(const torneos::Tournament& t) {
+    if (data_ || !t.teams || !t.fix || !t.played) return false;
+    void* raw = MFV3_UI_ALLOC(sizeof(Data));
+    if (!raw) return false;
+#ifdef ESP_PLATFORM
+    if (!esp_ptr_external_ram(raw)) { free(raw); return false; }
+#endif
+    data_ = new (raw) Data;
+    data_->state = t;
+    memcpy(data_->teams, t.teams, t.nTeams * sizeof(torneos::Team));
+    memcpy(data_->fixtures, t.fix, t.nFix * sizeof(torneos::Fixture));
+    memcpy(data_->played, t.played, t.nPlayed * sizeof(torneos::Played));
+    return true;
+  }
+  void restore(torneos::Tournament& t) const {
+    if (!data_) return;
+    t = data_->state;
+    memcpy(t.teams, data_->teams, t.nTeams * sizeof(torneos::Team));
+    memcpy(t.fix, data_->fixtures, t.nFix * sizeof(torneos::Fixture));
+    memcpy(t.played, data_->played, t.nPlayed * sizeof(torneos::Played));
+  }
+};
 
 static void go(View v);
 static uint64_t nowMs() { return hooks.nowMs ? hooks.nowMs() : 0; }

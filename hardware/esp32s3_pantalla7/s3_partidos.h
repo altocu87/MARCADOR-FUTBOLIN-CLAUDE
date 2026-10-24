@@ -62,7 +62,7 @@ static Row* rows = nullptr;  // en orden de guardado (el último, el más nuevo)
 static int count = 0, cap = 0;
 static uint32_t revision = 0;  // invalida los cálculos incluso si el número de partidos no cambia
 
-static bool push(const Row& r) {
+static bool reserveRow() {
   if (count == cap) {
     int nc = cap ? cap * 2 : 256;
     Row* nr = (Row*)realloc(rows, (size_t)nc * sizeof(Row));
@@ -70,6 +70,10 @@ static bool push(const Row& r) {
     rows = nr;
     cap = nc;
   }
+  return true;
+}
+static bool push(const Row& r) {
+  if (!reserveRow()) return false;
   rows[count++] = r;
   ++revision;
   return true;
@@ -405,9 +409,9 @@ static bool appendIndex(const Row& r) {
   FILE* x = fopen(ip, "ab");
   if (!x) return false;
   lineOf(r, line, sizeof(line));
-  fprintf(x, "%s\n", line);
-  fclose(x);
-  return true;
+  bool written = fprintf(x, "%s\n", line) >= 0 && !ferror(x);
+  bool closed = fclose(x) == 0;
+  return written && closed;
 }
 
 // Cambia `path` por `tmp` sin dejar nunca la mesa sin ninguno de los dos (FAT no sustituye al renombrar): el viejo
@@ -579,6 +583,8 @@ static const char* PERIOD[4] = {"first", "second", "overtime", "shootout"};
 static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullptr) {
   auto cooperate=[&](){if(service)service();};
   cooperate();
+  // Reservar antes del primer archivo: nunca fallar por RAM después de confirmar el índice.
+  if (!reserveRow()) return false;
   using mfv3::Period;
   using mfv3::Team;
   char id[37];
@@ -626,9 +632,8 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   fprintf(f, "\"totalTimeMs\":%lu},", (unsigned long)e.totalTimeMs());
   // Partes jugadas
   bool played[3] = {true, false, false};
-  played[1] = e.periodDuration(Period::Second) > 0 || c.endCondition != mfv3::EndCondition::Goals;
-  played[2] = e.periodDuration(Period::Overtime) > 0 || e.reason() == mfv3::Reason::GoldenGoal || pens;
-  if (c.endCondition == mfv3::EndCondition::Goals) played[1] = false;
+  played[1] = e.period() != Period::First;
+  played[2] = e.period() == Period::Overtime || e.period() == Period::Shootout;
   fputs("\"periods\":[", f);
   uint32_t before[3] = {0, 0, 0};
   uint32_t acc = 0;
@@ -650,7 +655,7 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   auto ev = [&](const char* type, int team, int period, uint32_t ptime, const char* extra) {
     cooperate();
     seq++;
-    uint32_t total = before[period < 3 ? period : 2] + ptime;
+    uint32_t total = period < 3 ? before[period] + ptime : e.totalTimeMs();
     fprintf(f, "%s{\"id\":\"e%d\",\"seq\":%d,\"type\":\"%s\",", seq > 1 ? "," : "", seq, seq, type);
     if (team >= 0) fprintf(f, "\"team\":\"%s\",", TEAM[team]);
     fprintf(f, "\"period\":\"%s\",\"periodTimeMs\":%lu,\"totalTimeMs\":%lu,\"wallTime\":%llu,\"scoreAfter\":{\"white\":%d,\"blue\":%d}%s}",
@@ -768,15 +773,18 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   }
   fputs("}\n", f);
   cooperate();
-  bool ok = fclose(f) == 0;
+  bool written = !ferror(f);
+  bool closed = fclose(f) == 0;
   cooperate();
-  if (!ok) return false;
+  if (!written || !closed) return false;
   // Índice: la fila sale del JSON recién escrito (igual que con los partidos que lleguen de la app).
   Row r;
   if (!rowFromJson(path, r)) return false;
   cooperate();
-  appendIndex(r);
+  // Conservar el JSON recuperable si falla el índice, sin comunicar éxito.
+  bool indexed = appendIndex(r);
   cooperate();
+  if (!indexed) return false;
   push(r);
   s3flash::wroteTo(dir);  // sin tarjeta, los partidos van a la memoria del chip
   return true;

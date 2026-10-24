@@ -18,6 +18,17 @@ import unicodedata
 from pathlib import Path
 
 GROUPS = {
+    68: (31, 'tanda/si_marca_gana', 'tanda_previo_si_marca_gana'),
+    69: (32, 'tanda/si_falla_pierde', 'tanda_previo_si_falla_pierde'),
+    70: (33, 'tanda/previo', 'tanda_previo_generico'),
+    71: (34, 'tanda/fallo2', 'tanda_penalty_fallado'),
+    72: (34, 'tanda/fallo1', 'tanda_penalty_fallado'),
+    73: (35, 'tanda/gol2', 'tanda_gol_penalty'),
+    74: (35, 'tanda/gol1', 'tanda_gol_penalty'),
+    75: (36, 'tanda/primero', 'tanda_primer_lanzamiento'),
+    76: (22, 'ambiente10', 'ambiente_partido'),
+    77: (37, 'tanda/victoria', 'tanda_gol_victoria_partido'),
+    78: (38, 'tanda/campeon', 'tanda_gol_victoria_final_torneo'),
     1: (0, 'comodin/after_inviting_pressure', 'gol_comodin'),
     2: (1, 'encajados3', 'tres_o_mas_encajados'),
     3: (2, 'empate', 'gol_empate'),
@@ -94,6 +105,17 @@ def classify(name):
     if match:
         return tuple(map(int, match.groups()))
     for group, prefix in (
+        (68, 'PRE LANZAMIENTO TANDA PENALTY SI MARCAN GANAN'),
+        (69, 'PRE LANZAMIENTO TANDA PENALTY, SI FALLA PIERDE EL PARTIDO'),
+        (70, 'INTRO LANZAR PENALTY TANDA, REPROODUCIR ANTES DE LANZAR EL PENALTY'),
+        (71, 'PENALTY FALLADO TANDA PENALTY2'),
+        (72, 'PENALTY FALLADO TANDA PENALTY'),
+        (73, 'GOL PENALTY TANDA2'),
+        (74, 'GOL PENALTY TANDA'),
+        (75, '1º LANZAMIENTO DE LA TANDA DE PENALTYS'),
+        (76, 'COMENTARIOS RAMDOM 10'),
+        (77, 'GOL TANDA PENALTY Y GANAN EL PARTIDO'),
+        (78, 'GOL TANDA PENALTY Y GANAN LA FINAL DEL TORNEO'),
         (51, 'COMENTARIOS RAMDOM COMODIN9'),
         (52, 'GOL ANULADO 5'),
         (53, 'GOL ANULADO 3'),
@@ -235,7 +257,7 @@ def prepare(source, output, ffmpeg, overrides=None):
             if gain < -6:
                 raise ValueError('Saturación persistente: ' + path.name)
         data = temporary.read_bytes()
-        if len(data) > 1048576 or data[36:40] != b'data':
+        if len(data) > 2097152 or data[36:40] != b'data':
             raise ValueError('Tamaño o cabecera incompatibles: ' + path.name)
         temporary.replace(dest)
         files.append(dict(
@@ -263,7 +285,7 @@ def prepare(source, output, ffmpeg, overrides=None):
     commands += [f'COMENTARIOS_FIN {crc:08x}']
     (output / 'catalogo-comandos.txt').write_text('\n'.join(commands) + '\n', encoding='ascii')
     manifest = dict(reserved_files=reserved, reserved_total_bytes=sum(f['prepared_bytes'] for f in reserved),
-                    schema=2, minimum_firmware='0.15' if any(f['pool'] >= 24 for f in files) else '0.11' if any(f['pool'] >= 11 for f in files) else '0.10' if any(f['pool'] >= 9 for f in files) else '0.7', files=files, catalog_crc32=f'{crc:08x}',
+                    schema=2, minimum_firmware='0.16' if any(f['pool'] >= 31 or f['prepared_bytes'] > 1048576 for f in files) else '0.15' if any(f['pool'] >= 24 for f in files) else '0.11' if any(f['pool'] >= 11 for f in files) else '0.10' if any(f['pool'] >= 9 for f in files) else '0.7', files=files, catalog_crc32=f'{crc:08x}',
                     total_bytes=sum(f['prepared_bytes'] for f in files),
                     rules=dict(generic_with_specific=True, group4_consecutive=True,
                                group4_requires_leading=False, group2_threshold=3,

@@ -1,16 +1,39 @@
 {
-  "version": "0.15",
+  "version": "0.17",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.17",
+      "date": "2026-10-24",
+      "title": "Arranque y guardado más claros",
+      "changes": [
+        "La búsqueda de actualizaciones espera a que Inicio esté dibujado. El aviso de hora dice «Hora sin ajustar».",
+        "Los empates de liga usan un aviso neutro y respetan las preferencias de sonido.",
+        "Un fallo al guardar el partido o el torneo muestra un aviso; el torneo pendiente se reintenta al pulsar volver.",
+        "Deshacer un resultado guarda primero el torneo y avisa si falla, antes de intentar borrar el partido.",
+        "El historial conserva las partes realmente jugadas y corrige el tiempo de los eventos de penaltis.",
+        "Conserva los torneos y las voces de la 0.16. Las interferencias con Wi-Fi intenso siguen pendientes de comprobar jugando."
+      ]
+    },
+    {
+      "version": "0.16",
+      "date": "2026-10-24",
+      "title": "Voces para las tandas de penaltis",
+      "changes": [
+        "Añade 100 sonidos: avisos antes de lanzar, goles, fallos y victorias de la tanda, más ambiente durante el partido.",
+        "El primer lanzamiento se anuncia una sola vez por tanda. Los avisos decisivos tienen en cuenta los tiros restantes y la muerte súbita.",
+        "La voz de campeón suena al ganar la final, también si se juega al mejor de varios partidos."
+      ]
+    },
     {
       "version": "0.15",
       "date": "2026-10-24",
       "title": "Torneos y nuevas voces reunidos",
       "changes": [
-        "Re\u00fane los torneos y la sincronizaci\u00f3n en reposo de A con las nuevas voces de B.",
-        "Nuevas frases de anulaci\u00f3n, segunda parte, pr\u00f3rroga, penaltis, gol de oro y ventaja exacta de tres.",
+        "Reúne los torneos y la sincronización en reposo de A con las nuevas voces de B.",
+        "Nuevas frases de anulación, segunda parte, prórroga, penaltis, gol de oro y ventaja exacta de tres.",
         "Paquete preparado de 770 sonidos. Para escucharlos debe detectarse la tarjeta y completarse la copia.",
-        "Pantalla con ritmo fijo. La prueba fase 3 a\u00f1ade las optimizaciones de memoria del equipo A."
+        "Pantalla con ritmo fijo. La prueba fase 3 añade las optimizaciones de memoria del equipo A."
       ]
     },
     {
@@ -18,7 +41,7 @@
       "date": "2026-10-23",
       "title": "Aviso mientras se sincroniza",
       "changes": [
-        "Mientras la pantalla en reposo sube los datos a la nube, abajo pone \u00abSINCRONIZANDO \u00b7 NO TOQUES LA PANTALLA\u00bb.",
+        "Mientras la pantalla en reposo sube los datos a la nube, abajo pone «SINCRONIZANDO · NO TOQUES LA PANTALLA».",
         "Si se toca igualmente, la subida se para sin perder nada y sigue en el siguiente reposo."
       ]
     },
@@ -29,7 +52,7 @@
       "changes": [
         "Los partidos y torneos se guardan al momento en la tarjeta y se suben a la nube solo con la pantalla en reposo, nunca mientras se usa.",
         "Si alguien toca la pantalla o el mando mientras se sube, se para sin perder nada y sigue en el siguiente reposo.",
-        "La imagen se recoloca sola despu\u00e9s de guardar fotos, fichas, equipos o ajustes, y al cargar fotos de jugadores.",
+        "La imagen se recoloca sola después de guardar fotos, fichas, equipos o ajustes, y al cargar fotos de jugadores.",
         "Tocar el volumen, el brillo o JUGAR sin cambiar nada ya no hace saltar la imagen.",
         "Las fotos de los jugadores se quedan cargadas aunque haya muchos jugadores."
       ]
@@ -39,11 +62,11 @@
       "date": "2026-10-23",
       "title": "Torneos en la pantalla",
       "changes": [
-        "TORNEO en Inicio: liga, copa y pool como en la app, desde elegir qui\u00e9n juega hasta el campe\u00f3n.",
+        "TORNEO en Inicio: liga, copa y pool como en la app, desde elegir quién juega hasta el campeón.",
         "Crea, edita, duplica y borra tus ligas, copas y pools en la propia pantalla, sin la app.",
-        "Clasificaci\u00f3n, cuadro o pistas, el siguiente partido con pron\u00f3stico, repetir el \u00faltimo y cambiar las reglas.",
-        "Cartel de cada fase (gran final, semifinal, pista\u2026), empates en la liga a tiempo y la ceremonia del campe\u00f3n con la experiencia ganada.",
-        "Ficha del torneo con MVP y palmar\u00e9s de cada competici\u00f3n; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."
+        "Clasificación, cuadro o pistas, el siguiente partido con pronóstico, repetir el último y cambiar las reglas.",
+        "Cartel de cada fase (gran final, semifinal, pista…), empates en la liga a tiempo y la ceremonia del campeón con la experiencia ganada.",
+        "Ficha del torneo con MVP y palmarés de cada competición; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."
       ]
     },
     {
@@ -51,22 +74,22 @@
       "date": "2026-10-23",
       "title": "Voces al empezar, al descanso y al terminar",
       "changes": [
-        "La introducci\u00f3n suena durante la cuenta atr\u00e1s y puede acabar mientras comienza el juego, sin retrasar el partido.",
-        "Nuevas voces al descanso, al terminar sin pr\u00f3rroga, en remontadas y al marcar mientras se sigue perdiendo por mucho.",
-        "M\u00e1s variedad de goles y frases para los \u00faltimos segundos, con selecci\u00f3n r\u00e1pida en memoria.",
-        "Voces de penalti y comentarios durante el juego cada 30\u201360 segundos, con prioridad para goles y cambios de fase.",
+        "La introducción suena durante la cuenta atrás y puede acabar mientras comienza el juego, sin retrasar el partido.",
+        "Nuevas voces al descanso, al terminar sin prórroga, en remontadas y al marcar mientras se sigue perdiendo por mucho.",
+        "Más variedad de goles y frases para los últimos segundos, con selección rápida en memoria.",
+        "Voces de penalti y comentarios durante el juego cada 30–60 segundos, con prioridad para goles y cambios de fase.",
         "Incluye los ajustes y la mejora de imagen con Wi-Fi de las versiones 0.8 y 0.9."
       ]
     },
     {
       "version": "0.10",
       "date": "2026-10-23",
-      "title": "M\u00e1s comentarios de gol",
+      "title": "Más comentarios de gol",
       "changes": [
-        "Incluye los ajustes de la 0.8 y la correcci\u00f3n de imagen con Wi-Fi de la 0.9.",
-        "Nuevas frases al ir ganando, empatar y marcar en los \u00faltimos 20 segundos de la segunda parte o de la pr\u00f3rroga.",
-        "Se mantienen el reparto 70 % espec\u00edfico y 30 % comod\u00edn y las rondas de frases sin repetir dentro de cada grupo.",
-        "Las frases exclusivas de torneo quedan guardadas para cuando ese modo est\u00e9 disponible en la pantalla."
+        "Incluye los ajustes de la 0.8 y la corrección de imagen con Wi-Fi de la 0.9.",
+        "Nuevas frases al ir ganando, empatar y marcar en los últimos 20 segundos de la segunda parte o de la prórroga.",
+        "Se mantienen el reparto 70 % específico y 30 % comodín y las rondas de frases sin repetir dentro de cada grupo.",
+        "Las frases exclusivas de torneo quedan guardadas para cuando ese modo esté disponible en la pantalla."
       ]
     },
     {
@@ -75,7 +98,7 @@
       "title": "Pantalla estable con el Wi-Fi",
       "changes": [
         "La imagen ya no se corre ni se parte al buscar novedades, actualizar o entrar con el QR.",
-        "Mientras se usa el Wi-Fi, la pantalla va un poco m\u00e1s despacio y se recoloca sola si hace falta."
+        "Mientras se usa el Wi-Fi, la pantalla va un poco más despacio y se recoloca sola si hace falta."
       ]
     },
     {
@@ -84,10 +107,10 @@
       "title": "Ajustes completos en la pantalla",
       "changes": [
         "Ajustes con botones grandes: Partido, Sonido, Pantalla, Mando, Equipos y Datos nuevos.",
-        "Partido y Pantalla: c\u00f3mo se gana, qui\u00e9n tira primero los penaltis, brillo, reposo y poner la hora.",
-        "Sonido: qu\u00e9 suena en cada momento, con bot\u00f3n para o\u00edrlo, y el volumen.",
-        "Equipos fijos: una pareja con nombre sale as\u00ed en el marcador; con cuenta, se comparten con la app.",
-        "Cada jugador tiene su QR: con el m\u00f3vil se ve su perfil, igual que desde la app.",
+        "Partido y Pantalla: cómo se gana, quién tira primero los penaltis, brillo, reposo y poner la hora.",
+        "Sonido: qué suena en cada momento, con botón para oírlo, y el volumen.",
+        "Equipos fijos: una pareja con nombre sale así en el marcador; con cuenta, se comparten con la app.",
+        "Cada jugador tiene su QR: con el móvil se ve su perfil, igual que desde la app.",
         "Datos: modo prueba sin tocar tus datos y copias de seguridad en la tarjeta para restaurarlas.",
         "El mando se actualiza con el programa de su mini (Super Mini o C3-Zero); si no lo dice, se elige una vez."
       ]
@@ -95,56 +118,56 @@
     {
       "version": "0.7",
       "date": "2026-10-22",
-      "title": "Comentarios con m\u00e1s variedad",
+      "title": "Comentarios con más variedad",
       "changes": [
-        "Cuando corresponde una frase espec\u00edfica, se elige ese tipo el 70 % de las veces y un comod\u00edn el 30 %.",
+        "Cuando corresponde una frase específica, se elige ese tipo el 70 % de las veces y un comodín el 30 %.",
         "Cada grupo utiliza todas sus frases antes de repetir y evita repetir al empezar otra ronda si tiene alternativas.",
-        "La selecci\u00f3n se hace en memoria, sin abrir m\u00e1s audios ni a\u00f1adir una precarga al inicio del partido.",
-        "Nuevas frases para seguir perdiendo, ganar por dos o m\u00e1s goles y superar ocho goles.",
+        "La selección se hace en memoria, sin abrir más audios ni añadir una precarga al inicio del partido.",
+        "Nuevas frases para seguir perdiendo, ganar por dos o más goles y superar ocho goles.",
         "Las voces exclusivas de torneo se guardan en la SD y quedan reservadas hasta que la pantalla disponga de ese modo."
       ]
     },
     {
       "version": "0.6",
       "date": "2026-10-22",
-      "title": "Sonidos m\u00e1s r\u00e1pidos y actualizaciones m\u00e1s seguras",
+      "title": "Sonidos más rápidos y actualizaciones más seguras",
       "changes": [
-        "Se evita que una pulsaci\u00f3n al continuar o reanudar termine una parte por error.",
+        "Se evita que una pulsación al continuar o reanudar termine una parte por error.",
         "Los comentarios abren menos veces la SD y el gol ganador se muestra antes de completar el guardado.",
-        "Los archivos da\u00f1ados se rechazan y los sonidos anteriores se conservan si falla una sustituci\u00f3n.",
+        "Los archivos dañados se rechazan y los sonidos anteriores se conservan si falla una sustitución.",
         "Las cargas comprueban el contenido real de cada audio y se bloquean durante el partido.",
-        "En Partido Loco, los cambios de marcador de animales usan gol o anulaci\u00f3n y el penalti avisa al se\u00f1alarse."
+        "En Partido Loco, los cambios de marcador de animales usan gol o anulación y el penalti avisa al señalarse."
       ]
     },
     {
       "version": "0.5",
       "date": "2026-10-22",
-      "title": "Comentarios de gol seg\u00fan lo que ocurre",
+      "title": "Comentarios de gol según lo que ocurre",
       "changes": [
-        "La pantalla elige frases de gol por la situaci\u00f3n del partido y las alterna con comentarios comod\u00edn.",
-        "El cat\u00e1logo admite hasta 1.024 sonidos en la SD sin cargar todas las voces en memoria.",
-        "El comentario empieza tras actualizar el marcador; al anular se corta la frase anterior y se usa el sonido de anulaci\u00f3n disponible.",
-        "Las nuevas voces se organizan en carpetas peque\u00f1as y las transferencias evitan falsos tiempos de espera."
+        "La pantalla elige frases de gol por la situación del partido y las alterna con comentarios comodín.",
+        "El catálogo admite hasta 1.024 sonidos en la SD sin cargar todas las voces en memoria.",
+        "El comentario empieza tras actualizar el marcador; al anular se corta la frase anterior y se usa el sonido de anulación disponible.",
+        "Las nuevas voces se organizan en carpetas pequeñas y las transferencias evitan falsos tiempos de espera."
       ]
     },
     {
       "version": "0.4",
       "date": "2026-10-22",
-      "title": "Fechas m\u00e1s fiables y resumen completo",
+      "title": "Fechas más fiables y resumen completo",
       "changes": [
         "El reloj conserva y avanza la hora conocida aunque falle una lectura, evitando perder la fecha de nuevos partidos.",
-        "El resumen incluye TODOS para consultar tambi\u00e9n partidos antiguos sin fecha, sin mezclarlos con los \u00faltimos d\u00edas.",
-        "Los partidos r\u00e1pidos sin jugadores muestran sus totales y explican por qu\u00e9 no hay estad\u00edsticas individuales."
+        "El resumen incluye TODOS para consultar también partidos antiguos sin fecha, sin mezclarlos con los últimos días.",
+        "Los partidos rápidos sin jugadores muestran sus totales y explican por qué no hay estadísticas individuales."
       ]
     },
     {
       "version": "0.3",
       "date": "2026-10-22",
-      "title": "Contin\u00faa el partido desde los pulsadores",
+      "title": "Continúa el partido desde los pulsadores",
       "changes": [
-        "Al terminar cada parte, una pulsaci\u00f3n corta de cualquiera de los dos botones permite continuar.",
-        "Tambi\u00e9n puedes pasar a la pr\u00f3rroga y a los penaltis sin tocar la pantalla.",
-        "La pulsaci\u00f3n que permite continuar no suma un gol ni cuenta como el primer penalti."
+        "Al terminar cada parte, una pulsación corta de cualquiera de los dos botones permite continuar.",
+        "También puedes pasar a la prórroga y a los penaltis sin tocar la pantalla.",
+        "La pulsación que permite continuar no suma un gol ni cuenta como el primer penalti."
       ]
     },
     {
@@ -155,16 +178,16 @@
         "La pantalla sigue respondiendo aunque el ordenador deje de recoger los mensajes por USB.",
         "Al desactivar las mediciones dejan de enviarse los avisos de dibujo.",
         "Puedes elegir recordar la cuenta al apagar y encender, o entrar solo hasta apagar la placa.",
-        "La sesi\u00f3n guardada se conserva con una copia de recuperaci\u00f3n al renovarla."
+        "La sesión guardada se conserva con una copia de recuperación al renovarla."
       ]
     },
     {
       "version": "0.1",
       "date": "2026-10-19",
-      "title": "Primera versi\u00f3n de la pantalla",
+      "title": "Primera versión de la pantalla",
       "changes": [
         "Actualizaciones en su propio apartado, con instrucciones y progreso visible.",
-        "Historial de novedades para saber qu\u00e9 cambia en cada versi\u00f3n.",
+        "Historial de novedades para saber qué cambia en cada versión.",
         "Menos trabajo repetido al mostrar el partido y preparar las fotos.",
         "El historial recuerda tus filtros y el inicio avisa de los cambios por subir.",
         "Los botones de Ajustes siguen respondiendo al volver de otras pantallas."

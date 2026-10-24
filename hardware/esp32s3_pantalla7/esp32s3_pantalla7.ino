@@ -221,6 +221,7 @@ static void saveChoices() {
 static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
 static bool introCommentary=false,ambientCommentary=false,commentaryHasFallback=true;
 static comentarios::AmbienceClock ambienceClock;
+static bool shootoutPreviewPending=false,shootoutPreviewVoice=false;
 static uint32_t ambienceCheckedAt=0,ambienceQuietAt=0;
 static uint32_t commentaryStartedAt = 0, commentaryQueuedAt = 0, commentaryWaitMs = 0, commentaryLastCode = 0;
 static mfv3snd::Event commentaryFallback = mfv3snd::Event::Goal;
@@ -255,7 +256,7 @@ static void inspectSoundTick(){
 }
 static bool soundManagementBusy(){return sndCmd.receiving() || comentarios::staging || soundInspection.active;}
 #endif
-static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
+static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=shootoutPreviewVoice=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
 
 static void playEvents(const mfv3snd::EventList& list) {
 #if HAS_AUDIO
@@ -297,16 +298,33 @@ static void saveConfig() {
 static bool tourMatch = false;
 static int16_t tourFixture = -1;
 static bool tourSavedOk = false;
+static bool resultSaveFailed = false;
+static bool tourSavePending = false, tourResultApplied = false;
 static mfv3::Config cfgBeforeTour;
+// La final puede ser una serie: solo anunciar campeón cuando esta victoria la cierra.
+static bool shootoutWinsTournament(){
+  if(!tourMatch || !tor::curOk || !tor::cur.fix || tourFixture<0 || tourFixture>=tor::cur.nFix)return false;
+  const auto& f=tor::cur.fix[tourFixture];
+  if(!torneos::isFinalFixture(tor::cur,f))return false;
+  unsigned won=eng.winner()==Team::White?f.serW:f.serB;
+  return f.bestOf<=1 || won+1>=(unsigned)(f.bestOf+1)/2;
+}
 static bool fichasToTour = false;  // + JUGADOR desde «¿Quién juega?»: al volver, al torneo
-static void saveMatchFile();
+static bool saveMatchFile();
 static uint32_t nextCloudSync = 0;  // la primera, en el primer reposo tras encender
-static void recordTourResult();
-static void saveResult() {
+static bool recordTourResult();
+static bool saveResult() {
   serviceAudio();
-  saveMatchFile();
+  resultSaveFailed = !saveMatchFile();
+  if (resultSaveFailed) {
+    ui::toast("Partido sin guardar. Revisa la tarjeta");
+    return false;
+  }
   serviceAudio();
-  if (tourMatch) recordTourResult();  // el resultado, al torneo (y se guarda)
+  if (tourMatch) {
+    tourSavePending = true;
+    recordTourResult();  // si falla, sólo se reintenta al pulsar volver
+  }
   nextCloudSync = millis();  // se sube en el siguiente reposo (nunca mientras se usa la placa)
   mfv3::Score s = eng.score(), p = eng.penaltyScore();
   LastResult r = {s.white, s.blue, p.white, p.blue, (uint8_t)(eng.draw() ? 2 : eng.winner() == Team::White ? 0 : 1), (uint8_t)eng.reason(),
@@ -319,6 +337,7 @@ static void saveResult() {
   serviceAudio();
   prefs.putULong("played", matchesPlayed);
   serviceAudio();
+  return !tourSavePending;
 }
 
 // ---------------------------------------------------------------- salida hacia placas auxiliares
@@ -547,6 +566,13 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
 #if HAS_AUDIO
   bool scoreChanged=now.w!=sndBefore.score.white || now.b!=sndBefore.score.blue;
   bool kickChanged=eng.kickCount()>sndBefore.kicks;
+  bool shootoutChanged=eng.period()==Period::Shootout &&
+      (sndBefore.period!=Period::Shootout || eng.kickCount()!=sndBefore.kicks);
+  if(shootoutChanged){
+    if(shootoutPreviewVoice){queueCommentary(0);player.stop();}
+    shootoutPreviewPending=eng.phase()==Phase::Penalties;
+  }
+  if(eng.phase()==Phase::Finished)shootoutPreviewPending=false;
   if(scoreChanged)ambienceClock.score(comentarios::playTime(eng,millis()));
   if(ambientCommentary && (goalAccepted || scoreChanged || kickChanged || now.phase!=sndBefore.phase || handicapScored || handicapMissed)){
     queueCommentary(0);player.stop();
@@ -567,7 +593,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   }else if((penaltyScored || penaltyMissed) && automaticAllowed){
     auto event=penaltyScored?mfv3snd::Event::PenaltyScored:mfv3snd::Event::PenaltyMissed;
     if(sndChoices.c[(uint8_t)event].kind==mfv3snd::Kind::Default){
-      auto mask=comentarios::penaltyMask(eng,penaltyScored);
+      auto mask=kickChanged?comentarios::shootoutResultMask(eng,penaltyScored,shootoutWinsTournament()):comentarios::penaltyMask(eng,penaltyScored);
+      // Compatibilidad con un catálogo anterior durante la instalación del nuevo.
+      bool available=false;for(uint8_t p=0;p<comentarios::PoolCount;p++)if((mask&(comentarios::PoolMask(1)<<p)) && comentarios::catalog.counts[p])available=true;
+      if(!available)mask=comentarios::penaltyMask(eng,penaltyScored);
       uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random(),comentarios::PenaltyGoal);
       if(code){player.stop();queueCommentary(code);commentaryFallback=event;spoken=true;}
     }
@@ -596,7 +625,7 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       phaseMask=comentarios::secondHalfMask(eng);phaseGeneric=comentarios::SecondHalf;
       fallback=mfv3snd::Event::MatchStart;
     }
-    else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished &&
+    else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished && !eng.draw() &&
             eng.period()==Period::Second && eng.config().endCondition!=mfv3::EndCondition::Goals &&
             eng.clockMs(millis())==0 && eng.reason()==mfv3::Reason::Regulation){
       pool=comentarios::FinalNormal;fallback=sounds.has(mfv3snd::Event::Rout)?mfv3snd::Event::Rout:mfv3snd::Event::Victory;
@@ -621,6 +650,7 @@ static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (so
 static uint16_t hcIntroSeq = 0;
 static void prepareMatchNetwork();
 static void startMatch() {
+  if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
 #if HAS_AUDIO
   if(soundManagementBusy()){ui::toast("Espera a que terminen los sonidos");return;}
@@ -641,6 +671,9 @@ static void startMatch() {
   hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
+  resultSaveFailed = false;
+  tourResultApplied = false;
+  shootoutPreviewPending=shootoutPreviewVoice=false;
   ambienceClock.reset(esp_random());ambienceQuietAt=ambienceCheckedAt=0;
   matchStartMs = startedAt;
   matchFixedDirty = streakDirty = true;
@@ -671,6 +704,7 @@ static void goHome() {
   if(ambientCommentary){queueCommentary(0);player.stop();}
 #endif
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  if (tourSavePending && !recordTourResult()) return;
   endTourMatch();
   queueCommentary(0);
   inMatch = false;
@@ -751,7 +785,7 @@ static void inputPause() {
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
-static void saveMatchFile() {
+static bool saveMatchFile() {
   static partidos::Match m;
   m = partidos::Match();
   m.mode = chosenMode == inicio::CHAOS ? 'c' : chosenMode == inicio::RANKED ? 'r' : 'q';
@@ -779,11 +813,13 @@ static void saveMatchFile() {
     snprintf(m.fixture, sizeof(m.fixture), "%s", tor::cur.fix[tourFixture].id);
   }
   tourSavedOk = false;
-  if (!partidos::save(eng, m, serviceAudio)) LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
-  else {
-    tourSavedOk = true;
-    if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  if (!partidos::save(eng, m, serviceAudio)) {
+    LV_LOG_WARN("No se pudo guardar el partido en la tarjeta");
+    return false;
   }
+  tourSavedOk = true;
+  if (nube::loggedIn()) nube::matchSaved(partidos::rows[partidos::count - 1].id);
+  return true;
 }
 
 static void sendHello() {
@@ -886,7 +922,7 @@ static void handleBoardLine(const char* line) {
   if((inMatch && (soundMutation || soundScan || soundPreview)) ||
      (soundInspection.active && (soundMutation || soundScan || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
   if((comentarios::staging && (soundMutation || soundPreview)) || (sndCmd.receiving() && (boardCommand(line,"SONIDO_BORRAR") || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
-  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[310];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts);sendLine(b);return;}
+  if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[350];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu resync_error=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts,(unsigned long)uiport::resyncFailures);sendLine(b);return;}
   if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
   if (handleSoundLine(line)) return;  // sin despertar la pantalla: la app puede estar pasando sonidos
@@ -1135,6 +1171,8 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 #include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
 #include "s3_perfil.h"    // el QR del perfil de cada jugador
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
+// Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
+static bool bootCheckPending = true;
 static void prepareMatchNetwork() {
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
@@ -1725,8 +1763,8 @@ static void tourStart() {
   }
 }
 // El resultado del partido recién guardado, al cruce del torneo.
-static void recordTourResult() {
-  if (!tourSavedOk || !partidos::count || tourFixture < 0) return;
+static bool recordTourResult() {
+  if (!tourSavedOk || !partidos::count || tourFixture < 0 || tourFixture >= tor::cur.nFix) return false;
   const partidos::Row& row = partidos::rows[partidos::count - 1];
   torneos::Result r = {};
   snprintf(r.matchId, sizeof(r.matchId), "%s", row.id);
@@ -1737,11 +1775,25 @@ static void recordTourResult() {
   uint32_t wall = resultEndMs - matchStartMs;
   r.finishedAt = row.fin ? (uint64_t)row.fin * 1000ull : tourNow();
   r.startedAt = r.finishedAt > wall ? r.finishedAt - wall : 0;
-  if (torneos::recordFixtureResult(tor::cur, tourFixture, r) && !torneos::save(tor::cur)) LV_LOG_WARN("No se pudo guardar el torneo");
+  if (!tourResultApplied) {
+    if (!torneos::recordFixtureResult(tor::cur, tourFixture, r)) {
+      ui::toast("No se pudo anotar el resultado del torneo");
+      return false;
+    }
+    tourResultApplied = true;
+  }
+  // La mutación ya está aplicada: reintentar sólo el guardado, nunca sumar otra victoria.
+  if (!torneos::save(tor::cur)) {
+    ui::toast("Torneo sin guardar. Vuelve para reintentar");
+    return false;
+  }
+  tourSavePending = false;
+  return true;
 }
 // De la victoria (o del abandono) al torneo; si el partido lo cerró, a la ceremonia.
 static void backToTournament() {
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
+  if (tourSavePending && !recordTourResult()) return;
   bool champion = tor::curOk && tor::cur.status == torneos::Status::Finished;
   endTourMatch();
   queueCommentary(0);
@@ -1755,8 +1807,13 @@ static void backToTournament() {
 // Abandonar: en un torneo el cruce queda «a medias» (se empieza de cero) y se vuelve al torneo.
 static void abandonMatch() {
   if (!tourMatch) return goHome();
+  tor::CurSnapshot before;
+  if (!before.capture(tor::cur)) return ui::toast("No hay memoria para guardar el cambio");
   torneos::markAbandoned(tor::cur, tourFixture, tourNow());
-  torneos::save(tor::cur);
+  if (!torneos::save(tor::cur)) {
+    before.restore(tor::cur);
+    return ui::toast("No se pudo guardar el torneo");
+  }
   backToTournament();
 }
 static void tourPlayers() {
@@ -1996,7 +2053,7 @@ static void victoryView(victoria::View& v) {
   v.winner = (uint8_t)eng.winner();
   v.draw = eng.draw();
   // En un torneo: VOLVER AL TORNEO (o VER CAMPEÓN si este partido lo ha cerrado) en vez de REVANCHA.
-  if (tourMatch) v.tour = tor::curOk && tor::cur.status == torneos::Status::Finished ? 2 : 1;
+  if (tourMatch) v.tour = !tourSavePending && tor::curOk && tor::cur.status == torneos::Status::Finished ? 2 : 1;
   v.white = s.white;
   v.blue = s.blue;
   clubNames(v.team);
@@ -2035,6 +2092,8 @@ static void victoryView(victoria::View& v) {
     snprintf(b, sizeof(b), "Penaltis %u–%u", p.white, p.blue);
     add(b);
   }
+  if (resultSaveFailed) snprintf(v.facts, sizeof(v.facts), "Partido sin guardar. Revisa la tarjeta");
+  else if (tourSavePending) snprintf(v.facts, sizeof(v.facts), "Torneo sin guardar. Vuelve para reintentar");
 }
 
 // Reposo (ui_reposo.h): «Último: BLANCO 5 – 3 AZUL» con el último resultado guardado.
@@ -2054,10 +2113,11 @@ static void render() {
     inicio::show();
     char warn[32];
     bool low = rtc.lowBattery();
-    if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
+    if (resultSaveFailed) snprintf(warn, sizeof(warn), "Partido sin guardar");
+    else if (low) snprintf(warn, sizeof(warn), "BATERÍA BAJA %u %%", rtc.bat.percent);
     else if (datos::demo) snprintf(warn, sizeof(warn), "MODO PRUEBA");
-    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Pon la hora: conecta Wi-Fi");
-    inicio::setStatus(remoteLinked(), updateAvailable(), low || datos::demo || !rtc.clockOk ? warn : nullptr,
+    else if (!rtc.clockOk) snprintf(warn, sizeof(warn), "Hora sin ajustar");
+    inicio::setStatus(remoteLinked(), updateAvailable(), resultSaveFailed || low || datos::demo || !rtc.clockOk ? warn : nullptr,
                       nube::loggedIn() && !datos::demo ? nube::pendingCount : 0);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
@@ -2367,9 +2427,10 @@ void setup() {
   tor::hooks.play = tourPlay;
   tor::hooks.start = tourStart;
   // Repetir el último partido: fuera de la tarjeta y, con cuenta, también de la nube.
-  tor::hooks.removeMatch = [](const char* id) {
-    partidos::remove(id);
+  tor::hooks.removeMatch = [](const char* id) -> bool {
+    if (!partidos::remove(id)) return false;
     torneos::guardado::matchGone(id);
+    return true;
   };
   tor::hooks.sound = tourSound;
   tor::hooks.nowMs = tourNow;
@@ -2439,7 +2500,6 @@ void setup() {
   nube::clubsDone = equipos::pushed;
   s3flash::hook = []() { uiport::needResync = true; };  // escrituras en la memoria del chip (s3_flash.h)
   radioBegin();
-  startCheck();  // ¿hay versión nueva? (si hay Wi-Fi guardado; sin bloquear)
   lastActivity = millis();
   // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
   // con su porcentaje (unos 7 s al encender).
@@ -2543,6 +2603,16 @@ void loop() {
     jugadores.changed = false;
   }
 #if HAS_AUDIO
+  // El aviso previo espera a la voz del resultado; un tiro rápido invalida el anterior.
+  if(!inMatch)shootoutPreviewPending=false;
+  if(shootoutPreviewPending && inMatch && eng.phase()==Phase::Penalties && !pendingCommentary && !player.busy()){
+    shootoutPreviewPending=false;
+    if(sndChoices.c[(uint8_t)mfv3snd::Event::PenaltyAwarded].kind==mfv3snd::Kind::Default){
+      auto mask=comentarios::shootoutBeforeMask(eng);
+      uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random());
+      if(code){queueCommentary(code);shootoutPreviewVoice=true;commentaryHasFallback=false;}
+    }else{mfv3snd::EventList cue;cue.add(mfv3snd::Event::PenaltyAwarded);playEvents(cue);}
+  }
   // Revisar como máximo 10 veces/s. Sin SD, asignaciones ni repintados mientras espera.
   if((uint32_t)(now-ambienceCheckedAt)>=100){
     ambienceCheckedAt=now;
@@ -2564,8 +2634,12 @@ void loop() {
   bool resultBeforeRender=resultPending;
   render();
   uiport::step();
+  if (bootCheckPending && !test.active && !inMatch && inicio::active() && uiport::presented != frameBefore) {
+    bootCheckPending = false;
+    startCheck();  // sin credenciales no conecta; la sincronización automática sigue reservada al reposo
+  }
 #if HAS_AUDIO
-  if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || uiport::presented!=frameBefore)){
+  if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || shootoutPreviewVoice || uiport::presented!=frameBefore)){
     uint32_t code=pendingCommentary;pendingCommentary=0;
     commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
     if(player.volume()==0)commentaryOutcome="silencio";

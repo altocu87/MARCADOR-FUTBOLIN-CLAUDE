@@ -1,5 +1,13 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Auditoría conjunta 0.17 · equipo B · 24/10/2026
+
+El dueño autoriza integrar main tras la entrega de sonidos e incluir Torneos. La numeración avanza a 0.17 porque A ya publicó 0.13–0.15 y otra sesión instaló 0.16 con 870 WAV. Se incorporan sus fuentes conservando los originales, junto con arranque de consulta tras Inicio, aviso de hora claro, sonido neutro en empates, comprobación de errores de archivo/índice, reintento de torneo sin duplicar resultados, deshacer/reglas con copia temporal en PSRAM y correcciones de tiempos/partes del historial. No se instala firmware en esta auditoría. [Informe y límites](ENTREGA_AUDITORIA_0_17_20261024.md). No confundir pruebas del PC o archivos íntegros con estabilidad visual/acústica jugando; fase 3 retirada y capacidad superior a 1.024 aún pendientes.
+
+## Sonidos de tanda · 0.16 · 24/10/2026
+
+**Instalada y verificada en COM6 por petición del dueño.** 870 WAV en SD: 100 nuevos y 770 conservados; 806 activos y 64 previamente reservados. Avisos de lanzamiento decisivo, primer tiro de toda la tanda, goles, fallos, victoria y campeonato; 14 comentarios aleatorios añadidos al ambiente del partido. Catálogo recargado tras reinicio, cinco partidos idénticos, sin errores de audio. Escucha jugando pendiente; no publicada en main/OTA. [Entrega y límites](ENTREGA_SONIDOS_0_16_20261024.md).
+
 - 24/10/2026 · A/B 0.15: normal corregida **instalada**, Torneos y 770 WAV verificados (706 activos / 64 reservados), cinco partidos conservados. Tablas UI en PSRAM tras arrancar: 28.112 bytes internos estáticos liberados; mínimo final 35.208. El dueño confirma menú estable. SDK fase 3 instalado y probado, **retirado** al bajar a mínimo 3.220 bytes; no activarlo en publicación oficial. Juego, acústica y torneo completo pendientes. [Informe de entrega a A](INTEGRACION_A_B_0_15_20261024.md) · [PR 25](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/25).
 
 Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección que toque; el estado vigente está en `ESTADO.md`. Las entregas nuevas se apuntan aquí arriba del todo, no en el CLAUDE.md.

@@ -131,7 +131,8 @@ inline EventList detect(const Engine& e, const Before& b, bool goalAccepted) {
     if (!finished) out.add(goalEvent(e, b));
     else if (b.period == Period::Overtime) out.add(Event::GoldenGoal);
   }
-  if (finished) out.add(isRout(e) ? Event::Rout : Event::Victory);
+  // Una liga puede acabar empatada: no anunciar ganador ni usar su preferencia.
+  if (finished) out.add(e.draw() ? Event::PeriodEnd : isRout(e) ? Event::Rout : Event::Victory);
   if (!finished && e.matchPoint() && e.period() != Period::Overtime &&
       (b.matchPoint == 0 || scoreChanged || b.period != e.period()))
     out.add(Event::MatchPoint);
@@ -465,7 +466,7 @@ class Store {
   virtual size_t list(uint32_t* codes, Place* places, size_t cap) = 0;
 };
 
-static const uint32_t MAX_SOUND_BYTES = 1048576;  // 1 MB (10 s a 44 kHz con margen)
+static const uint32_t MAX_SOUND_BYTES = 2097152;  // 2 MiB; voces largas leídas por bloques, sin ampliar buffers
 static const uint32_t UPLOAD_TIMEOUT_MS = 8000;
 
 // Lo que pide una orden al sketch después de contestarla.
