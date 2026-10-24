@@ -119,5 +119,38 @@ int main() {
   installPoll(instAt + 2); assert(inst == Inst::Done); drawInstall(); assert(lv_bar_get_value(updateBar) == 100);
   instMando = instScreen = false; instGoScreen(); assert(inst == Inst::Cancelled);
   drawInstall(); assert(!updateBar);
+
+  // Si falla el mando y la pantalla también tiene versión nueva, la pantalla se actualiza igual.
+  sim::networks = {{"Red de prueba", "", -50}}; wifiPass[0] = 0;
+  instMando = instScreen = true; inst = Inst::MandoConfirm;
+  instAt = millis(); pubMando.build = 50; mandoBuild = 49; mandoInfoAt = instAt - 1;
+  installPoll(instAt + 16000);
+  assert(inst == Inst::ScreenConnect && instMandoFailed && !instErrorMando);
+  drawInstall(); shot("actualizaciones-sin-mando");
+  for (int i = 0; i < 50 && inst == Inst::ScreenConnect; i++) { sim::now += 100; installPoll(millis()); }
+  assert(inst == Inst::ScreenDownload); drawInstall(); installPoll(millis());
+  assert(inst == Inst::Restart);
+  // Sin versión nueva de la pantalla, el fallo del mando se explica como siempre.
+  instMando = true; instScreen = false; inst = Inst::MandoConfirm; instAt = millis();
+  installPoll(instAt + 16000); assert(inst == Inst::Error && instErrorMando);
+  // Una instalación nueva olvida el fallo anterior del mando.
+  instScreen = true; checkState = CheckState::Ok; screen = Screen::Update; startInstall();
+  assert(screen == Screen::Install && !instMandoFailed);
+  s3net::stop(); screen = Screen::Update; inst = Inst::Done;
+
+  // «Por cable» solo para un mando que nunca dice su versión. Uno que ya la dijo no lo necesita aunque
+  // se pierdan saludos: se usa la última versión que dijo.
+  mandoInfoAt = 0; mandoBuild = 0; mandoModelSaid = 0; mandoModelChosen = mfv3::ota::MODEL_C3_ZERO;
+  firstRadioAt = lastRadioAt = millis();
+  assert(mandoUpd() == MandoUpd::Unknown);                  // recién oído: aún puede decirla
+  sim::now += 61000; lastRadioAt = millis();
+  assert(mandoUpd() == MandoUpd::NeedsCable);               // más de un minuto oyéndole y nunca la dice
+  mandoInfoAt = millis(); mandoBuild = 49;
+  pubMando.build = 50; pubMando.size = (uint32_t)firmware.size(); strcpy(pubMando.md5, digest.c_str());
+  assert(mandoUpd() == MandoUpd::Outdated);
+  sim::now += 120000; lastRadioAt = millis();               // saludos perdidos, pero se le sigue oyendo
+  assert(!mandoInfoFresh() && mandoUpd() == MandoUpd::Outdated);
+  sim::now += 61000;                                        // ya no se le oye: apagado
+  assert(mandoUpd() == MandoUpd::Unknown);
   printf("Actualizaciones: version, notas, confirmacion, limites, barra estable y confirmacion del mando OK\n");
 }

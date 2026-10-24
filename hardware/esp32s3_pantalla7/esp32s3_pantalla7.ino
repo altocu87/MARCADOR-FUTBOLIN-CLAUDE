@@ -1053,6 +1053,7 @@ static mfv3::RadioDedup radioDedup;
 static volatile uint8_t radioHead = 0, radioTail = 0;
 static mfv3::RadioCmd radioQueue[8];
 static volatile uint32_t lastRadioAt = 0;
+static volatile uint32_t firstRadioAt = 0;  // primera vez que se oye al mando desde que se encendió
 static bool radioOk = false;
 
 // Actualización por radio (mfv3_ota.h): la versión del mando llega con cada saludo; las respuestas del mando
@@ -1070,6 +1071,7 @@ static void otaPush(const uint8_t* data, int len) {
     mandoModelSaid = in.model;
     mandoInfoAt = t ? t : 1;  // 0 = «nunca»
     lastRadioAt = t;
+    if (!firstRadioAt) firstRadioAt = mandoInfoAt;
     return;
   }
   if (!mfv3::ota::typeOf(data, len, GRUPO_MESA) || len > (int)sizeof(otaInbox[0].data)) return;
@@ -1097,6 +1099,7 @@ static void radioPush(const uint8_t* mac, const uint8_t* data, int len) {
   mfv3::RadioMsg m = mfv3::radioDecode(data, len, GRUPO_MESA);
   if (!m.ok || !radioDedup.fresh(mac, m.seq)) return;
   lastRadioAt = millis();
+  if (!firstRadioAt) firstRadioAt = lastRadioAt ? lastRadioAt : 1;
   if (m.cmd == mfv3::RadioCmd::Hello) return;
   uint8_t next = (uint8_t)((radioHead + 1) % 8);
   if (next == radioTail) return;  // cola llena: se pierde (no debería pasar)

@@ -9,6 +9,7 @@
 //     publicada de la pantalla y del mando. Si hay alguna nueva, en Inicio sale el botón ACTUALIZAR.
 //   - INSTALAR: primero el mando (la pantalla descarga su programa y se lo pasa por radio; hay que mantener
 //     pulsados los dos botones del mando 3 s), después la propia pantalla, que se reinicia con la versión nueva.
+//     Si el mando falla, se queda con su programa de antes y la pantalla se actualiza igual.
 //   - Nunca durante un partido: si empieza uno, la comprobación se deja.
 
 #ifndef MFV3_S3_AJUSTES_H
@@ -49,9 +50,14 @@ static CheckState checkState = CheckState::Never;
 
 enum class MandoUpd : uint8_t { Unknown, NeedsCable, NeedsModel, UpToDate, Outdated };
 
-// El mando dice su versión con cada saludo (cada 20 s). Si se le oye pero nunca la dice, tiene un programa
-// anterior a las actualizaciones por radio: hay que ponérselo una vez por USB.
+// El mando dice su versión con cada saludo (cada 20 s). Si se le oye más de un minuto pero NUNCA la ha dicho
+// desde que se encendió la pantalla, tiene un programa anterior a las actualizaciones por radio: hay que
+// ponérselo una vez por USB. Un mando que ya la dijo se puede actualizar por radio aunque se pierda algún
+// saludo (por ejemplo, con el Wi-Fi ocupado): se usa la última versión que dijo.
 static bool mandoInfoFresh() { return mandoInfoAt != 0 && millis() - mandoInfoAt < 90000UL; }
+static bool mandoNeedsCable() {
+  return !mandoInfoAt && remoteLinked() && firstRadioAt && millis() - firstRadioAt > 60000UL;
+}
 // El modelo que dice el mando manda; si no lo dice (programa anterior), el elegido en AJUSTES → MANDO.
 static uint8_t mandoModel() { return mandoModelSaid ? mandoModelSaid : mandoModelChosen; }
 static void setMandoModel(uint8_t m) {
@@ -64,7 +70,9 @@ static void syncMandoModel() {
   pubMando = pubMandoBy[mandoModel() <= mfv3::ota::MODEL_C3_ZERO ? mandoModel() : 0];
 }
 static MandoUpd mandoUpd() {
-  if (!mandoInfoFresh()) return remoteLinked() ? MandoUpd::NeedsCable : MandoUpd::Unknown;
+  // Sin versión que usar (nunca dicha, o el mando está apagado): no se ofrece nada.
+  if (!mandoInfoAt || (!mandoInfoFresh() && !remoteLinked()))
+    return mandoNeedsCable() ? MandoUpd::NeedsCable : MandoUpd::Unknown;
   // Sin saber su mini no se le pasa nada: el programa de otra mini dejaría su luz sin funcionar.
   if (!mandoModel()) return MandoUpd::NeedsModel;
   return pubMando.ok() && pubMando.build > mandoBuild ? MandoUpd::Outdated : MandoUpd::UpToDate;
@@ -153,6 +161,7 @@ enum class Inst : uint8_t { MandoConnect, MandoDownload, MandoRadio, MandoConfir
 static Inst inst = Inst::Done;
 static const char* instError = "";
 static bool instErrorMando = false;
+static const char* instMandoFailed = nullptr;  // por qué no se actualizó el mando, si se siguió con la pantalla
 static uint8_t instPct = 0;
 static uint32_t instAt = 0;
 static bool instMando = false, instScreen = false, instStepDrawn = false;
@@ -174,6 +183,13 @@ static void instGoScreen() {
 static void instFail(const char* why) {
   instErrorMando = inst <= Inst::MandoConfirm;
   s3net::stop();
+  if (instErrorMando && instScreen) {
+    // El mando se queda con su programa de antes y sigue funcionando: la pantalla se actualiza igual.
+    instMandoFailed = why;
+    instErrorMando = false;
+    instGoScreen();
+    return;
+  }
   instError = why;
   inst = Inst::Error;
 }
@@ -185,6 +201,7 @@ static void startInstall() {
   instMandoModel = mandoModel();
   instScreen = screenOutdated();
   if (!instMando && !instScreen) return;
+  instMandoFailed = nullptr;
   s3net::stop();
   checkState = CheckState::Ok;
   screen = Screen::Install;
