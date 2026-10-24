@@ -466,7 +466,7 @@ class Store {
   virtual size_t list(uint32_t* codes, Place* places, size_t cap) = 0;
 };
 
-static const uint32_t MAX_SOUND_BYTES = 1048576;  // 1 MB (10 s a 44 kHz con margen)
+static const uint32_t MAX_SOUND_BYTES = 2097152;  // 2 MiB; voces largas leídas por bloques, sin ampliar buffers
 static const uint32_t UPLOAD_TIMEOUT_MS = 8000;
 
 // Lo que pide una orden al sketch después de contestarla.

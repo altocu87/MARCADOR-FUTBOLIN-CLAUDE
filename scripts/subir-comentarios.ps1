@@ -11,7 +11,7 @@ $minimum=[string]$m.minimum_firmware
 if($minimum -notmatch '^[0-9]+(?:\.[0-9]+){1,3}$'){throw 'Falta minimum_firmware válido en el catálogo'}
 # El instalador exige además >=0.6 por SONIDO_INFO. upload_verified es solo histórico.
 $allFiles=@($m.files)
-foreach($f in $m.files){if($f.pool -notin @(0..30)){throw 'Grupo inválido'}}
+foreach($f in $m.files){if($f.pool -notin @(0..38)){throw 'Grupo inválido'}}
 if($m.PSObject.Properties.Name -contains 'reserved_files'){
   foreach($f in $m.reserved_files){if($null -ne $f.pool){throw 'Un reservado no debe tener pool activo'}}
   $allFiles+=@($m.reserved_files)

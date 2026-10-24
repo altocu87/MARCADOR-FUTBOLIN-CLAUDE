@@ -221,6 +221,7 @@ static void saveChoices() {
 static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
 static bool introCommentary=false,ambientCommentary=false,commentaryHasFallback=true;
 static comentarios::AmbienceClock ambienceClock;
+static bool shootoutPreviewPending=false,shootoutPreviewVoice=false;
 static uint32_t ambienceCheckedAt=0,ambienceQuietAt=0;
 static uint32_t commentaryStartedAt = 0, commentaryQueuedAt = 0, commentaryWaitMs = 0, commentaryLastCode = 0;
 static mfv3snd::Event commentaryFallback = mfv3snd::Event::Goal;
@@ -255,7 +256,7 @@ static void inspectSoundTick(){
 }
 static bool soundManagementBusy(){return sndCmd.receiving() || comentarios::staging || soundInspection.active;}
 #endif
-static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
+static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=shootoutPreviewVoice=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
 
 static void playEvents(const mfv3snd::EventList& list) {
 #if HAS_AUDIO
@@ -298,6 +299,14 @@ static bool tourMatch = false;
 static int16_t tourFixture = -1;
 static bool tourSavedOk = false;
 static mfv3::Config cfgBeforeTour;
+// La final puede ser una serie: solo anunciar campeón cuando esta victoria la cierra.
+static bool shootoutWinsTournament(){
+  if(!tourMatch || !tor::curOk || !tor::cur.fix || tourFixture<0 || tourFixture>=tor::cur.nFix)return false;
+  const auto& f=tor::cur.fix[tourFixture];
+  if(!torneos::isFinalFixture(tor::cur,f))return false;
+  unsigned won=eng.winner()==Team::White?f.serW:f.serB;
+  return f.bestOf<=1 || won+1>=(unsigned)(f.bestOf+1)/2;
+}
 static bool fichasToTour = false;  // + JUGADOR desde «¿Quién juega?»: al volver, al torneo
 static void saveMatchFile();
 static uint32_t nextCloudSync = 0;  // la primera, en el primer reposo tras encender
@@ -547,6 +556,13 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
 #if HAS_AUDIO
   bool scoreChanged=now.w!=sndBefore.score.white || now.b!=sndBefore.score.blue;
   bool kickChanged=eng.kickCount()>sndBefore.kicks;
+  bool shootoutChanged=eng.period()==Period::Shootout &&
+      (sndBefore.period!=Period::Shootout || eng.kickCount()!=sndBefore.kicks);
+  if(shootoutChanged){
+    if(shootoutPreviewVoice){queueCommentary(0);player.stop();}
+    shootoutPreviewPending=eng.phase()==Phase::Penalties;
+  }
+  if(eng.phase()==Phase::Finished)shootoutPreviewPending=false;
   if(scoreChanged)ambienceClock.score(comentarios::playTime(eng,millis()));
   if(ambientCommentary && (goalAccepted || scoreChanged || kickChanged || now.phase!=sndBefore.phase || handicapScored || handicapMissed)){
     queueCommentary(0);player.stop();
@@ -567,7 +583,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   }else if((penaltyScored || penaltyMissed) && automaticAllowed){
     auto event=penaltyScored?mfv3snd::Event::PenaltyScored:mfv3snd::Event::PenaltyMissed;
     if(sndChoices.c[(uint8_t)event].kind==mfv3snd::Kind::Default){
-      auto mask=comentarios::penaltyMask(eng,penaltyScored);
+      auto mask=kickChanged?comentarios::shootoutResultMask(eng,penaltyScored,shootoutWinsTournament()):comentarios::penaltyMask(eng,penaltyScored);
+      // Compatibilidad con un catálogo anterior durante la instalación del nuevo.
+      bool available=false;for(uint8_t p=0;p<comentarios::PoolCount;p++)if((mask&(comentarios::PoolMask(1)<<p)) && comentarios::catalog.counts[p])available=true;
+      if(!available)mask=comentarios::penaltyMask(eng,penaltyScored);
       uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random(),comentarios::PenaltyGoal);
       if(code){player.stop();queueCommentary(code);commentaryFallback=event;spoken=true;}
     }
@@ -641,6 +660,7 @@ static void startMatch() {
   hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
+  shootoutPreviewPending=shootoutPreviewVoice=false;
   ambienceClock.reset(esp_random());ambienceQuietAt=ambienceCheckedAt=0;
   matchStartMs = startedAt;
   matchFixedDirty = streakDirty = true;
@@ -2544,6 +2564,16 @@ void loop() {
     jugadores.changed = false;
   }
 #if HAS_AUDIO
+  // El aviso previo espera a la voz del resultado; un tiro rápido invalida el anterior.
+  if(!inMatch)shootoutPreviewPending=false;
+  if(shootoutPreviewPending && inMatch && eng.phase()==Phase::Penalties && !pendingCommentary && !player.busy()){
+    shootoutPreviewPending=false;
+    if(sndChoices.c[(uint8_t)mfv3snd::Event::PenaltyAwarded].kind==mfv3snd::Kind::Default){
+      auto mask=comentarios::shootoutBeforeMask(eng);
+      uint32_t code=comentarios::catalog.pick(mask,esp_random(),esp_random());
+      if(code){queueCommentary(code);shootoutPreviewVoice=true;commentaryHasFallback=false;}
+    }else{mfv3snd::EventList cue;cue.add(mfv3snd::Event::PenaltyAwarded);playEvents(cue);}
+  }
   // Revisar como máximo 10 veces/s. Sin SD, asignaciones ni repintados mientras espera.
   if((uint32_t)(now-ambienceCheckedAt)>=100){
     ambienceCheckedAt=now;
@@ -2570,7 +2600,7 @@ void loop() {
     startCheck();  // sin credenciales no conecta; la sincronización automática sigue reservada al reposo
   }
 #if HAS_AUDIO
-  if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || uiport::presented!=frameBefore)){
+  if(pendingCommentary && generationBeforeRender==commentaryGeneration && (ambientCommentary || shootoutPreviewVoice || uiport::presented!=frameBefore)){
     uint32_t code=pendingCommentary;pendingCommentary=0;
     commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
     if(player.volume()==0)commentaryOutcome="silencio";

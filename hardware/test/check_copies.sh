@@ -1,5 +1,5 @@
 #!/bin/sh
-# Comprueba que cada sketch lleva una copia idéntica de los ficheros comunes y ejecuta las pruebas en PC.
+# Comprueba que cada sketch lleva una copia idÃ©ntica de los ficheros comunes y ejecuta las pruebas en PC.
 set -e
 export PATH="$HOME/scoop/apps/gcc/current/bin:$PATH"  # g++ en Windows (scoop); en Linux no cambia nada
 cd "$(dirname "$0")/.."
@@ -17,18 +17,18 @@ g++ -std=c++11 -Wall -Wextra -Icommon test/ota_test.cpp -o /tmp/mfv3_ota_test &&
 g++ -std=c++11 -Wall -Wextra -Icommon test/radio_test.cpp -o /tmp/mfv3_radio_test && /tmp/mfv3_radio_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/sound_test.cpp -o /tmp/mfv3_sound_test && /tmp/mfv3_sound_test
 g++ -std=c++17 -Wall -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/jugadores_test.cpp -o /tmp/mfv3_jug_test && /tmp/mfv3_jug_test
-# Cola y coordinación de la nube: transporte falso, fallos de memoria y dos tareas reales del PC.
+# Cola y coordinaciÃ³n de la nube: transporte falso, fallos de memoria y dos tareas reales del PC.
 g++ -std=c++17 -pthread -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_memory_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_nube_test && /tmp/mfv3_nube_test
-# Torneos: JSON igual que la app, índice, tipos de torneo, partidos de torneo, descartar y nube simulada.
+# Torneos: JSON igual que la app, Ã­ndice, tipos de torneo, partidos de torneo, descartar y nube simulada.
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/torneos_datos_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_torneos_datos_test && /tmp/mfv3_torneos_datos_test
 
 # ELO, XP, niveles y logros de la placa = los de la app (tests/fixtures/progresion)
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/progresion_test.cpp -o /tmp/mfv3_prog_test && /tmp/mfv3_prog_test
-# Torneos de la placa (reglas, ficha y palmarés) = los de la app (tests/fixtures/torneos)
+# Torneos de la placa (reglas, ficha y palmarÃ©s) = los de la app (tests/fixtures/torneos)
 (cd .. && npx vitest run tests/torneosPlaca.test.ts)
 g++ -std=c++17 -Wall -Wextra -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/torneos_test.cpp -o /tmp/mfv3_torneos_test && /tmp/mfv3_torneos_test
 g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_AVR -DARDUINO_AVR_UNO -Itest/mock -Iarduino_usb -x c++ test/arduino_sim_test.cpp -o /tmp/mfv3_ard_sim && /tmp/mfv3_ard_sim
-# ESP32 clásico, C3, S3 y S2 (este último sin Bluetooth)
+# ESP32 clÃ¡sico, C3, S3 y S2 (este Ãºltimo sin Bluetooth)
 for t in CONFIG_IDF_TARGET_ESP32 CONFIG_IDF_TARGET_ESP32C3 CONFIG_IDF_TARGET_ESP32S3 CONFIG_IDF_TARGET_ESP32S2; do
   g++ -std=c++17 -Wall -Wno-unused-variable -DARDUINO_ARCH_ESP32 -D$t=1 -Itest/mock_esp32 -Iesp32_marcador -x c++ test/esp32_sim_test.cpp -o /tmp/mfv3_esp_sim && /tmp/mfv3_esp_sim || exit 1
 done
@@ -46,9 +46,10 @@ sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_012_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_016_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_ambient_test.cpp
 # Pantallas de los torneos (ui_torneo*.h) con toques y el paso por el partido. Mide los textos con las letras reales,
-# así que primero se generan las de fuentes.txt (sin las capas de la app, que no hacen falta aquí).
+# asÃ­ que primero se generan las de fuentes.txt (sin las capas de la app, que no hacen falta aquÃ­).
 python3 ../scripts/placa_recursos.py --fuentes /tmp/mfv3_fat_torneos
 MFV3_ASSETS=/tmp/mfv3_fat_torneos sh test/s3_build.sh 4 test/s3_torneos_test.cpp
 sh test/s3_build.sh 4 test/s3_opciones_test.cpp
@@ -64,7 +65,7 @@ sh test/lvgl_lib.sh > /dev/null
 LVLIB=test/.lvgl/liblvgl-v9.5.0.a  # ruta relativa: la carpeta del proyecto puede tener espacios
 
 # Igual que el IDE de Arduino: declarar todas las funciones del .ino al principio y volver a compilar
-# (detecta en el PC los errores «X does not name a type» que solo salen al compilar de verdad).
+# (detecta en el PC los errores Â«X does not name a typeÂ» que solo salen al compilar de verdad).
 # Ruta de /tmp que entiende el compilador (en Windows, g++ no conoce las rutas /tmp de la consola).
 TMPN=$(cygpath -m /tmp 2>/dev/null || echo /tmp)
 proto() {  # proto <carpeta> <prueba> <mocks> [defines]

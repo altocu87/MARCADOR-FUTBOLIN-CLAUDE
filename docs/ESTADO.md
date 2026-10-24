@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Sonidos de tanda · 0.16 · 24/10/2026
+
+**Instalada y verificada en COM6 por petición del dueño.** 870 WAV en SD: 100 nuevos y 770 conservados; 806 activos y 64 previamente reservados. Avisos de lanzamiento decisivo, primer tiro de toda la tanda, goles, fallos, victoria y campeonato; 14 comentarios aleatorios añadidos al ambiente del partido. Catálogo recargado tras reinicio, cinco partidos idénticos, sin errores de audio. Escucha jugando pendiente; no publicada en main/OTA. [Entrega y límites](ENTREGA_SONIDOS_0_16_20261024.md).
+
 ## Integración A/B · 0.15 · 24/10/2026
 
 **Normal 0.15 corregida instalada y comprobada en COM6; el dueño confirma menú estable.** Contiene Torneos y sincronización en reposo de A, sonidos de B y tablas de interfaz reservadas tras arrancar en PSRAM: ahorra 28.112 bytes internos estáticos, sin añadir reservas al gol. Última lectura: 46.024 bytes internos libres, mínimo 35.208. SD recuperada sin formatear; **770 WAV verificados, 706 activos y 64 de torneo aún reservados**, cinco partidos conservados (dos siguen sin fecha). La fase 3 se instaló y probó, pero se **retiró por mínimo interno de 3.220 bytes**: no promoverla a publicación normal. La placa queda con Arduino normal; pruebas de juego, acústica y torneo completo pendientes. Fuentes probadas `b570c8a`, publicación mediante [PR 25](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/25). Versiones anteriores de A conservadas; el paquete llamado sonidos 0.13 se entrega como 0.15 porque A ya usó 0.14. [Informe para A, binarios, medidas y límites](INTEGRACION_A_B_0_15_20261024.md).

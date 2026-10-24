@@ -86,9 +86,9 @@ public sealed class CommentarySdInstaller {
   }
   static byte[] LocalFile(string path,string crc,string hash) {
     var info=new FileInfo(path);
-    if(info.Length<1 || info.Length>1048576)throw new Exception("Tamano local invalido: "+Path.GetFileName(path));
+    if(info.Length<1 || info.Length>2097152)throw new Exception("Tamano local invalido: "+Path.GetFileName(path));
     byte[] data=File.ReadAllBytes(path);
-    if(data.Length<1 || data.Length>1048576 || Crc(data).ToString("x8")!=crc || Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant()!=hash)
+    if(data.Length<1 || data.Length>2097152 || Crc(data).ToString("x8")!=crc || Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant()!=hash)
       throw new Exception("Archivo local alterado: "+Path.GetFileName(path));
     return data;
   }
@@ -131,7 +131,7 @@ public sealed class CommentarySdInstaller {
     // Archivos reservados también se verifican/suben, pero nunca se añaden al catálogo activo.
     var rows=new byte[activeCount*5];var active=new HashSet<string>();int previousPool=-1;
     for(int i=0;i<activeCount;i++) {
-      var item=Regex.Match(commands[i+1]??"","^COMENTARIOS_ITEM ([0-9]|[12][0-9]|30) ([0-9a-f]{8})$");
+      var item=Regex.Match(commands[i+1]??"","^COMENTARIOS_ITEM ([0-9]|[12][0-9]|3[0-8]) ([0-9a-f]{8})$");
       if(!item.Success || !unique.Contains(item.Groups[2].Value) || !active.Add(item.Groups[2].Value))throw new Exception("Fila de catalogo incorrecta");
       int pool=int.Parse(item.Groups[1].Value);if(pool<previousPool)throw new Exception("Catalogo no ordenado por grupo");previousPool=pool;
       rows[i*5]=(byte)pool;uint code=Convert.ToUInt32(item.Groups[2].Value,16);for(int j=0;j<4;j++)rows[i*5+j+1]=(byte)(code>>(j*8));
@@ -180,7 +180,7 @@ public sealed class CommentarySdInstaller {
   public void Run(string port,string package,string[] paths,string[] codes,string[] crcs,string[] hashes,bool[] verified,string[] catalogCommands,string minimumFirmware="0.6") {
     // verified y los diarios anteriores son solo historial; nunca autorizan saltarse la lectura remota.
     int activeCount;long[] sizes=ValidatePackage(paths,codes,crcs,hashes,catalogCommands,out activeCount);
-    Version minimum=VersionOf(minimumFirmware),protocolMinimum=VersionOf(catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (2[4-9]|30) "))?"0.15":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (1[1-9]|2[0-3]) "))?"0.11":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (9|10) "))?"0.10":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM [6-8] "))?"0.7":"0.6");if(minimum<protocolMinimum)minimum=protocolMinimum;
+    Version minimum=VersionOf(minimumFirmware),protocolMinimum=VersionOf(paths.Any(p=>new FileInfo(p).Length>1048576) || catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM 3[1-8] "))?"0.16":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (2[4-9]|30) "))?"0.15":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (1[1-9]|2[0-3]) "))?"0.11":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM (9|10) "))?"0.10":catalogCommands.Any(c=>Regex.IsMatch(c,"^COMENTARIOS_ITEM [6-8] "))?"0.7":"0.6");if(minimum<protocolMinimum)minimum=protocolMinimum;
     if(!Directory.Exists(package))throw new Exception("Paquete inexistente");
     log=null;pendingLog.Clear();connection=createTransport(port);
     try {
