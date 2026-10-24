@@ -38,7 +38,7 @@ int main(){
   sim::sdFatFree=sim::sdFatTotal+1;assert(!sndStore.sdSpace(total,free));
   sim::sdFatTotal=8ull<<30;sim::sdFatFree=(8ull<<30)-(1ull<<20);
   mfv3::Engine e;uint32_t t;fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);auto b=goal(e,t,Team::White);
-  assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Ventaja2)|(1u<<VaGanando))); // marcar tu tercero no significa haber encajado tres
+  assert(goalMask(e,b,Team::White)==((1u<<Comodin)|(1u<<Ventaja2)|(1u<<VaGanando)|(1u<<Lead3))); // marcar tu tercero no significa haber encajado tres
   fresh(e,t);goal(e,t,Team::Blue);goal(e,t,Team::Blue);goal(e,t,Team::Blue);b=goal(e,t,Team::White);
   assert(goalMask(e,b,Team::White)&(1u<<Encajados3));
   fresh(e,t);goal(e,t,Team::White);goal(e,t,Team::White);goal(e,t,Team::White);b=goal(e,t,Team::Blue);

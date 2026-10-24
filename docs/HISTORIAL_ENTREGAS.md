@@ -1,5 +1,7 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+- 24/10/2026 · A/B 0.15: normal corregida **instalada**, Torneos y 770 WAV verificados (706 activos / 64 reservados), cinco partidos conservados. Tablas UI en PSRAM tras arrancar: 28.112 bytes internos estáticos liberados; mínimo final 35.208. El dueño confirma menú estable. SDK fase 3 instalado y probado, **retirado** al bajar a mínimo 3.220 bytes; no activarlo en publicación oficial. Juego, acústica y torneo completo pendientes. [Informe de entrega a A](INTEGRACION_A_B_0_15_20261024.md) · [PR 25](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/25).
+
 Notas de cada entrega, tal como estaban en el CLAUDE.md. Leer solo la sección que toque; el estado vigente está en `ESTADO.md`. Las entregas nuevas se apuntan aquí arriba del todo, no en el CLAUDE.md.
 
 ## Entrega A 0.13 · nube en reposo y realineado de la imagen · 23/10/2026

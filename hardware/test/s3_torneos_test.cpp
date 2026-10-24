@@ -10,6 +10,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <filesystem>
 #include "Arduino.h"
 #include "misc/lv_text_private.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
@@ -185,9 +186,17 @@ int main() {
   assets::setRoot(getenv("MFV3_ASSETS") ? getenv("MFV3_ASSETS") : "../build/placa/fat");
   sim::now = 1000;
   // Carpetas propias (otras pruebas usan las de build/placa a la vez).
-  system("rm -rf /tmp/ag3_partidos /tmp/ag3_torneos_sd");
-  partidos::setDir("/tmp/ag3_partidos");
-  torneos::guardado::setDir("/tmp/ag3_torneos_sd");
+  auto temp = std::filesystem::absolute(std::filesystem::temp_directory_path()).lexically_normal();
+  if (temp.filename().empty() && temp.has_relative_path()) temp = temp.parent_path();
+  const auto matchesDir = temp / "mfv3_ag3_matches";
+  const auto tournamentsDir = temp / "mfv3_ag3_tourneys";
+  assert(temp.is_absolute() && matchesDir.parent_path() == temp && tournamentsDir.parent_path() == temp);
+  std::filesystem::remove_all(matchesDir);
+  std::filesystem::remove_all(tournamentsDir);
+  const auto matchesPath = matchesDir.generic_string(), tournamentsPath = tournamentsDir.generic_string();
+  assert(matchesPath.size() < 64 && tournamentsPath.size() < 64);
+  partidos::setDir(matchesPath.c_str());
+  torneos::guardado::setDir(tournamentsPath.c_str());
   setup();
   test.active = false;
   nube::logout();
@@ -207,7 +216,11 @@ int main() {
       char path[300];
       snprintf(path, sizeof(path), "%s/jugadores/%08lx.bin", assets::ROOT, (unsigned long)c);
       std::string dir = std::string(assets::ROOT) + "/jugadores";
+#ifdef _WIN32
+      mkdir(dir.c_str());
+#else
       mkdir(dir.c_str(), 0755);
+#endif
       if (FILE* f = fopen(path, "wb")) {
         uint8_t head[12] = {0};
         fwrite(head, 1, 12, f);

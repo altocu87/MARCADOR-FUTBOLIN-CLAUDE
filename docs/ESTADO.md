@@ -1,5 +1,15 @@
 # Estado del proyecto
 
+## Integración A/B · 0.15 · 24/10/2026
+
+**Normal 0.15 corregida instalada y comprobada en COM6; el dueño confirma menú estable.** Contiene Torneos y sincronización en reposo de A, sonidos de B y tablas de interfaz reservadas tras arrancar en PSRAM: ahorra 28.112 bytes internos estáticos, sin añadir reservas al gol. Última lectura: 46.024 bytes internos libres, mínimo 35.208. SD recuperada sin formatear; **770 WAV verificados, 706 activos y 64 de torneo aún reservados**, cinco partidos conservados (dos siguen sin fecha). La fase 3 se instaló y probó, pero se **retiró por mínimo interno de 3.220 bytes**: no promoverla a publicación normal. La placa queda con Arduino normal; pruebas de juego, acústica y torneo completo pendientes. Fuentes probadas `b570c8a`, publicación mediante [PR 25](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/25). Versiones anteriores de A conservadas; el paquete llamado sonidos 0.13 se entrega como 0.15 porque A ya usó 0.14. [Informe para A, binarios, medidas y límites](INTEGRACION_A_B_0_15_20261024.md).
+
+Las secciones fechadas anteriores que siguen debajo son historial; el estado físico vigente es el de esta primera sección.
+
+## Fase 3 · compilación con sdkconfig propio · rama `equipo-a/fase3-sdkconfig` · 23/10/2026
+
+**Compilada en GitHub (workflow «Fase 3 (prueba)»); sin instalar ni probar en la placa; no publicada.** Misma 0.14 y Arduino 3.3.12, con XIP desde PSRAM, ISR del panel en IRAM, realineado en cada retorno y caché de 64 B. Se instala en el hueco libre con `placa.py probar` y se vuelve con el botón «VOLVER A LA ANTERIOR», `placa.py volver` o sola tras tres fallos seguidos. Pasos en [PRUEBA_FASE3](PRUEBA_FASE3.md). Pendiente: probarla en la placa.
+
 ## Pantalla 0.14 · aviso «sincronizando» en reposo · equipo A · 23/10/2026
 
 **Código hecho y probado en el PC; sin instalar ni probar en la placa.** Petición del dueño: mientras sube a la nube en reposo, el reloj pone abajo «SINCRONIZANDO · NO TOQUES LA PANTALLA» en lugar de «Toca para despertar»; sin reloj (placa sin hora o sin atenuar), una franja abajo con el mismo texto. Tocar sigue cortando la subida (jugar va primero). Pendiente de autorización para fusionar en main.

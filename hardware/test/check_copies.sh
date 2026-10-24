@@ -9,6 +9,7 @@ for d in arduino_usb esp32_marcador; do check mfv3_boards.h "$d"; done
 check mfv3_engine.h esp32s3_pantalla7
 check mfv3_sound.h esp32s3_pantalla7
 python3 test/commentary_preparer_test.py
+g++ -std=c++17 -Wall -Wextra test/psram_array_test.cpp -o /tmp/mfv3_psram_array && /tmp/mfv3_psram_array
 for d in esp32s3_pantalla7 mando_pulsadores; do check mfv3_radio.h "$d"; check mfv3_ota.h "$d"; done
 g++ -std=c++11 -Wall -Wextra -Icommon test/core_test.cpp -o /tmp/mfv3_core_test && /tmp/mfv3_core_test
 g++ -std=c++11 -Wall -Wextra -Icommon test/engine_test.cpp -o /tmp/mfv3_engine_test && /tmp/mfv3_engine_test
@@ -44,6 +45,7 @@ sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp
+sh test/s3_build.sh 4 test/s3_commentary_012_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_ambient_test.cpp
 # Pantallas de los torneos (ui_torneo*.h) con toques y el paso por el partido. Mide los textos con las letras reales,
 # así que primero se generan las de fuentes.txt (sin las capas de la app, que no hacen falta aquí).

@@ -82,7 +82,12 @@ static uint32_t useCounter = 0;
 static size_t cachedBytes = 0;
 // De 16 MB de PSRAM: 1,5 MB son las dos imágenes de pantalla, ~3 MB las letras y lo demás objetos, fichas y cifras
 // del reloj. Con 10 MB la memoria se quedaba sin un hueco grande para los carteles y la placa podía reiniciarse.
+#ifdef MFV3_FASE3
+// Fase 3: el programa (unos 2 MB) se ejecuta copiado en la PSRAM (XIP): 2 MB menos para imágenes.
+static const size_t MAX_CACHED_BYTES = 6u * 1024u * 1024u;
+#else
 static const size_t MAX_CACHED_BYTES = 8u * 1024u * 1024u;
+#endif
 
 // Las imágenes pedidas desde el último cambio de pantalla (`screenEpoch`) las está usando la pantalla actual:
 // esas no se borran nunca (LVGL las está pintando); se borra la más antigua de las demás.

@@ -14,6 +14,7 @@
 #ifndef MFV3_UI_HISTORIAL_H
 #define MFV3_UI_HISTORIAL_H
 
+#include "s3_memory.h"
 #include "ui_base.h"
 #include "s3_jugadores.h"
 #include "s3_partidos.h"
@@ -918,7 +919,8 @@ static void buildDigest() {
     char name[20];
     int wins, played, goals;
   };
-  static W w[96];
+  static s3mem::ExternalArray<W, 96> w;
+  if (!w.ensure()) { free(ord); ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   int nw = 0, goals = 0;
   int closest = -1, biggest = -1;
   for (int oi = 0; oi < nl; oi++) {
@@ -1010,7 +1012,8 @@ static void buildPairs() {
     char na[20], nb[20];
     int played, wins, draws, losses;
   };
-  static P ps[128];
+  static s3mem::ExternalArray<P, 128> ps;
+  if (!ps.ensure()) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }
   int n = 0;
   int* ord = (int*)malloc((size_t)(partidos::count ? partidos::count : 1) * sizeof(int));
   if (!ord) { ui::text(host, "Memoria insuficiente para los detalles", 700, 16, ui::color::TEXT2); return; }

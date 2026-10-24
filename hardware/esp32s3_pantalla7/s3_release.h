@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.14";
+static const char VERSION[] = "0.15";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.15", "2026-10-24", "Torneos y nuevas voces reunidos\n\n• Reúne los torneos y la sincronización en reposo de A con las nuevas voces de B.\n\n• Nuevas frases de anulación, segunda parte, prórroga, penaltis, gol de oro y ventaja exacta de tres.\n\n• Paquete preparado de 770 sonidos. Para escucharlos debe detectarse la tarjeta y completarse la copia.\n\n• Pantalla con ritmo fijo. La prueba fase 3 añade las optimizaciones de memoria del equipo A."},
   {"0.14", "2026-10-23", "Aviso mientras se sincroniza\n\n• Mientras la pantalla en reposo sube los datos a la nube, abajo pone «SINCRONIZANDO · NO TOQUES LA PANTALLA».\n\n• Si se toca igualmente, la subida se para sin perder nada y sigue en el siguiente reposo."},
   {"0.13", "2026-10-23", "La nube espera al reposo\n\n• Los partidos y torneos se guardan al momento en la tarjeta y se suben a la nube solo con la pantalla en reposo, nunca mientras se usa.\n\n• Si alguien toca la pantalla o el mando mientras se sube, se para sin perder nada y sigue en el siguiente reposo.\n\n• La imagen se recoloca sola después de guardar fotos, fichas, equipos o ajustes, y al cargar fotos de jugadores.\n\n• Tocar el volumen, el brillo o JUGAR sin cambiar nada ya no hace saltar la imagen.\n\n• Las fotos de los jugadores se quedan cargadas aunque haya muchos jugadores."},
   {"0.12", "2026-10-23", "Torneos en la pantalla\n\n• TORNEO en Inicio: liga, copa y pool como en la app, desde elegir quién juega hasta el campeón.\n\n• Crea, edita, duplica y borra tus ligas, copas y pools en la propia pantalla, sin la app.\n\n• Clasificación, cuadro o pistas, el siguiente partido con pronóstico, repetir el último y cambiar las reglas.\n\n• Cartel de cada fase (gran final, semifinal, pista…), empates en la liga a tiempo y la ceremonia del campeón con la experiencia ganada.\n\n• Ficha del torneo con MVP y palmarés de cada competición; todo el historial se guarda en la tarjeta y, con cuenta, en la nube."},

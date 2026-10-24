@@ -24,6 +24,7 @@
 // NOTA: compila en GitHub Actions (núcleo esp32 3.x + LovyanGFX) y la lógica (motor, protocolo, botones)
 // se prueba en PC; todavía no se ha probado en la placa real.
 
+#include "s3_memory.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #ifdef ARDUINO
@@ -40,6 +41,7 @@
 #include "mfv3_ota.h"
 #include "mfv3_radio.h"
 #include "s3_net.h"
+#include "s3_fase3.h"  // solo en la compilación de prueba de la fase 3 (hardware/fase3)
 #include "s3_release.h"
 #include "mfv3_sound.h"
 #include "mfv3_audio.h"
@@ -520,6 +522,10 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   if (now.phase == Phase::PeriodEnd && snap.phase != Phase::PeriodEnd) beep(250);
   snap = now;
   auto sounds=mfv3snd::detect(eng,sndBefore,goalAccepted);
+  bool secondHalfStarted=sndBefore.phase==Phase::Countdown && now.phase==Phase::Playing &&
+      sndBefore.period==Period::Second && now.period==Period::Second;
+  // La preferencia de inicio ya existente rige también la voz de comienzo de segunda parte.
+  if(secondHalfStarted)sounds.add(mfv3snd::Event::MatchStart);
   bool penaltyAwarded=eng.phase()==Phase::Handicap && eng.handicapStage()==mfv3::HStage::Announce &&
       eng.handicap().kind==mfv3::HKind::Penalty &&
       (sndBefore.phase!=Phase::Handicap || eng.handicap().seq!=hcSoundSeq);
@@ -578,14 +584,25 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
     spoken=true;introCommentary=false;
   }
   if(!spoken && !goalAccepted && !animalScore && automaticAllowed){
-    int pool=-1;mfv3snd::Event fallback=mfv3snd::Event::PeriodEnd;
+    int pool=-1;comentarios::PoolMask phaseMask=0;uint8_t phaseGeneric=comentarios::Comodin;
+    mfv3snd::Event fallback=mfv3snd::Event::PeriodEnd;
     if(eng.phase()==Phase::PeriodEnd && sndBefore.phase!=Phase::PeriodEnd && eng.period()==Period::First)pool=comentarios::Descanso;
+    else if(eng.phase()==Phase::PeriodEnd && sndBefore.phase!=Phase::PeriodEnd &&
+            eng.config().endCondition!=mfv3::EndCondition::Goals && eng.score().white==eng.score().blue){
+      if(eng.period()==Period::Second)pool=comentarios::ExtraTimeAnnounce;
+      else if(eng.period()==Period::Overtime)pool=comentarios::ShootoutAnnounce;
+    }
+    else if(secondHalfStarted){
+      phaseMask=comentarios::secondHalfMask(eng);phaseGeneric=comentarios::SecondHalf;
+      fallback=mfv3snd::Event::MatchStart;
+    }
     else if(eng.phase()==Phase::Finished && sndBefore.phase!=Phase::Finished &&
             eng.period()==Period::Second && eng.config().endCondition!=mfv3::EndCondition::Goals &&
             eng.clockMs(millis())==0 && eng.reason()==mfv3::Reason::Regulation){
       pool=comentarios::FinalNormal;fallback=sounds.has(mfv3snd::Event::Rout)?mfv3snd::Event::Rout:mfv3snd::Event::Victory;
     }
-    if(pool>=0){uint32_t code=comentarios::catalog.pick(1u<<pool,esp_random(),esp_random());
+    if(pool>=0)phaseMask=1u<<pool;
+    if(phaseMask){uint32_t code=comentarios::catalog.pick(phaseMask,esp_random(),esp_random(),phaseGeneric);
       if(code){player.stop();queueCommentary(code);commentaryFallback=fallback;spoken=true;}
     }
   }
@@ -963,6 +980,9 @@ static void handleBoardLine(const char* line) {
   } else if (!strcmp(word, "PING")) sendLine("PONG");
 #ifdef ESP_PLATFORM
   else if (!strcmp(word, "RENDIMIENTO")) uiport::perfEnable(atoi(line + i));
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  else if (!strcmp(word, "VOLVER_ANTERIOR")) { if (!fase3::rollback()) sendLine("VOLVER_ANTERIOR no hay"); }
+#endif
   else if (!strcmp(word, "REPOSO")) lastActivity = millis() - sleepAfterMs() - 1;  // a reposo ya (para probarlo)
   else if (!strcmp(word, "PERFIL")) {  // «PERFIL» (pantalla entera) o «PERFIL x y ancho alto» (solo esa zona)
     int x = 0, y = 0, w = 0, h = 0;
@@ -981,6 +1001,8 @@ static void handleBoardLine(const char* line) {
     sendLine(b);
     snprintf(b, sizeof(b), "MEMORIA psram mayor hueco %u, cache %u KB", (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
              (unsigned)(assets::cachedBytes / 1024));
+    sendLine(b);
+    snprintf(b, sizeof(b), "MEMORIA tablas_UI psram %u bytes, %u tablas", (unsigned)s3mem::uiBytes, s3mem::uiArrays);
     sendLine(b);
   }
 #endif
@@ -2381,6 +2403,9 @@ void setup() {
   initColors();
   if (AUX_UART_RX >= 0) AuxSerial.begin(115200, SERIAL_8N1, AUX_UART_RX, AUX_UART_TX);
   loadPrefs();
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  fase3::onBoot(prefs);  // tres reinicios por fallo seguidos: vuelve sola a la versión anterior
+#endif
   lcd.backlight(backlightLevel());  // el brillo guardado
 #if HAS_AUDIO
   sndStore.begin();
@@ -2474,15 +2499,10 @@ void loop() {
 
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  fase3::tick(prefs, now);
+#endif
   ajustesLoop(now);
-  // Con el Wi-Fi trabajando, la pantalla se protege de sus interferencias (ui_port.h, setNetwork).
-  // También al descomprimir fotos de jugadores (usan la PSRAM igual que la red); medio segundo más, para no cambiar
-  // de ritmo entre una foto y la siguiente de la galería.
-  static uint32_t photosAt = 0;
-  if (fotos::busy()) photosAt = now | 1;
-  if (photosAt && now - photosAt > 500) photosAt = 0;
-  uiport::setNetwork(s3net::link != s3net::Link::Off || s3net::scanning || nube::networking() || versionsRunning ||
-                     screen == Screen::Install || photosAt);
   // Nube: lo que llega se aplica con pantallas que no enseñan fotos de jugadores (Inicio, configuración, AJUSTES,
   // CUENTA). Sola, solo se sincroniza en reposo (pantalla atenuada, o 3 min sin tocar si no se atenúa nunca) y sin
   // partido; al volver a usar la placa se corta (wakeScreen, onTouchDown) y sigue en el siguiente reposo.

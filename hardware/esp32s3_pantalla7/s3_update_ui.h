@@ -6,6 +6,12 @@ static UpdateTab updateTab = UpdateTab::Overview;
 static size_t updateHistoryPage = 0;
 static const ui::Rect UPDATE_TABS[] = {{24, 76, 244, 52}, {278, 76, 244, 52}, {532, 76, 244, 52}};
 static const ui::Rect HISTORY_PREV = {24, 396, 230, 68}, HISTORY_NEXT = {546, 396, 230, 68};
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+// Prueba de la fase 3: volver a la versión anterior (el otro hueco). El primer toque pide confirmación.
+static const ui::Rect FASE3_BACK = {500, 140, 276, 64};
+static uint32_t fase3ArmedUntil = 0;
+static bool fase3Armed() { return fase3ArmedUntil && (int32_t)(fase3ArmedUntil - millis()) > 0; }
+#endif
 static lv_obj_t* updateBar = nullptr;
 static lv_obj_t* updatePercent = nullptr;
 static int updateDrawnPercent = -1;
@@ -96,11 +102,23 @@ static void drawUpdate() {
       "Si se actualiza el mando, déjalo cerca y sigue la indicación de sus dos botones. No apagues los equipos." :
       "No apagues la pantalla durante la instalación. El programa se comprueba antes de reiniciar.", 36, 350, 720, 18, ui::color::ACCENT);
   } else {
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+    snprintf(t, sizeof(t), "PANTALLA · %s · %s", FW_VERSION, fase3::LABEL);
+    updateText(gfx.scr, t, 36, 150, 450, 28, ui::color::TEXT);
+    if (fase3::previous())
+      updateButton(FASE3_BACK, fase3Armed() ? "¿SEGURO? TOCA OTRA VEZ" : "VOLVER A LA ANTERIOR", fase3Armed() ? C_ACCENT : C_SURFACE,
+                   fase3Armed() ? C_BG : C_TEXT, fase3Armed() ? C_ACCENT : C_LINE);
+#else
     snprintf(t, sizeof(t), "PANTALLA · Instalada %s", FW_VERSION);
     updateText(gfx.scr, t, 36, 150, 720, 28, ui::color::TEXT);
+#endif
     if (screenOutdated()) snprintf(t, sizeof(t), "Disponible: %s · Consulta NOVEDADES", publishedRelease.version[0] ? publishedRelease.version : "nueva actualización");
     else snprintf(t, sizeof(t), "%s", pubScreen.ok() && checkState == CheckState::Ok ? "Tienes la última versión publicada" : "Pulsa BUSCAR para comprobar si hay novedades");
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+    updateText(gfx.scr, t, 36, 210, 720, 20, screenOutdated() ? ui::color::RANKED : ui::color::TEXT2);
+#else
     updateText(gfx.scr, t, 36, 192, 720, 20, screenOutdated() ? ui::color::RANKED : ui::color::TEXT2);
+#endif
     updateText(gfx.scr, "MANDO", 36, 248, 200, 24, ui::color::TEXT);
     const char* status = mandoUpd() == MandoUpd::Unknown ? "Pulsa un botón del mando para comprobarlo" :
       mandoUpd() == MandoUpd::NeedsCable ? "Necesita una primera actualización por cable" :
@@ -122,6 +140,13 @@ static void drawUpdate() {
 }
 
 static bool updateNavigation(int16_t x, int16_t y) {
+#if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
+  if (updateTab == UpdateTab::Overview && FASE3_BACK.contains(x, y) && fase3::previous()) {
+    if (!fase3Armed()) fase3ArmedUntil = millis() + 4000;
+    else if (!fase3::rollback()) ui::toast("No hay versión anterior");
+    return true;
+  }
+#endif
   for (int i = 0; i < 3; ++i) if (UPDATE_TABS[i].contains(x, y)) {
     updateTab = (UpdateTab)i;
     return true;
