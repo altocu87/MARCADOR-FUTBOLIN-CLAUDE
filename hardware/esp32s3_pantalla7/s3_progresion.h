@@ -307,6 +307,32 @@ static int activeChallenges(uint32_t fin, Challenge out[4]) {
   return n;
 }
 
+// Progreso de un jugador en los retos activos (challengeProgress de la app): suma lo de cada partido de su día o
+// su semana, sin pasar de la meta. `value[c]` y `done[c]` por reto.
+static void challengeProgress(uint32_t code, const Challenge* ch, int nch, uint32_t now, int value[4], bool done[4]) {
+  char nowDk[12], nowWk[10], dk[12], wk[10];
+  dayKey(now, nowDk);
+  weekKey(now, nowWk);
+  int sum[4] = {0, 0, 0, 0};
+  for (int i = 0; i < partidos::count; i++) {
+    const partidos::Row& m = partidos::rows[i];
+    if (!m.fin) continue;
+    int team = -1;
+    for (int t = 0; t < 2 && team < 0; t++)
+      for (int j = 0; j < m.n[t]; j++)
+        if (m.code[t][j] == code) team = t;
+    if (team < 0) continue;
+    dayKey(m.fin, dk);
+    weekKey(m.fin, wk);
+    for (int c = 0; c < nch; c++)
+      if (!strcmp(ch[c].daily ? dk : wk, ch[c].daily ? nowDk : nowWk)) sum[c] += tplProgress(ch[c].tpl, m, team);
+  }
+  for (int c = 0; c < nch; c++) {
+    done[c] = sum[c] >= ch[c].target;
+    value[c] = done[c] ? ch[c].target : sum[c];
+  }
+}
+
 // ---------------------------------------------------------------- resultado
 const int MAX_P = 160;  // jugadores distintos en el historial
 

@@ -165,6 +165,46 @@ static void withTournaments() {
   progresion::setTournaments(nullptr, 0);
 }
 
+// Pantalla RETOS (ui_retos.h): retos activos y progreso de cada jugador en los momentos de esperado-retos.txt.
+static int compareChallenges() {
+  std::string want = readFile("../tests/fixtures/progresion/esperado-retos.txt");
+  std::istringstream w(want);
+  std::string line;
+  int bad = 0, lines = 0;
+  while (std::getline(w, line)) {
+    char b[512];
+    lines++;
+    if (line[0] == 'R') {  // R momento clave meta xp texto
+      unsigned long t = 0;
+      sscanf(line.c_str(), "R %lu", &t);
+      progresion::Challenge ch[4];
+      int n = progresion::activeChallenges((uint32_t)t, ch);
+      bool found = false;
+      for (int c = 0; c < n; c++) {
+        char txt[64];
+        snprintf(txt, sizeof(txt), progresion::TPL_TEXT[ch[c].tpl], (unsigned)ch[c].target);
+        snprintf(b, sizeof(b), "R %lu %s %u %d %s", t, ch[c].key, (unsigned)ch[c].target, ch[c].xp, txt);
+        found |= line == b;
+      }
+      if (!found && bad++ < 8) std::printf("reto distinto\n  app: %s\n", line.c_str());
+      continue;
+    }
+    unsigned long t = 0, code = 0;
+    sscanf(line.c_str(), "%lu %lx", &t, &code);
+    progresion::Challenge ch[4];
+    int n = progresion::activeChallenges((uint32_t)t, ch);
+    int value[4];
+    bool done[4];
+    progresion::challengeProgress((uint32_t)code, ch, n, (uint32_t)t, value, done);
+    int k = snprintf(b, sizeof(b), "%lu %08lx", t, code);
+    for (int c = 0; c < n; c++)
+      k += done[c] ? snprintf(b + k, sizeof(b) - k, " ok") : snprintf(b + k, sizeof(b) - k, " %d/%u", value[c], (unsigned)ch[c].target);
+    if (line != b && bad++ < 8) std::printf("progreso distinto\n  app:   %s\n  placa: %s\n", line.c_str(), b);
+  }
+  if (!bad) std::printf("retos de la placa iguales que la app (%d líneas)\n", lines);
+  return bad;
+}
+
 int main() {
   withTournaments();
   loadMatches("../tests/fixtures/progresion/partidos.jsonl");
@@ -178,6 +218,10 @@ int main() {
     return 1;
   }
   std::printf("progresión de la placa igual que la app (%d partidos, %d jugadores)\n", partidos::count, (int)codes.size());
+  if (compareChallenges()) {
+    std::printf("retos de la placa: distintos de la app\n");
+    return 1;
+  }
   // Abrir el ranking repetidamente conserva el cálculo y los resultados de la app.
   progresion::refresh(codes.data(), (int)codes.size());
   auto* cached = progresion::all.p;

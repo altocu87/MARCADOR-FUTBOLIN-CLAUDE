@@ -74,6 +74,7 @@
 #include "s3_torneos_ficha.h"
 #include "s3_torneos_datos.h"
 #include "ui_torneo.h"
+#include "ui_retos.h"
 
 using mfv3::Engine;
 using mfv3::Phase;
@@ -451,6 +452,7 @@ static Snapshot takeSnapshot() {
 // La racha se invalida con los eventos del motor, nunca por el paso de un fotograma.
 static bool streakDirty = true, matchFixedDirty = true;
 static bool rankingFresh = false;  // RANKING: rehacer la pantalla (datos nuevos)
+static bool retosFresh = false;    // RETOS: rehacer la pantalla (datos y hora nuevos)
 static uint8_t streakCount = 0, streakTeam = 0;
 static uint8_t lastStreak() {
   if (!streakDirty) return streakCount;
@@ -1588,7 +1590,8 @@ static void onHomeMenu(uint8_t which) {
     screen = Screen::Tournament;
     tor::open(&jugadores);
   } else {
-    ui::toast("Los retos llegan más adelante");
+    screen = Screen::Challenges;
+    retosFresh = true;
   }
 }
 static void onRankingBack() { goHome(); }
@@ -2150,6 +2153,12 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Challenges && !sleepClock()) {
+    if (!retos::active() || retosFresh) retos::show(&jugadores);
+    retosFresh = false;
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Settings && !sleepClock()) {
     if (!opciones::active() || opcionesFresh) opciones::show(opcionesFresh);
     opcionesFresh = false;
@@ -2408,6 +2417,8 @@ void setup() {
   inicio::hooks.menu = onHomeMenu;
   historial::hooks.back = onRankingBack;
   historial::hooks.nowUtc = []() -> uint32_t { return rtc.clockOk ? partidos::epoch(rtc.now) : 0; };
+  retos::hooks.back = []() { goHome(); };
+  retos::hooks.nowUtc = historial::hooks.nowUtc;
   config::hooks.back = onConfigBack;
   config::hooks.next = onConfigNext;
   config::hooks.changed = onConfigChanged;

@@ -442,6 +442,20 @@ int main(int argc, char** argv) {
     tap(35, 35);    // volver a Inicio
     run(300);
   }
+  // RETOS con los partidos de arriba (todos de hoy).
+  {
+    goHome();
+    run(300);
+    tap(631, 46);  // RETOS
+    run(300);
+    shot("retos");
+    tap(766, 28);  // «?»
+    shot("retos-ayuda");
+    tap(400, 470);  // fuera: cierra
+    tap(35, 28);    // volver a Inicio
+    run(300);
+    assert(inicio::active());
+  }
 
   // AJUSTES → CUENTA con una nube simulada: entrar con el teclado, bajar jugadores y partidos de la cuenta (Alex se
   // une con su ficha de la cuenta) y subir lo de la placa.

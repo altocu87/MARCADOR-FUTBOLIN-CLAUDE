@@ -144,6 +144,12 @@ export const SCENES = {
   reposo: demo(async (p) => {
     await wait(p, 6 * 60_000);
   }),
+  retos: demo(async (p) => {
+    await tapSel(p, '.menu-challenges', 1200);
+  }),
+  'retos-vacio': async (p) => {
+    await tapSel(p, '.menu-challenges', 1200);
+  },
 };
 
 export async function openApp(browser, { demo = false } = {}) {
