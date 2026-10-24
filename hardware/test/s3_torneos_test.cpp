@@ -207,7 +207,11 @@ int main() {
       char path[300];
       snprintf(path, sizeof(path), "%s/jugadores/%08lx.bin", assets::ROOT, (unsigned long)c);
       std::string dir = std::string(assets::ROOT) + "/jugadores";
+#ifdef _WIN32
+      mkdir(dir.c_str());
+#else
       mkdir(dir.c_str(), 0755);
+#endif
       if (FILE* f = fopen(path, "wb")) {
         uint8_t head[12] = {0};
         fwrite(head, 1, 12, f);
