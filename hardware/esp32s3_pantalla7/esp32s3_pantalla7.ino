@@ -24,6 +24,7 @@
 // NOTA: compila en GitHub Actions (núcleo esp32 3.x + LovyanGFX) y la lógica (motor, protocolo, botones)
 // se prueba en PC; todavía no se ha probado en la placa real.
 
+#include "s3_memory.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #ifdef ARDUINO
@@ -747,7 +748,7 @@ static void inputPause() {
   afterChange(false, Team::White);
 }
 
-static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
+static MFV3_UI_DATA jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
 static void saveMatchFile() {

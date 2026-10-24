@@ -10,6 +10,7 @@
 #ifndef MFV3_S3_FOTOS_H
 #define MFV3_S3_FOTOS_H
 
+#include "s3_memory.h"
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@ static const char* dirPath = "/sdcard/FOTOS";
 static const char* dirPath = "../build/placa/fotos-sd";  // el PC pone aquí unas fotos de prueba
 #endif
 
-static char names[MAX_FILES][64];
+static MFV3_UI_DATA char names[MAX_FILES][64];
 static int count = 0;
 
 static bool isJpeg(const char* n) {

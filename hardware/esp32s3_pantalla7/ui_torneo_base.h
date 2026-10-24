@@ -14,6 +14,7 @@
 #ifndef MFV3_UI_TORNEO_BASE_H
 #define MFV3_UI_TORNEO_BASE_H
 
+#include "s3_memory.h"
 #include "ui_base.h"
 #include "ui_fichas.h"
 #include "ui_cartel.h"
@@ -353,7 +354,7 @@ struct Vis {
   int arg;
   int8_t shown;
 };
-static Opt opts[96];
+static MFV3_UI_DATA Opt opts[96];
 static Val vals[24];
 static Vis viss[32];
 static uint8_t optCount = 0, valCount = 0, visCount = 0;

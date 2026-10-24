@@ -32,6 +32,7 @@ jobs:
       - name: Programa y datos
         run: |
           B=hardware/fase3/.pio/build/waveshare7c
+          python scripts/check-fase3-memory.py "$B/firmware.elf"
           mkdir -p salida
           cp "$B/firmware.bin" salida/waveshare-7c-fase3-ota.bin
           cp "$B/firmware.elf" salida/ 2>/dev/null || true
