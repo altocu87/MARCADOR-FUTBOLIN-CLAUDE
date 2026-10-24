@@ -1,7 +1,17 @@
 {
-  "version": "0.17",
+  "version": "0.18",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.18",
+      "date": "2026-10-24",
+      "title": "El mando ya no frena la actualización",
+      "changes": [
+        "Si el mando no se puede actualizar, se queda como estaba y sigue funcionando, y la pantalla se actualiza igual.",
+        "El aviso «Necesita una primera actualización por cable» solo sale con mandos muy antiguos que de verdad lo necesitan.",
+        "Conserva todo lo de la 0.17."
+      ]
+    },
     {
       "version": "0.17",
       "date": "2026-10-24",
