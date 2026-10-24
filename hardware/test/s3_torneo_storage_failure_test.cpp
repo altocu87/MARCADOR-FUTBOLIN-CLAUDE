@@ -143,4 +143,3 @@ int main() {
   puts("Torneo: fallo visible, reintento sin duplicar, rollback exacto y borrado tras persistir");
   printf("Mayor reserva temporal UI en esta prueba: %zu bytes\n", largestUiAllocation);
 }
-
