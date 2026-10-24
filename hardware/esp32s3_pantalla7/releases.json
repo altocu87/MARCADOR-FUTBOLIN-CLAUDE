@@ -1,7 +1,18 @@
 {
-  "version": "0.18",
+  "version": "0.19",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.19",
+      "date": "2026-10-24",
+      "title": "Retos y ficha de cada jugador",
+      "changes": [
+        "El botón RETOS ya funciona: el reto de hoy y los tres de la semana, con lo que lleva cada jugador.",
+        "Tocar a un jugador en Retos o en el Ranking abre su ficha: nivel, ELO, números, hábitos, rivales, partidos, torneos y logros.",
+        "Desde la ficha, tocar un partido abre su detalle.",
+        "Conserva todo lo de la 0.18."
+      ]
+    },
     {
       "version": "0.18",
       "date": "2026-10-24",

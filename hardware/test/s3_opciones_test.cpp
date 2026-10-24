@@ -449,6 +449,34 @@ int main() {
     fputs("]", f);
     fclose(f);
   }
+  // FICHA de un jugador de prueba: cada pestaña se pinta con muchos partidos y, si hay, sus torneos.
+  {
+    openProfile(jugadores.list[0].code);  // como al tocarlo en RETOS o en el RANKING
+    run(300);
+    assert(ficha::active() && ficha::haveStats && ficha::st.nmine > 0);
+    static const char* const N[ficha::TAB_COUNT] = {"ficha-demo-general", "ficha-demo-habitos", "ficha-demo-rivales",
+                                                    "ficha-demo-historial", "ficha-demo-torneos", "ficha-demo-logros"};
+    for (uint8_t t = 0; t < ficha::TAB_COUNT; t++) {
+      ficha::tab = t;
+      ficha::buildContent();
+      run(50);
+      assert(lv_obj_get_child_count(ficha::host) > 0);
+      shot(N[t]);
+    }
+    if (torneos::nSummaries) assert(ficha::nTitles > 0);
+    ficha::tourFilter = 4;  // solo ganados
+    ficha::tab = ficha::TOURNAMENTS;
+    ficha::buildContent();
+    shot("ficha-demo-torneos-ganados");
+    ficha::rankedScope = true;
+    ficha::tab = ficha::GENERAL;
+    ficha::buildContent();
+    shot("ficha-demo-clasificatorios");
+    onProfileBack();  // volver: a AJUSTES, de donde se abrió
+    assert(!ficha::haveStats && !ficha::titles);
+    run(300);
+    assert(screen == Screen::Settings && !ficha::active());
+  }
   int postsBefore = posts;
   nube::sync();
   assert(!nube::busy() && posts == postsBefore);  // nada de prueba a la cuenta

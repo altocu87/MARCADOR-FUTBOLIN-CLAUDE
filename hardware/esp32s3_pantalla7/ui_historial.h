@@ -25,6 +25,7 @@ namespace historial {
 struct Hooks {
   void (*back)() = nullptr;
   uint32_t (*nowUtc)() = nullptr;  // hora actual (segundos UTC; 0 sin hora) para saber la temporada
+  void (*openPlayer)(uint32_t code) = nullptr;  // CLASIFICACIÓN y JUGADORES: tocar un jugador abre su ficha
 };
 static Hooks hooks;
 
@@ -43,6 +44,7 @@ static int page = 0;
 static int* shown = nullptr;     // índices de partidos::rows que pasan el filtro (el más nuevo primero)
 static int shownCount = 0, shownCap = 0;
 static char openId[48] = "";     // partido abierto en el detalle
+static bool inDetail = false;
 
 static void go(bool detail);
 static void buildContent();
@@ -112,6 +114,16 @@ static void prewarm(jug::Store* s, void (*tick)() = nullptr) {
 
 static const char* modeName(char m) { return m == 'c' ? "LOCO" : m == 'r' ? "CLASIFICATORIO" : "RÁPIDO"; }
 static uint32_t modeColor(char m) { return m == 'c' ? ui::color::CHAOS : m == 'r' ? ui::color::RANKED : ui::color::ACCENT; }
+
+// Tocar a un jugador abre su ficha (ui_ficha.h), como en la app.
+static void onPlayerTap(lv_event_t* e) {
+  if (hooks.openPlayer) hooks.openPlayer((uint32_t)(uintptr_t)lv_event_get_user_data(e));
+}
+static void playerTap(lv_obj_t* o, uint32_t code) {
+  lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_bg_color(o, ui::hex(ui::color::CARD2), LV_STATE_PRESSED);
+  lv_obj_add_event_cb(o, onPlayerTap, LV_EVENT_CLICKED, (void*)(uintptr_t)code);
+}
 
 static void backButton(lv_event_cb_t cb) {
   lv_obj_t* back = ui::box(scr, 12, 12, 46, 46);
@@ -370,6 +382,7 @@ static void buildStandings() {
     const jug::Player& pl = store->list[idx[r]];
     const progresion::Player& pr = src.p[src.find(pl.code)];
     lv_obj_t* row = ui::box(list, 0, r * 56, 760, 50);
+    playerTap(row, pl.code);
     lv_obj_set_style_radius(row, ui::RADIUS_SM, 0);
     lv_obj_set_style_bg_color(row, ui::hex(r == 0 ? 0x2a2a20 : 0x0e1d33), 0);
     lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
@@ -433,6 +446,7 @@ static void buildPlayers() {
     const jug::Player& pl = store->list[idx[k]];
     const progresion::Player* pr = progresion::of(pl.code);
     lv_obj_t* c = ui::box(g, (k % 3) * 258, (k / 3) * 104, 250, 96);
+    playerTap(c, pl.code);
     lv_obj_set_style_radius(c, ui::RADIUS, 0);
     lv_obj_set_style_bg_color(c, ui::hex(0x0e1d33), 0);
     lv_obj_set_style_bg_opa(c, LV_OPA_COVER, 0);
@@ -1089,7 +1103,18 @@ static void buildPairs() {
 static partidos::Detail* detail = nullptr;
 static lv_obj_t* confirmBox = nullptr;
 
-static void onBackDetail(lv_event_t*) { go(false); }
+// Detalle abierto desde la ficha de un jugador (openOutside): volver lleva allí.
+static void (*outsideBack)() = nullptr;
+static void onBackDetail(lv_event_t*) {
+  if (outsideBack) {
+    void (*f)() = outsideBack;
+    outsideBack = nullptr;
+    inDetail = false;
+    f();
+    return;
+  }
+  go(false);
+}
 static void onDeleteAsk(lv_event_t*) {
   if (confirmBox) lv_obj_remove_flag(confirmBox, LV_OBJ_FLAG_HIDDEN);
 }
@@ -1099,6 +1124,7 @@ static void onDeleteNo(lv_event_t*) {
 static void onDeleteYes(lv_event_t*) {
   bool ok = partidos::remove(openId);
   ui::toast(ok ? "Partido eliminado" : "No se pudo eliminar");
+  if (outsideBack) return onBackDetail(nullptr);
   go(false);
 }
 
@@ -1340,7 +1366,6 @@ static void onDelete(lv_event_t*) {
   memset(rowObj, 0, sizeof(rowObj));
 }
 
-static bool inDetail = false;
 static void go(bool d) {
   inDetail = d && openRow();
   lv_obj_t* old = scr;
@@ -1375,8 +1400,17 @@ static void show(jug::Store* s, bool fresh) {
     progresion::refreshSeason(codes, s->count, hooks.nowUtc ? hooks.nowUtc() : 0);
     if (whoFilter && !store->find(whoFilter)) { whoFilter = 0; page = 0; }
     inDetail = false;  // regresar a la lista; no reabrir un partido antiguo por sorpresa
+    outsideBack = nullptr;
   }
   go(inDetail);
+}
+
+// El detalle de un partido desde fuera del RANKING (la ficha de un jugador); volver llama a `back`.
+static void openOutside(jug::Store* s, const char* id, void (*back)()) {
+  store = s;
+  snprintf(openId, sizeof(openId), "%s", id);
+  outsideBack = back;
+  go(true);
 }
 
 }  // namespace historial

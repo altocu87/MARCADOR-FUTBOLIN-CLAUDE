@@ -1,5 +1,9 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Retos y ficha del jugador · 0.19 · equipo B · 24/10/2026
+
+El dueño pidió Retos y la ficha del jugador como en la app, y autorizó publicar en main e instalar por USB. Retos: `ui_retos.h` + `progresion::challengeProgress` (comparado con la app en `esperado-retos.txt`). Ficha: `ui_ficha.h`; las cuentas son las del QR (`perfil::stats` y `perfil::titles`, separadas de `snapshot()` sin cambiar el JSON: `tests/perfil-placa.test.ts` sigue igual). Logros: descripción, apartado y secreto en `ACH_INFO` de `s3_progresion.h`, vigilados por `tests/logrosPlaca.test.ts`. Se abre desde Retos y RANKING (CLASIFICACIÓN y JUGADORES); el HISTORIAL de la ficha abre el detalle del RANKING (`historial::openOutside`, lo lanza render(), nunca dentro del toque). Sin «Opciones» ni cara a cara; rangos, escudos e iconos dibujados (sin imágenes nuevas por Wi-Fi). Capturas: `docs/comparar/ficha-app-placa.png`.
+
 ## Auditoría conjunta 0.17 · equipo B · 24/10/2026
 
 El dueño autoriza integrar main tras la entrega de sonidos e incluir Torneos. La numeración avanza a 0.17 porque A ya publicó 0.13–0.15 y otra sesión instaló 0.16 con 870 WAV. Se incorporan sus fuentes conservando los originales, junto con arranque de consulta tras Inicio, aviso de hora claro, sonido neutro en empates, comprobación de errores de archivo/índice, reintento de torneo sin duplicar resultados, deshacer/reglas con copia temporal en PSRAM y correcciones de tiempos/partes del historial. No se instala firmware en esta auditoría. [Informe y límites](ENTREGA_AUDITORIA_0_17_20261024.md). No confundir pruebas del PC o archivos íntegros con estabilidad visual/acústica jugando; fase 3 retirada y capacidad superior a 1.024 aún pendientes.

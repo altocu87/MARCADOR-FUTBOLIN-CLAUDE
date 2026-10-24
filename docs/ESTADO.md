@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Retos y ficha del jugador · 0.19 · 24/10/2026
+
+**Código hecho y probado en el PC (simulador, pruebas cruzadas con la app y compilación real).** RETOS: el reto de hoy y los tres de la semana con el progreso de cada jugador. FICHA de cada jugador (tocarlo en Retos o en el Ranking): tarjeta con nivel, título, experiencia y rango; pestañas General, Hábitos, Rivales, Historial (abre el detalle del partido), Torneos y Logros. Diferencias con la app: sin «Opciones» (el QR sigue en AJUSTES), sin cara a cara, y rangos, escudos e iconos de logro dibujados (una actualización por Wi-Fi no lleva imágenes). Publicación en main e instalación por USB autorizadas por el dueño (24/10/2026). [Notas](HISTORIAL_ENTREGAS.md) · comparaciones `docs/comparar/retos-app-placa.png` y `ficha-app-placa.png`.
+
 ## Mando sin bloquear la pantalla · 0.18 · 24/10/2026
 
 **0.17 publicada instalada por USB en COM6 a petición del dueño (archivo de la web, MD5 comprobado; la anterior queda en el otro hueco). El arreglo de abajo está hecho, probado en el PC y publicado como 0.18; sin instalar en la placa.** Su mando (C3-Zero, programa 54, que no dice su modelo) estaba marcado como Super Mini: cambiado a C3-ZERO en la placa. Diagnóstico en la placa: la descarga del programa del mando y la radio funcionan y llega a «Mantén pulsados los dos botones». Dos fallos corregidos: (1) un fallo del mando paraba también la pantalla; ahora el mando se queda como estaba y la pantalla se actualiza igual; (2) «Necesita una primera actualización por cable» salía en cuanto se perdían saludos del mando durante 90 s; ahora solo sale si en más de un minuto oyéndole nunca ha dicho su versión, y si no se usa la última que dijo. Publicado como 0.18 con autorización del dueño (24/10/2026). Pendiente: probar en la placa la actualización por Wi-Fi y los botones del mando.

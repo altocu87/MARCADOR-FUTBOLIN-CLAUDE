@@ -178,7 +178,7 @@
      * - bitmaps with transparency may use ARGB8888
      */
     #define LV_DRAW_SW_SUPPORT_RGB565       1
-    #define LV_DRAW_SW_SUPPORT_RGB565_SWAPPED       1
+    #define LV_DRAW_SW_SUPPORT_RGB565_SWAPPED       0  /* ninguna pantalla lo usa: ~6,6 KB menos (la Elecrow, de 4 MB, iba justa) */
     #define LV_DRAW_SW_SUPPORT_RGB565A8     1
     #define LV_DRAW_SW_SUPPORT_RGB888       1
     #define LV_DRAW_SW_SUPPORT_XRGB8888     1

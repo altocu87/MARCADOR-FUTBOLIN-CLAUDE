@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { generateDemoData } from '../src/services/demo/demoData';
 import { DEFAULT_PROGRESSION, type StoredMatch, type Tournament } from '../src/services/persistence';
-import { ACHIEVEMENTS, categoryFor, computeProgression } from '../src/services/progression';
+import { ACHIEVEMENTS, activeChallenges, categoryFor, challengeProgress, computeProgression } from '../src/services/progression';
 
 const DIR = join(__dirname, 'fixtures', 'progresion');
 const MATCHES = join(DIR, 'partidos.jsonl');
@@ -31,6 +31,7 @@ const T_MATCHES = join(DIR, 'partidos-torneos.jsonl');
 const T_INFO = join(DIR, 'torneos.txt');
 const T_FULL = join(DIR, 'torneos-app.json');
 const T_EXPECTED = join(DIR, 'esperado-torneos.txt');
+const R_EXPECTED = join(DIR, 'esperado-retos.txt');
 
 /** Código de un jugador en la placa: FNV-1a de su id (como soundCode). */
 function code(id: string): string {
@@ -161,5 +162,38 @@ describe('progresión de la placa con torneos', () => {
     // Hay XP en espera y campeones con su premio.
     expect(text).toMatch(/ d\n/);
     expect(text).toMatch(/champion/);
+  });
+});
+
+/**
+ * Pantalla RETOS de la placa (ui_retos.h): en varios momentos (segundos UTC; al terminar algunos partidos y un rato
+ * después), los retos activos («R momento clave meta xp texto») y el progreso de cada jugador
+ * («momento código valor/meta o ok» por reto).
+ */
+function challengesText(matches: StoredMatch[]): string {
+  const ids = [...new Set(matches.flatMap((m) => m.participants.map((p) => p.playerId)))].sort((a, b) =>
+    code(a).localeCompare(code(b)),
+  );
+  const ends = [...new Set(matches.map((m) => Math.floor(m.finishedAt / 1000)))].sort((a, b) => a - b);
+  const moments = [...ends.slice(-4), ends[Math.floor(ends.length / 2)], ends[ends.length - 1] + 3 * 86400];
+  const lines: string[] = [];
+  for (const s of moments) {
+    for (const c of activeChallenges(s * 1000)) lines.push(`R ${s} ${c.key} ${c.target} ${c.xp} ${c.text}`);
+    for (const id of ids) {
+      const prog = challengeProgress(id, matches, s * 1000).map((x) => (x.done ? 'ok' : `${x.value}/${x.challenge.target}`));
+      lines.push(`${s} ${code(id)} ${prog.join(' ')}`);
+    }
+  }
+  return lines.join('\n') + '\n';
+}
+
+describe('retos de la placa', () => {
+  it('lo esperado coincide con lo que calcula hoy la app', () => {
+    const text = challengesText(loadMatches());
+    if (process.env.ACTUALIZAR_PROGRESION || !existsSync(R_EXPECTED)) writeFileSync(R_EXPECTED, text);
+    expect(readFileSync(R_EXPECTED, 'utf8')).toBe(text);
+    // Hay retos a medias y cumplidos.
+    expect(text).toMatch(/ ok/);
+    expect(text).toMatch(/ [1-9]\d*\/\d+/);
   });
 });

@@ -144,6 +144,25 @@ export const SCENES = {
   reposo: demo(async (p) => {
     await wait(p, 6 * 60_000);
   }),
+  retos: demo(async (p) => {
+    await tapSel(p, '.menu-challenges', 1200);
+  }),
+  'retos-vacio': async (p) => {
+    await tapSel(p, '.menu-challenges', 1200);
+  },
+  // Ficha de Alex (desde Retos, tocando su fila) y cada pestaña.
+  ...Object.fromEntries(
+    [['general'], ['clasificatorios', 'CLASIFICATORIOS'], ['habitos', 'Hábitos'], ['rivales', 'Rivales'], ['historial', 'Historial'],
+      ['torneos', 'Torneos'], ['logros', 'Logros']].map(([name, tab, sub]) => [
+      `perfil-${name}`,
+      demo(async (p) => {
+        await tapSel(p, '.menu-challenges', 1200);
+        await tapSel(p, '.challenge-row', 1200);
+        if (name === 'clasificatorios') await tap(p, tab, { exact: true });
+        else if (tab) await tapSel(p, `[role="tab"]:has-text("${tab}")`, 600);
+      }),
+    ]),
+  ),
 };
 
 export async function openApp(browser, { demo = false } = {}) {
