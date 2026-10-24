@@ -26,6 +26,15 @@ static bool checkedRemove(const char* id) {
   return realRemove(id);
 }
 
+// Avería persistente: carpeta con contenido en lugar del temporal; ::remove() no la borra ni en
+// Windows ni en Linux (allí sí borraría una carpeta vacía y el fallo desaparecería tras el primer intento).
+static bool blockTmp() {
+  if (!fsx::create_directory("tournaments/audit-cup.tmp")) return false;
+  FILE* f = fopen("tournaments/audit-cup.tmp/x", "wb");
+  return f && fclose(f) == 0;
+}
+static bool unblockTmp() { return fsx::remove_all("tournaments/audit-cup.tmp") > 0; }
+
 static void makeFinal() {
   assert(torneos::alloc(tor::cur));
   torneos::clear(tor::cur);
@@ -64,7 +73,7 @@ int main() {
   tourMatch = true; tourFixture = 0; haveTeams = false;
   startMatch(); eng.skipCountdown(millis()); eng.goal(Team::White, millis());
   resultEndMs = millis();
-  assert(fsx::create_directory("tournaments/audit-cup.tmp"));
+  assert(blockTmp());
   resultPending = true; resultQueuedAt = millis() - 300;
   loop();
   assert(!resultPending && !resultSaveFailed && tourSavePending && tourResultApplied);
@@ -81,7 +90,7 @@ int main() {
   assert(inMatch && tourSavePending && tor::cur.nPlayed == 1);
   goHome(); // tampoco descarta el cambio pendiente al pulsar Inicio
   assert(inMatch && tourSavePending && tourMatch && tor::cur.nPlayed == 1);
-  assert(fsx::remove("tournaments/audit-cup.tmp"));
+  assert(unblockTmp());
   backToTournament();
   assert(!inMatch && !tourSavePending && !tourMatch);
   assert(tor::cur.nPlayed == 1 && partidos::count == 1 && matchesPlayed == 1);
@@ -96,7 +105,7 @@ int main() {
   assert(deletions == 0 && tor::cur.nPlayed == 1 && tor::cur.status == torneos::Status::Finished);
   assert(!memcmp(&fixture, &tor::cur.fix[0], sizeof(fixture)) && fsx::exists(matchFile));
 
-  assert(fsx::create_directory("tournaments/audit-cup.tmp"));
+  assert(blockTmp());
   tor::undoYes();
   assert(deletions == 0 && tor::cur.nPlayed == 1 && tor::cur.status == torneos::Status::Finished);
   assert(!memcmp(&fixture, &tor::cur.fix[0], sizeof(fixture)) && fsx::exists(matchFile));
@@ -104,7 +113,7 @@ int main() {
   tor::edRules = rules; tor::edRules.goals = 17; tor::edFinal = tor::cur.finalRules;
   tor::onRulesSave(nullptr);
   assert(tor::cur.rules.goals == rules.goals && tor::cur.nPlayed == 1);
-  assert(fsx::remove("tournaments/audit-cup.tmp"));
+  assert(unblockTmp());
   tor::store = &jugadores;
   tor::undoYes();
   assert(deletions == 1 && !fsx::exists(matchFile));
@@ -129,11 +138,11 @@ int main() {
   // Nueva final: reintento con éxito desde Inicio, mismo partido y una sola victoria.
   tourMatch = true; tourFixture = 0; cfgBeforeTour = cfg;
   startMatch(); eng.skipCountdown(millis()); eng.goal(Team::White, millis());
-  assert(fsx::create_directory("tournaments/audit-cup.tmp"));
+  assert(blockTmp());
   assert(!saveResult() && tourSavePending);
   const int indexedMatches = partidos::count;
   const uint32_t countedMatches = matchesPlayed;
-  assert(fsx::remove("tournaments/audit-cup.tmp"));
+  assert(unblockTmp());
   goHome();
   assert(!tourSavePending && !inMatch && !tourMatch && tor::cur.nPlayed == 1);
   assert(partidos::count == indexedMatches && matchesPlayed == countedMatches);

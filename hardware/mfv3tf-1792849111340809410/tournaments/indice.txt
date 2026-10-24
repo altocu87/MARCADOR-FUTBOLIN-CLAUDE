@@ -1,0 +1,2 @@
+S2	audit-cup	Copa prueba	name:copa prueba	Copa prueba	b	a	0	0	0	0	1	0	0									
+S2	audit-cup	Copa prueba	name:copa prueba	Copa prueba	b	f	0	0	0	1	1	0	1	Equipo 0	player-0						f1884298-ea49-4d18-bec1-9880c6d99e42	
