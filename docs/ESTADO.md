@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-## Pantalla de Retos · rama `equipo-b/retos-placa` · 24/10/2026
+## Retos y ficha del jugador · 0.19 · 24/10/2026
 
-**Código hecho y probado en el PC; sin publicar, sin instalar ni probar en la placa.** El botón RETOS del inicio (antes «Los retos llegan más adelante») abre la pantalla de la app: el reto de hoy con las horas que le quedan, los tres de la semana con su experiencia y cada jugador (por nombre, con foto) con una barra por reto («2/6» o ✓ verde). «?» con la explicación de la app. Sin hora en la placa avisa «Hora sin ajustar». Diferencia con la app: tocar un jugador no abre su ficha (la placa no tiene esa pantalla). Cálculo nuevo `progresion::challengeProgress` (s3_progresion.h), comparado con la app en `tests/fixtures/progresion/esperado-retos.txt` (`tests/progresionPlaca.test.ts` ↔ `hardware/test/progresion_test.cpp`): iguales. Solo letras ya instaladas (sirve por Wi-Fi). Capturas: `docs/capturas-placa/retos.png`, `retos-ayuda.png`; comparación `docs/comparar/retos-app-placa.png`. Pendiente: autorización para publicar como 0.19.
+**Código hecho y probado en el PC (simulador, pruebas cruzadas con la app y compilación real).** RETOS: el reto de hoy y los tres de la semana con el progreso de cada jugador. FICHA de cada jugador (tocarlo en Retos o en el Ranking): tarjeta con nivel, título, experiencia y rango; pestañas General, Hábitos, Rivales, Historial (abre el detalle del partido), Torneos y Logros. Diferencias con la app: sin «Opciones» (el QR sigue en AJUSTES), sin cara a cara, y rangos, escudos e iconos de logro dibujados (una actualización por Wi-Fi no lleva imágenes). Publicación en main e instalación por USB autorizadas por el dueño (24/10/2026). [Notas](HISTORIAL_ENTREGAS.md) · comparaciones `docs/comparar/retos-app-placa.png` y `ficha-app-placa.png`.
 
 ## Mando sin bloquear la pantalla · 0.18 · 24/10/2026
 

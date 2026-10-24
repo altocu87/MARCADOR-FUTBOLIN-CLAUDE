@@ -1175,6 +1175,35 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi y actualizar (usa lo de arriba)
 #include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
 #include "s3_perfil.h"    // el QR del perfil de cada jugador
+#include "ui_ficha.h"     // la ficha de un jugador (usa las cuentas del QR)
+// FICHA: de quién, desde qué pantalla se abrió (volver allí) y si hay que rehacerla desde el principio.
+static uint32_t profileCode = 0;
+static Screen profileFrom = Screen::Home;
+static bool profileFresh = false;
+static void openProfile(uint32_t code) {
+  if (screen != Screen::Profile) profileFrom = screen;
+  profileCode = code;
+  profileFresh = true;
+  screen = Screen::Profile;
+}
+static void onProfileBack() {
+  ficha::close();
+  screen = profileFrom;
+  if (profileFrom == Screen::Challenges) retosFresh = true;  // la hora pasa: vuelve a calcular
+  else if (profileFrom == Screen::Home) goHome();            // las demás se vuelven a pintar como estaban
+}
+// HISTORIAL de la ficha: el detalle del partido (el del RANKING); volver lleva a la ficha como estaba.
+// Lo abre render() (no dentro del toque: la ficha se borra al cambiar de pantalla).
+static char profileMatch[48] = "";
+static void onProfileMatch(const char* id) {
+  snprintf(profileMatch, sizeof(profileMatch), "%s", id);
+  screen = Screen::Ranking;
+  rankingFresh = false;
+}
+static void onProfileMatchBack() {
+  screen = Screen::Profile;
+  profileFresh = false;
+}
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
 // Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
 static bool bootCheckPending = true;
@@ -2148,8 +2177,17 @@ static void render() {
     return;
   }
   if (!test.active && !inMatch && screen == Screen::Ranking && !sleepClock()) {
-    if (!historial::active() || rankingFresh) historial::show(&jugadores, rankingFresh);
+    if (profileMatch[0]) {
+      historial::openOutside(&jugadores, profileMatch, onProfileMatchBack);
+      profileMatch[0] = 0;
+    } else if (!historial::active() || rankingFresh) historial::show(&jugadores, rankingFresh);
     rankingFresh = false;
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
+  if (!test.active && !inMatch && screen == Screen::Profile && !sleepClock()) {
+    if (!ficha::active() || profileFresh) ficha::show(&jugadores, profileCode, profileFresh);
+    profileFresh = false;
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2419,6 +2457,10 @@ void setup() {
   historial::hooks.nowUtc = []() -> uint32_t { return rtc.clockOk ? partidos::epoch(rtc.now) : 0; };
   retos::hooks.back = []() { goHome(); };
   retos::hooks.nowUtc = historial::hooks.nowUtc;
+  retos::hooks.openPlayer = openProfile;
+  historial::hooks.openPlayer = openProfile;
+  ficha::hooks.back = onProfileBack;
+  ficha::hooks.openMatch = onProfileMatch;
   config::hooks.back = onConfigBack;
   config::hooks.next = onConfigNext;
   config::hooks.changed = onConfigChanged;

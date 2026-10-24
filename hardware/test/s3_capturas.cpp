@@ -452,9 +452,58 @@ int main(int argc, char** argv) {
     tap(766, 28);  // «?»
     shot("retos-ayuda");
     tap(400, 470);  // fuera: cierra
+    // FICHA del primero (tocar su fila) y cada pestaña.
+    tap(400, 214);
+    run(300);
+    assert(ficha::active());
+    shot("ficha-general");
+    tap(593, 252);  // CLASIFICATORIOS
+    shot("ficha-clasificatorios");
+    static const int TABX[6] = {58, 147, 233, 324, 420, 528};
+    static const char* const TABN[6] = {"ficha-general-todos", "ficha-habitos", "ficha-rivales", "ficha-historial", "ficha-torneos", "ficha-logros"};
+    for (int i = 0; i < 6; i++) {
+      if (i == 0) {
+        tap(TABX[0], 196);
+        tap(209, 252);  // TODOS
+        run(100);
+        lv_obj_scroll_to_y(ficha::host, 400, LV_ANIM_OFF);  // abajo: la gráfica del ELO
+        shot("ficha-general-abajo");
+        lv_obj_scroll_to_y(ficha::host, 160, LV_ANIM_OFF);
+        run(100);
+        tap(759, 325);  // «?» de los goles apuntados (tras deslizar)
+        shot("ficha-ayuda-goles");
+        tap(400, 470);
+        continue;
+      }
+      tap(TABX[i], 196);
+      shot(TABN[i]);
+    }
+    tap(TABX[3], 196);  // HISTORIAL → el partido más nuevo → su detalle → volver a la ficha
+    tap(400, 254);
+    run(300);
+    assert(historial::active());
+    shot("ficha-partido");
+    tap(35, 35);
+    run(300);
+    assert(ficha::active());
+    tap(36, 28);  // volver a RETOS
+    run(300);
+    assert(retos::active());
     tap(35, 28);    // volver a Inicio
     run(300);
     assert(inicio::active());
+    // RANKING → CLASIFICACIÓN: tocar al primero abre su ficha; volver lleva al RANKING.
+    tap(470, 46);
+    run(300);
+    tap(78, 101);   // CLASIFICACIÓN (el RANKING recuerda la última pestaña)
+    tap(400, 230);  // el primero
+    run(300);
+    assert(ficha::active());
+    tap(36, 28);
+    run(300);
+    assert(historial::active());
+    tap(35, 35);
+    run(300);
   }
 
   // AJUSTES → CUENTA con una nube simulada: entrar con el teclado, bajar jugadores y partidos de la cuenta (Alex se

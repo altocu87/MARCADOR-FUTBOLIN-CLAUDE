@@ -5,7 +5,7 @@
 //   - Cuatro tarjetas: el reto de hoy (dorado, con las horas que le quedan) y los tres de la semana (azules), con la
 //     experiencia que dan.
 //   - Debajo, cada jugador (por nombre) con su foto y una barra por reto: «2/6» o ✓ verde si ya lo ha cumplido.
-//     La placa no tiene ficha de jugador: las filas no se tocan (en la app abren el perfil).
+//     Tocar una fila abre la ficha del jugador (ui_ficha.h), como en la app.
 // Los retos y el progreso salen de s3_progresion.h (activeChallenges y challengeProgress, los de la app).
 // Solo letras de fuentes.txt (una actualización por Wi-Fi no lleva letras nuevas); el ✓ se dibuja con rayas.
 
@@ -23,6 +23,7 @@ namespace retos {
 struct Hooks {
   void (*back)() = nullptr;
   uint32_t (*nowUtc)() = nullptr;  // hora actual (segundos UTC; 0 sin hora): los retos dependen del día
+  void (*openPlayer)(uint32_t code) = nullptr;  // tocar una fila: la ficha del jugador
 };
 static Hooks hooks;
 
@@ -166,8 +167,14 @@ static void buildCards(const progresion::Challenge* ch, int nch, uint32_t now) {
   }
 }
 
+static void onRow(lv_event_t* e) {
+  if (hooks.openPlayer) hooks.openPlayer((uint32_t)(uintptr_t)lv_event_get_user_data(e));
+}
 static void buildRow(lv_obj_t* list, int y, const jug::Player& p, const progresion::Challenge* ch, int nch, uint32_t now) {
   lv_obj_t* row = ui::box(list, 0, y, 768, 52);
+  lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_bg_color(row, ui::hex(ui::color::CARD2), LV_STATE_PRESSED);
+  lv_obj_add_event_cb(row, onRow, LV_EVENT_CLICKED, (void*)(uintptr_t)p.code);
   lv_obj_set_style_radius(row, ui::RADIUS_SM, 0);
   lv_obj_set_style_bg_color(row, ui::hex(ui::color::CARD), 0);
   lv_obj_set_style_bg_opa(row, 191, 0);

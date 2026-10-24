@@ -128,6 +128,70 @@ static const Ach ACH[] = {
 };
 const int ACH_COUNT = sizeof(ACH) / sizeof(ACH[0]);
 
+// Lo que enseña la ficha de un jugador (pestaña LOGROS): descripción, apartado y si es secreto, en el orden de ACH.
+// Copia de ACHIEVEMENTS de la app (tests/logrosPlaca.test.ts comprueba que coinciden).
+static const char* const ACH_GROUP[6] = {"Progresión", "Victorias", "Rachas", "Goles", "Competición", "Especiales"};
+static const char* const RARITY_NAME[3] = {"Común", "Rara", "Épica"};
+struct AchInfo {
+  const char* description;
+  uint8_t group;
+  bool secret;
+};
+static const AchInfo ACH_INFO[] = {
+    {"Completa tu primer partido.", 0, false},  // debut
+    {"Completa 25 partidos.", 0, false},  // veteran
+    {"Completa 100 partidos.", 0, false},  // legend
+    {"Alcanza el nivel 10.", 0, false},  // level10
+    {"Alcanza el nivel 25.", 0, false},  // level25
+    {"Alcanza el nivel 50.", 0, true},  // level50
+    {"Completa tu primer reto.", 0, false},  // challenger
+    {"Completa 10 retos.", 0, false},  // tireless
+    {"Gana tu primer partido.", 1, false},  // first_win
+    {"Gana 10 partidos.", 1, false},  // wins10
+    {"Gana 50 partidos.", 1, false},  // wins50
+    {"Gana 100 partidos.", 1, false},  // wins100
+    {"Gana 10 clasificatorios.", 1, false},  // ranked_wins10
+    {"Gana un partido en menos de 3 minutos.", 1, false},  // express
+    {"Gana 10 partidos con el mismo compañero.", 1, false},  // dynamic_duo
+    {"Gana 3 partidos seguidos.", 2, false},  // streak3
+    {"Gana 5 partidos seguidos.", 2, false},  // streak5
+    {"Gana 10 partidos seguidos.", 2, false},  // streak10
+    {"Gana tras perder 5 seguidos.", 2, true},  // phoenix
+    {"Gana sin encajar ningún gol.", 3, false},  // shutout
+    {"Gana por 5 o más goles de diferencia.", 3, false},  // rout
+    {"Tu equipo marca 10 o más goles en un partido.", 3, false},  // double_digits
+    {"Juega un partido con 15 o más goles.", 3, false},  // goal_fest
+    {"Tu equipo marca en los primeros 10 segundos de una parte.", 3, false},  // early_goal
+    {"Tu equipo marca 5 goles seguidos sin respuesta.", 3, false},  // run5
+    {"Marca 3 goles apuntados a ti en un partido.", 3, false},  // hat_trick
+    {"Llega a 50 goles apuntados a ti.", 3, false},  // scorer50
+    {"Marca (apuntado a ti) el primer gol de un partido.", 3, true},  // first_blood
+    {"Juega tu primer partido clasificatorio.", 4, false},  // ranked_debut
+    {"Alcanza 1500 de ELO.", 4, false},  // platinum
+    {"Alcanza 1600 de ELO.", 4, false},  // diamond
+    {"Alcanza 1800 de ELO.", 4, false},  // elite
+    {"Gana un clasificatorio contra rivales con 150+ ELO más.", 4, false},  // giant_killer
+    {"Gana un torneo.", 4, false},  // champion
+    {"Gana 3 torneos.", 4, true},  // tri_champion
+    {"Gana un partido en la prórroga.", 5, false},  // golden_goal
+    {"Gana una tanda de penaltis.", 5, false},  // ice_cold
+    {"Tu equipo no falla ningún penalti en una tanda.", 5, false},  // perfect_pens
+    {"Gana una tanda en muerte súbita.", 5, false},  // sudden_death
+    {"Juega una muerte súbita de 3 o más rondas.", 5, true},  // eternal
+    {"Gana tras ir perdiendo por 2 o más goles.", 5, false},  // comeback
+    {"Gana tras ir perdiendo por 3 o más goles.", 5, false},  // against_ropes
+    {"Gana tras ir perdiendo por 4 o más goles.", 5, true},  // impossible
+    {"Gana un Partido Loco.", 5, false},  // chaos_win
+    {"Gana 10 Partidos Locos.", 5, false},  // chaos_lord
+    {"Juega con 5 compañeros distintos.", 5, false},  // social
+    {"Enfréntate a 10 rivales distintos.", 5, false},  // globetrotter
+    {"Juega un partido entre las 23:00 y las 5:00.", 5, true},  // night_owl
+    {"Juega un partido antes de las 9:00.", 5, true},  // early_bird
+    {"Juega 10 partidos en un mismo día.", 5, true},  // marathon_day
+    {"Juega un partido de más de 20 minutos.", 5, true},  // secret_marathon
+};
+static_assert(sizeof(ACH_INFO) / sizeof(ACH_INFO[0]) == sizeof(ACH) / sizeof(ACH[0]), "Logros: falta su descripción");
+
 struct Ctx {
   const partidos::Row* m;
   bool won;

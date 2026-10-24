@@ -194,16 +194,20 @@ static const int RIVAL_MIN = 5, TOP = 12, LAST = 60;
 // cuáles ha jugado (los en juego, pocos, se abren para mirar sus equipos) y solo esos se abren para saber su puesto.
 struct Title {
   char name[64], cup[40], logo[40], banner[40];
+  char comp[28];     // nombre de la competición (competitionName: lo que enseña la ficha)
+  uint16_t edition;  // 0 si no tiene
   uint8_t format, status;
   uint64_t at;
   bool champion;
   uint8_t place, of;
 };
-static void palmares(Out& o, const char* id) {
+// Lista (malloc; nullptr si ninguno) y cuántos.
+static int titles(const char* id, Title*& out) {
   using namespace torneos;
+  out = nullptr;
   static Tournament t;
   struct Acc { const char* id; Title* list; int n, cap; Place* ranking; } acc = {id, nullptr, 0, 0, (Place*)calloc(MAX_TEAMS_T, sizeof(Place))};
-  if (!acc.ranking) return;
+  if (!acc.ranking) return 0;
   auto visit = [](const Summary& s, void* a) -> bool {
     Acc& x = *(Acc*)a;
     if (s.status == Status::Cancelled) return true;
@@ -220,6 +224,8 @@ static void palmares(Out& o, const char* id) {
     memset(&e, 0, sizeof(e));
     memcpy(e.name, s.name, sizeof(e.name));
     memcpy(e.cup, s.cup, 40), memcpy(e.logo, s.logo, 40), memcpy(e.banner, s.banner, 40);
+    memcpy(e.comp, s.competition, sizeof(e.comp));
+    e.edition = s.edition;
     e.format = (uint8_t)s.format;
     e.status = (uint8_t)s.status;
     e.at = s.finishedAt ? s.finishedAt : s.createdAt;
@@ -248,10 +254,18 @@ static void palmares(Out& o, const char* id) {
       acc.list[b] = acc.list[b - 1];
       acc.list[b - 1] = k;
     }
+  free(acc.ranking);
+  release(t);
+  out = acc.list;
+  return acc.n;
+}
+static void palmares(Out& o, const char* id) {
+  Title* list = nullptr;
+  int n = titles(id, list);
   static const char* const FMT[3] = {"league", "bracket", "pool"};
   static const char* const ST[3] = {"active", "finished", "cancelled"};
-  for (int i = 0; i < acc.n; i++) {
-    const Title& e = acc.list[i];
+  for (int i = 0; i < n; i++) {
+    const Title& e = list[i];
     o.add("%s{\"name\":", i ? "," : "");
     o.str(e.name);
     o.add(",\"format\":\"%s\",\"status\":\"%s\",\"champion\":%s,\"at\":%llu", FMT[e.format % 3], ST[e.status % 3],
@@ -262,43 +276,50 @@ static void palmares(Out& o, const char* id) {
     if (e.place) o.add(",\"place\":%u,\"of\":%u", e.place, e.of);
     o.add("}");
   }
-  free(acc.list);
-  free(acc.ranking);
-  release(t);
+  free(list);
 }
 
-// El perfil (snapshot.ts) del jugador `code`, en JSON. malloc; nullptr si no hay memoria.
-static char* snapshot(uint32_t code, uint32_t nowUtc) {
-  const jug::Player* me = jugadores.find(code);
-  if (!me) return nullptr;
+// Cuentas de un jugador (statistics.ts / extras.ts): las usan el QR (snapshot) y su ficha en la pantalla (ui_ficha.h).
+// Memoria dinámica (rivals, mates, mine): release() la devuelve.
+struct Stats {
+  Block general, ranked, byMode[3];
+  Rec sides[2], days[7], parts[4];
+  int best, goals, sType, sCount;
+  uint64_t playMs;
+  char letters[5];  // los 5 últimos («G», «E», «P»), del más viejo al más nuevo
+  int nl;
+  uint32_t since;
+  Other* rivals;  // por partidos jugados (los que más, primero)
+  Other* mates;
+  int nr, nt, fav, nem;  // fav / nem: índice en rivals (-1 si no hay)
+  int* mine;             // filas de partidos::rows donde juega, del más viejo al más nuevo
+  int nmine;
+  void release() {
+    free(rivals);
+    free(mates);
+    free(mine);
+    rivals = mates = nullptr;
+    mine = nullptr;
+  }
+};
+static const int MAX_OTHERS = 128;
+
+static bool stats(uint32_t code, Stats& s) {
+  memset(&s, 0, sizeof(s));
+  s.fav = s.nem = -1;
   int nm = 0;
   int* idx = (int*)malloc(sizeof(int) * (size_t)(partidos::count ? partidos::count : 1));
-  Other* rivals = (Other*)calloc(128, sizeof(Other));
-  Other* mates = (Other*)calloc(128, sizeof(Other));
-  int nr = 0, nt = 0;
-  struct Free {
-    Other *a, *b;
-    ~Free() { free(a); free(b); }
-  } freeLater{rivals, mates};
-  if (!idx || !rivals || !mates) {
+  s.rivals = (Other*)calloc(MAX_OTHERS, sizeof(Other));
+  s.mates = (Other*)calloc(MAX_OTHERS, sizeof(Other));
+  s.mine = (int*)malloc(sizeof(int) * (size_t)(partidos::count ? partidos::count : 1));
+  if (!idx || !s.rivals || !s.mates || !s.mine) {
     free(idx);
-    return nullptr;
+    s.release();
+    return false;
   }
   for (int i = 0; i < partidos::count; i++) idx[nm++] = i;
   qsort(idx, nm, sizeof(int), progresion::byFinish);
-  Block general = {}, ranked = {}, byMode[3] = {};
-  Rec sides[2] = {}, days[7] = {}, parts[4] = {};
-  int run = 0, best = 0, goals = 0, sType = 0, sCount = 0;
-  uint64_t playMs = 0;
-  char letters[5];
-  int nl = 0;
-  uint32_t since = 0;
-  int* mine = (int*)malloc(sizeof(int) * (size_t)(nm ? nm : 1));  // filas donde juega, en orden
-  int nmine = 0;
-  if (!mine) {
-    free(idx);
-    return nullptr;
-  }
+  int run = 0;
   for (int k = 0; k < nm; k++) {
     const partidos::Row& m = partidos::rows[idx[k]];
     int team = -1, slot = -1;
@@ -306,56 +327,76 @@ static char* snapshot(uint32_t code, uint32_t nowUtc) {
       for (int i = 0; i < m.n[t]; i++)
         if (m.code[t][i] == code) team = t, slot = i;
     if (team < 0) continue;
-    mine[nmine++] = idx[k];
-    int other = 1 - team;
+    s.mine[s.nmine++] = idx[k];
     int res = m.winner == '-' ? 0 : (m.winner == 'w') == (team == 0) ? 1 : -1;
     int my = team ? m.b : m.w, th = team ? m.w : m.b;
     int pm = m.pw < 0 ? -1 : team ? m.pb : m.pw, pt = team ? m.pw : m.pb;
-    general.add(res, my, th, pm, pt);
+    s.general.add(res, my, th, pm, pt);
     int mode = m.mode == 'c' ? 1 : m.mode == 'r' ? 2 : 0;
-    byMode[mode].add(res, my, th, pm, pt);
-    if (mode == 2) ranked.add(res, my, th, pm, pt);
+    s.byMode[mode].add(res, my, th, pm, pt);
+    if (mode == 2) s.ranked.add(res, my, th, pm, pt);
     char l = res > 0 ? 'G' : res < 0 ? 'P' : 'E';
-    if (nl == 5) memmove(letters, letters + 1, 4), nl = 4;
-    letters[nl++] = l;
+    if (s.nl == 5) memmove(s.letters, s.letters + 1, 4), s.nl = 4;
+    s.letters[s.nl++] = l;
     run = res > 0 ? run + 1 : 0;
-    if (run > best) best = run;
+    if (run > s.best) s.best = run;
     // Racha actual: un empate la corta; si cambia el resultado, empieza otra.
-    if (l == 'E') sType = 0, sCount = 0;
-    else if (sType == l) sCount++;
-    else sType = l, sCount = 1;
-    playMs += m.totalMs;
-    goals += m.pg[team][slot];
-    sides[team].add(res);
+    if (l == 'E') s.sType = 0, s.sCount = 0;
+    else if (s.sType == l) s.sCount++;
+    else s.sType = l, s.sCount = 1;
+    s.playMs += m.totalMs;
+    s.goals += m.pg[team][slot];
+    s.sides[team].add(res);
     if (m.fin) {
       reloj::Clock c = partidos::localOf(m.fin);
-      days[reloj::weekday(c)].add(res);
-      parts[dayPart(c.hour)].add(res);
-      if (!since || m.fin < since) since = m.fin;
+      s.days[reloj::weekday(c)].add(res);
+      s.parts[dayPart(c.hour)].add(res);
+      if (!s.since || m.fin < s.since) s.since = m.fin;
     } else {
-      parts[dayPart(0)].add(res);  // sin hora: Date(0) es de madrugada, como en la app
-      days[4].add(res);
+      s.parts[dayPart(0)].add(res);  // sin hora: Date(0) es de madrugada, como en la app
+      s.days[4].add(res);
     }
     for (int t = 0; t < 2; t++)
       for (int i = 0; i < m.n[t]; i++) {
         if (t == team && i == slot) continue;
-        Other* x = t == team ? findOther(mates, nt, 128, m.code[t][i], m.name[t][i]) : findOther(rivals, nr, 128, m.code[t][i], m.name[t][i]);
+        Other* x = t == team ? findOther(s.mates, s.nt, MAX_OTHERS, m.code[t][i], m.name[t][i])
+                             : findOther(s.rivals, s.nr, MAX_OTHERS, m.code[t][i], m.name[t][i]);
         if (x) x->r.add(res);
       }
-    (void)other;
   }
   free(idx);
-  qsort(rivals, nr, sizeof(Other), byPlayed);
-  qsort(mates, nt, sizeof(Other), byPlayed);
-  int fav = -1, nem = -1;
-  for (int i = 0; i < nr; i++) {
-    const Rec& r = rivals[i].r;
+  qsort(s.rivals, s.nr, sizeof(Other), byPlayed);
+  qsort(s.mates, s.nt, sizeof(Other), byPlayed);
+  for (int i = 0; i < s.nr; i++) {
+    const Rec& r = s.rivals[i].r;
     if (r.played < RIVAL_MIN) continue;
     double w = pct(r, r.wins), lo = pct(r, r.losses);
-    if (w > 50 && (fav < 0 || w > pct(rivals[fav].r, rivals[fav].r.wins))) fav = i;
-    if (lo > 50 && (nem < 0 || lo > pct(rivals[nem].r, rivals[nem].r.losses))) nem = i;
+    if (w > 50 && (s.fav < 0 || w > pct(s.rivals[s.fav].r, s.rivals[s.fav].r.wins))) s.fav = i;
+    if (lo > 50 && (s.nem < 0 || lo > pct(s.rivals[s.nem].r, s.rivals[s.nem].r.losses))) s.nem = i;
   }
+  return true;
+}
 
+// El perfil (snapshot.ts) del jugador `code`, en JSON. malloc; nullptr si no hay memoria.
+static char* snapshot(uint32_t code, uint32_t nowUtc) {
+  const jug::Player* me = jugadores.find(code);
+  if (!me) return nullptr;
+  Stats st;
+  if (!stats(code, st)) return nullptr;
+  struct Free {
+    Stats& s;
+    ~Free() { s.release(); }
+  } freeLater{st};
+  const Block &general = st.general, &ranked = st.ranked, *byMode = st.byMode;
+  const Rec *sides = st.sides, *days = st.days, *parts = st.parts;
+  int best = st.best, goals = st.goals, sType = st.sType, sCount = st.sCount, nl = st.nl;
+  uint64_t playMs = st.playMs;
+  const char* letters = st.letters;
+  uint32_t since = st.since;
+  Other *rivals = st.rivals, *mates = st.mates;
+  int nr = st.nr, nt = st.nt, fav = st.fav, nem = st.nem;
+  int* mine = st.mine;
+  int nmine = st.nmine;
   Out o;
   char id[48];
   const progresion::Player* pr = progresion::of(code);
@@ -518,7 +559,6 @@ static char* snapshot(uint32_t code, uint32_t nowUtc) {
     }
     o.add("],\"goals\":%d}", m.pg[team][slot]);
   }
-  free(mine);
   // Logros: del más nuevo al más viejo.
   o.add("],\"achievements\":[");
   if (pr) {
