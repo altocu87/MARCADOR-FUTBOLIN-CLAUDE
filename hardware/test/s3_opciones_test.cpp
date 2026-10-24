@@ -491,6 +491,9 @@ int main() {
   assert(torneos::nTemplates == realTemplates);
 
   // ---- Copia de seguridad: hacer, cambiar cosas, restaurar y borrar.
+  // La copia lleva los ajustes guardados: que el partido lo esté (si no, depende de lo que hicieron las pruebas
+  // anteriores y la restauración no tendría «goals» que devolver).
+  saveConfig();
   tap(536 + 124, 76 + 160 + 36);  // HACER COPIA
   run(200);
   assert(datos::copyCount == 1 && datos::copies[0].players == realPlayers && datos::copies[0].matches == realMatches);

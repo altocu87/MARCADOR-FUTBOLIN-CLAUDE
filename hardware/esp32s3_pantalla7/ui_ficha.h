@@ -213,11 +213,17 @@ static void helpDot(lv_obj_t* parent, int x, int y, const char* const* text) {
 
 // ---------------------------------------------------------------- GENERAL
 static void buildContent();
+// Un botón de dentro de la pestaña la rehace después del toque (no se puede borrar el botón mientras se toca).
+static void rebuildLater() {
+  lv_async_call([](void*) {
+    if (scr) buildContent();
+  }, nullptr);
+}
 static void onScope(lv_event_t* e) {
   bool r = (bool)(intptr_t)lv_event_get_user_data(e);
   if (r == rankedScope) return;
   rankedScope = r;
-  buildContent();
+  rebuildLater();
 }
 static lv_obj_t* seg(lv_obj_t* parent, int x, int y, int w, int h, const char* txt, bool on, lv_event_cb_t cb, void* user,
                      uint16_t size = 17, int radius = ui::RADIUS_SM) {
@@ -308,11 +314,14 @@ static void eloChart(lv_obj_t* parent, int y) {
   lv_obj_t* area = ui::box(c, X0, Y0, W, H);
   // Línea del ELO inicial (discontinua) y su número.
   int yi = H - 10 - (elo[0] - lo) * (H - 20) / (hi - lo);
-  for (int x = 8; x < W - 8; x += 8) {
-    lv_obj_t* d = ui::box(area, x, yi, 4, 1);
-    lv_obj_set_style_bg_color(d, ui::hex(ui::color::LINE), 0);
-    lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
-  }
+  static lv_point_precise_t dash[2] = {{8, 0}, {W - 8, 0}};
+  lv_obj_t* dl = lv_line_create(area);
+  lv_line_set_points(dl, dash, 2);
+  lv_obj_set_pos(dl, 0, yi);
+  lv_obj_set_style_line_width(dl, 1, 0);
+  lv_obj_set_style_line_color(dl, ui::hex(ui::color::LINE), 0);
+  lv_obj_set_style_line_dash_width(dl, 4, 0);
+  lv_obj_set_style_line_dash_gap(dl, 4, 0);
   char t[12];
   snprintf(t, sizeof(t), "%d", elo[0]);
   textAt(area, t, 400, 11, ui::color::TEXT3, W - 8 - 60, yi - 16, 60, LV_TEXT_ALIGN_RIGHT);
@@ -487,55 +496,171 @@ static void buildRivals() {
 }
 
 // ---------------------------------------------------------------- HISTORIAL
-static void onMatch(lv_event_t* e) {
-  int ri = (int)(intptr_t)lv_event_get_user_data(e);
-  if (ri >= 0 && ri < partidos::count && hooks.openMatch) hooks.openMatch(partidos::rows[ri].id);
+// Una sola pieza que se dibuja entera (como la cronología del detalle de un partido): con unos 12 objetos por fila,
+// 50 partidos gastaban la memoria interna que necesita la placa. Tocar una fila abre su detalle.
+struct HistRow {
+  int ri;  // fila de partidos::rows
+  char res;
+  char date[24], names[2][64], score[16];
+};
+struct HistData {
+  int n;
+  HistRow row[50];
+};
+static void drawText(lv_layer_t* layer, const char* t, uint16_t w, uint16_t s, uint32_t c, int x1, int y1, int x2,
+                     lv_text_align_t align = LV_TEXT_ALIGN_LEFT, lv_opa_t opa = LV_OPA_COVER, int32_t ls = 0) {
+  lv_draw_label_dsc_t l;
+  lv_draw_label_dsc_init(&l);
+  l.font = assets::font(w, s);
+  l.color = ui::hex(c);
+  l.opa = opa;
+  l.align = align;
+  l.letter_space = ls;
+  l.text = t;
+  l.text_local = 1;
+  lv_area_t a = {x1, y1, x2, y1 + 200};
+  lv_draw_label(layer, &l, &a);
 }
-// Un lado del partido: fotos y nombres («Alex + Diego»), hacia el marcador.
-static void side(lv_obj_t* row, const partidos::Row& m, int t, int x, int w, bool right) {
-  char names[64] = "";
-  for (int i = 0; i < m.n[t]; i++) {
-    size_t k = strlen(names);
-    snprintf(names + k, sizeof(names) - k, "%s%s", i ? " + " : "", m.name[t][i]);
-  }
-  int faces = m.n[t] * 27 - 3;
-  for (int i = 0; i < m.n[t]; i++) {
-    int fx = right ? x + w - faces + i * 27 : x + i * 27;
-    avatarOf(row, m.code[t][i], m.name[t][i], fx, 14, 24);
-  }
-  int tw = w - faces - 6;
-  lv_obj_t* l = textAt(row, names, 400, 16, ui::color::TEXT, right ? x : x + faces + 6, 15, tw, right ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT);
-  lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_DOTS);
+static void drawBox(lv_layer_t* layer, int x1, int y1, int x2, int y2, int radius, uint32_t bg, lv_opa_t bgOpa, uint32_t border,
+                    int bw, lv_opa_t opa = LV_OPA_COVER) {
+  lv_draw_rect_dsc_t r;
+  lv_draw_rect_dsc_init(&r);
+  r.radius = radius;
+  r.bg_color = ui::hex(bg);
+  r.bg_opa = (lv_opa_t)(bgOpa * opa / 255);
+  r.border_width = bw;
+  r.border_color = ui::hex(border);
+  r.border_opa = opa;
+  lv_area_t a = {x1, y1, x2, y2};
+  lv_draw_rect(layer, &r, &a);
 }
+static void drawChip(lv_layer_t* layer, char r, int x, int y) {
+  uint32_t c = r == 'G' ? ui::color::OK : r == 'P' ? ui::color::DANGER : ui::color::TEXT2;
+  drawBox(layer, x, y, x + 21, y + 21, 6, c, 45, c, 0);
+  char t[2] = {r, 0};
+  drawText(layer, t, 900, 13, c, x, y + 3, x + 21, LV_TEXT_ALIGN_CENTER);
+}
+// Foto redonda de la caché (o un círculo con las iniciales).
+static void drawFace(lv_layer_t* layer, uint32_t c, const char* name, int x, int y, int size) {
+  char rel[40];
+  const jug::Player* p = c ? store->find(c) : nullptr;
+  const lv_image_dsc_t* pic = p && store->photoRel(c, rel, sizeof(rel)) ? assets::photo(rel, size, size / 2) : nullptr;
+  if (pic) {
+    lv_draw_image_dsc_t im;
+    lv_draw_image_dsc_init(&im);
+    im.src = pic;
+    lv_area_t a = {x, y, x + size - 1, y + size - 1};
+    lv_draw_image(layer, &im, &a);
+    return;
+  }
+  drawBox(layer, x, y, x + size - 1, y + size - 1, LV_RADIUS_CIRCLE, 0x1d3a63, LV_OPA_COVER, ui::color::LINE, 2);
+  char ini[8];
+  jug::initials(p ? p->name : name, ini, sizeof(ini));
+  drawText(layer, ini, 800, 12, ui::color::TEXT, x, y + (size - 15) / 2, x + size - 1, LV_TEXT_ALIGN_CENTER);
+}
+// Corta un texto que no cabe en `w` con «…».
+static void fitText(char* t, uint16_t weight, uint16_t size, int w) {
+  const lv_font_t* f = assets::font(weight, size);
+  lv_point_t sz;
+  lv_text_get_size(&sz, t, f, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  if (sz.x <= w) return;
+  size_t n = strlen(t);
+  while (n > 0) {
+    do n--;
+    while (n > 0 && ((uint8_t)t[n] & 0xC0) == 0x80);  // no partir una letra con tilde
+    char tmp[72];
+    snprintf(tmp, sizeof(tmp), "%.*s…", (int)n, t);
+    lv_text_get_size(&sz, tmp, f, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (sz.x <= w) {
+      snprintf(t, 64, "%s", tmp);
+      return;
+    }
+  }
+}
+static void drawHistory(lv_event_t* e) {
+  lv_obj_t* o = lv_event_get_current_target_obj(e);
+  const HistData* d = (const HistData*)lv_event_get_user_data(e);
+  lv_layer_t* layer = lv_event_get_layer(e);
+  lv_area_t a;
+  lv_obj_get_coords(o, &a);
+  for (int k = 0; k < d->n; k++) {
+    int y = a.y1 + k * 58;
+    if (y > layer->_clip_area.y2 || y + 52 < layer->_clip_area.y1) continue;  // fuera de lo que se pinta
+    const HistRow& h = d->row[k];
+    const partidos::Row& m = partidos::rows[h.ri];
+    int x = a.x1;
+    drawBox(layer, x, y, x + 767, y + 51, ui::RADIUS_SM, ui::color::CARD, 191, ui::color::LINE, 1);
+    drawChip(layer, h.res, x + 11, y + 15);
+    drawText(layer, h.date, 400, 13, ui::color::TEXT3, x + 43, y + 17, x + 163);
+    drawText(layer, m.mode == 'c' ? "Partido Loco" : m.mode == 'r' ? "Clasificatorio" : "Partido rápido", 400, 13, ui::color::TEXT2,
+             x + 173, y + 17, x + 283);
+    drawText(layer, h.score, 700, 15, ui::color::TEXT, x + 505, y + 16, x + 565, LV_TEXT_ALIGN_CENTER);
+    // Blanco a la izquierda (fotos y nombres), Azul a la derecha (nombres y fotos), hacia el marcador.
+    for (int t = 0; t < 2; t++) {
+      int faces = m.n[t] * 27 - 3;
+      int sx = t ? x + 572 : x + 293, sw = t ? 185 : 205;
+      for (int i = 0; i < m.n[t]; i++) {
+        int fx = t ? sx + sw - faces + i * 27 : sx + i * 27;
+        drawFace(layer, m.code[t][i], m.name[t][i], fx, y + 14, 24);
+      }
+      if (t) drawText(layer, h.names[t], 400, 16, ui::color::TEXT, sx, y + 15, sx + sw - faces - 7, LV_TEXT_ALIGN_RIGHT);
+      else drawText(layer, h.names[t], 400, 16, ui::color::TEXT, sx + faces + 6, y + 15, sx + sw);
+    }
+  }
+}
+// Dónde se apretó (al soltar, el punto ya puede no ser el del dedo), relativo a la lista.
+static int32_t pressY = -1;
+static void onHistoryTap(lv_event_t* e) {
+  lv_obj_t* o = lv_event_get_current_target_obj(e);
+  const HistData* d = (const HistData*)lv_event_get_user_data(e);
+  lv_area_t a;
+  lv_obj_get_coords(o, &a);
+  if (lv_event_get_code(e) == LV_EVENT_PRESSED) {
+    lv_indev_t* in = lv_event_get_indev(e);
+    lv_point_t p = {0, 0};
+    if (in) lv_indev_get_point(in, &p);
+    pressY = in ? p.y - a.y1 : -1;
+    return;
+  }
+  int32_t y = pressY;
+  pressY = -1;
+  int k = y < 0 ? -1 : (int)(y / 58);
+  if (k < 0 || k >= d->n || y % 58 >= 52) return;
+  if (hooks.openMatch) hooks.openMatch(partidos::rows[d->row[k].ri].id);
+}
+static void freeUserData(lv_event_t* e) { free(lv_event_get_user_data(e)); }
 static void buildHistory() {
   if (!st.nmine) {
     textAt(host, "Sin partidos guardados.", 400, 16, ui::color::TEXT2, 0, 0);
     return;
   }
-  int y = 0;
-  for (int k = st.nmine - 1, n = 0; k >= 0 && n < 50; k--, n++, y += 58) {
-    int ri = st.mine[k];
-    const partidos::Row& m = partidos::rows[ri];
+  HistData* d = (HistData*)calloc(1, sizeof(HistData));  // en la PSRAM (es grande)
+  if (!d) return;
+  for (int k = st.nmine - 1; k >= 0 && d->n < 50; k--) {
+    HistRow& h = d->row[d->n++];
+    h.ri = st.mine[k];
+    const partidos::Row& m = partidos::rows[h.ri];
     int team = 0;
     for (int t = 0; t < 2; t++)
       for (int i = 0; i < m.n[t]; i++)
         if (m.code[t][i] == code) team = t;
-    char res = m.winner == '-' ? 'E' : (m.winner == 'w') == (team == 0) ? 'G' : 'P';
-    lv_obj_t* r = panel(host, 0, y, 768, 52);
-    lv_obj_add_flag(r, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_bg_color(r, ui::hex(ui::color::CARD2), LV_STATE_PRESSED);
-    lv_obj_add_event_cb(r, onMatch, LV_EVENT_CLICKED, (void*)(intptr_t)ri);
-    chip(r, res, 11, 14);
-    char t[32];
-    partidos::dateText(m.fin, t, sizeof(t));
-    textAt(r, t, 400, 13, ui::color::TEXT3, 43, 17, 120);
-    textAt(r, m.mode == 'c' ? "Partido Loco" : m.mode == 'r' ? "Clasificatorio" : "Partido rápido", 400, 13, ui::color::TEXT2, 173, 17, 110);
-    // Blanco a la izquierda, Azul a la derecha, y el marcador en medio (MatchLine de la app).
-    snprintf(t, sizeof(t), "%u – %u", m.w, m.b);
-    textAt(r, t, 700, 15, ui::color::TEXT, 505, 15, 60, LV_TEXT_ALIGN_CENTER);
-    side(r, m, 0, 293, 205, false);
-    side(r, m, 1, 572, 185, true);
+    h.res = m.winner == '-' ? 'E' : (m.winner == 'w') == (team == 0) ? 'G' : 'P';
+    partidos::dateText(m.fin, h.date, sizeof(h.date));
+    snprintf(h.score, sizeof(h.score), "%u – %u", m.w, m.b);
+    for (int t = 0; t < 2; t++) {
+      for (int i = 0; i < m.n[t]; i++) {
+        size_t n = strlen(h.names[t]);
+        snprintf(h.names[t] + n, sizeof(h.names[t]) - n, "%s%s", i ? " + " : "", m.name[t][i]);
+      }
+      fitText(h.names[t], 400, 16, (t ? 185 : 205) - (m.n[t] * 27 - 3) - 7);
+    }
   }
+  lv_obj_t* list = ui::box(host, 0, 0, 768, d->n * 58 - 6);
+  lv_obj_add_flag(list, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(list, drawHistory, LV_EVENT_DRAW_MAIN, d);
+  lv_obj_add_event_cb(list, onHistoryTap, LV_EVENT_PRESSED, d);
+  lv_obj_add_event_cb(list, onHistoryTap, LV_EVENT_CLICKED, d);
+  lv_obj_add_event_cb(list, freeUserData, LV_EVENT_DELETE, d);
 }
 
 // ---------------------------------------------------------------- TORNEOS
@@ -544,7 +669,7 @@ static int nTitles = 0;
 static void onTourFilter(lv_event_t* e) {
   uint8_t f = (uint8_t)(intptr_t)lv_event_get_user_data(e);
   tourFilter = tourFilter == f && f ? 0 : f;
-  buildContent();
+  rebuildLater();
 }
 static void buildTournaments() {
   if (!titles) {
@@ -636,100 +761,115 @@ static void buildTournaments() {
 }
 
 // ---------------------------------------------------------------- LOGROS
-static void achCard(int x, int y, int a, const progresion::Player* pr, int& h) {
-  const progresion::Ach& d = progresion::ACH[a];
-  const progresion::AchInfo& info = progresion::ACH_INFO[a];
-  bool got = pr && (pr->ach[a >> 3] & (1 << (a & 7)));
-  bool hidden = info.secret && !got;
-  lv_obj_t* c = ui::box(host, x, y, 381, 48);
-  lv_obj_set_style_radius(c, ui::RADIUS_SM, 0);
-  lv_obj_set_style_border_width(c, 1, 0);
-  lv_obj_set_style_border_color(c, ui::hex(got ? RARITY_COLOR[d.rarity] : ui::color::LINE), 0);
-  if (!got) lv_obj_set_style_opa(c, 115, 0);
-  // Icono: insignia del color de su rareza con la inicial (la imagen de la app no viene por Wi-Fi); «?» si es secreto.
-  lv_obj_t* ic = ui::box(c, 10, 0, 34, 34);
-  lv_obj_set_style_radius(ic, 10, 0);
-  lv_obj_set_style_bg_color(ic, ui::hex(ui::color::CARD2), 0);
-  lv_obj_set_style_bg_opa(ic, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(ic, 2, 0);
-  lv_obj_set_style_border_color(ic, ui::hex(hidden ? ui::color::LINE : RARITY_COLOR[d.rarity]), 0);
-  char ini[8];
-  if (hidden) snprintf(ini, sizeof(ini), "?");
-  else jug::initials(d.name, ini, sizeof(ini));
-  lv_obj_t* il = ui::text(ic, ini, 900, 13, hidden ? ui::color::TEXT3 : RARITY_COLOR[d.rarity]);
-  lv_obj_center(il);
-  lv_obj_t* nm = textAt(c, hidden ? "Logro secreto" : d.name, 700, 14, ui::color::TEXT, 54, 7);
-  if (d.title && !hidden) {
-    lv_obj_update_layout(nm);
-    char t[48], up[48];
-    snprintf(t, sizeof(t), "«%s»", d.title);
-    upper(t, up, sizeof(up));
-    lv_obj_t* tl = ui::text(c, up, 900, 12, ui::color::RANKED, 1.44f);
-    lv_obj_set_pos(tl, 54 + lv_obj_get_width(nm) + 6, 9);
+// También una sola pieza dibujada: 51 tarjetas con 6 objetos cada una dejaban la memoria interna en 15 KB.
+struct AchItem {
+  int16_t x, y, h, nameW;
+  uint8_t a;
+  bool got, hidden;
+  char ini[8], title[48], line[176];
+};
+struct AchData {
+  int n, nHead;
+  int16_t headY[6];
+  uint8_t headG[6];
+  AchItem item[progresion::ACH_COUNT];
+};
+static void drawAchievements(lv_event_t* e) {
+  lv_obj_t* o = lv_event_get_current_target_obj(e);
+  const AchData* d = (const AchData*)lv_event_get_user_data(e);
+  lv_layer_t* layer = lv_event_get_layer(e);
+  lv_area_t a;
+  lv_obj_get_coords(o, &a);
+  drawText(layer, "Los secretos se revelan al conseguirlos.", 400, 13, ui::color::TEXT3, a.x1, a.y1, a.x2);
+  for (int g = 0; g < d->nHead; g++) {
+    char up[40];
+    upper(progresion::ACH_GROUP[d->headG[g]], up, sizeof(up));
+    drawText(layer, up, 700, 12, ui::color::TEXT2, a.x1, a.y1 + d->headY[g], a.x2, LV_TEXT_ALIGN_LEFT, LV_OPA_COVER, 1);
   }
-  char line[160], when[24] = "";
-  snprintf(line, sizeof(line), "%s · %s", hidden ? "???" : info.description, progresion::RARITY_NAME[d.rarity]);
-  if (got && pr->achAt[a]) {
-    char dt[24];
-    partidos::dateText(pr->achAt[a], dt, sizeof(dt));
-    snprintf(when, sizeof(when), " · %s", dt);
-    // La fecha no se parte (LVGL cortaría en «18:» / «30»): si no cabe entera, a la línea siguiente.
-    size_t k = strlen(line);
-    snprintf(line + k, sizeof(line) - k, "%s", when);
-    const lv_font_t* f = assets::font(400, 13);
-    lv_point_t full, part;
-    lv_text_get_size(&full, line, f, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    char pre[160];
-    snprintf(pre, sizeof(pre), "%.*s", (int)k, line);
-    lv_text_get_size(&part, pre, f, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    if (full.x > 315 && part.x <= 315) snprintf(line + k, sizeof(line) - k, " ·\n%s", dt);
+  for (int k = 0; k < d->n; k++) {
+    const AchItem& it = d->item[k];
+    int x = a.x1 + it.x, y = a.y1 + it.y;
+    if (y > layer->_clip_area.y2 || y + it.h < layer->_clip_area.y1) continue;
+    const progresion::Ach& def = progresion::ACH[it.a];
+    uint32_t rc = RARITY_COLOR[def.rarity];
+    lv_opa_t opa = it.got ? LV_OPA_COVER : 115;
+    drawBox(layer, x, y, x + 380, y + it.h - 1, ui::RADIUS_SM, 0, 0, it.got ? rc : ui::color::LINE, 1, opa);
+    int iy = y + (it.h - 34) / 2;
+    drawBox(layer, x + 10, iy, x + 43, iy + 33, 10, ui::color::CARD2, LV_OPA_COVER, it.hidden ? ui::color::LINE : rc, 2, opa);
+    drawText(layer, it.ini, 900, 13, it.hidden ? ui::color::TEXT3 : rc, x + 10, iy + 9, x + 43, LV_TEXT_ALIGN_CENTER, opa);
+    drawText(layer, it.hidden ? "Logro secreto" : def.name, 700, 14, ui::color::TEXT, x + 54, y + 7, x + 370, LV_TEXT_ALIGN_LEFT, opa);
+    if (it.title[0]) drawText(layer, it.title, 900, 12, ui::color::RANKED, x + 60 + it.nameW, y + 9, x + 380, LV_TEXT_ALIGN_LEFT, opa, 1);
+    drawText(layer, it.line, 400, 13, ui::color::TEXT2, x + 54, y + 25, x + 369, LV_TEXT_ALIGN_LEFT, opa);
   }
-  lv_obj_t* l = textAt(c, line, 400, 13, ui::color::TEXT2, 54, 25, 315);
-  lv_label_set_long_mode(l, LV_LABEL_LONG_MODE_WRAP);
-  lv_obj_update_layout(l);
-  int hh = 25 + lv_obj_get_height(l) + 7;
-  if (hh < 48) hh = 48;
-  lv_obj_set_height(c, hh);
-  lv_obj_set_y(ic, (hh - 34) / 2);
-  if (hh > h) h = hh;
 }
 static void buildAchievements() {
   const progresion::Player* pr = progresion::of(code);
-  textAt(host, "Los secretos se revelan al conseguirlos.", 400, 13, ui::color::TEXT3, 0, 0);
+  AchData* d = (AchData*)calloc(1, sizeof(AchData));  // en la PSRAM (es grande)
+  if (!d) return;
+  const lv_font_t* f13 = assets::font(400, 13);
+  const lv_font_t* f14 = assets::font(700, 14);
   int y = 24;
   for (uint8_t g = 0; g < 6; g++) {
-    label(host, progresion::ACH_GROUP[g], 0, y + 4);
+    d->headY[d->nHead] = (int16_t)(y + 4);
+    d->headG[d->nHead++] = g;
     y += 27;
-    int col = 0, rowH = 0;
-    lv_obj_t* left = nullptr;
+    int col = 0, first = -1;
     for (int a = 0; a < progresion::ACH_COUNT; a++) {
       if (progresion::ACH_INFO[a].group != g) continue;
-      int h = 0;
-      achCard(col ? 387 : 0, y, a, pr, h);
-      lv_obj_t* made = lv_obj_get_child(host, -1);
-      if (h > rowH) rowH = h;
-      if (col) {  // la pareja de la fila, del mismo alto
-        lv_obj_set_height(made, rowH);
-        if (left) lv_obj_set_height(left, rowH);
-        y += rowH + 6;
-        rowH = 0;
-        left = nullptr;
-      } else {
-        left = made;
+      const progresion::Ach& def = progresion::ACH[a];
+      const progresion::AchInfo& info = progresion::ACH_INFO[a];
+      AchItem& it = d->item[d->n];
+      it.a = (uint8_t)a;
+      it.got = pr && (pr->ach[a >> 3] & (1 << (a & 7)));
+      it.hidden = info.secret && !it.got;
+      if (it.hidden) snprintf(it.ini, sizeof(it.ini), "?");
+      else jug::initials(def.name, it.ini, sizeof(it.ini));
+      lv_point_t sz;
+      lv_text_get_size(&sz, it.hidden ? "Logro secreto" : def.name, f14, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+      it.nameW = (int16_t)sz.x;
+      if (def.title && !it.hidden) {
+        char t[48];
+        snprintf(t, sizeof(t), "«%s»", def.title);
+        upper(t, it.title, sizeof(it.title));
       }
+      snprintf(it.line, sizeof(it.line), "%s · %s", it.hidden ? "???" : info.description, progresion::RARITY_NAME[def.rarity]);
+      if (it.got && pr->achAt[a]) {
+        char dt[24];
+        partidos::dateText(pr->achAt[a], dt, sizeof(dt));
+        // La fecha no se parte (se cortaría en «18:» / «30»): si no cabe entera, a la línea siguiente.
+        size_t k = strlen(it.line);
+        lv_point_t part, full;
+        lv_text_get_size(&part, it.line, f13, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        snprintf(it.line + k, sizeof(it.line) - k, " · %s", dt);
+        lv_text_get_size(&full, it.line, f13, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        if (full.x > 315 && part.x <= 315) snprintf(it.line + k, sizeof(it.line) - k, " ·\n%s", dt);
+      }
+      lv_text_get_size(&sz, it.line, f13, 0, 0, 315, LV_TEXT_FLAG_NONE);
+      int h = 25 + sz.y + 7;
+      it.h = (int16_t)(h < 48 ? 48 : h);
+      it.x = (int16_t)(col ? 387 : 0);
+      it.y = (int16_t)y;
+      if (col) {  // la pareja de la fila, del mismo alto
+        int16_t rh = it.h > d->item[first].h ? it.h : d->item[first].h;
+        it.h = d->item[first].h = rh;
+        y += rh + 6;
+      } else {
+        first = d->n;
+      }
+      d->n++;
       col ^= 1;
     }
-    if (col) y += rowH + 6;
+    if (col) y += d->item[first].h + 6;
     y += 4;
   }
+  lv_obj_t* list = ui::box(host, 0, 0, 768, y);
+  lv_obj_add_event_cb(list, drawAchievements, LV_EVENT_DRAW_MAIN, d);
+  lv_obj_add_event_cb(list, freeUserData, LV_EVENT_DELETE, d);
 }
 
 // ---------------------------------------------------------------- pantalla
 static void buildContent() {
-  if (host) {  // lo de antes se borra después (puede ser el botón que se acaba de tocar)
-    lv_obj_add_flag(host, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_delete_async(host);
-  }
+  if (host) lv_obj_delete(host);  // antes de crear lo nuevo: las dos a la vez no caben en la memoria interna
   host = ui::box(scr, 16, 228, 768, 252);
   lv_obj_add_flag(host, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_scroll_dir(host, LV_DIR_VER);

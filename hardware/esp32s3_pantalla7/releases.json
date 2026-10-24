@@ -1,7 +1,17 @@
 {
-  "version": "0.19",
+  "version": "0.20",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.20",
+      "date": "2026-10-24",
+      "title": "Ficha del jugador más ligera",
+      "changes": [
+        "La ficha del jugador gasta mucha menos memoria: Logros e Historial ya no dejan la placa al límite.",
+        "Tocar un partido en el Historial de la ficha abre siempre su detalle.",
+        "Conserva todo lo de la 0.19."
+      ]
+    },
     {
       "version": "0.19",
       "date": "2026-10-24",
