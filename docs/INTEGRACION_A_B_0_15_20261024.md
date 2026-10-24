@@ -2,6 +2,10 @@
 
 Petición del dueño: instalar Torneos del equipo A, la rama optimizada y los sonidos nuevos que identifica como 0.13. Main de A ya usa 0.13 para nube y 0.14 para su aviso: la entrega conjunta usa **0.15**, sin alterar las entradas históricas de A. La entrega de audio de B conserva su nombre histórico `ENTREGA_SONIDOS_0_12_20261023.md`; no fue fusionada ni terminó de copiarse a SD.
 
+**Resultado vigente:** instalada la **normal 0.15 corregida**, con Torneos, 770 WAV verificados y tablas de interfaz reservadas explícitamente en PSRAM. El dueño confirma que el menú está estable. **La fase 3 se instaló, se midió y se retiró:** su mínimo de RAM interna fue 3.220 bytes, frente a 35.208 en la comprobación final de la normal. No promover el SDK experimental a firmware oficial. La publicación normal usa Arduino; fase 3 solo produce un artefacto manual de prueba.
+
+Los apartados siguientes registran también las candidatas descartadas, para que A no repita esos experimentos ni confunda sus cifras con las de la placa que queda instalada.
+
 ## Fuentes que se reúnen
 
 - A: `9f55ee5ecca8a18be2702af0a4ffa05c9112e520`, fase 3, que contiene main `ab72266` y los torneos `a9f36e1`.
@@ -19,7 +23,7 @@ Se mantienen las rondas sin repetición, 70 % contexto / 30 % comodín cuando co
 
 COM6 consultado el 24/10: firmware de B 0.12, SD no detectada, catálogo e historial no visibles. El 23/10 antes de ese fallo se leyeron cinco partidos y 560 WAV. No se ha formateado ni borrado la SD; no afirmar que esos datos se han comprobado conservados hasta montarla y verificarlos. El dueño deja para después desconectar toda la alimentación durante 10 s.
 
-Código integrado, compilación, instalación y prueba física son estados distintos. Completar debajo con los resultados reales antes de dar la entrega por instalada o comprobada. No publicar WAV ni copias privadas de NVS/flash.
+Código integrado, compilación, instalación y prueba física son estados distintos. Los resultados completados constan debajo. No publicar WAV ni copias privadas de NVS/flash.
 
 ## Comprobaciones del 24/10
 
@@ -37,6 +41,58 @@ Tras arrancar responde como 0.15 y **vuelve a detectar la misma SD de 8.036.253.
 
 Lectura en Inicio: RAM interna libre 18.068 bytes, mayor bloque 8.692 y mínimo 8.080; PSRAM libre 5.964.384. Cero errores de audio/cuadro/espera vertical. **La memoria interna es ajustada**: comparar con fase 3 y medir en torneos reales; estas cifras no prueban ausencia de agotamiento durante un torneo largo. La captura/USB no sustituye la confirmación visual del dueño.
 
-La compilación normal declara 171.312 bytes globales, frente a 136.368 de B 0.12: +34.944. En el ELF de fase 3 siguen existiendo reservas estáticas de torneo (`tor::buildKind()::fits`, 3.480; `tor::draft`, 3.692; `tor::selIds`, 2.560; `tor::buildDraft()::fixed`, 2.560; `tor::opts`, 1.920 bytes). **XIP no traslada automáticamente esas tablas a PSRAM**. Primera mejora posterior sugerida a A: revisar cuáles pueden reservarse explícitamente en PSRAM con fallo controlado. No se modifica su almacenamiento durante esta instalación; antes se mide la candidata optimizada.
+La primera compilación normal declaraba 171.312 bytes globales, frente a 136.368 de B 0.12: +34.944. En su ELF de fase 3 seguían las reservas estáticas de torneo (`tor::buildKind()::fits`, 3.480; `tor::draft`, 3.692; `tor::selIds`, 2.560; `tor::buildDraft()::fixed`, 2.560; `tor::opts`, 1.920 bytes). **XIP no trasladaba automáticamente esas tablas a PSRAM**. Este hallazgo llevó a la corrección explícita descrita al final; estas cifras son anteriores a ella.
 
-En curso: copia y relectura de los 770 WAV, activación de 706, instalación de la optimizada en app1 y comprobación posterior. Hasta anotarlo expresamente, no dar esos pasos por terminados.
+La copia, relectura, activación y comparación física terminaron después; ver los resultados siguientes.
+
+### Paquete instalado y primera prueba de fase 3
+
+**Copia terminada el 24/10 a las 07:59 UTC:** 770 archivos, 184.945.256 bytes de audio, 706 activos / 64 reservados. Los 560 anteriores conservados; 210 añadidos, cero reintentos. Todos los códigos tienen al menos dos lecturas de tamaño y CRC completo coincidentes con el paquete local. CRC del catálogo `c9dd6523`; diario privado SHA-256 `d11bad438aef63f267e014284c61a740ea5b0695d60af12c5813de6b3af86067`. Tras reiniciar la normal siguen los cinco partidos, la misma SD y los 31 grupos correctos.
+
+**Primera optimizada instalada y rechazada para jugar:** binario SHA-256 `11f5ea8d89df6b57d02432953baef586375ec1fc89f30ea2743bee580769e2b2`, app1, secuencia 6. Arranca, SD e historial correctos, 706 voces cargadas, pero RAM interna libre 5.896 bytes (mayor 5.108, mínimo 596); PSRAM libre 3.945.412 y caché de imágenes observada 7.123 KiB. El presupuesto de caché de 6 MiB es blando, no garantiza que Inicio quede debajo de esa cifra.
+
+Se probó **VOLVER_ANTERIOR** por USB, sin partido: vuelve a la normal de app0; tabla de arranque leída y comprobada (secuencia 7, estado válido). Conserva datos y catálogo. En esa lectura la normal tenía 8.608 bytes libres, mayor 7.668 y mínimo 8.252: el margen varía con el trabajo de arranque, no presentar una sola lectura como garantía de estabilidad.
+
+### Experimento de BSS externa (descartado)
+
+**No usar esta variante.** El ELF confirmó 47.408 bytes de tablas en PSRAM, pero en la placa produjo una excepción doble antes de responder a HELLO. La causa exacta no está aislada; no se atribuye una incompatibilidad general a la técnica. Se recuperó la normal por USB cambiando solo la entrada de arranque a secuencia 9. Las fuentes actuales deshabilitan explícitamente la BSS externa y usan reservas tras arrancar.
+
+El experimento habilitaba `CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y` y aplicaba `MFV3_UI_DATA` (`EXT_RAM_BSS_ATTR`) a tablas persistentes. No se trasladaban catálogo/selector de audio, motor, DMA ni datos de interrupciones. La ubicación correcta en el ELF no bastó para acreditar un arranque correcto.
+
+La técnica está descrita en la [documentación de Espressif para IDF 5.5](https://docs.espressif.com/projects/esp-idf/en/release-v5.5/esp32s3/api-guides/external-ram.html#allow-bss-segment-to-be-placed-in-external-memory). El cambio de configuración también permite que IDF coloque en PSRAM las secciones BSS de sus componentes de red previstos para ello.
+
+El guard del ELF de ese experimento detectaba la ubicación pero no la excepción física. Ha sido sustituido por `scripts/check-ui-memory.py`, que rechaza BSS externa en la nueva variante. No publicar los binarios experimentales de los párrafos anteriores.
+
+### Solución actual: reservas explícitas tras el arranque
+
+Fuentes `b570c8a442d5d831172759247394cd4d911b6bdd`. `s3mem::ExternalArray` reserva cada tabla una sola vez con `MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT` y verifica que el puntero sea externo. Preserva inicializadores y duración de los elementos. No utiliza almacenamiento externo estático, ni reserva tablas antes de arrancar. Mantiene jugadores, motor y selector de audio en RAM interna. Se aplica también a la compilación normal, sin requerir un SDK nuevo para esa mejora.
+
+Se reserva antes de cambiar a Torneos, al abrir Resumen/Parejas y al leer la lista de fotos. Ante falta de PSRAM, se mantiene el puntero vacío y el llamador muestra un aviso; no se cambian datos guardados. Las tablas permanecen para los siguientes usos. No se añade trabajo al botón del gol.
+
+Prueba de unidad: fallo recuperable, inicializadores, matrices de caracteres, reintento y ausencia de nuevas reservas al repetir. Torneos, fases de sonido, menús y fechas/resumen pasan; GitHub Pruebas y Firmware de `b570c8a` correctos. El guard del ELF exige que los antiguos bloques grandes sean ahora manejadores pequeños y que motor/jugadores/catálogo sigan internos. `MEMORIA` añade el número y bytes de tablas ya reservadas en PSRAM.
+
+**Normal corregida instalada:** app1, secuencia inicial 10, 2.009.360 bytes, SHA-256 `af5003704ed6db103f89583d106e13ea47dde01e60a6816b2c948119f0893463`. En Inicio: interna libre **46.048**, mayor **27.636**, mínimo **35.388**; PSRAM libre 5.964.772. Cinco partidos, SD y 706 voces correctos. El recorrido Inicio → Torneos → Resumen → Parejas → Inicio conserva ese mínimo y el mayor bloque de 27.636. Se reservan 24.312 bytes en nueve tablas al recorrer esos menús. No se crea ni modifica un torneo o partido.
+
+**Fase 3 con las mismas reservas, probada y retirada:** 2.074.944 bytes, SHA-256 `f79747ab46b0bb2a716b3fb0a40c5990c3cf3bfc39b53b311b1090d978eaaf8d`, app0, secuencia 11. Arranca, carga SD y catálogo y completa el mismo recorrido sin errores registrados. Sin embargo, el mínimo interno cae a **3.220 bytes**, con 10.928 libres al volver a Inicio. No se produjo un reinicio en este recorrido; el margen se considera insuficiente para recomendar juego o torneos. Se vuelve por `VOLVER_ANTERIOR` a la normal de app1. El efecto exacto de cada ajuste del SDK sigue pendiente de aislar; no atribuir el consumo a una opción concreta sin medirla por separado.
+
+### Estado final comprobado (11:06, hora de Madrid)
+
+| Variante | Interna libre en Inicio | Mayor bloque | Mínimo interno observado | Decisión |
+| --- | ---: | ---: | ---: | --- |
+| Primera normal, antes de mover tablas | 18.068 B | 8.692 B | 8.080 B | Sustituida |
+| Normal corregida, última lectura tras volver | 46.024 B | 27.636 B | 35.208 B | **Instalada y recomendada para la prueba de juego** |
+| Fase 3 corregida, después del mismo recorrido | 10.928 B | 7.668 B | 3.220 B | Retirada; solo experimental |
+
+El ahorro estático comprobado en el ELF es **28.112 bytes internos**: 28.152 de contenido pasan a PSRAM y quedan 40 de manejadores. No interpretar las diferencias de memoria libre entre arranques como una medición aislada de ese ahorro: también cambia el trabajo de arranque.
+
+Última lectura de la normal: `HELLO waveshare-7c 0.15`, PSRAM libre 5.964.836 bytes, mayor 5.898.228, caché de imágenes 7.123 KiB. SD disponible, mismo volumen de 8.036.253.696 bytes, usados 188.534.784, libres 7.847.718.912. Cinco partidos con los mismos identificadores, resultados y fechas; dos mantienen fecha cero. Reloj válido por RTC sin ajustarlo. Catálogo: **706 activos**, 31 grupos, límite 1024. Diagnóstico: cero errores de audio, cuadro y espera vertical. Confirmación física del dueño: **«El menú está estable»**.
+
+Validación de las fuentes `b570c8a`: GitHub [Pruebas](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/40079092821), [Pruebas del PR](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/40079095331), [Firmware normal](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/40079092717) y [Fase 3](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/actions/runs/40079092716), correctos. Los cambios posteriores a ese commit son documentación. La publicación desde main recompila y puede tener otro contador de build y hash: el binario realmente instalado es el identificado arriba, no confundirlo con una actualización posterior aún no instalada.
+
+### Pendientes para A y siguiente prueba
+
+- Jugar y escuchar: no se ha medido aún latencia acústica, cortes con goles/anulaciones, un torneo completo, ni estabilidad durante horas con esta 0.15. Los CRC demuestran integridad del archivo, no la pertinencia de cada frase ni su reproducción por el altavoz.
+- Activar los **64 reservados de torneo** con un contexto fiable del motor de A, sus pruebas y una nueva versión; siguen en SD pero no se eligen automáticamente.
+- Revisar en una rama la memoria del SDK con mapa de enlace y medidas por opción, antes de volver a instalarlo. La reversión automática no cubrió el fallo anterior a `onBoot`; conservar siempre recuperación por USB y una normal comprobada.
+- Ampliación futura: 1024 referencias y máscara de 32 bits con 31 grupos usados. Otros 500 archivos superarían el límite actual de referencias; diseñar y probar el cambio antes de importarlos, sin cargar todos los WAV en RAM.
+- No volver a tocar el USB en esta entrega: se deja la placa lista para que el dueño pruebe jugando. No se han inventado fechas ni añadido partidas para medir rendimiento.

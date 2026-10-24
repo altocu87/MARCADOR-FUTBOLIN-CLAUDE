@@ -1,18 +1,19 @@
 # Prueba de la fase 3 en la placa (sin perder la versión de ahora)
 
-**Estado:** compilada en GitHub, sin instalar ni probar en la placa. No está publicada: no sale en ACTUALIZAR.
+**Estado actualizado 24/10: probada y retirada; no recomendada para jugar.** Incluso con las tablas de interfaz en PSRAM, la fase 3 baja a 3.220 bytes internos mínimos al recorrer menús. La normal 0.15 corregida queda instalada, con 35.208 de mínimo en la última comprobación y menú estable confirmado por el dueño. Ver [informe A/B y binarios concretos](INTEGRACION_A_B_0_15_20261024.md). El workflow de fase 3 solo genera artefactos manuales: **no publica firmware ni sustituye la compilación normal**. No repetir la instalación sin resolver y medir antes el margen interno.
 
 ## Qué es
 
-El mismo programa de la pantalla (0.14), con la misma base de Arduino (3.3.12), pero preparada con cuatro ajustes
-que recomienda el fabricante del chip para pantallas como la nuestra (`hardware/fase3/platformio.ini`):
+El mismo programa de la pantalla, con la misma base de Arduino (3.3.12), pero preparado con cinco ajustes
+que se han evaluado para esta pantalla (`hardware/fase3/platformio.ini`):
 
-- el programa se ejecuta desde la PSRAM: guardar en la memoria del chip ya no deja a la pantalla sin imagen;
-- la interrupción de la pantalla va en la memoria rápida (sigue viva mientras se guarda);
-- la pantalla se recoloca sola en cada imagen;
+- ejecución de código y constantes desde la PSRAM, para reducir interferencias al escribir flash;
+- interrupción de pantalla en memoria interna rápida, para atenderla con la caché de flash deshabilitada;
+- realineado del panel en el retorno vertical;
 - más ancho de banda de la PSRAM (línea de caché de 64 B).
+- tablas de ranking, fotos y selección de torneo reservadas en PSRAM después de arrancar, con comprobación de memoria. Catálogo de audio, jugadores, motor e interrupciones siguen internos. No se usa BSS externa.
 
-Lo que se ve y se juega no cambia. En AJUSTES pone «Versión 0.14 · prueba fase 3».
+Las reglas del juego son las mismas. La candidata actual se identifica como «Versión 0.15 · prueba fase 3». La reserva explícita de tablas del último punto también está en la normal 0.15; no requiere este SDK. No se ha demostrado aún una mejora física global de fluidez de fase 3: su consumo interno impide recomendarla.
 
 ## Cómo no se pierde la versión de ahora
 
@@ -20,16 +21,16 @@ La placa tiene **dos huecos** para el programa. La prueba se graba en el que no 
 entero en el otro. Volver es solo decirle a la placa con cuál arrancar. Tres formas de volver:
 
 1. En la pantalla: AJUSTES → ACTUALIZACIONES → «VOLVER A LA ANTERIOR» (dos toques).
-2. Sola: si la prueba se reinicia por un fallo tres veces seguidas (antes de 2 minutos encendida), vuelve sola.
+2. Sola: si el programa alcanza el contador de arranques y registra tres fallos seguidos (antes de 2 minutos encendida), vuelve sola. **No cubre todo fallo anterior a ese contador**: el experimento descartado de BSS externa requirió recuperar por USB.
 3. Por USB desde el PC: `python scripts/placa.py volver`.
 
 Si la pantalla quedara en negro sin llegar a arrancar, la forma 3 sigue funcionando (no necesita el programa).
 
-## Pasos (con la placa por USB en el PC, COM6)
+## Procedimiento reservado para futuras candidatas corregidas
 
-Recomendado: instalar antes la 0.14 por Wi-Fi (ACTUALIZAR), para tener la última normal en uno de los huecos.
+Antes de otra prueba autorizada: resolver el margen interno, identificar puerto y binario exactos, comprobar que el otro hueco contiene una normal validada (actualmente 0.15) y conservar los datos. **No instalar automáticamente el último artefacto:** los experimentos descartados también pueden haber compilado correctamente.
 
-1. Descargar el programa: GitHub → Actions → «Fase 3 (prueba)» → la última ejecución correcta → artefacto
+1. Descargar una candidata corregida e identificada: GitHub → Actions → «Fase 3 (prueba)» → ejecución concreta → artefacto
    `fase3-waveshare-7c` → dentro, `waveshare-7c-fase3-ota.bin`.
 2. Ver qué hay en cada hueco: `python scripts/placa.py ranuras`.
 3. Grabar la prueba en el hueco libre: `python scripts/placa.py probar waveshare-7c-fase3-ota.bin`.
@@ -44,12 +45,12 @@ Recomendado: instalar antes la 0.14 por Wi-Fi (ACTUALIZAR), para tener la últim
 5. Dejarla en reposo con la cuenta: que sincronice y que el aviso se vea.
 6. `python scripts/placa.py orden "MEMORIA"` antes y después de jugar (memoria libre).
 
-Si todo va igual o mejor que la 0.14 y la imagen ya no salta, se pasa a la compilación normal en GitHub (cambio en
-`firmware.yml`), con permiso del dueño. Si algo va peor: volver (arriba) y apuntar qué falló.
+Antes de proponer publicarla, comparar memoria y fluidez con la normal 0.15, incluido juego y torneo completo, carga de fotos y reposo con nube. No basta con compilar y ver Inicio. Cambiar el workflow oficial requiere permiso del dueño y resultados favorables; **la candidata probada el 24/10 no cumple el margen requerido**. Si algo va peor: volver (arriba) y apuntar qué falló.
 
 ## Riesgos conocidos
 
-- El programa ocupa unos 2 MB más en la PSRAM: la caché de imágenes baja de 8 a 6 MB (`ui_assets.h`).
+- La RAM interna mínima observada fue 3.220 bytes frente a más de 35.000 de la normal corregida: falta aislar el coste de cada opción del SDK. No se ha medido jugando.
+- El programa ocupa unos 2 MB más en la PSRAM: el presupuesto de caché de imágenes baja de 8 a 6 MiB (`ui_assets.h`), pero es blando; se observaron 7.123 KiB en Inicio.
 - Compilar tarda más (unos 10 minutos la primera vez en GitHub; luego queda en caché).
 - La base de Arduino la prepara pioarduino: al cambiar de versión de Arduino hay que cambiarla también en
   `platformio.ini`.

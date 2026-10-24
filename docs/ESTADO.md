@@ -2,7 +2,9 @@
 
 ## Integración A/B · 0.15 · 24/10/2026
 
-**Preparando y comprobando; todavía no instalada.** Torneos y fase 3 de A reunidos con los 210 sonidos nuevos de B. SD sigue sin detectarse en COM6; no se ha iniciado la copia. Versiones históricas conservadas: el paquete que el dueño llama sonidos 0.13 se integra como 0.15 porque A ya publicó 0.14. [Entrega y límites](INTEGRACION_A_B_0_15_20261024.md).
+**Normal 0.15 corregida instalada y comprobada en COM6; el dueño confirma menú estable.** Contiene Torneos y sincronización en reposo de A, sonidos de B y tablas de interfaz reservadas tras arrancar en PSRAM: ahorra 28.112 bytes internos estáticos, sin añadir reservas al gol. Última lectura: 46.024 bytes internos libres, mínimo 35.208. SD recuperada sin formatear; **770 WAV verificados, 706 activos y 64 de torneo aún reservados**, cinco partidos conservados (dos siguen sin fecha). La fase 3 se instaló y probó, pero se **retiró por mínimo interno de 3.220 bytes**: no promoverla a publicación normal. La placa queda con Arduino normal; pruebas de juego, acústica y torneo completo pendientes. Fuentes probadas `b570c8a`, publicación mediante [PR 25](https://github.com/altocu87/MARCADOR-FUTBOLIN-CLAUDE/pull/25). Versiones anteriores de A conservadas; el paquete llamado sonidos 0.13 se entrega como 0.15 porque A ya usó 0.14. [Informe para A, binarios, medidas y límites](INTEGRACION_A_B_0_15_20261024.md).
+
+Las secciones fechadas anteriores que siguen debajo son historial; el estado físico vigente es el de esta primera sección.
 
 ## Fase 3 · compilación con sdkconfig propio · rama `equipo-a/fase3-sdkconfig` · 23/10/2026
 
