@@ -689,5 +689,11 @@ int main(int argc, char** argv) {
   goHome();
   run(SLEEP_AFTER_MS + 2000);
   shot("reposo", 0);
+  // El mismo reloj a mitad de minuto (segundo impar: dos puntos tenues), con batería baja y subiendo a la nube, y
+  // luego el paso de segundo a segundo (solo cambian dos marcas). Sin loop() entre medias: lo pinta tal cual.
+  reposo::update(18, 30, 37, 6, 17, 10, "Último: #4f7ea3 BLANCO 10 – 9 AZUL#", true, true);
+  shot("reposo-avisos", 0);
+  reposo::update(18, 30, 38, 6, 17, 10, "Último: #4f7ea3 BLANCO 10 – 9 AZUL#");
+  shot("reposo-38", 0);
   return 0;
 }

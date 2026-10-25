@@ -1,7 +1,18 @@
 {
-  "version": "0.22",
+  "version": "0.23",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.23",
+      "date": "2026-10-25",
+      "title": "Reloj de reposo como el de la app",
+      "changes": [
+        "El reloj de reposo ya no tiene el círculo: ahora es una línea de 60 marcas que se van encendiendo cada segundo, como en la app.",
+        "La hora es mucho más grande y con números de marcador arcade (de siete segmentos con brillo); los dos puntos laten con cada segundo.",
+        "Debajo, la fecha y el último resultado; el aviso de batería baja y el de sincronizando se siguen viendo sin taparse con nada.",
+        "Conserva todo lo de la 0.22."
+      ]
+    },
     {
       "version": "0.22",
       "date": "2026-10-25",
