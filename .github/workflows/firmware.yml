@@ -96,7 +96,10 @@ jobs:
       group: firmware-publicar
       cancel-in-progress: false
     needs: compilar
-    if: ${{ inputs.publicar || github.ref == 'refs/heads/main' }}
+    # También si falla otra placa (p. ej. la Elecrow de 4 MB, que ya no cabe): la pantalla 7C se publica igual y la
+    # placa que falló se queda con su última versión publicada (paso «Placas que no compilaron»). Si falla la 7C,
+    # «Exigir una version nueva» no encuentra su ota.json y no se publica nada.
+    if: ${{ !cancelled() && (inputs.publicar || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -117,6 +120,17 @@ jobs:
           tar -xOf previous/firmware.tar.gz ./waveshare-7c/ota.json > previous/ota.json
           node scripts/native-release.mjs check
           node scripts/native-release.mjs check-published previous/ota.json firmware/waveshare-7c/ota.json
+      - name: Placas que no compilaron (se quedan con su última versión publicada)
+        run: |
+          mkdir -p previous/todo
+          tar -xzf previous/firmware.tar.gz -C previous/todo
+          for d in previous/todo/*/; do
+            id=$(basename "$d")
+            if [ ! -d "firmware/$id" ]; then
+              echo "::warning::$id no ha compilado: se queda con su última versión publicada"
+              cp -r "$d" "firmware/$id"
+            fi
+          done
       - name: Release «firmware-latest»
         env:
           GH_TOKEN: ${{ github.token }}
