@@ -60,6 +60,8 @@ struct Saved {
   char refresh[160];
   char lastPull[40];
   bool tournaments;  // ya se han bajado todos los torneos (una vez: antes de los torneos no se bajaban)
+  bool players;      // ya se han bajado todos los jugadores con lo que no va en la lista (0.22: de baja, título,
+                     // melodía y apodo; antes la placa no los guardaba)
 };
 static Saved saved;
 static Saved jobSaved;  // copia privada de la tarea; se publica al terminar
@@ -81,7 +83,8 @@ static bool saveState() {
   FILE* f = fopen(tmp, "wb");
   if (!f) return false;
   bool ok = fprintf(f, "%s\n%s\n%s\n%s\n%d\n%d\n", saved.email, saved.userId,
-                    rememberSession ? saved.refresh : "", saved.lastPull, rememberSession ? 1 : 0, saved.tournaments ? 1 : 0) >= 0;
+                    rememberSession ? saved.refresh : "", saved.lastPull, rememberSession ? 1 : 0, saved.tournaments ? 1 : 0) >= 0 &&
+            fprintf(f, "%d\n", saved.players ? 1 : 0) >= 0;
   ok = fclose(f) == 0 && ok;
   bool hadOriginal = false;
   if (ok) {
@@ -113,6 +116,7 @@ static void loadState() {
   char remember[8];
   if (fgets(remember, sizeof(remember), f)) rememberSession = remember[0] != '0';
   if (fgets(remember, sizeof(remember), f)) saved.tournaments = remember[0] == '1';
+  if (fgets(remember, sizeof(remember), f)) saved.players = remember[0] == '1';
   if (!rememberSession) saved.refresh[0] = 0;
   fclose(f);
 }
@@ -315,6 +319,9 @@ struct Change {
   char id[48];
   char name[28];
   uint16_t* px;  // foto (malloc) o nullptr
+  // 'p': lo demás del jugador en la app (jug::Extra)
+  bool active;
+  char titleId[24], anthem[12], alias[52];
 };
 static Change* changes = nullptr;
 static int nChanges = 0;
@@ -339,6 +346,9 @@ struct UpPlayer {
   char id[48];
   char name[28];
   char* photoUrl;  // «data:image/bmp;base64,…» ya hecha por loop() (la tarea no lee la memoria del chip) o nullptr
+  bool active;     // y lo demás que guarda la app (si no se sube, la nube lo perdería)
+  char titleId[24], anthem[12], alias[52];
+  uint8_t extrasLocal;  // lo cambiado en la placa (jug::LOCAL_*); lo demás, como acaba de bajar de la cuenta
 };
 static UpPlayer* upPlayers = nullptr;
 static int nUpPlayers = 0;
@@ -654,21 +664,26 @@ static bool pushMatch(const char* id, bool* done) {
 
 static bool pushPlayer(const UpPlayer& p, bool* done) {
   char* name = jsonEscape(p.name);
+  char* alias = p.alias[0] ? jsonEscape(p.alias) : nullptr;
   const char* photo = p.photoUrl;
   uint64_t ms = (uint64_t)(nowUtc ? nowUtc() : 0) * 1000u;
-  size_t cap = 400 + strlen(name ? name : "") + (photo ? strlen(photo) : 0);
+  size_t cap = 600 + strlen(name ? name : "") + (alias ? strlen(alias) : 0) + (photo ? strlen(photo) : 0);
   char* body = (char*)malloc(cap);
   bool ok = false;
-  if (body && name) {
-    int k = snprintf(body, cap, "[{\"tipo\":\"player\",\"id\":\"%s\",\"borrado\":false,\"datos\":{\"id\":\"%s\",\"name\":\"%s\",\"active\":true,"
+  if (body && name && (alias || !p.alias[0])) {
+    int k = snprintf(body, cap, "[{\"tipo\":\"player\",\"id\":\"%s\",\"borrado\":false,\"datos\":{\"id\":\"%s\",\"name\":\"%s\",\"active\":%s,"
                                 "\"createdAt\":%llu,\"updatedAt\":%llu",
-                     p.id, p.id, name, (unsigned long long)ms, (unsigned long long)ms);
+                     p.id, p.id, name, p.active ? "true" : "false", (unsigned long long)ms, (unsigned long long)ms);
+    if (alias) k += snprintf(body + k, cap - k, ",\"alias\":\"%s\"", alias);
+    if (p.titleId[0]) k += snprintf(body + k, cap - k, ",\"titleId\":\"%s\"", p.titleId);
+    if (p.anthem[0]) k += snprintf(body + k, cap - k, ",\"anthem\":\"%s\"", p.anthem);
     if (photo) k += snprintf(body + k, cap - k, ",\"photo\":\"%s\"", photo);
     snprintf(body + k, cap - k, "}}]");
     ok = post(body);
   }
   free(body);
   free(name);
+  free(alias);
   *done = ok;
   return ok;
 }
@@ -806,11 +821,11 @@ static bool takeRow(const char* o) {
     }
     if (!datos || *datos != '{') return false;
     const char* act = partidos::keyIn(datos, "active");
-    if (act && !partidos::isTrue(act)) {
-      c.kind = 'q';  // inactivo en la app: fuera de la lista de la placa
-      return pushChange(c);
-    }
+    c.active = !act || partidos::isTrue(act);  // de baja en la app: se queda, fuera de las listas para elegir
     partidos::strOf(partidos::keyIn(datos, "name"), c.name, sizeof(c.name));
+    partidos::strOf(partidos::keyIn(datos, "titleId"), c.titleId, sizeof(c.titleId));
+    partidos::strOf(partidos::keyIn(datos, "anthem"), c.anthem, sizeof(c.anthem));
+    partidos::strOf(partidos::keyIn(datos, "alias"), c.alias, sizeof(c.alias));
     const char* ph = partidos::keyIn(datos, "photo");
     if (ph && *ph == '"' && ph[1] != '"') {
       const char* e = partidos::skipStr(ph);
@@ -916,6 +931,7 @@ static void runJob() {
     // Primero bajar (para unir los jugadores que ya estén en la cuenta) y luego subir lo pendiente.
     snprintf(newLastPull, sizeof(newLastPull), "%s", jobSaved.lastPull);
     if (jobOk) jobOk = pull(jobSaved.lastPull);
+    if (jobOk && !jobSaved.players) jobOk = pull("", "player");  // una vez: todos, con su título, melodía y apodo
     // Torneos (después de sus partidos). La primera vez, todos: antes de los torneos la placa no los bajaba (y las
     // preferencias, por sus tipos de torneo).
     if (jobOk && tournamentsDir[0]) jobOk = pull(jobSaved.tournaments ? jobSaved.lastPull : "", "tournament", 4);
@@ -927,14 +943,40 @@ static void runJob() {
         joins = changes[k].kind == 'p' && strcmp(changes[k].id, upPlayers[i].id) && !strcasecmp(changes[k].name, upPlayers[i].name);
       if (joins) continue;
       if (stopped()) { jobOk = false; break; }
+      // Lo que no se cambió aquí, como está en la cuenta (si no, se borraría el título, la melodía o el apodo de la app).
+      UpPlayer& u = upPlayers[i];
+      for (int k = 0; k < nChanges; k++) {
+        const Change& c = changes[k];
+        if (c.kind != 'p' || strcmp(c.id, u.id)) continue;
+        if (!(u.extrasLocal & jug::LOCAL_ACTIVE)) u.active = c.active;
+        if (!(u.extrasLocal & jug::LOCAL_STYLE)) {
+          snprintf(u.titleId, sizeof(u.titleId), "%s", c.titleId);
+          snprintf(u.anthem, sizeof(u.anthem), "%s", c.anthem);
+        }
+        snprintf(u.alias, sizeof(u.alias), "%s", c.alias);  // el apodo solo se cambia en la app
+      }
       bool d = false;
-      jobOk = pushPlayer(upPlayers[i], &d);
+      jobOk = pushPlayer(u, &d);
+      // Lo bajado antes de subir es más viejo: que no deshaga lo que se acaba de subir.
+      for (int k = 0; jobOk && k < nChanges; k++) {
+        Change& c = changes[k];
+        if (c.kind != 'p' || strcmp(c.id, u.id)) continue;
+        snprintf(c.name, sizeof(c.name), "%s", u.name);
+        c.active = u.active;
+        snprintf(c.titleId, sizeof(c.titleId), "%s", u.titleId);
+        snprintf(c.anthem, sizeof(c.anthem), "%s", u.anthem);
+        snprintf(c.alias, sizeof(c.alias), "%s", u.alias);
+      }
     }
     for (int i = 0; jobOk && i < nUps; i++) {
       const char* l = ups[i].line;
       if (stopped()) { jobOk = false; break; }
       if (l[0] == 'm') jobOk = pushMatch(l + 2, &ups[i].done);
-      else if (l[0] == 'b') jobOk = pushDeleted(l + 2, &ups[i].done);
+      else if (l[0] == 'b') {
+        jobOk = pushDeleted(l + 2, &ups[i].done);
+        for (int k = 0; jobOk && k < nChanges; k++)  // borrado aquí: que lo bajado antes no lo vuelva a traer
+          if (changes[k].kind == 'p' && !strcmp(changes[k].id, l + 2)) changes[k].kind = '-';
+      }
       else if (l[0] == 'x') jobOk = pushDeleted(l + 2, &ups[i].done, "match");
       else if (l[0] == 't') jobOk = pushTournament(l + 2, &ups[i].done);
       else if (l[0] == 'T') jobOk = pushDeleted(l + 2, &ups[i].done, "tournament");
@@ -1099,6 +1141,12 @@ static void sync(bool inBackground = false) {
       u.photoUrl = nullptr;
       store->idOf(code, u.id, sizeof(u.id));
       snprintf(u.name, sizeof(u.name), "%s", pl->name);
+      const jug::Extra* ex = store->extraOf(code);
+      u.active = !ex || !ex->inactive;
+      u.extrasLocal = ex ? ex->local : 0;
+      snprintf(u.titleId, sizeof(u.titleId), "%s", ex ? ex->titleId : "");
+      snprintf(u.anthem, sizeof(u.anthem), "%s", ex ? ex->anthem : "");
+      snprintf(u.alias, sizeof(u.alias), "%s", ex ? ex->alias : "");
       char rel[40], path[96];
       if (store->photoRel(code, rel, sizeof(rel))) {
         snprintf(path, sizeof(path), "%s/%s", ffatRoot, rel);
@@ -1272,6 +1320,7 @@ static void apply() {
     }
     saved.lastPull[0] = 0;
     saved.tournaments = false;
+    saved.players = false;
     saveState();
     if (tournamentsLoggedIn) tournamentsLoggedIn();
     if (hooks.loggedIn) hooks.loggedIn();
@@ -1284,6 +1333,7 @@ static void apply() {
   if (jobOk) {
     snprintf(saved.lastPull, sizeof(saved.lastPull), "%s", newLastPull);
     if (tournamentsDir[0]) saved.tournaments = true;
+    saved.players = true;
     lastOkAt = millis();
     message[0] = 0;
   } else if (lastAborted) {

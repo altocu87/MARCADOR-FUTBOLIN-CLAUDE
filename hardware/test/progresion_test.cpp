@@ -205,6 +205,33 @@ static int compareChallenges() {
   return bad;
 }
 
+// OPCIONES → TÍTULO Y MELODÍA (ui_jugador_opciones.h): títulos que tiene, el que se ve solo, eligiendo el primero
+// y con «Sin título», contra esperado-titulos.txt.
+static int compareTitles(const progresion::Snapshot& s) {
+  std::istringstream w(readFile("../tests/fixtures/progresion/esperado-titulos.txt"));
+  std::string line;
+  int bad = 0, lines = 0;
+  while (std::getline(w, line)) {
+    unsigned long code = 0;
+    sscanf(line.c_str(), "%lx", &code);
+    int i = s.find((uint32_t)code);
+    const progresion::Player* pr = i >= 0 ? &s.p[i] : nullptr;
+    int t[progresion::ACH_COUNT];
+    int n = progresion::availableTitles(pr, t);
+    char b[512];
+    int k = snprintf(b, sizeof(b), "%08lx ", code);
+    for (int j = 0; j < n; j++) k += snprintf(b + k, sizeof(b) - k, "%s%s", j ? "," : "", progresion::ACH[t[j]].id);
+    const char* a = progresion::displayTitle(pr, nullptr);
+    const char* f = progresion::displayTitle(pr, n ? progresion::ACH[t[0]].id : nullptr);
+    const char* none = progresion::displayTitle(pr, "none");
+    snprintf(b + k, sizeof(b) - k, "%s|%s|%s|%s", n ? "" : "-", a ? a : "-", f ? f : "-", none ? none : "-");
+    lines++;
+    if (line != b && bad++ < 8) std::printf("títulos distintos\n  app:   %s\n  placa: %s\n", line.c_str(), b);
+  }
+  if (!bad) std::printf("títulos de la placa iguales que la app (%d jugadores)\n", lines);
+  return bad;
+}
+
 int main() {
   withTournaments();
   loadMatches("../tests/fixtures/progresion/partidos.jsonl");
@@ -220,6 +247,10 @@ int main() {
   std::printf("progresión de la placa igual que la app (%d partidos, %d jugadores)\n", partidos::count, (int)codes.size());
   if (compareChallenges()) {
     std::printf("retos de la placa: distintos de la app\n");
+    return 1;
+  }
+  if (compareTitles(s)) {
+    std::printf("títulos de la placa: distintos de la app\n");
     return 1;
   }
   // Abrir el ranking repetidamente conserva el cálculo y los resultados de la app.

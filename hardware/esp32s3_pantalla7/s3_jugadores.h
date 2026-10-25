@@ -24,6 +24,7 @@
 #include <strings.h>
 #include "mfv3_sound.h"
 #include "s3_flash.h"
+#include "s3_memory.h"
 
 namespace jug {
 
@@ -31,6 +32,7 @@ const uint8_t MAX = 64;
 const char* const DIR = "/jugadores";
 const char* const LIST = "/jugadores/lista.txt";
 const char* const IDS = "/jugadores/ids.txt";  // «<código> <id>» por línea
+const char* const EXTRA = "/jugadores/extra.txt";  // «<código> <marcas> <título|-> <melodía|-> <apodo>» (marcas: 1 de baja, 2 y 4 cambiado aquí)
 const uint32_t PHOTO_BYTES = 12 + 120 * 120 * 2;  // cabecera de imagen de LVGL + RGB565
 
 struct Player {
@@ -40,6 +42,19 @@ struct Player {
   char meta[40];
   char title[32];
   char id[40];  // id del jugador en la app («placa-<código>» si no se sabe); no entra en la huella
+};
+
+// Lo que la app guarda de cada jugador y no viaja en la lista del USB (ni en su huella): si está de baja, el título
+// elegido, la melodía de victoria y el apodo. Llega de la cuenta (s3_nube.h) o se cambia en OPCIONES de la ficha
+// (ui_jugador_opciones.h). Va en la PSRAM (la lista de arriba está en la RAM interna, que escasea).
+enum : uint8_t { LOCAL_ACTIVE = 1, LOCAL_STYLE = 2 };
+struct Extra {
+  uint32_t code;
+  bool inactive;
+  uint8_t local;     // cambiado en la placa (lo de aquí manda al subir): LOCAL_ACTIVE, LOCAL_STYLE; lo de la cuenta lo quita
+  char titleId[24];  // "" automático, "none" sin título o el id del logro que da el título
+  char anthem[12];   // "" = la de siempre (fanfare)
+  char alias[52];
 };
 
 // Iniciales como la app (initials() de services/players): primera letra de las dos primeras palabras, o las dos
@@ -86,6 +101,64 @@ class Store {
     for (uint8_t i = 0; i < count; i++)
       if (list[i].code == code) return &list[i];
     return nullptr;
+  }
+
+  // ---------------------------------------------------------------- datos de la app que no van en la lista
+  const Extra* extraOf(uint32_t code) const {
+    for (uint8_t i = 0; i < nExt; i++)
+      if (ext[i].code == code) return &ext[i];
+    return nullptr;
+  }
+  bool isActive(uint32_t code) const {
+    const Extra* e = extraOf(code);
+    return !e || !e->inactive;
+  }
+  uint8_t activeCount() const {
+    uint8_t n = 0;
+    for (uint8_t i = 0; i < count; i++) n += isActive(list[i].code);
+    return n;
+  }
+  // De alta o de baja (como setPlayerActive de la app): se queda en la placa, fuera de las listas para elegir.
+  bool setActive(uint32_t code, bool active) {
+    Extra* e = extraFor(code);
+    if (!e) return false;
+    e->inactive = !active;
+    e->local |= LOCAL_ACTIVE;
+    changed = true;
+    return saveExtras();
+  }
+  // Título y melodía (OPCIONES → TÍTULO Y MELODÍA). `shown` es el título que se ve ya calculado («» sin título).
+  // `mine` = falso: solo se recalcula el título que se ve con lo que llegó de la cuenta (no cuenta como cambio de aquí).
+  bool setStyle(uint32_t code, const char* titleId, const char* anthem, const char* shown, bool mine = true) {
+    Extra* e = extraFor(code);
+    Player* p = (Player*)find(code);
+    if (!e || !p) return false;
+    snprintf(e->titleId, sizeof(e->titleId), "%s", titleId ? titleId : "");
+    snprintf(e->anthem, sizeof(e->anthem), "%s", anthem ? anthem : "");
+    if (mine) e->local |= LOCAL_STYLE;
+    if (shown && strcmp(p->title, shown)) {
+      snprintf(p->title, sizeof(p->title), "%s", shown);
+      if (!commit()) return false;
+    }
+    changed = true;
+    return saveExtras();
+  }
+  // Lo que llega de la cuenta. Solo escribe si algo cambia.
+  bool setExtras(uint32_t code, bool active, const char* titleId, const char* anthem, const char* alias) {
+    const Extra* old = extraOf(code);
+    if (old && !old->local && old->inactive == !active && !strcmp(old->titleId, titleId) && !strcmp(old->anthem, anthem) &&
+        !strcmp(old->alias, alias))
+      return true;
+    if (!old && active && !*titleId && !*anthem && !*alias) return true;
+    Extra* e = extraFor(code);
+    if (!e) return false;
+    e->inactive = !active;
+    e->local = 0;
+    snprintf(e->titleId, sizeof(e->titleId), "%s", titleId);
+    snprintf(e->anthem, sizeof(e->anthem), "%s", anthem);
+    snprintf(e->alias, sizeof(e->alias), "%s", alias);
+    changed = true;
+    return saveExtras();
   }
 
   // ¿Tiene foto guardada y entera? Se comprueba en el chip una vez por jugador y se recuerda (las pantallas lo
@@ -161,6 +234,7 @@ class Store {
       memcpy(list, pending, sizeof(Player) * pendingCount);
       count = pendingCount;
       hash = h;
+      for (uint8_t i = 0; i < nExt; i++) ext[i].inactive = false;  // la app solo pasa los que están de alta
       if (!save()) {
         send("JUGADORES_ERROR memoria");
         return true;
@@ -337,6 +411,8 @@ class Store {
       fs_->remove(b);
       fs_->rename(a, b);
     }
+    for (uint8_t i = 0; i < nExt; i++)
+      if (ext[i].code == oldCode) ext[i].code = code;
     p->code = code;
     snprintf(p->id, sizeof(p->id), "%s", id);
     memset(known, 0, sizeof(known));
@@ -381,6 +457,70 @@ class Store {
   bool uploading = false;
   uint32_t upCode = 0, upBytes = 0, upCrc = 0;
   fs::File upFile;
+  Extra* ext = nullptr;  // PSRAM, MAX como mucho (se reserva con el primero)
+  uint8_t nExt = 0;
+
+  Extra* extraFor(uint32_t code) {
+    if (!find(code)) return nullptr;
+    for (uint8_t i = 0; i < nExt; i++)
+      if (ext[i].code == code) return &ext[i];
+    if (!ext) ext = (Extra*)MFV3_UI_ALLOC(sizeof(Extra) * MAX);
+    if (!ext || nExt >= MAX) return nullptr;
+    Extra& e = ext[nExt++];
+    memset(&e, 0, sizeof(e));
+    e.code = code;
+    return &e;
+  }
+
+  // Solo los de jugadores que siguen en la lista.
+  bool saveExtras() {
+    if (!fs_) return false;
+    fs::File f = fs_->open(EXTRA, "w");
+    if (!f) return false;
+    char line[128];
+    for (uint8_t i = 0; i < nExt; i++) {
+      const Extra& e = ext[i];
+      if (!find(e.code) || (!e.inactive && !e.local && !e.titleId[0] && !e.anthem[0] && !e.alias[0])) continue;
+      snprintf(line, sizeof(line), "%08lx %d %s %s %s\n", (unsigned long)e.code, (e.inactive ? 1 : 0) | e.local << 1, e.titleId[0] ? e.titleId : "-",
+               e.anthem[0] ? e.anthem : "-", e.alias);
+      f.print(line);
+    }
+    f.close();
+    s3flash::wrote();
+    return true;
+  }
+
+  void loadExtras() {
+    nExt = 0;
+    fs::File f = fs_->open(EXTRA, "r");
+    if (!f) return;
+    char line[128];
+    size_t n = 0;
+    while (f.available()) {
+      int c = f.read();
+      if (c < 0) break;
+      if (c != '\n' && n < sizeof(line) - 1) {
+        line[n++] = (char)c;
+        continue;
+      }
+      line[n] = 0;
+      n = 0;
+      uint32_t code = 0;
+      char t[24] = "", a[12] = "";
+      int used = 0;
+      if (strlen(line) < 15 || line[8] != ' ' || !mfv3snd::parseCode(line, 8, code)) continue;
+      if (sscanf(line + 9, "%*d %23s %11s %n", t, a, &used) < 2) continue;
+      Extra* e = extraFor(code);
+      if (!e) continue;
+      int marks = atoi(line + 9);
+      e->inactive = marks & 1;
+      e->local = (uint8_t)((marks >> 1) & 3);
+      snprintf(e->titleId, sizeof(e->titleId), "%s", strcmp(t, "-") ? t : "");
+      snprintf(e->anthem, sizeof(e->anthem), "%s", strcmp(a, "-") ? a : "");
+      snprintf(e->alias, sizeof(e->alias), "%s", used ? line + 9 + used : "");
+    }
+    f.close();
+  }
 
   static uint32_t fnv(uint32_t h, const char* s) {
     for (; *s; s++) {
@@ -495,7 +635,7 @@ class Store {
       g.close();
     }
     s3flash::wrote();
-    return true;
+    return nExt ? saveExtras() : true;
   }
 
   void loadIds() {
@@ -541,6 +681,7 @@ class Store {
       f.close();
     }
     loadIds();
+    loadExtras();
     hash = hashOf(list, count);
   }
 

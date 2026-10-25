@@ -497,6 +497,75 @@ int main(int argc, char** argv) {
     run(300);
     assert(ficha::active() && ficha::tab == ficha::RIVALS);
     shot("ficha-rivales-vuelta");
+    // ··· OPCIONES: el menú; TÍTULO Y MELODÍA (elegir el primer título y la melodía Arcade); ATRÁS; DESACTIVAR (la
+    // ficha dice INACTIVO y no sale al elegir quién juega) y ACTIVAR; VER QR y EDITAR, y volver de los dos a la ficha.
+    {
+      uint32_t me = ficha::code;
+      auto chip = [](int i) {
+        lv_area_t a;
+        lv_obj_get_coords(jopc::stylePiece, &a);
+        const jopc::Chip& c = jopc::styleData->chip[i];
+        tap(a.x1 + c.x + c.w / 2, a.y1 + c.y + 22);
+      };
+      tap(730, 28);
+      run(100);
+      assert(jopc::back);
+      shot("opciones-menu");
+      tap(266, 304);  // TÍTULO Y MELODÍA
+      run(100);
+      assert(jopc::styleData);
+      shot("opciones-estilo");
+      int first = -1, arcade = -1;
+      for (int i = 0; i < jopc::styleData->n; i++) {
+        const jopc::Chip& c = jopc::styleData->chip[i];
+        if (!c.kind && c.arg >= 0 && first < 0) first = i;
+        if (c.kind && !strcmp(melodias::LIST[c.arg].id, "arcade")) arcade = i;
+      }
+      assert(first >= 0 && arcade >= 0);
+      int title = jopc::styleData->chip[first].arg;
+      chip(first);
+      chip(arcade);
+      const jug::Extra* ex = jugadores.extraOf(me);
+      assert(ex && !strcmp(ex->titleId, progresion::ACH[title].id) && !strcmp(ex->anthem, "arcade"));
+      assert(!strcmp(jugadores.find(me)->title, progresion::ACH[title].title));
+      shot("opciones-estilo-elegido");
+      tap(120 + 333 + 46, (480 - 134 - jopc::styleData->h) / 2 + 55 + jopc::styleData->h + 12 + 24);  // ATRÁS
+      run(100);
+      assert(jopc::back && !jopc::styleData);
+      tap(532, 304);  // DESACTIVAR
+      run(300);
+      assert(!jopc::back && !jugadores.isActive(me) && ficha::active());
+      shot("opciones-ficha-inactivo");
+      tap(730, 28);
+      run(100);
+      shot("opciones-menu-inactivo");
+      tap(532, 304);  // ACTIVAR
+      run(300);
+      assert(jugadores.isActive(me));
+      tap(730, 28);
+      run(100);
+      tap(266, 230);  // VER QR
+      run(300);
+      assert(opciones::active());
+      shot("opciones-qr");
+      tap(695, 36);  // VOLVER: a la ficha
+      run(300);
+      assert(ficha::active() && ficha::code == me && ficha::tab == ficha::RIVALS);
+      tap(730, 28);
+      run(100);
+      tap(532, 230);  // EDITAR
+      run(300);
+      assert(fichas::active() && fichas::view == fichas::View::Detail);
+      shot("opciones-editar");
+      tap(78, 32);  // VOLVER: a la ficha
+      run(300);
+      assert(ficha::active() && ficha::code == me);
+      tap(730, 28);
+      run(100);
+      tap(608, 372);  // CERRAR
+      run(100);
+      assert(!jopc::back && ficha::active());
+    }
     std::printf("cara a cara: favorito %d nemesis %d rivales %d\n", ficha::st.fav, ficha::st.nem, ficha::st.nr);
     uint32_t first = ficha::code;
     tap(ficha::st.nem >= 0 ? 600 : 200, 270);

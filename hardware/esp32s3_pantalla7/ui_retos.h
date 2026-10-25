@@ -257,14 +257,15 @@ static void build() {
     lv_obj_set_pos(w, 16, y);
     y += 26;
   }
-  if (!store || store->count == 0) {
+  if (!store || store->activeCount() == 0) {
     center("Sin jugadores", "Crea jugadores para seguir su progreso.");
     return;
   }
-  // Por nombre, como sortPlayers de la app.
+  // Los de alta, por nombre, como sortPlayers de la app.
   int order[jug::MAX];
-  int n = store->count;
-  for (int i = 0; i < n; i++) order[i] = i;
+  int n = 0;
+  for (int i = 0; i < store->count; i++)
+    if (store->isActive(store->list[i].code)) order[n++] = i;
   qsort(order, (size_t)n, sizeof(int), [](const void* a, const void* b) {
     return torneos::rg::collate(store->list[*(const int*)a].name, store->list[*(const int*)b].name);
   });

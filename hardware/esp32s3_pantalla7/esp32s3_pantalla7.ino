@@ -1225,6 +1225,34 @@ static void onDuelPlayer(uint32_t c) {
   screen = Screen::Profile;
 }
 #include "s3_opciones.h"  // AJUSTES: menú y sus apartados
+#include "ui_jugador_opciones.h"  // ··· OPCIONES de la ficha
+// La ventana va sobre la ficha; VER QR y EDITAR son las pantallas de AJUSTES y volver de ellas lleva a la ficha como
+// estaba. Las pinta render() (nada de abrir otra pantalla dentro del toque).
+static bool profileRedo = false;
+static void onProfileOptions(uint32_t c) { jopc::open(&jugadores, c); }
+static void onOptionsQr(uint32_t c) {
+  if (!opciones::prepareQr(c)) return ui::toast("No se pudo preparar el QR");
+  screen = Screen::Settings;
+  opcionesFresh = false;
+}
+static void onOptionsEdit(uint32_t c) {
+  fichas::openFor(&jugadores, c);
+  screen = Screen::Players;
+  fichasFresh = false;
+}
+static void onFichasProfileBack() {
+  fichas::leave();
+  screen = Screen::Profile;
+  profileFresh = false;
+}
+static void onOptionsPlay(int i) {
+#if HAS_AUDIO
+  player.play(audio::Item{true, 0, melodias::LIST[i].tune}, false);
+#else
+  (void)i;
+#endif
+}
+static void onOptionsRedo() { profileRedo = true; }
 // Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
 static bool bootCheckPending = true;
 static void prepareMatchNetwork() {
@@ -1708,6 +1736,33 @@ static void nubeLoggedIn() {
 }
 static void nubeMatchArrived(const char* id) { partidos::addFromFile(id); }
 static void nubeMatchGone(const char* id) { partidos::remove(id); }
+// Título elegido en la app (llega de la cuenta): el que se ve, para todas las pantallas. Solo si es «Sin título» o
+// uno que la placa también le da; si no (o «Automático»), se deja el que pasó la app, que cuenta con todo.
+static void refreshPlayerTitle(uint32_t code) {
+  const jug::Extra* e = jugadores.extraOf(code);
+  if (!e) return;
+  char titleId[24], anthem[12];
+  snprintf(titleId, sizeof(titleId), "%s", e->titleId);
+  snprintf(anthem, sizeof(anthem), "%s", e->anthem);
+  uint32_t codes[jug::MAX];
+  for (int i = 0; i < jugadores.count; i++) codes[i] = jugadores.list[i].code;
+  progresion::refresh(codes, jugadores.count);
+  if (!titleId[0]) return;
+  const char* t = progresion::displayTitle(progresion::of(code), titleId);
+  bool have = !strcmp(titleId, "none");
+  for (int a = 0; a < progresion::ACH_COUNT && !have; a++)
+    have = progresion::ACH[a].title && !strcmp(progresion::ACH[a].id, titleId) && t && !strcmp(t, progresion::ACH[a].title);
+  if (!have) return;
+  jugadores.setStyle(code, titleId, anthem, t ? t : "", false);  // como lo pasa la app («Pichichi»; las pantallas lo ponen en mayúsculas)
+}
+// Lo demás del jugador en la app: de alta o de baja, título elegido, melodía y apodo.
+static void nubePlayerExtras(uint32_t code, const nube::Change& c) {
+  if (!code) return;
+  const jug::Extra* old = jugadores.extraOf(code);
+  bool titleChanged = strcmp(old ? old->titleId : "", c.titleId) != 0;
+  jugadores.setExtras(code, c.active, c.titleId, c.anthem, c.alias);
+  if (titleChanged) refreshPlayerTitle(code);
+}
 // Jugador de la cuenta: se actualiza, se une con el de la placa del mismo nombre o se añade.
 static void nubePlayer(const nube::Change& c) {
   const jug::Player* p = jugadores.findById(c.id);
@@ -1738,6 +1793,7 @@ static void nubePlayer(const nube::Change& c) {
               if (partidos::rows[i].code[t][k] == code) nube::matchSaved(partidos::rows[i].id);
     } else {
       code = jugadores.addWithId(c.id, c.name, c.px);
+      nubePlayerExtras(code, c);
       return;
     }
   }
@@ -1745,6 +1801,7 @@ static void nubePlayer(const nube::Change& c) {
     assets::forget("jugadores/");  // la foto vieja ya no vale (solo se aplica con pantallas sin fotos a la vista)
     jugadores.setPhoto(code, c.px);
   }
+  nubePlayerExtras(code, c);
 }
 static void nubePlayerGone(const char* id) {
   const jug::Player* p = jugadores.findById(id);
@@ -2206,8 +2263,8 @@ static void render() {
     return;
   }
   if (!test.active && !inMatch && screen == Screen::Profile && !sleepClock()) {
-    if (!ficha::active() || profileFresh) ficha::show(&jugadores, profileCode, profileFresh);
-    profileFresh = false;
+    if (!ficha::active() || profileFresh || profileRedo) ficha::show(&jugadores, profileCode, profileFresh);
+    profileFresh = profileRedo = false;
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2488,6 +2545,13 @@ void setup() {
   ficha::hooks.back = onProfileBack;
   ficha::hooks.openMatch = onProfileMatch;
   ficha::hooks.openDuel = onProfileDuel;
+  ficha::hooks.options = onProfileOptions;
+  jopc::hooks.qr = onOptionsQr;
+  jopc::hooks.edit = onOptionsEdit;
+  jopc::hooks.changed = onFichaChanged;
+  jopc::hooks.play = onOptionsPlay;
+  jopc::hooks.redo = onOptionsRedo;
+  fichas::hooks.profileBack = onFichasProfileBack;
   duelo::hooks.back = onDuelBack;
   duelo::hooks.openPlayer = onDuelPlayer;
   config::hooks.back = onConfigBack;
