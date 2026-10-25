@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { generateDemoData } from '../src/services/demo/demoData';
 import { DEFAULT_PROGRESSION, type StoredMatch, type Tournament } from '../src/services/persistence';
-import { ACHIEVEMENTS, activeChallenges, categoryFor, challengeProgress, computeProgression } from '../src/services/progression';
+import { ACHIEVEMENTS, activeChallenges, availableTitles, categoryFor, challengeProgress, computeProgression, displayTitle } from '../src/services/progression';
 
 const DIR = join(__dirname, 'fixtures', 'progresion');
 const MATCHES = join(DIR, 'partidos.jsonl');
@@ -32,6 +32,7 @@ const T_INFO = join(DIR, 'torneos.txt');
 const T_FULL = join(DIR, 'torneos-app.json');
 const T_EXPECTED = join(DIR, 'esperado-torneos.txt');
 const R_EXPECTED = join(DIR, 'esperado-retos.txt');
+const TITLES_EXPECTED = join(DIR, 'esperado-titulos.txt');
 
 /** Código de un jugador en la placa: FNV-1a de su id (como soundCode). */
 function code(id: string): string {
@@ -123,8 +124,34 @@ function expectedText(matches: StoredMatch[], tournaments?: Tournament[]): strin
   return lines.join('\n') + '\n';
 }
 
+/**
+ * Títulos (OPCIONES → TÍTULO Y MELODÍA de la ficha en la placa): por jugador, los que tiene en el orden de la app, el
+ * que se ve sin elegir nada y el que se ve eligiendo el primero (s3_progresion.h: availableTitles / displayTitle).
+ */
+function titlesText(matches: StoredMatch[]): string {
+  const ids = [...new Set(matches.flatMap((m) => m.participants.map((p) => p.playerId)))];
+  const snap = computeProgression(ids, matches, DEFAULT_PROGRESSION);
+  return (
+    ids
+      .map((id) => {
+        const p = snap.players.get(id);
+        const t = availableTitles(p);
+        return `${code(id)} ${t.map((x) => x.id).join(',') || '-'}|${displayTitle(p) ?? '-'}|${displayTitle(p, t[0]?.id) ?? '-'}|${displayTitle(p, 'none') ?? '-'}`;
+      })
+      .sort()
+      .join('\n') + '\n'
+  );
+}
+
 describe('progresión de la placa', () => {
   const matches = loadMatches();
+
+  it('títulos: lo esperado coincide con lo que calcula hoy la app', () => {
+    const text = titlesText(matches);
+    if (process.env.ACTUALIZAR_PROGRESION || !existsSync(TITLES_EXPECTED)) writeFileSync(TITLES_EXPECTED, text);
+    expect(readFileSync(TITLES_EXPECTED, 'utf8')).toBe(text);
+    expect(text.split('\n').some((l) => l.split('|')[0].includes(','))).toBe(true); // alguno con varios títulos
+  });
 
   it('hay partidos de todo tipo para comparar', () => {
     expect(matches.length).toBeGreaterThan(80);

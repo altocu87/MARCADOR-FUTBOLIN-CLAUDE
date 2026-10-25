@@ -857,6 +857,34 @@ static const Player* of(uint32_t code) {
   return i >= 0 ? &all.p[i] : nullptr;
 }
 
+// ---------------------------------------------------------------- títulos (availableTitles / displayTitle de la app)
+// Los logros con título que tiene, en el orden en que los consiguió (a la misma hora, en el del catálogo).
+static int availableTitles(const Player* pr, int out[ACH_COUNT]) {
+  int n = 0;
+  if (!pr) return 0;
+  for (int a = 0; a < ACH_COUNT; a++)
+    if (ACH[a].title && hasBit(pr->ach, a)) {
+      int k = n++;
+      while (k > 0 && pr->achAt[out[k - 1]] > pr->achAt[a]) out[k] = out[k - 1], k--;
+      out[k] = a;
+    }
+  return n;
+}
+
+// El título que se ve: el elegido si lo tiene; «none», ninguno; si no, el de mayor rareza y, entre ellos, el último.
+static const char* displayTitle(const Player* pr, const char* chosenId) {
+  int t[ACH_COUNT];
+  int n = availableTitles(pr, t);
+  if (!n || (chosenId && !strcmp(chosenId, "none"))) return nullptr;
+  if (chosenId && *chosenId)
+    for (int i = 0; i < n; i++)
+      if (!strcmp(ACH[t[i]].id, chosenId)) return ACH[t[i]].title;
+  int best = n - 1;
+  for (int i = n - 2; i >= 0; i--)
+    if (ACH[t[i]].rarity > ACH[t[best]].rarity) best = i;
+  return ACH[t[best]].title;
+}
+
 }  // namespace progresion
 
 #endif  // MFV3_S3_PROGRESION_H

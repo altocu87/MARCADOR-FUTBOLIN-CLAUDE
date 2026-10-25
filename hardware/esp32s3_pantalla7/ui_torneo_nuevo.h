@@ -39,7 +39,7 @@ static bool isPicked(uint32_t code) {
 static void cleanPicked() {
   uint8_t k = 0;
   for (uint8_t i = 0; i < nPicked; i++)
-    if (store && store->find(picked[i])) picked[k++] = picked[i];
+    if (store && store->find(picked[i]) && store->isActive(picked[i])) picked[k++] = picked[i];
   nPicked = k;
 }
 static void pickIds(const char* const* ids, uint8_t n) {
@@ -87,9 +87,10 @@ static void onPickCard(lv_event_t* e) {
   paintPlayersFoot();
 }
 static void onAll(lv_event_t*) {
-  bool all = store && nPicked == store->count && nPicked > 0;
+  bool all = store && nPicked == store->activeCount() && nPicked > 0;
   nPicked = 0;
   for (uint8_t i = 0; store && i < store->count; i++) {
+    if (!mark[i]) continue;  // de baja: no sale
     if (!all) picked[nPicked++] = store->list[i].code;
     ui::setVisible(mark[i], !all);
   }
@@ -103,7 +104,7 @@ static void fillCount(char* b, size_t n, int) { snprintf(b, n, "%u", nPicked); }
 static void fillCountWord(char* b, size_t n, int) { snprintf(b, n, "%s", nPicked == 1 ? "jugador" : "jugadores"); }
 static void fillMissing(char* b, size_t n, int) { snprintf(b, n, "Marca al menos %u más", nPicked < 3 ? 3 - nPicked : 0); }
 static bool missing(int) { return nPicked < 3; }
-static void fillAll(char* b, size_t n, int) { snprintf(b, n, "%s", store && nPicked == store->count && nPicked ? "QUITAR TODOS" : "TODOS"); }
+static void fillAll(char* b, size_t n, int) { snprintf(b, n, "%s", store && nPicked == store->activeCount() && nPicked ? "QUITAR TODOS" : "TODOS"); }
 
 // Torneos en juego: CONTINUAR o descartar (con confirmación).
 static int16_t discarding = -1;  // índice en torneos::summaries
@@ -181,10 +182,12 @@ static void buildPlayers() {
   lv_obj_set_style_pad_bottom(grid, 6, 0);
   memset(mark, 0, sizeof(mark));
   elegir::store = store;
-  for (uint8_t i = 0; store && i < store->count; i++) {
+  for (uint8_t i = 0, k = 0; store && i < store->count; i++) {
+    if (!store->isActive(store->list[i].code)) continue;  // de baja: no se elige (como la app)
     lv_draw_buf_t* shot = elegir::cardImage(i, grid);
-    int x = (i % 6) * 129, cy = (i / 6) * 187;
+    int x = (k % 6) * 129, cy = (k / 6) * 187;
     if (!shot) continue;
+    k++;
     lv_obj_t* img = lv_image_create(grid);
     lv_image_set_src(img, shot);
     lv_obj_set_pos(img, x, cy);
@@ -205,7 +208,7 @@ static void buildPlayers() {
     if (!isPicked(store->list[i].code)) lv_obj_add_flag(m, LV_OBJ_FLAG_HIDDEN);
     mark[i] = m;
   }
-  if (!store || !store->count) {
+  if (!store || !store->activeCount()) {
     line(grid, "Sin jugadores", 800, 20, ui::color::TEXT, 0, 30, 768, LV_TEXT_ALIGN_CENTER);
     line(grid, "Créalos con + JUGADOR o pásalos desde la app por USB.", 400, 16, ui::color::TEXT2, 0, 64, 768, LV_TEXT_ALIGN_CENTER);
   }

@@ -172,6 +172,15 @@ export const SCENES = {
     await SCENES['perfil-rivales'](p);
     await tapSel(p, '.card-btn:has-text("Némesis")', 1200);
   }),
+  // «⋯ Opciones» de la ficha de Alex: el menú y «Título y melodía».
+  'perfil-opciones': demo(async (p) => {
+    await SCENES['perfil-general'](p);
+    await tap(p, '⋯ Opciones');
+  }),
+  'perfil-opciones-estilo': demo(async (p) => {
+    await SCENES['perfil-opciones'](p);
+    await tap(p, 'Título y melodía');
+  }),
 };
 
 export async function openApp(browser, { demo = false } = {}) {

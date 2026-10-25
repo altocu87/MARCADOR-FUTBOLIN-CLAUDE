@@ -1,0 +1,17 @@
+04ac9c49 phoenix,run5,comeback,express,scorer50,night_owl,veteran|Pichichi|Fénix|-
+089ed795 express,shutout,run5,comeback,scorer50,ice_cold,night_owl,veteran|Pichichi|Relámpago|-
+12252952 express,run5,shutout,ice_cold,comeback,streak5,night_owl,scorer50|Pichichi|Relámpago|-
+1813ec50 run5,express,night_owl,streak5,scorer50,ice_cold,comeback,veteran|El Remontador|Apisonadora|-
+22e306fb comeback,night_owl,run5,veteran,scorer50,express|Pichichi|El Remontador|-
+29b389cb run5,night_owl,ice_cold,streak5,scorer50,shutout,veteran,express,comeback|El Remontador|Apisonadora|-
+32c2ba21 night_owl,express,phoenix,run5,comeback|El Remontador|Búho Nocturno|-
+3c799a0a express,comeback,night_owl,scorer50,shutout,veteran,run5|Pichichi|Relámpago|-
+51e90fa7 night_owl,shutout,express|Relámpago|Búho Nocturno|-
+5c462896 phoenix,shutout,express|Relámpago|Fénix|-
+6a0b9bfc express,comeback,run5,scorer50,ice_cold,veteran,night_owl,shutout|Pichichi|Relámpago|-
+6cdc0b0a phoenix,express,night_owl|Relámpago|Fénix|-
+9f504e7b shutout,run5,streak5,express,night_owl,streak10,comeback,scorer50,ice_cold,veteran,tireless,golden_goal|Pichichi|El Muro|-
+bd61c40d phoenix,express,night_owl|Relámpago|Fénix|-
+c56dac03 shutout,ice_cold,express,run5,scorer50,veteran|Pichichi|El Muro|-
+ca0878c7 phoenix,night_owl,golden_goal|Rey de la Prórroga|Fénix|-
+e35ca837 night_owl,express|Relámpago|Búho Nocturno|-

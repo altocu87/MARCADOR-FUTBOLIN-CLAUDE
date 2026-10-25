@@ -532,6 +532,7 @@ static uint32_t qrCode = 0;
 static perfil::Creds qrCreds;
 static bool qrHave = false;
 static int qrState = 0;  // 0 sin publicar, 1 publicando, 2 publicado, 3 no se pudo, 4 sin Wi-Fi, 5 modo prueba
+static bool qrToProfile = false;  // abierto desde OPCIONES de la ficha: volver lleva a ella
 
 static void startPublish() {
   if (datos::demo) { qrState = 5; return; }
@@ -563,6 +564,13 @@ static void onQrRetry(lv_event_t*) {
   changed();
 }
 static void onQrBack(lv_event_t*) {
+  if (qrToProfile) {
+    qrToProfile = false;
+    view = View::Menu;
+    screen = Screen::Profile;
+    profileFresh = false;
+    return;
+  }
   screen = Screen::Players;
   fichasFresh = false;
 }
@@ -594,8 +602,21 @@ static void buildQr() {
   fichas::btn(scr, 440, 388, 336, 72, "PUBLICAR OTRA VEZ", 20, fichas::Kind::Normal, onQrRetry);
 }
 
+// Desde OPCIONES de la ficha → VER QR (lo pinta render(): no se abre otra pantalla dentro del toque).
+static bool prepareQr(uint32_t code) {
+  qrCode = code;
+  qrHave = perfil::credsFor(code, qrCreds);
+  if (!qrHave) return false;
+  qrState = 0;
+  qrToProfile = true;
+  view = View::Qr;
+  startPublish();
+  return true;
+}
+
 // Desde JUGADORES → un jugador → QR DEL PERFIL.
 static void openQr(uint32_t code) {
+  qrToProfile = false;
   qrCode = code;
   qrHave = perfil::credsFor(code, qrCreds);
   qrState = 0;

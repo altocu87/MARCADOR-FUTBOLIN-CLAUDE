@@ -335,6 +335,7 @@ static void prewarm(jug::Store* s, void (*tick)() = nullptr) {
   if (!store) return;
   lv_obj_t* tmp = lv_obj_create(nullptr);
   for (uint8_t i = 0; i < store->count; i++) {
+    if (!store->isActive(store->list[i].code)) continue;  // de baja: no se elige (como la app)
     cardImage(i, tmp);
     if (tick) tick();
   }
@@ -346,6 +347,7 @@ static void makeCards() {
   memset(freeCard, 0, sizeof(freeCard));
   for (uint8_t i = 0; store && i < store->count; i++) {
     const jug::Player& p = store->list[i];
+    if (!store->isActive(p.code)) continue;  // de baja: no se elige (como la app)
     lv_draw_buf_t* shot = cardImage(i, grid);
     if (!shot) continue;
     lv_obj_t* img = lv_image_create(grid);
@@ -355,7 +357,7 @@ static void makeCards() {
     lv_obj_add_event_cb(img, onPick, LV_EVENT_SHORT_CLICKED, (void*)(uintptr_t)p.code);
     freeCard[i] = img;
   }
-  if (store && store->count == 0) {
+  if (store && store->activeCount() == 0) {
     lv_obj_t* l = ui::text(grid, "Sin jugadores", 800, 18, ui::color::TEXT);
     lv_obj_align(l, LV_ALIGN_TOP_MID, 0, 30);
     lv_obj_t* l2 = ui::text(grid, "Créalos en la app y conecta la placa por USB.", 400, 14, ui::color::TEXT2);

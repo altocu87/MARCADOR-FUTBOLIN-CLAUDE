@@ -20,6 +20,7 @@ struct Hooks {
   void (*changed)(uint32_t code) = nullptr;   // jugador creado o cambiado (para subirlo a la cuenta)
   void (*removed)(const char* id) = nullptr;  // jugador borrado
   void (*qr)(uint32_t code) = nullptr;         // QR de su perfil (AJUSTES, s3_opciones.h)
+  void (*profileBack)() = nullptr;             // volver a su ficha (EDITAR de OPCIONES de la ficha)
 };
 static Hooks hooks;
 
@@ -30,6 +31,7 @@ static lv_obj_t* scr = nullptr;
 
 // Lo que se está haciendo
 static uint32_t editCode = 0;  // 0 = jugador nuevo
+static bool fromProfile = false;  // EDITAR desde la ficha: solo nombre y foto, y volver lleva a la ficha
 static char name[28] = "";
 static uint16_t* chosen = nullptr;  // foto elegida (120 × 120)
 static lv_image_dsc_t chosenDsc;
@@ -185,11 +187,15 @@ static void buildList() {
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_pos(l, 8, 140);
     lv_obj_add_event_cb(c, onPlayer, LV_EVENT_CLICKED, (void*)(uintptr_t)p.code);
+    if (!store->isActive(p.code)) lv_obj_set_style_opa(c, 153, 0);  // de baja: más apagado (como Ajustes de la app)
   }
 }
 
 // ---------------------------------------------------------------- UN JUGADOR
-static void onToList(lv_event_t*) { go(View::List); }
+static void onToList(lv_event_t*) {
+  if (fromProfile && hooks.profileBack) return hooks.profileBack();
+  go(View::List);
+}
 static void onRename(lv_event_t*) {
   if (const jug::Player* p = editing()) snprintf(name, sizeof(name), "%s", p->name);
   go(View::Name);
@@ -210,6 +216,7 @@ static void buildDetail() {
   lv_obj_set_pos(n, 340, 110);
   btn(scr, 340, 166, 420, 66, "CAMBIAR NOMBRE", 18, Kind::Normal, onRename);
   btn(scr, 340, 240, 420, 66, "CAMBIAR FOTO", 18, Kind::Normal, onChangePhoto);
+  if (fromProfile) return;  // el QR ya está en OPCIONES, y desde la ficha no se borra (como EDITAR de la app)
   btn(scr, 340, 314, 420, 66, "QR DEL PERFIL", 18, Kind::Normal, onQr);
   btn(scr, 340, 388, 420, 66, "BORRAR JUGADOR", 18, Kind::Danger, onAskDelete);
 }
@@ -577,6 +584,7 @@ static void show(jug::Store* s, bool fresh) {
   if (fresh) {
     view = View::List;
     editCode = 0;
+    fromProfile = false;
     freeThumbs();  // la tarjeta puede traer fotos nuevas
   }
   go(view);
@@ -585,7 +593,18 @@ static void show(jug::Store* s, bool fresh) {
 static void tick() { tickPhotos(); }
 
 // Al salir a AJUSTES: fuera las fotos de la galería (hasta 1,7 MB).
-static void leave() { freeThumbs(); }
+static void leave() {
+  freeThumbs();
+  fromProfile = false;
+}
+
+// EDITAR desde OPCIONES de la ficha: la pantalla del jugador (la pinta show() desde render()).
+static void openFor(jug::Store* s, uint32_t code) {
+  store = s;
+  editCode = code;
+  fromProfile = true;
+  view = View::Detail;
+}
 
 }  // namespace fichas
 

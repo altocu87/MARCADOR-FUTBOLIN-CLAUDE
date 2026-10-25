@@ -24,6 +24,7 @@ static void* testRealloc(void* p, size_t n) {
 static int requests = 0, appliedPlayers = 0;
 static bool appendDuringUpload = false;
 static std::string pulled = "[]";
+static std::string posted;  // lo último subido
 static std::atomic<bool> holdGet{false}, insideGet{false}, releaseGet{false};
 static nube::Resp reply(int code, const std::string& body) {
   nube::Resp r;
@@ -34,7 +35,7 @@ static nube::Resp reply(int code, const std::string& body) {
   memcpy(r.body, body.c_str(), r.len + 1);
   return r;
 }
-static nube::Resp http(const char* method, const char* url, const char*, const char*, const char*) {
+static nube::Resp http(const char* method, const char* url, const char*, const char*, const char* body) {
   ++requests;
   if (strstr(url, "/auth/")) return reply(200, R"({"access_token":"test","refresh_token":"renewed","user":{"id":"u","email":"test@example.test"}})");
   if (!strcmp(method, "GET")) {
@@ -45,6 +46,7 @@ static nube::Resp http(const char* method, const char* url, const char*, const c
     return reply(200, strstr(url, "offset=0") ? pulled : "[]");
   }
   if (appendDuringUpload) { nube::playerChanged(1); appendDuringUpload = false; }
+  if (body) posted = body;
   return reply(201, "");
 }
 static const char* pending = "../build/equipo-b-cloud-test/subir.txt";
@@ -199,5 +201,29 @@ int main() {
   assert(!nube::takeRow(R"({"tipo":"player","id":"bad","datos":{"photo":"data:image/jpeg;base64,AAAA"}})"));
   assert(!nube::takeRow(R"({"tipo":"match","id":"bad","datos":{)"));
   assert(!std::filesystem::exists("../build/equipo-b-cloud-test/bad.json"));
+
+  // 0.22: la primera vez se bajan todos los jugadores; un jugador cambiado aquí (sin tocar su título) se sube con el
+  // título, la melodía y el apodo de la cuenta, y lo bajado antes de subir no deshace lo subido.
+  static nube::Change got;
+  nube::hooks.player = [](const nube::Change& c) { ++appliedPlayers; got = c; };
+  prepare("j 00000001\n");
+  nube::saved.players = false;
+  pulled = R"([{"tipo":"player","id":"placa-00000001","datos":{"name":"Alex","active":true,"titleId":"phoenix","anthem":"arcade","alias":"El Rayo"},"actualizado":"2026-10-19T00:00:00Z"}])";
+  nube::sync();
+  drain();
+  assert(nube::phase == nube::OK && nube::saved.players);
+  assert(posted.find("\"titleId\":\"phoenix\"") != std::string::npos && posted.find("\"anthem\":\"arcade\"") != std::string::npos);
+  assert(posted.find("\"alias\":\"El Rayo\"") != std::string::npos && posted.find("\"active\":true") != std::string::npos);
+  assert(appliedPlayers >= 1 && !strcmp(got.titleId, "phoenix") && got.active);
+  // Dado de baja aquí (y entretanto, otra melodía en la app): la baja es de aquí, la melodía la de la app, y lo
+  // bajado no lo vuelve a dar de alta.
+  assert(players.setExtras(1, true, "phoenix", "arcade", "El Rayo") && players.setActive(1, false));
+  prepare("j 00000001\n");
+  pulled = R"([{"tipo":"player","id":"placa-00000001","datos":{"name":"Alex","active":true,"titleId":"phoenix","anthem":"funky"},"actualizado":"2026-10-19T00:00:00Z"}])";
+  nube::sync();
+  drain();
+  assert(posted.find("\"active\":false") != std::string::npos && posted.find("\"anthem\":\"funky\"") != std::string::npos);
+  assert(!got.active && !strcmp(got.anthem, "funky"));
+  printf("Equipo B: 0.22 jugadores: todos una vez, sin borrar título/melodía/apodo de la cuenta OK\n");
   printf("Equipo B: reservas fallidas, cola persistente, cursor, fotos y publicación entre tareas OK\n");
 }

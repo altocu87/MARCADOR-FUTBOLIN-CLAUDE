@@ -13,7 +13,8 @@
 //       HISTORIAL: sus últimos 50 partidos (tocar uno abre su detalle, el del RANKING).
 //       TORNEOS: los torneos en que ha jugado, con filtros por tipo y «ganados».
 //       LOGROS: todos, por apartados; los secretos se revelan al conseguirlos.
-// Diferencias con la app: sin «Opciones» (el QR está en AJUSTES) y los escudos, copas, rangos e iconos de logro van dibujados (una actualización por Wi-Fi no lleva imágenes nuevas).
+// Arriba a la derecha, «··· OPCIONES» (ui_jugador_opciones.h): QR, editar, título y melodía, y dar de baja o de alta.
+// Diferencias con la app: los escudos, copas, rangos e iconos de logro van dibujados (una actualización por Wi-Fi no lleva imágenes nuevas).
 // Las cuentas son las del QR del perfil (perfil::stats, igual que la app) y la progresión (s3_progresion.h).
 // Solo letras de fuentes.txt. Se incluye después de ui_historial.h, ui_torneo.h y s3_perfil.h.
 
@@ -31,6 +32,7 @@ struct Hooks {
   void (*back)() = nullptr;                    // volver a donde se abrió
   void (*openMatch)(const char* id) = nullptr;  // HISTORIAL: el detalle de un partido
   void (*openDuel)(uint32_t rival) = nullptr;   // RIVALES: el cara a cara con un rival
+  void (*options)(uint32_t c) = nullptr;        // «··· OPCIONES» (ui_jugador_opciones.h)
 };
 static Hooks hooks;
 
@@ -943,6 +945,9 @@ static void onTab(lv_event_t* e) {
 static void onBack(lv_event_t*) {
   if (hooks.back) hooks.back();
 }
+static void onOptions(lv_event_t*) {
+  if (hooks.options) hooks.options(code);
+}
 
 // Fondo, franja de arriba con volver y el título (ScreenFrame de la app). También la usa el cara a cara.
 static void frame(lv_obj_t* s, const char* title, lv_event_cb_t onBack) {
@@ -970,6 +975,7 @@ static void frame(lv_obj_t* s, const char* title, lv_event_cb_t onBack) {
 
 static void buildHead() {
   frame(scr, "PERFIL", onBack);
+  ui::button(scr, 672, 6, 116, 44, "··· OPCIONES", 13, ui::BtnKind::Normal, onOptions);
 
   // Tarjeta del jugador, con el color de su rango.
   const jug::Player* p = store->find(code);
@@ -1002,6 +1008,31 @@ static void buildHead() {
   }
   lv_obj_t* nm = textAt(c, p ? p->name : "?", 900, 24, ui::color::TEXT, 100, 9, 460);
   lv_label_set_long_mode(nm, LV_LABEL_LONG_MODE_DOTS);
+  // Detrás del nombre, su apodo («alias») y si está de baja, como la app.
+  const jug::Extra* ex = store->extraOf(code);
+  bool off = !store->isActive(code);
+  if (p && ((ex && ex->alias[0]) || off)) {
+    lv_point_t sz;
+    lv_text_get_size(&sz, p->name, assets::font(900, 24), 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    int x = 100 + sz.x + 8;
+    if (ex && ex->alias[0]) {
+      char al[64];
+      snprintf(al, sizeof(al), "«%s»", ex->alias);
+      lv_obj_t* a = textAt(c, al, 400, 14, ui::color::TEXT2, x, 17);
+      lv_obj_update_layout(a);
+      x += lv_obj_get_width(a) + 8;
+    }
+    if (off && x < 480) {
+      lv_obj_t* b = ui::box(c, x, 13, 74, 22);
+      lv_obj_set_style_radius(b, LV_RADIUS_CIRCLE, 0);
+      lv_obj_set_style_bg_color(b, ui::hex(ui::color::CARD2), 0);
+      lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+      lv_obj_set_style_border_width(b, 1, 0);
+      lv_obj_set_style_border_color(b, ui::hex(ui::color::LINE), 0);
+      lv_obj_t* l = ui::text(b, "INACTIVO", 800, 12, ui::color::TEXT2, 0.6f);
+      lv_obj_center(l);
+    }
+  }
   if (p && p->title[0]) {
     char up[48];
     upper(p->title, up, sizeof(up));
