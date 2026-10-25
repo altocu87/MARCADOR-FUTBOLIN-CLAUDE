@@ -370,6 +370,8 @@ static char newLastPull[40];
 static char jobError[96];
 static std::atomic<bool> jobDone{false};
 static std::atomic<bool> jobReady{false};
+// Por dónde va el trabajo (para «NUBE?»): 1 conectando el Wi-Fi, 2 conectado, 3 pidiendo, 4 contestado, 5 acabado.
+static std::atomic<uint8_t> jobStep{0};
 // Sincronización de fondo (en reposo): se puede cortar al volver a usar la placa. Lo pedido a mano, no.
 static bool background = false;
 static std::atomic<bool> abortJob{false};
@@ -891,6 +893,7 @@ static bool pull(const char* since, const char* tipos = "player,match,prefs", in
 static void runJob() {
   jobOk = false;
   jobError[0] = 0;
+  jobStep = 1;
   if (!http) {
     snprintf(jobError, sizeof(jobError), "Sin conexión con la nube");
     jobDone = true;
@@ -904,10 +907,13 @@ static void runJob() {
     return;
   }
 
+  jobStep = 2;
   if (job == PROFILE) {
     char url[160];
     snprintf(url, sizeof(url), "%s/rest/v1/rpc/publicar_perfil_jugador", URL);
+    jobStep = 3;
     Resp r = http("POST", url, ANON, nullptr, profileBody);
+    jobStep = 4;
     free(r.body);
     jobOk = r.code >= 200 && r.code < 300;
     if (!jobOk) snprintf(jobError, sizeof(jobError), r.code ? "No se pudo publicar (%d)" : "Sin conexión", r.code);
@@ -986,6 +992,7 @@ static void runJob() {
     if (jobOk && (clubsUp || templatesUp)) jobOk = pushPrefs();
   }
   if (wifiDown) wifiDown();
+  jobStep = 5;
   jobDone = true;
 }
 

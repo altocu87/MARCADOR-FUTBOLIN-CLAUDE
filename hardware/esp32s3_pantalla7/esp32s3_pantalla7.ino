@@ -981,7 +981,8 @@ static void handleBoardLine(const char* line) {
   }
   if (!strcmp(line, "NUBE?")) {  // pruebas: cómo va la cuenta de la nube
     char b[200];
-    snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount, nube::message);
+    snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d paso=%u hecho=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount,
+             (unsigned)nube::jobStep.load(), (int)nube::jobDone.load(), nube::message);
     sendLine(b);
     return;
   }

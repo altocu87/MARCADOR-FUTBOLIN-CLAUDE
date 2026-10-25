@@ -571,6 +571,7 @@ static void onQrBack(lv_event_t*) {
     profileFresh = false;
     return;
   }
+  view = View::Menu;  // al salir de JUGADORES, a AJUSTES (no otra vez al QR)
   screen = Screen::Players;
   fichasFresh = false;
 }
