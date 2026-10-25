@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.23";
+static const char VERSION[] = "0.24";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.24", "2026-10-25", "El QR del perfil ya no se queda colgado\n\n• Ver QR ya no se queda en «Publicando el perfil…»: en un par de segundos dice «Listo» y se puede seguir jugando.\n\n• Después de ver un QR desde Ajustes → Jugadores, Volver lleva otra vez a Ajustes.\n\n• Cambiar de pestaña en la ficha del jugador es más rápido: solo se repinta la parte de abajo.\n\n• Conserva todo lo de la 0.23."},
   {"0.23", "2026-10-25", "Reloj de reposo como el de la app\n\n• El reloj de reposo ya no tiene el círculo: ahora es una línea de 60 marcas que se van encendiendo cada segundo, como en la app.\n\n• La hora es mucho más grande y con números de marcador arcade (de siete segmentos con brillo); los dos puntos laten con cada segundo.\n\n• Debajo, la fecha y el último resultado; el aviso de batería baja y el de sincronizando se siguen viendo sin taparse con nada.\n\n• Conserva todo lo de la 0.22."},
   {"0.22", "2026-10-25", "Opciones en la ficha del jugador\n\n• La ficha de cada jugador tiene arriba a la derecha el botón Opciones, como en la app.\n\n• Ver QR y Editar (nombre y foto) desde la propia ficha; al volver, la ficha sigue como estaba.\n\n• Título y melodía: elige el título que sale bajo su nombre y su melodía de victoria; al tocar una melodía, suena.\n\n• Desactivar: el jugador deja de salir para elegir quién juega, en torneos y en retos, sin perder sus partidos. Activar lo devuelve.\n\n• Lo que se cambia en la placa se guarda en la cuenta sin borrar el apodo, el título ni la melodía puestos en la app.\n\n• Conserva todo lo de la 0.21."},
   {"0.21", "2026-10-24", "Cara a cara entre dos jugadores\n\n• En la ficha de un jugador, pestaña Rivales, tocar a un rival (favorito, némesis o de la lista) abre el cara a cara.\n\n• Se ve quién ha ganado más veces de los dos y sus números lado a lado: ELO, nivel, victorias, racha, goles y logros.\n\n• Tocar al rival abre su ficha; volver lleva a la ficha de antes.\n\n• Conserva todo lo de la 0.20."},
