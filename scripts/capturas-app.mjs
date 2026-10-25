@@ -163,6 +163,15 @@ export const SCENES = {
       }),
     ]),
   ),
+  // Cara a cara: ficha de Alex → RIVALES → el primero de «Enfrentamientos directos» (o su némesis).
+  'cara-a-cara': demo(async (p) => {
+    await SCENES['perfil-rivales'](p);
+    await tapSel(p, '.list button.row', 1200);
+  }),
+  'cara-a-cara-nemesis': demo(async (p) => {
+    await SCENES['perfil-rivales'](p);
+    await tapSel(p, '.card-btn:has-text("Némesis")', 1200);
+  }),
 };
 
 export async function openApp(browser, { demo = false } = {}) {

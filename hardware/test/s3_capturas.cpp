@@ -486,6 +486,28 @@ int main(int argc, char** argv) {
     tap(35, 35);
     run(300);
     assert(ficha::active());
+    // RIVALES → el primero de «Enfrentamientos directos» → CARA A CARA → volver a la ficha; después, su némesis
+    // (si tiene) y tocar al rival abre su ficha (volver de ella lleva a RETOS).
+    tap(TABX[2], 196);
+    tap(400, 376);
+    run(300);
+    assert(duelo::active());
+    shot("cara-a-cara");
+    tap(36, 28);
+    run(300);
+    assert(ficha::active() && ficha::tab == ficha::RIVALS);
+    shot("ficha-rivales-vuelta");
+    std::printf("cara a cara: favorito %d nemesis %d rivales %d\n", ficha::st.fav, ficha::st.nem, ficha::st.nr);
+    uint32_t first = ficha::code;
+    tap(ficha::st.nem >= 0 ? 600 : 200, 270);
+    run(300);
+    if (duelo::active()) {
+      shot(ficha::st.nem >= 0 ? "cara-a-cara-nemesis" : "cara-a-cara-favorito");
+      tap(637, 120);  // el rival: su ficha
+      run(300);
+      assert(ficha::active() && ficha::code != first);
+      shot("cara-a-cara-ficha-rival");
+    }
     tap(36, 28);  // volver a RETOS
     run(300);
     assert(retos::active());
