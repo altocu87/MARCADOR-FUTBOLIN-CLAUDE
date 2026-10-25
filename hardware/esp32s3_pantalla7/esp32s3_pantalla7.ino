@@ -981,7 +981,8 @@ static void handleBoardLine(const char* line) {
   }
   if (!strcmp(line, "NUBE?")) {  // pruebas: cómo va la cuenta de la nube
     char b[200];
-    snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount, nube::message);
+    snprintf(b, sizeof(b), "NUBE fase=%u cuenta=%d pendientes=%d paso=%u hecho=%d %s", nube::phase, (int)nube::loggedIn(), nube::pendingCount,
+             (unsigned)nube::jobStep.load(), (int)nube::jobDone.load(), nube::message);
     sendLine(b);
     return;
   }
@@ -1689,6 +1690,9 @@ static nube::Resp nubeHttp(const char* method, const char* url, const char* bear
   client.useBuiltinCACertBundle();
   HTTPClient http;
   http.setTimeout(15000);
+  // Una conexión por petición: con «keep-alive», leer una respuesta sin tamaño (204 de publicar_perfil_jugador)
+  // espera a que la nube cierre, que no cierra nunca (getString no tiene tiempo límite): el QR se quedaba colgado.
+  http.setReuse(false);
   if (!http.begin(client, url)) return r;
   http.addHeader("apikey", nube::ANON);
   String auth = String("Bearer ") + bearer;
@@ -1697,7 +1701,7 @@ static nube::Resp nubeHttp(const char* method, const char* url, const char* bear
   if (prefer) http.addHeader("Prefer", prefer);
   int code = !strcmp(method, "GET") ? http.GET() : http.POST((uint8_t*)body, strlen(body));
   r.code = code > 0 ? code : 0;
-  if (code > 0) {
+  if (code > 0 && code != 204) {  // 204: sin contenido, no hay nada que leer
     String b = http.getString();
     r.len = b.length();
     r.body = (char*)malloc(r.len + 1);

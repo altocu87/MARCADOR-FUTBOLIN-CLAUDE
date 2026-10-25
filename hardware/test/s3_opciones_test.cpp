@@ -17,6 +17,12 @@ static void tap(int x, int y) {
   sim::touchDown = false; run(60);
 }
 static void tapBtn(const ui::Rect& r) { tap(r.x + r.w / 2, r.y + r.h / 2); }
+// Lo más alto que se marca para repintar (cambiar de pestaña en la ficha no debe repintar la tarjeta de arriba).
+static int32_t invTop = 0;
+static void onInvalidate(lv_event_t* e) {
+  const lv_area_t* a = (const lv_area_t*)lv_event_get_param(e);
+  if (a->y1 < invTop) invTop = a->y1;
+}
 static void collectText(lv_obj_t* o, std::string& out) {
   if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) return;
   if (lv_obj_check_type(o, &lv_label_class)) { out += lv_label_get_text(o); out += '|'; }
@@ -367,9 +373,13 @@ int main() {
   }
   perfil::Creds again;
   assert(perfil::credsFor(pa, again) && !strcmp(again.token, opciones::qrCreds.token));  // el mismo código siempre
-  opciones::view = opciones::View::Menu;
-  opciones::go(opciones::View::Menu);
-  screen = Screen::Settings;
+  // VOLVER lleva a JUGADORES y VOLVER otra vez, a AJUSTES (no de nuevo al QR).
+  opciones::onQrBack(nullptr);
+  run(300);
+  assert(screen == Screen::Players);
+  onFichasBack();
+  run(300);
+  assert(screen == Screen::Settings && opciones::active() && opciones::view == opciones::View::Menu);
 
   // ---- DATOS: modo prueba.
   datos::removeStdioTree("../build/placa/copias");
@@ -456,13 +466,17 @@ int main() {
     assert(ficha::active() && ficha::haveStats && ficha::st.nmine > 0);
     static const char* const N[ficha::TAB_COUNT] = {"ficha-demo-general", "ficha-demo-habitos", "ficha-demo-rivales",
                                                     "ficha-demo-historial", "ficha-demo-torneos", "ficha-demo-logros"};
+    lv_display_add_event_cb(lv_display_get_default(), onInvalidate, LV_EVENT_INVALIDATE_AREA, nullptr);
     for (uint8_t t = 0; t < ficha::TAB_COUNT; t++) {
       ficha::tab = t;
+      invTop = 480;
       ficha::buildContent();
+      assert(invTop >= 228);  // solo la zona de la pestaña
       run(50);
       assert(lv_obj_get_child_count(ficha::host) > 0);
       shot(N[t]);
     }
+    lv_display_remove_event_cb_with_user_data(lv_display_get_default(), onInvalidate, nullptr);
     if (torneos::nSummaries) assert(ficha::nTitles > 0);
     ficha::tourFilter = 4;  // solo ganados
     ficha::tab = ficha::TOURNAMENTS;

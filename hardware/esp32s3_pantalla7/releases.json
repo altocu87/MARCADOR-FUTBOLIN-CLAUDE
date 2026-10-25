@@ -1,7 +1,18 @@
 {
-  "version": "0.23",
+  "version": "0.24",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.24",
+      "date": "2026-10-25",
+      "title": "El QR del perfil ya no se queda colgado",
+      "changes": [
+        "Ver QR ya no se queda en «Publicando el perfil…»: en un par de segundos dice «Listo» y se puede seguir jugando.",
+        "Después de ver un QR desde Ajustes → Jugadores, Volver lleva otra vez a Ajustes.",
+        "Cambiar de pestaña en la ficha del jugador es más rápido: solo se repinta la parte de abajo.",
+        "Conserva todo lo de la 0.23."
+      ]
+    },
     {
       "version": "0.23",
       "date": "2026-10-25",

@@ -913,11 +913,11 @@ static void buildContent() {
   lv_obj_set_scroll_dir(host, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(host, LV_SCROLLBAR_MODE_AUTO);
   lv_obj_set_style_pad_bottom(host, 12, 0);
-  if (!haveStats) {
-    textAt(host, "Sin memoria para calcular su ficha.", 400, 16, ui::color::TEXT2, 0, 0);
-    return;
-  }
-  switch (tab) {
+  // Se hace oculta y se enseña ya colocada: LVGL calcula el tamaño de cada caja nueva antes de moverla a su sitio y
+  // marcaría para repintar también la tarjeta de arriba (la pestaña tardaba el doble).
+  lv_obj_add_flag(host, LV_OBJ_FLAG_HIDDEN);
+  if (!haveStats) textAt(host, "Sin memoria para calcular su ficha.", 400, 16, ui::color::TEXT2, 0, 0);
+  else switch (tab) {
     case GENERAL: buildGeneral(); break;
     case HABITS: buildHabits(); break;
     case RIVALS: buildRivals(); break;
@@ -925,6 +925,8 @@ static void buildContent() {
     case TOURNAMENTS: buildTournaments(); break;
     default: buildAchievements(); break;
   }
+  lv_obj_update_layout(host);
+  lv_obj_remove_flag(host, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void restyleTab(lv_obj_t* b, bool on) {
