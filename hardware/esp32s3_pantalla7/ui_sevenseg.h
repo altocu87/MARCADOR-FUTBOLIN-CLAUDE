@@ -20,6 +20,7 @@ struct Data {
   bool ghost;
   bool colonDim;  // dos puntos tenues (segundos impares)
   uint8_t glow;   // 0 = sin halo
+  bool soft;      // halo difuminado de verdad (reloj de reposo, 250 px): sin bandas ni costuras entre triángulos
 };
 
 // Segmentos: a, b, c, d, e, f, g → polígonos de 6 puntos en coordenadas de la app (viewBox de 100 de alto).
@@ -132,12 +133,71 @@ struct Glyph {
   int16_t h;
   uint32_t color;
   uint8_t glow;
-  bool ghost;
+  bool ghost, soft;
   lv_draw_buf_t* buf;
   uint32_t used;
 };
 static Glyph glyphs[28];  // reloj del partido (3 colores), cuenta atrás y configuración
 static uint32_t glyphUse = 0;
+
+// Halo difuminado (`soft`): como el drop-shadow de la app. Primero se tapan las rayas que dejan los bordes suavizados
+// de los triángulos dentro de cada segmento (un punto no macizo entre dos que sí lo son, a uno o dos de distancia).
+// Luego se difumina la transparencia de lo encendido (tres pasadas de media móvil de radio `r`, en horizontal y en
+// vertical) y se suma por debajo con la fuerza `k` (0–255).
+static void blurGlow(lv_draw_buf_t* buf, uint32_t color, int r, uint8_t k) {
+  int w = buf->header.w, h = buf->header.h, stride = buf->header.stride;
+  uint8_t* px = buf->data;
+  uint8_t* a = (uint8_t*)malloc((size_t)w * h);
+  uint8_t* t = (uint8_t*)malloc((size_t)(w > h ? w : h));
+  if (!a || !t) {
+    free(a);
+    free(t);
+    return;
+  }
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) a[y * w + x] = px[y * stride + x * 4 + 3];
+  auto solid = [&](int x, int y) { return x >= 0 && y >= 0 && x < w && y < h && a[y * w + x] == 255; };
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) {
+      uint8_t& q = px[y * stride + x * 4 + 3];
+      if (q && q < 255)
+        for (int d = 1; d <= 2; d++)
+          if ((solid(x - d, y) && solid(x + d, y)) || (solid(x, y - d) && solid(x, y + d))) q = 255;
+    }
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) a[y * w + x] = px[y * stride + x * 4 + 3];
+  auto pass = [&](int n, int step, int count, int lineStep) {  // media móvil de una fila o columna, en su sitio
+    for (int line = 0; line < count; line++) {
+      uint8_t* p = a + line * lineStep;
+      for (int i = 0; i < n; i++) t[i] = p[i * step];
+      int sum = 0;
+      for (int i = -r; i <= r; i++) sum += (i >= 0 && i < n) ? t[i] : 0;
+      for (int i = 0; i < n; i++) {
+        p[i * step] = (uint8_t)(sum / (2 * r + 1));
+        int out = i - r, in = i + r + 1;
+        sum += (in < n ? t[in] : 0) - (out >= 0 ? t[out] : 0);
+      }
+    }
+  };
+  for (int it = 0; it < 3; it++) {
+    pass(w, 1, h, w);
+    pass(h, w, w, 1);
+  }
+  const uint8_t cb = color & 0xff, cg = (color >> 8) & 0xff, cr = (color >> 16) & 0xff;
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) {
+      uint8_t* q = px + y * stride + x * 4;
+      int glow = a[y * w + x] * k / 255, core = q[3];
+      int out = core + (255 - core) * glow / 255;  // lo encendido por encima del halo
+      if (!out) continue;
+      q[0] = cb;
+      q[1] = cg;
+      q[2] = cr;
+      q[3] = (uint8_t)out;
+    }
+  free(a);
+  free(t);
+}
 
 static void drawDigit(const Ctx& c, char ch, lv_color_t col, uint8_t glow, bool ghost) {
   const float grows[3] = {5.0f, 2.5f, 0.0f};
@@ -153,11 +213,11 @@ static void drawDigit(const Ctx& c, char ch, lv_color_t col, uint8_t glow, bool 
     }
 }
 
-static lv_draw_buf_t* glyph(char ch, int h, uint32_t color, uint8_t glow, bool ghost) {
+static lv_draw_buf_t* glyph(char ch, int h, uint32_t color, uint8_t glow, bool ghost, bool soft = false) {
   int lru = -1;  // hueco libre o, si no hay, la menos usada
   for (int i = 0; i < (int)(sizeof(glyphs) / sizeof(glyphs[0])); i++) {
     Glyph& g = glyphs[i];
-    if (g.buf && g.ch == ch && g.h == h && g.color == color && g.glow == glow && g.ghost == ghost) {
+    if (g.buf && g.ch == ch && g.h == h && g.color == color && g.glow == glow && g.ghost == ghost && g.soft == soft) {
       g.used = ++glyphUse;
       return g.buf;
     }
@@ -183,10 +243,49 @@ static lv_draw_buf_t* glyph(char ch, int h, uint32_t color, uint8_t glow, bool g
   lv_layer_t layer;
   lv_canvas_init_layer(canvas, &layer);
   Ctx c = {&layer, scale, CELL_MARGIN * scale, CELL_MARGIN * scale, tanf(6.0f * 3.14159265f / 180.0f)};
-  drawDigit(c, ch, lv_color_hex(color), glow, ghost);
-  lv_canvas_finish_layer(canvas, &layer);
-  g = {ch, (int16_t)h, color, glow, ghost, buf, ++glyphUse};
+  if (!soft) {
+    drawDigit(c, ch, lv_color_hex(color), glow, ghost);
+    lv_canvas_finish_layer(canvas, &layer);
+  } else {
+    // Lo encendido, macizo; luego el halo difuminado debajo y, al final, los segmentos apagados («fantasma»). Los dos
+    // puntos (ch = ':') son dos círculos sin «fantasma».
+    const char* on = ch == ':' ? "abcdefg" : segsOf(ch);
+    if (ch == ':') {
+      dot(c, 10, 32, lv_color_hex(color), 255, 5);
+      dot(c, 10, 68, lv_color_hex(color), 255, 5);
+    } else
+      for (const char* sg = "abcdefg"; *sg; sg++) {
+        if (!strchr(on, *sg)) continue;
+        float xs[6], ys[6];
+        segPoly(*sg, xs, ys);
+        hexa(c, xs, ys, lv_color_hex(color), 255, 0);
+      }
+    lv_canvas_finish_layer(canvas, &layer);
+    if (glow) blurGlow(buf, color, (int)lroundf(3.2f * scale), glow);
+    if (ghost) {
+      lv_canvas_init_layer(canvas, &layer);
+      for (const char* sg = "abcdefg"; *sg; sg++) {
+        if (strchr(on, *sg)) continue;
+        float xs[6], ys[6];
+        segPoly(*sg, xs, ys);
+        hexa(c, xs, ys, lv_color_hex(color), 18, 0);
+      }
+      lv_canvas_finish_layer(canvas, &layer);
+    }
+  }
+  g = {ch, (int16_t)h, color, glow, ghost, soft, buf, ++glyphUse};
   return buf;
+}
+
+// Suelta las cifras ya pintadas de alto `h` salvo las de `keep` (las del reloj de reposo ocupan ~260 KB cada una:
+// solo se guardan las que se ven, y fuera del reposo ninguna).
+static void forget(int h, const char* keep = "") {
+  for (Glyph& g : glyphs)
+    if (g.buf && g.h == h && !strchr(keep, g.ch)) {
+      lv_image_cache_drop(g.buf);
+      lv_draw_buf_destroy(g.buf);
+      g.buf = nullptr;
+    }
 }
 
 static void drawCb(lv_event_t* e) {
@@ -208,7 +307,7 @@ static void drawCb(lv_event_t* e) {
   for (const char* ch = d->text; *ch; ch++) {
     Ctx cc = c;
     cc.ox += x * scale;
-    if (*ch == ':' || *ch == '.') {
+    if ((*ch == ':' && !d->soft) || *ch == '.') {  // con `soft`, los dos puntos van ya pintados, como las cifras
       for (int pass = d->glow ? 0 : 2; pass < 3; pass++) {
         lv_opa_t o = pass == 2 ? (d->colonDim ? (lv_opa_t)38 : 255) : (lv_opa_t)(haloOpa[pass] * (d->colonDim ? 0.15f : 1.0f));
         if (*ch == ':') dot(cc, 10, 32, col, o, 5 + grows[pass]);
@@ -217,16 +316,17 @@ static void drawCb(lv_event_t* e) {
       x += 20;
       continue;
     }
-    lv_draw_buf_t* g = glyph(*ch, h, d->color, d->glow, d->ghost);
+    lv_draw_buf_t* g = glyph(*ch, h, d->color, d->glow, d->ghost, d->soft);
     if (g) {
       lv_draw_image_dsc_t id;
       lv_draw_image_dsc_init(&id);
       id.src = g;
+      if (*ch == ':' && d->colonDim) id.opa = 38;  // dos puntos tenues, con su halo
       int32_t gx = (int32_t)lroundf(cc.ox - CELL_MARGIN * scale), gy = (int32_t)lroundf(cc.oy - CELL_MARGIN * scale);
       lv_area_t a = {gx, gy, gx + (int32_t)g->header.w - 1, gy + (int32_t)g->header.h - 1};
       lv_draw_image(c.layer, &id, &a);
     }
-    x += 66;
+    x += *ch == ':' ? 20 : 66;
   }
 }
 
