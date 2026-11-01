@@ -104,7 +104,13 @@ Después (01/11/2026), 5 más, también comprobadas: **25 voces en la SD**.
   «¡Congeladas!» y «15 segundos sin moveros» en otro, con pausas. Se cortaron (trozos en `frases/trozos/`) y se montó
   cada frase con la palabra + 0,3 s + su final.
 
-Faltan: F08–F13 y R1–R5.
+Luego **F08a–F08h** (barra bloqueada), también comprobadas: **33 voces en la SD**. El dueño grabó «No puedes mover la
+barra» + portero + defensa + medio campo + delantera + «durante 15 segundos» en un audio con pausas, y aparte «No
+podéis mover la barra». El orden de los trozos se confirmó con el reconocedor de voz de Windows (es-ES). Cada frase
+= inicio (puedes/podéis) + posición + «durante 15 segundos», con 0,15 s entre trozos. Las de «No puedes» duran
+8–9 s porque ese inicio dura 4,8 s.
+
+Faltan: F09–F13 y R1–R5.
 
 ## Notas
 
