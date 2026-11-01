@@ -37,6 +37,10 @@ Preparadas el 01/11/2026 (WAV mono 16 kHz, 16 bits, pico −1 dB, silencio final
 
 Con energía y signos de exclamación: «¡Vicky!», «¡Victoria!», «¡Lucía!», «¡María!», «¡Alex!», «¡José!»… (lista completa por confirmar con el dueño). Si entra un jugador nuevo, solo hace falta su nombre.
 
+Recibidos el 01/11/2026 en un solo audio (voz Guillermo Brazález), con la «y» (Q4) al final. Cortados y preparados igual que los avisos, fuera del repositorio en `FUTBOLIN ESP30/voces-handicaps/nombres/`, un archivo por jugador: `N_<nombre sin tildes>.wav`. Orden del audio: Alex, José, Vicky, María, Lucía, Sadia, Victoria, Álvaro.
+
+Sadia (chica) y Álvaro (chico) son jugadores nuevos: el dueño tiene que crearlos en la app desde su cuenta. Aún no están copiados a la SD ni programados.
+
 ## Q · Quién (fijos)
 
 | Código | Frase |
