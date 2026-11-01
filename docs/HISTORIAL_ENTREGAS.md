@@ -1,5 +1,13 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Voces de los hándicaps · 0.25 · Cloud · 01/11/2026
+
+Audios del dueño (ElevenLabs, MP3) → `FUTBOLIN ESP30/voces-handicaps/` (fuera del repositorio): `preparar.sh` (WAV mono 16 kHz, 16 bits, sin silencio en los bordes, pico −1 dB) y `subir-sd.py` (`SONIDO_SUBIR sd` con el código FNV-1a de `handicap/<voz>`, salta las que ya están y comprueba con `SONIDO_INFO`; `codigos.json`). Los audios con varias frases se cortaron por sus pausas; el orden se comprobó con el reconocedor de voz de Windows (System.Speech es-ES, gramática cerrada con las frases posibles). Montadas en el PC: Q3 (Q1 + Q4 + Q2), F07a–d (palabra + 0,3 s + final) y F08a–h (inicio + posición + «durante 15 segundos», 0,15 s).
+
+Pantalla: `s3_voces_hc.h` decide qué suena (`aviso`, `reveal`, `ending`); el `.ino` lo toca con `player.play(…, cola)` (la cola admite 3 detrás de la que suena: el traspaso usa las 4). `hcAvisoWait` retiene la cuenta atrás hasta que el reproductor acaba (como mucho 9 s); `hcVoicesTick` en `loop()` lanza la frase cuando se ve la tarjeta y el final al entrar en `HStage::Ending`. `View.hcIntroWait` enseña «¡HÁNDICAP!» sin cifra. La prueba usa el altavoz simulado en tiempo real (`sim::i2sRealtime` + `advanceI2sFrames`): sin eso el WAV «acaba» al instante. Ojo: `placa.py orden "SONIDO_INFO …"` contesta «orden» (la respuesta llega tarde y el script lee otra cosa); con `subir-sd.py` va bien. En la placa tras grabar: arranca en Inicio, memoria interna 35,6 KB (mínima 34,8) y las voces se ven en la SD. Sin probar aún con un partido de verdad.
+
+Después, a petición del dueño, el 3·2·1 con voz: `tts.ps1` (WinRT `Windows.Media.SpeechSynthesis` desde `powershell.exe` 5.1; System.Speech solo ve «Helena Desktop») con la voz «Microsoft Pablo», SSML con algo más de velocidad y tono; comprobado con el reconocedor. `hcVoicesTick` dice la cifra cuando cambia (`hcCountSaid`). Versión 0.25 (`releases.json`, `native-release.mjs generate`/`check`). Grabada en app1 con `volver` + `probar` para no pisar la 0.24 de app0. **Ojo:** en el primer arranque tras `probar` la SD salió `disponible=0`; tras `esptool --after hard-reset chip-id` se montó bien (la primera grabación de la tarde no lo hizo). Vigilar si pasa tras una actualización por Wi-Fi.
+
 ## Revisión de la 0.22 y arreglos · 0.24 · equipo B · 25/10/2026
 
 Versión 0.24 = 0.23 publicada (reloj de reposo, PR 35/36) + los tres arreglos de abajo; `releases.json` y `s3_release.h` regenerados (`native-release.mjs generate`/`check`). El diagnóstico `nube::jobStep` se queda (`NUBE?` → `paso=`, `hecho=`), sirve para próximas pruebas.

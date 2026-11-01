@@ -54,6 +54,7 @@ struct View {
   uint8_t hcKind, hcTeam;
   uint16_t hcSeq;
   uint8_t hcIntroN;             // cuenta atrás «¡HÁNDICAP! 3·2·1» antes de enseñarlo (0 = ya no)
+  bool hcIntroWait;             // suena el aviso «hándicap en 3 segundos»: «¡HÁNDICAP!» sin cifra hasta que acabe
   bool hcButton;                // botón del hándicap en lugar de PAUSA (en marcha o en pausa con hándicap)
   int32_t hcLeftMs;             // lo que le queda (−1 sin duración)
   uint16_t hcLeftPermille, hcEndPermille;
@@ -609,18 +610,18 @@ static void updateChaos(const View& v) {
   if (on && shown.phase != P_HANDICAP) cartel::hide();  // el cartel del hándicap manda sobre la franja que hubiera
   vis(hcLayer, on);
   if (on) {
-    bool intro = v.hcStage == 1 && v.hcIntroN > 0;
+    bool intro = v.hcStage == 1 && (v.hcIntroN > 0 || v.hcIntroWait);
     bool card = v.hcStage == 1 && !intro;
     vis(hcIntro, intro);
     vis(hcCard, card);
     vis(hcEndBox, v.hcStage == 3);
     if (intro) {
-      char n[4];
-      snprintf(n, sizeof(n), "%u", v.hcIntroN);
+      char n[4] = "";
+      if (!v.hcIntroWait) snprintf(n, sizeof(n), "%u", v.hcIntroN);
       setText(hcIntroNum, n);
       setText(hcIntroReplaced, v.hcReplaced);
     }
-    if (card && (v.hcSeq != shown.hcSeq || shown.hcStage != 1 || shown.hcIntroN)) {
+    if (card && (v.hcSeq != shown.hcSeq || shown.hcStage != 1 || shown.hcIntroN || shown.hcIntroWait)) {
       lv_image_set_src(hcCardIcon, hcIcon(v.hcKind, false, 0));
       setText(hcCardTitle, v.hcTitle);
       setText(hcCardDetail, v.hcDetail);

@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Voces de los hándicaps · 0.25 · Cloud · 01/11/2026
+
+**Fusionada en main con autorización del dueño (01/11/2026: «sube todo a la placa y a master»), lo que publica la 0.25 como actualización. Instalada en la placa (COM6) en el hueco de prueba app1 con una compilación local idéntica; app0 conserva la 0.24 (`python scripts/placa.py volver`). Falta oírla jugando.** El Partido Loco habla: aviso «¡Atentos! Hándicap en 3 segundos» → «¡Tres! ¡Dos! ¡Uno!» con la cuenta atrás → quién (nombre, equipo o los dos) + la frase del hándicap → «¡Todo vuelve a la normalidad!» (o el final del cambio de posiciones o del traspaso). 55 voces en la SD, fuera del catálogo de comentarios: 52 del dueño y el 3·2·1 hecho con la voz «Pablo» de Windows (a petición suya). Incluye también lo de abajo (chico/chica, sin «Mano mala», equipos de 1). Detalle en [el guion](GUION_VOCES_HANDICAPS.md). Pruebas: `hardware/test/s3_voces_hc_test.cpp`; `npm test` (359), `npm run typecheck` y `npm run test:hardware` correctas.
+
 ## Chico o chica en la ficha del jugador · Cloud · 01/11/2026
 
 **Código hecho y probado en el PC; sin publicar ni instalar en la placa.** A petición del dueño, para que las voces de los hándicaps digan «congelado» o «congelada». App: en «Editar/Nuevo jugador», dos botones grandes CHICO y CHICA (tocar el elegido lo quita); se guarda en el jugador (`gender`: `m`/`f`) y viaja a la cuenta con lo demás. Una vez por jugador y aparato se ponen solos: Vicky, Victoria, Lucía y María chicas; Alex y José chicos (`initialGenders`; lo cambiado luego en la ficha se respeta). Pantalla: guarda el dato que baja de la cuenta (en las marcas de `jugadores/extras`, compatible con lo guardado) y lo vuelve a subir, para no borrarlo al cambiar un jugador desde la placa; todavía no se ve ni se cambia en la placa. Pruebas: `tests/generos.test.ts`, `hardware/test/jugadores_test.cpp`.

@@ -67,6 +67,7 @@
 #include "ui_perfil.h"
 #include "ui_cargando.h"
 #include "s3_loco.h"
+#include "s3_voces_hc.h"
 #include "s3_partidos.h"
 #include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
@@ -469,6 +470,9 @@ static uint8_t lastStreak() {
 }
 
 static uint16_t hcSoundSeq=0;
+#if HAS_AUDIO
+static bool hcHas(uint32_t code){mfv3snd::Place where;return sndStore.find(code,where);}  // voz de hándicap en la SD
+#endif
 static void afterChange(bool goalAccepted, Team goalTeam) {
   streakDirty = true;  // incluye anular, deshacer y los goles especiales de Partido Loco
   Snapshot now = takeSnapshot();
@@ -551,7 +555,14 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       eng.handicap().kind==mfv3::HKind::Penalty &&
       (sndBefore.phase!=Phase::Handicap || eng.handicap().seq!=hcSoundSeq);
   hcSoundSeq=eng.handicap().seq;
-  if(penaltyAwarded){sounds=mfv3snd::EventList();sounds.add(mfv3snd::Event::PenaltyAwarded);}
+  if(penaltyAwarded){
+    sounds=mfv3snd::EventList();
+    bool voices=false;  // con las voces de los hándicaps lo dicen el aviso y «¡Penalti para el equipo…!»
+#if HAS_AUDIO
+    voices=voceshc::aviso(hcHas,0)!=0;
+#endif
+    if(!voices)sounds.add(mfv3snd::Event::PenaltyAwarded);
+  }
 #if HAS_AUDIO
   if(handicapScored || handicapMissed){
     auto event=handicapScored?mfv3snd::Event::PenaltyScored:mfv3snd::Event::PenaltyMissed;
@@ -650,6 +661,20 @@ static uint32_t matchStartMs = 0;     // tiempo real, incluidas pausas, para rec
 // ---------------------------------------------------------------- acciones
 static uint32_t hcIntroUntil = 0;  // cuenta atrás «¡HÁNDICAP! 3·2·1» (solo pantalla: el reloj ya está parado)
 static uint16_t hcIntroSeq = 0;
+// Voces de los hándicaps (s3_voces_hc.h): primero el aviso y, cuando acaba, la cuenta atrás (decisión del dueño,
+// 01/11/2026); al enseñarlo, quién + la frase; al acabar con tiempo, el final.
+static bool hcAvisoWait = false;  // suena el aviso: la cuenta atrás espera
+static uint32_t hcAvisoAt = 0;
+static uint16_t hcRevealSeq = 0, hcEndVoiceSeq = 0;
+static uint8_t hcCountSaid = 0;  // última cifra de la cuenta atrás que se ha dicho (0 ninguna)
+static bool hcIntroOn(uint32_t now) { return hcAvisoWait || now < hcIntroUntil; }
+static void hcSkipIntro(uint32_t now) {
+#if HAS_AUDIO
+  if (hcAvisoWait) player.stop();
+#endif
+  hcAvisoWait = false;
+  hcIntroUntil = now;
+}
 static void prepareMatchNetwork();
 static void startMatch() {
   if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
@@ -670,6 +695,9 @@ static void startMatch() {
   cfg.players[1] = haveTeams && chosenTeams.n[1] ? chosenTeams.n[1] : 1;
   hcIntroUntil = 0;
   hcIntroSeq = 0;
+  hcAvisoWait = false;
+  hcRevealSeq = hcEndVoiceSeq = 0;
+  hcCountSaid = 0;
   hcSoundSeq=0;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
@@ -740,7 +768,7 @@ static void inputGoal(Team t) {
   // Partido Loco: con el cartel del hándicap, un pulsador sigue (en el penalti, el del equipo que tira es gol y el
   // del rival, fallo). Durante la visita de un animal no se hace nada.
   if (eng.phase() == Phase::Handicap) {
-    if (eng.handicapStage() == mfv3::HStage::Announce && now < hcIntroUntil) hcIntroUntil = now;
+    if (eng.handicapStage() == mfv3::HStage::Announce && hcIntroOn(now)) hcSkipIntro(now);
     else if (eng.handicapStage() == mfv3::HStage::Announce && eng.handicap().kind == mfv3::HKind::Penalty)
       eng.handicapPenalty((uint8_t)t == eng.handicap().team, now);
     else eng.handicapGo(now);
@@ -785,6 +813,80 @@ static void inputPause() {
 }
 
 static jug::Store jugadores;  // jugadores y fotos que pasa la app (s3_jugadores.h)
+
+#if HAS_AUDIO
+static void hcWho(uint8_t team, int8_t idx, voceshc::Who& w) {
+  w.name[0] = 0;
+  w.gender = 0;
+  const jug::Player* p = haveTeams && idx >= 0 && idx < chosenTeams.n[team & 1] ? jugadores.find(chosenTeams.code[team & 1][idx]) : nullptr;
+  if (!p) return;
+  snprintf(w.name, sizeof(w.name), "%s", p->name);
+  const jug::Extra* e = jugadores.extraOf(p->code);
+  if (e) w.gender = e->gender;
+}
+// Lo que se diga corta lo que sonara (comentario de gol, ambiente…); el resto va en la cola, seguido.
+static bool hcPlay(const voceshc::Seq& s) {
+  if (!s.n) return false;
+  queueCommentary(0);
+  for (uint8_t i = 0; i < s.n; i++) player.play(audio::Item{false, s.c[i], mfv3snd::Tune{nullptr, 0}}, i > 0);
+  player.pump(millis());
+  return player.busy();
+}
+// Al salir un hándicap nuevo: el final del que sustituye (si lo lleva) y el aviso. false sin voces en la SD.
+static bool hcVoiceAviso() {
+  uint32_t a = voceshc::aviso(hcHas, esp_random());
+  if (!a) return false;
+  voceshc::Seq s;
+  if (eng.hasReplaced()) s.add(voceshc::ending(eng.replaced(), hcHas, esp_random()));
+  s.add(a);
+  return hcPlay(s);
+}
+#endif
+// Cada vuelta: fin del aviso (empieza la cuenta atrás), quién + frase al enseñar el hándicap y el final.
+static void hcVoicesTick(uint32_t now) {
+  if (!inMatch || eng.phase() != Phase::Handicap) {
+    hcAvisoWait = false;
+    return;
+  }
+  mfv3::HStage st = eng.handicapStage();
+  if (hcAvisoWait) {
+#if HAS_AUDIO
+    bool done = !player.busy();
+#else
+    bool done = true;
+#endif
+    if (st != mfv3::HStage::Announce) hcAvisoWait = false;
+    else if (done || now - hcAvisoAt > 9000) {
+      hcAvisoWait = false;
+      hcIntroUntil = now + 3000;
+    }
+    return;
+  }
+#if HAS_AUDIO
+  const mfv3::Handicap& h = eng.handicap();
+  // «¡Tres!», «¡Dos!», «¡Uno!» al cambiar cada cifra de la cuenta atrás.
+  uint8_t n = st == mfv3::HStage::Announce && h.seq == hcIntroSeq && now < hcIntroUntil ? (uint8_t)((hcIntroUntil - now + 999) / 1000) : 0;
+  if (n >= 1 && n <= 3 && n != hcCountSaid) {
+    hcCountSaid = n;
+    voceshc::Seq s;
+    s.add(voceshc::count(n, hcHas));
+    hcPlay(s);
+  }
+  if (st == mfv3::HStage::Announce && h.seq == hcIntroSeq && hcRevealSeq != h.seq && !hcIntroOn(now)) {
+    hcRevealSeq = h.seq;
+    voceshc::Who w, b;
+    hcWho(0, h.playerW, w);
+    hcWho(1, h.playerB, b);
+    hcPlay(voceshc::reveal(h, w, b, hcHas));
+  }
+  if (st == mfv3::HStage::Ending && eng.lastEnded().seq != hcEndVoiceSeq) {
+    hcEndVoiceSeq = eng.lastEnded().seq;
+    voceshc::Seq s;
+    s.add(voceshc::ending(eng.lastEnded(), hcHas, esp_random()));
+    hcPlay(s);
+  }
+#endif
+}
 
 // El partido entero, como lo guarda la app, en la tarjeta SD (s3_partidos.h).
 static bool saveMatchFile() {
@@ -2084,8 +2186,17 @@ static void matchView(partido::View& v, uint32_t now) {
     if (st == mfv3::HStage::Announce && h.seq != hcIntroSeq) {
       hcIntroSeq = h.seq;
       hcIntroUntil = now + 3000;
+      hcCountSaid = 0;
+#if HAS_AUDIO
+      if (hcVoiceAviso()) {  // con voces: la cuenta atrás, cuando acabe el aviso (hcVoicesTick)
+        hcAvisoWait = true;
+        hcAvisoAt = now;
+        hcIntroUntil = 0;
+      }
+#endif
     }
-    v.hcIntroN = st == mfv3::HStage::Announce && now < hcIntroUntil ? (uint8_t)((hcIntroUntil - now + 999) / 1000) : 0;
+    v.hcIntroWait = st == mfv3::HStage::Announce && hcAvisoWait;
+    v.hcIntroN = st == mfv3::HStage::Announce && !hcAvisoWait && now < hcIntroUntil ? (uint8_t)((hcIntroUntil - now + 999) / 1000) : 0;
     if (st == mfv3::HStage::Announce && eng.hasReplaced()) loco::endText(eng.replaced(), hcName, v.hcReplaced, sizeof(v.hcReplaced));
     if (st == mfv3::HStage::Ending) {
       loco::endText(h, hcName, v.hcEnd, sizeof(v.hcEnd));
@@ -2103,8 +2214,8 @@ static void onMatchGoal(uint8_t t) { inputGoal(t ? Team::Blue : Team::White); }
 static void onHcTap() {
   uint32_t now = millis();
   if (eng.phase() != Phase::Handicap) return;
-  if (eng.handicapStage() == mfv3::HStage::Announce && now < hcIntroUntil) {
-    hcIntroUntil = now;  // saltar la cuenta atrás
+  if (eng.handicapStage() == mfv3::HStage::Announce && hcIntroOn(now)) {
+    hcSkipIntro(now);  // saltar el aviso y la cuenta atrás
     return;
   }
   if (eng.handicapStage() == mfv3::HStage::Announce && eng.handicap().kind == mfv3::HKind::Penalty) return;  // GOL / FALLO
@@ -2712,6 +2823,7 @@ void loop() {
 
   now=millis();
   if (inMatch && eng.tick(now)) afterChange(false, Team::White);
+  hcVoicesTick(millis());
 #if defined(MFV3_FASE3) && defined(ESP_PLATFORM)
   fase3::tick(prefs, now);
 #endif

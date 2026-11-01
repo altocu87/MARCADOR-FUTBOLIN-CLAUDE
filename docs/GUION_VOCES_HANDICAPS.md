@@ -1,6 +1,6 @@
 # Guion de voces de los hándicaps (Partido Loco)
 
-Pedido por el dueño el 01/11/2026. Estado: **guion**; las voces aún no están grabadas (salvo los 3 avisos) ni programadas.
+Pedido por el dueño el 01/11/2026. Estado (01/11/2026): **55 voces en la SD y programadas en la pantalla de 7" (0.25, `s3_voces_hc.h`)**; falta oírlas jugando.
 
 ## Cómo suena en el partido
 
@@ -116,7 +116,25 @@ reconocedor de voz), **F10a, F10b** (traspaso) y **F11** (molinillo), también c
 Luego **F12** (solo desde lejos) y **F13** (una sola mano), también comprobadas: **40 voces en la SD**. Ya están
 todas las frases de los hándicaps.
 
-Faltan: R1–R5 (finales).
+Luego los **finales**: el dueño grabó cada uno con 4 voces seguidas; se cortaron por las pausas (comprobado con el
+reconocedor de voz que cada trozo tiene la frase entera). R1a–R1d «¡Todo vuelve a la normalidad!» (sustituyen a
+R1–R3), R4a–R4d «¡Fin del cambio! Cada uno a su sitio.» y R5a–R5d «¡Fin del traspaso! Cada uno a su equipo.».
+**52 voces en la SD, todas comprobadas.**
+
+## Cómo lo hace la pantalla (`hardware/esp32s3_pantalla7/s3_voces_hc.h`)
+
+- Sale el hándicap: suena un aviso al azar (A1–A3) con «¡HÁNDICAP!» en grande y sin cifra; al acabar, la cuenta
+  atrás 3·2·1 y con cada cifra «¡Tres!», «¡Dos!», «¡Uno!» (C3, C2, C1: voz «Pablo» de Windows, la pidió el dueño;
+  `voces-handicaps/cuenta/tts.ps1`). Tocar o un pulsador lo salta todo (aviso y cuenta atrás) y va directo a la frase.
+- Se ve el hándicap: quién + frase en la cola del reproductor, sin huecos (los WAV no tienen silencio en los bordes).
+  Nombre: `N_<nombre en minúsculas, sin tildes, espacios como _>`; si no está grabado (o se juega sin jugadores),
+  dice su equipo (Q1/Q2). Chico o chica sale de la ficha (`gender`); sin poner, «congelado». Dos jugadores: nombre +
+  «y» + nombre + la frase en plural.
+- Al acabar con tiempo (la pausa de 3 s): R1 al azar; el traspaso, R5. Si un hándicap nuevo sustituye al cambio de
+  posiciones, R4 antes del aviso (R5/R1 si sustituye a otro con tiempo). Los que se gastan (gol triple, robo,
+  penalti) no llevan final.
+- Con voces en la SD, el penalti del hándicap ya no toca el aviso de «penalti señalado»: lo dice F09.
+- Sin voces en la SD, todo como antes.
 
 ## Notas
 
