@@ -31,7 +31,11 @@ export interface Player {
   titleId?: string;
   /** Melodía de celebración al ganar. */
   anthem?: string;
+  /** Chico o chica: para que las voces digan «congelado» o «congelada». Sin poner = no se sabe. */
+  gender?: PlayerGender;
 }
+
+export type PlayerGender = 'm' | 'f';
 
 /** Partido terminado y guardado. Permite reconstruir el encuentro completo. */
 export interface StoredMatch {

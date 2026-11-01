@@ -291,6 +291,35 @@ static void chaos_handicaps() {
   assert(q.e.phase() == Phase::Playing && q.e.handicapStage() == HStage::None);
 }
 
+// Sorteo: sin «mano mala»; con 1 contra 1 y 2 contra 1 nunca se congela al que juega solo.
+static void chaos_small_teams() {
+  const uint8_t sizes[3][2] = {{1, 1}, {2, 1}, {2, 2}};
+  for (auto& sz : sizes) {
+    Config c = cfg(EndCondition::Goals, 20);
+    c.chaos = true;
+    c.players[0] = sz[0];
+    c.players[1] = sz[1];
+    bool sawFrozen = false, sawOneHand = false;
+    for (uint32_t seed = 1; seed <= 300; seed++) {
+      Sim s(c);
+      s.e.seed(seed);
+      s.startPeriod();
+      int secs = 0;
+      while (s.e.phase() == Phase::Playing && secs < 60) { s.wait(1000); secs++; }
+      const Handicap h = s.e.handicap();
+      assert(h.kind != HKind::WeakHand);
+      if (h.kind == HKind::FrozenPlayer) {
+        sawFrozen = true;
+        assert(!(sz[0] == 1 && sz[1] == 1));
+        if (sz[1] == 1) assert(h.team == 0);
+      }
+      if (h.kind == HKind::OneHand) { sawOneHand = true; assert(sz[0] == sz[1]); }
+    }
+    if (sz[0] == 2) assert(sawFrozen);
+    if (sz[0] == 2 && sz[1] == 2) assert(sawOneHand);
+  }
+}
+
 // Visitas: el animal para el reloj, hace su travesura y se sigue; nunca decide el partido.
 static void chaos_visits() {
   Config c = cfg(EndCondition::Goals, 10);
@@ -387,6 +416,7 @@ int main() {
   pause_keeps_time();
   match_point();
   chaos_handicaps();
+  chaos_small_teams();
   chaos_visits();
   std::puts("mfv3_engine: criterios A01-A13 y Partido Loco OK");
   return 0;

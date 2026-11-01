@@ -623,6 +623,11 @@ class Engine {
       if (kind == HKind::SwapPositions && !(sizeW >= 2 || sizeB >= 2)) continue;
       if (kind == HKind::Transfer && !(sizeW >= 2 && sizeB >= 2)) continue;
       if (kind == HKind::Steal && tied) continue;
+      // «Mano mala» ya no sale (decisión del dueño, 01/11/2026).
+      if (kind == HKind::WeakHand) continue;
+      // Nunca congelar al único jugador de un equipo; «una mano» solo con equipos iguales.
+      if (kind == HKind::FrozenPlayer && !(sizeW >= 2 || sizeB >= 2)) continue;
+      if (kind == HKind::OneHand && sizeW != sizeB) continue;
       allowed[n++] = kind;
     }
     Handicap h;
@@ -642,7 +647,13 @@ class Engine {
         h.team = (w && b) ? (chance(40) ? 2 : (uint8_t)rnd(2)) : (w ? 0 : 1);
         break;
       }
-      case HKind::FrozenPlayer:
+      case HKind::FrozenPlayer: {
+        bool w = sizeW >= 2, b = sizeB >= 2;
+        h.team = (w && b) ? (chance(50) ? 2 : (uint8_t)rnd(2)) : (w ? 0 : 1);
+        if (h.team != 1) h.playerW = (int8_t)rnd(sizeW);
+        if (h.team != 0) h.playerB = (int8_t)rnd(sizeB);
+        break;
+      }
       case HKind::BarLock: {
         if (chance(50)) h.team = 2;
         else h.team = (uint8_t)rnd(2);

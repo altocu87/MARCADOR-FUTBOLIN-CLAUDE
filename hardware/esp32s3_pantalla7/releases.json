@@ -1,7 +1,20 @@
 {
-  "version": "0.24",
+  "version": "0.25",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.25",
+      "date": "2026-11-01",
+      "title": "El Partido Loco habla",
+      "changes": [
+        "Al salir un hándicap suena «¡Atentos! Hándicap en 3 segundos» y después la cuenta atrás «¡Tres! ¡Dos! ¡Uno!».",
+        "Luego dice a quién le toca (jugador o equipo) y qué pasa: «¡Vicky! ¡Congelada! 15 segundos sin moverte».",
+        "Al acabar: «¡Todo vuelve a la normalidad!» (o el final del cambio de posiciones o del traspaso).",
+        "Tocar la pantalla o un pulsador durante el aviso lo salta y va directo al hándicap.",
+        "«Mano mala» ya no sale y, con equipos de un jugador, tampoco los hándicaps que no se pueden jugar.",
+        "Las voces van en la tarjeta SD; sin ellas, todo suena como antes. Conserva todo lo de la 0.24."
+      ]
+    },
     {
       "version": "0.24",
       "date": "2026-10-25",

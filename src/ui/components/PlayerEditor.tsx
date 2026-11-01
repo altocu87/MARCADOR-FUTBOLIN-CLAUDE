@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
-import type { Player } from '../../services/persistence';
+import type { Player, PlayerGender } from '../../services/persistence';
 import { ALIAS_MAX, NAME_MAX, createPlayer, findNameClash, mergeBlocker, updatePlayer, validatePlayerDraft } from '../../services/players';
 import { NameClashNotice } from './NameClash';
 import { Avatar, Modal } from './common';
@@ -51,11 +51,12 @@ export function PlayerEditor({
   const [name, setName] = useState(player?.name ?? '');
   const [alias, setAlias] = useState(player?.alias ?? '');
   const [photo, setPhoto] = useState<string | undefined>(player?.photo);
+  const [gender, setGender] = useState<PlayerGender | undefined>(player?.gender);
   const [errors, setErrors] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const save = async () => {
-    const draft = { name, alias, photo };
+    const draft = { name, alias, photo, gender };
     const same = findNameClash(name, players, player?.id);
     if (same) {
       setErrors([]);
@@ -89,6 +90,7 @@ export function PlayerEditor({
           ...clash,
           alias: alias.trim() || clash.alias,
           photo: photo ?? clash.photo,
+          gender: gender ?? clash.gender,
           active: true,
           updatedAt: now,
         };
@@ -110,6 +112,7 @@ export function PlayerEditor({
         ...keptBase,
         alias: alias.trim() || keptBase.alias,
         photo: photo ?? keptBase.photo,
+        gender: gender ?? keptBase.gender,
         active: true,
         updatedAt: now,
       };
@@ -210,6 +213,29 @@ export function PlayerEditor({
             <span className="label">Alias (opcional)</span>
             <input className="input" value={alias} maxLength={ALIAS_MAX} onChange={(e) => setAlias(e.target.value)} />
           </label>
+          <div className="field">
+            <span className="label">Chico o chica (para las voces)</span>
+            <div className="cr-opts pe-gender" role="radiogroup">
+              {(
+                [
+                  ['m', 'Chico'],
+                  ['f', 'Chica'],
+                ] as const
+              ).map(([g, label]) => (
+                <button
+                  key={g}
+                  type="button"
+                  className="cr-opt"
+                  role="radio"
+                  aria-checked={gender === g}
+                  // Tocar el elegido otra vez lo deja sin poner.
+                  onClick={() => setGender(gender === g ? undefined : g)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       {errors.length > 0 && (

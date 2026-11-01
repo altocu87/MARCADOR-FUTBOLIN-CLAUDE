@@ -1,6 +1,6 @@
 /** Gestión de jugadores: validación, alta, edición y baja lógica. */
 import { newId } from '../ids';
-import type { Player } from '../persistence';
+import type { Player, PlayerGender } from '../persistence';
 
 /** Máximo de caracteres del nombre: así cabe entero en marcador, fichas y pantalla final. */
 export const NAME_MAX = 10;
@@ -10,6 +10,7 @@ export interface PlayerDraft {
   name: string;
   alias?: string;
   photo?: string;
+  gender?: PlayerGender;
 }
 
 /** Nombre comparable: sin mayúsculas, tildes ni espacios de más («José» = «jose »). */
@@ -44,6 +45,7 @@ export function createPlayer(draft: PlayerDraft, now: number): Player {
     name: draft.name.trim(),
     alias: draft.alias?.trim() || undefined,
     photo: draft.photo,
+    ...(draft.gender ? { gender: draft.gender } : {}),
     active: true,
     createdAt: now,
     updatedAt: now,
@@ -56,6 +58,7 @@ export function updatePlayer(player: Player, draft: PlayerDraft, now: number): P
     name: draft.name.trim(),
     alias: draft.alias?.trim() || undefined,
     photo: draft.photo,
+    gender: draft.gender,
     updatedAt: now,
   };
 }
@@ -73,4 +76,22 @@ export function initials(name: string): string {
 
 export function sortPlayers(players: Player[]): Player[] {
   return [...players].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+/**
+ * Chico o chica de los jugadores que ya había, puesto de una vez a petición del dueño (01/11/2026).
+ * Solo a los que aún no lo tienen y solo una vez por jugador (`done`): si luego se cambia en la ficha, se respeta.
+ */
+const INITIAL_GENDERS: Record<string, PlayerGender> = {
+  vicky: 'f',
+  victoria: 'f',
+  lucia: 'f',
+  maria: 'f',
+  alex: 'm',
+  jose: 'm',
+};
+export function initialGenders(players: Player[], done: Set<string>, now: number): Player[] {
+  return players
+    .filter((p) => !p.gender && !done.has(p.id) && INITIAL_GENDERS[nameKey(p.name)])
+    .map((p) => ({ ...p, gender: INITIAL_GENDERS[nameKey(p.name)], updatedAt: now }));
 }

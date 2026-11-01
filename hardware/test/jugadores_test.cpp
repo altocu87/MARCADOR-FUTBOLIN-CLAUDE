@@ -126,13 +126,13 @@ int main() {
   assert(st.isActive(0xdeadbeef) && !st.extraOf(0xdeadbeef) && st.activeCount() == 2);
   assert(st.setActive(0xdeadbeef, false) && !st.isActive(0xdeadbeef) && st.activeCount() == 1 && st.hash == before);
   assert(st.setStyle(0x0a1b2c3d, "phoenix", "arcade", "Fénix") && !strcmp(st.find(0x0a1b2c3d)->title, "Fénix"));
-  assert(st.setExtras(0x0a1b2c3d, true, "phoenix", "arcade", "El Rayo"));
+  assert(st.setExtras(0x0a1b2c3d, true, "phoenix", "arcade", "El Rayo", 'f'));
   assert(!st.setActive(0x12345678, false));  // no está en la lista
   jug::Store third;
   third.begin(&disk);
   assert(!third.isActive(0xdeadbeef) && third.isActive(0x0a1b2c3d));
   const jug::Extra* ex = third.extraOf(0x0a1b2c3d);
-  assert(ex && !strcmp(ex->titleId, "phoenix") && !strcmp(ex->anthem, "arcade") && !strcmp(ex->alias, "El Rayo"));
+  assert(ex && !strcmp(ex->titleId, "phoenix") && !strcmp(ex->anthem, "arcade") && !strcmp(ex->alias, "El Rayo") && ex->gender == 'f');
   assert(!strcmp(third.find(0x0a1b2c3d)->title, "Fénix"));
   uint32_t h = 2166136261u;
   for (const char* c = "deadbeef - Lucía|Nv 25|\n"; *c; c++) h = (h ^ (uint8_t)*c) * 16777619u;

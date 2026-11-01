@@ -61,6 +61,7 @@ sh test/s3_build.sh 4 test/s3_opciones_test.cpp
 (cd .. && TZ=Europe/Madrid MFV3_PERFIL_PLACA=1 npx vitest run tests/perfil-placa.test.ts)
 sh test/s3_build.sh 4 test/s3_sound_safety_test.cpp
 sh test/s3_build.sh 4 test/s3_sound_chaos_test.cpp
+sh test/s3_build.sh 4 test/s3_voces_hc_test.cpp
 g++ -std=c++17 -Wall -Wextra -Werror=misleading-indentation -DMFV3_BOARD=4 -Itest/mock_s3 -Iesp32s3_pantalla7 test/s3_audio_resilience_test.cpp -o /tmp/mfv3_audio_resilience && /tmp/mfv3_audio_resilience
 sh test/s3_build.sh 4 test/s3_usb_diagnostics_test.cpp
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_session_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_session_test && /tmp/mfv3_session_test

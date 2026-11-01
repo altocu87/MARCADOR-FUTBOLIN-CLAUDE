@@ -46,7 +46,9 @@ export const HANDICAP_ICON: Record<HandicapKind, string> = {
   one_hand: '☝',
 };
 
-const ALL_KINDS = Object.keys(HANDICAP_DURATION) as HandicapKind[];
+/** «Mano mala» ya no sale en el sorteo (decisión del dueño, 01/11/2026); se conserva para partidos antiguos. */
+const RETIRED_KINDS: HandicapKind[] = ['weak_hand'];
+const ALL_KINDS = (Object.keys(HANDICAP_DURATION) as HandicapKind[]).filter((k) => !RETIRED_KINDS.includes(k));
 const BARS: Bar[] = ['portero', 'defensa', 'medio', 'delantero'];
 const BAR_TEXT: Record<Bar, string> = {
   portero: 'la barra del portero',
@@ -90,6 +92,10 @@ export function pickHandicap(state: MatchState, id: string, rnd: () => number = 
     // Cambiar de sitio solo tiene sentido con 2 o más jugadores en el equipo.
     if (k === 'swap_positions') return sizes.white >= 2 || sizes.blue >= 2;
     if (k === 'transfer') return sizes.white >= 2 && sizes.blue >= 2;
+    // Congelar al único jugador de un equipo lo deja sin nadie: solo en equipos de 2 o más.
+    if (k === 'frozen_player') return sizes.white >= 2 || sizes.blue >= 2;
+    // Con equipos desiguales (2 contra 1) el que juega solo saldría muy perjudicado.
+    if (k === 'one_hand') return sizes.white === sizes.blue;
     // El robo necesita un equipo por detrás y un rival con goles.
     if (k === 'steal') return !tied;
     return true;
@@ -110,7 +116,12 @@ export function pickHandicap(state: MatchState, id: string, rnd: () => number = 
       const team = eligible.length === 2 && rnd() < 0.4 ? 'both' : pick(eligible, rnd);
       return { ...base, team };
     }
-    case 'frozen_player':
+    case 'frozen_player': {
+      // Un jugador de un equipo, o uno de cada equipo; nunca el único jugador de su equipo.
+      const eligible = (['white', 'blue'] as Team[]).filter((t) => sizes[t] >= 2);
+      const teams: Team[] = eligible.length === 2 && rnd() < 0.5 ? eligible : [pick(eligible, rnd)];
+      return { ...base, team: teams.length === 2 ? 'both' : teams[0], players: onePerTeam(teams) };
+    }
     case 'bar_lock': {
       // Un jugador de un equipo, o uno de cada equipo.
       const teams: Team[] = rnd() < 0.5 ? ['white', 'blue'] : [rnd() < 0.5 ? 'white' : 'blue'];
@@ -118,7 +129,7 @@ export function pickHandicap(state: MatchState, id: string, rnd: () => number = 
         ...base,
         team: teams.length === 2 ? 'both' : teams[0],
         players: onePerTeam(teams),
-        ...(kind === 'bar_lock' ? { bar: pick(BARS, rnd) } : {}),
+        bar: pick(BARS, rnd),
       };
     }
     case 'transfer':

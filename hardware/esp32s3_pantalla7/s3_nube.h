@@ -322,6 +322,7 @@ struct Change {
   // 'p': lo demás del jugador en la app (jug::Extra)
   bool active;
   char titleId[24], anthem[12], alias[52];
+  char gender;  // 'm', 'f' o 0
 };
 static Change* changes = nullptr;
 static int nChanges = 0;
@@ -348,6 +349,7 @@ struct UpPlayer {
   char* photoUrl;  // «data:image/bmp;base64,…» ya hecha por loop() (la tarea no lee la memoria del chip) o nullptr
   bool active;     // y lo demás que guarda la app (si no se sube, la nube lo perdería)
   char titleId[24], anthem[12], alias[52];
+  char gender;          // 'm', 'f' o 0 (solo se cambia en la app)
   uint8_t extrasLocal;  // lo cambiado en la placa (jug::LOCAL_*); lo demás, como acaba de bajar de la cuenta
 };
 static UpPlayer* upPlayers = nullptr;
@@ -679,6 +681,7 @@ static bool pushPlayer(const UpPlayer& p, bool* done) {
     if (alias) k += snprintf(body + k, cap - k, ",\"alias\":\"%s\"", alias);
     if (p.titleId[0]) k += snprintf(body + k, cap - k, ",\"titleId\":\"%s\"", p.titleId);
     if (p.anthem[0]) k += snprintf(body + k, cap - k, ",\"anthem\":\"%s\"", p.anthem);
+    if (p.gender) k += snprintf(body + k, cap - k, ",\"gender\":\"%c\"", p.gender);
     if (photo) k += snprintf(body + k, cap - k, ",\"photo\":\"%s\"", photo);
     snprintf(body + k, cap - k, "}}]");
     ok = post(body);
@@ -828,6 +831,9 @@ static bool takeRow(const char* o) {
     partidos::strOf(partidos::keyIn(datos, "titleId"), c.titleId, sizeof(c.titleId));
     partidos::strOf(partidos::keyIn(datos, "anthem"), c.anthem, sizeof(c.anthem));
     partidos::strOf(partidos::keyIn(datos, "alias"), c.alias, sizeof(c.alias));
+    char g[4] = "";
+    partidos::strOf(partidos::keyIn(datos, "gender"), g, sizeof(g));
+    c.gender = (!strcmp(g, "m") || !strcmp(g, "f")) ? g[0] : 0;
     const char* ph = partidos::keyIn(datos, "photo");
     if (ph && *ph == '"' && ph[1] != '"') {
       const char* e = partidos::skipStr(ph);
@@ -960,6 +966,7 @@ static void runJob() {
           snprintf(u.anthem, sizeof(u.anthem), "%s", c.anthem);
         }
         snprintf(u.alias, sizeof(u.alias), "%s", c.alias);  // el apodo solo se cambia en la app
+        u.gender = c.gender;                                  // chico o chica, también
       }
       bool d = false;
       jobOk = pushPlayer(u, &d);
@@ -972,6 +979,7 @@ static void runJob() {
         snprintf(c.titleId, sizeof(c.titleId), "%s", u.titleId);
         snprintf(c.anthem, sizeof(c.anthem), "%s", u.anthem);
         snprintf(c.alias, sizeof(c.alias), "%s", u.alias);
+        c.gender = u.gender;
       }
     }
     for (int i = 0; jobOk && i < nUps; i++) {
@@ -1154,6 +1162,7 @@ static void sync(bool inBackground = false) {
       snprintf(u.titleId, sizeof(u.titleId), "%s", ex ? ex->titleId : "");
       snprintf(u.anthem, sizeof(u.anthem), "%s", ex ? ex->anthem : "");
       snprintf(u.alias, sizeof(u.alias), "%s", ex ? ex->alias : "");
+      u.gender = ex ? ex->gender : 0;
       char rel[40], path[96];
       if (store->photoRel(code, rel, sizeof(rel))) {
         snprintf(path, sizeof(path), "%s/%s", ffatRoot, rel);
