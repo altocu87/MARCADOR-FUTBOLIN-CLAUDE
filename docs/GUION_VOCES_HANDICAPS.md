@@ -4,9 +4,10 @@ Pedido por el dueño el 01/11/2026. Estado: **guion**; las voces aún no están 
 
 ## Cómo suena en el partido
 
-1. 3 s antes del hándicap: **aviso** («¡Atentos! Hándicap en 3 segundos»).
-2. Al salir: **quién** (nombre del jugador o equipo) + **frase del hándicap**.
-3. Al acabar: **final** («¡Todo vuelve a la normalidad!»).
+1. Sale el hándicap (el reloj se para): suena el **aviso** («¡Atentos! Hándicap en 3 segundos»).
+2. Cuando acaba el aviso, la cuenta atrás de la pantalla «3 · 2 · 1» (decisión del dueño, 01/11/2026: primero el aviso y después la cuenta atrás).
+3. Al terminar la cuenta atrás y verse el hándicap: **quién** (nombre del jugador o equipo) + **frase del hándicap**.
+4. Al acabar: **final** («¡Todo vuelve a la normalidad!»).
 
 Ejemplo: «¡Atentos, hándicap en 3 segundos!» … «¡Vicky!» + «¡Congelada! 15 segundos sin moverte.» … «¡Todo vuelve a la normalidad!».
 
