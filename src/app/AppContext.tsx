@@ -26,7 +26,7 @@ import { boardPlayer, photoForBoard } from '../inputs/hardware/boardPlayers';
 // Los sonidos guardados en la placa se le piden a ella (si no puede, suena el de siempre en la app).
 soundPlayer.board = { play: (s, queue) => hardwareHub.playBoardSound(s.id, queue) };
 import { generateDemoData } from '../services/demo';
-import { mergePlayers, sortPlayers } from '../services/players';
+import { initialGenders, mergePlayers, sortPlayers } from '../services/players';
 import {
   DEFAULT_RULES,
   applyGameRules,
@@ -262,6 +262,30 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
     }
   }, [soundRepo]);
 
+  // Chico o chica de los jugadores que ya estaban (una vez por jugador; ver initialGenders).
+  const fillInitialGenders = useCallback(
+    async (list: Player[]): Promise<Player[]> => {
+      const KEY = 'mf.generoInicial';
+      let done = new Set<string>();
+      try {
+        done = new Set(JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[]);
+      } catch {
+        /* sin almacenamiento: se intenta igual */
+      }
+      const changed = initialGenders(list, done, Date.now());
+      if (!changed.length) return list;
+      try {
+        for (const p of changed) await repos.players.save(p);
+        changed.forEach((p) => done.add(p.id));
+        localStorage.setItem(KEY, JSON.stringify([...done]));
+        return await repos.players.list();
+      } catch {
+        return list;
+      }
+    },
+    [repos],
+  );
+
   const refresh = useCallback(async () => {
     void reloadSounds();
     const [p, m, pr, t] = await Promise.all([
@@ -270,12 +294,12 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
       repos.preferences.load(),
       repos.tournaments.list(),
     ]);
-    setPlayers(p);
+    setPlayers(await fillInitialGenders(p));
     setMatches(m);
     setTournaments(t);
     setPrefs(pr);
     setLoaded(true);
-  }, [repos, reloadSounds]);
+  }, [repos, reloadSounds, fillInitialGenders]);
 
   useEffect(() => {
     void refresh();

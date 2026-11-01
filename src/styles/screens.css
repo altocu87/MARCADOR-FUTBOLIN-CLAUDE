@@ -6978,3 +6978,13 @@ div > .name-clash:first-child {
   position: relative;
   font-size: 17px;
 }
+
+/* Chico o chica en la ficha del jugador: dos botones grandes en fila. */
+.pe-gender {
+  flex-direction: row;
+}
+.pe-gender .cr-opt {
+  min-height: 58px;
+  padding: 8px 12px;
+  font-size: 22px;
+}

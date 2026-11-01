@@ -55,6 +55,7 @@ struct Extra {
   char titleId[24];  // "" automático, "none" sin título o el id del logro que da el título
   char anthem[12];   // "" = la de siempre (fanfare)
   char alias[52];
+  char gender;       // 'm' chico, 'f' chica, 0 sin poner (solo se cambia en la app; lo usan las voces)
 };
 
 // Iniciales como la app (initials() de services/players): primera letra de las dos primeras palabras, o las dos
@@ -144,12 +145,13 @@ class Store {
     return saveExtras();
   }
   // Lo que llega de la cuenta. Solo escribe si algo cambia.
-  bool setExtras(uint32_t code, bool active, const char* titleId, const char* anthem, const char* alias) {
+  bool setExtras(uint32_t code, bool active, const char* titleId, const char* anthem, const char* alias, char gender = 0) {
+    if (gender != 'm' && gender != 'f') gender = 0;
     const Extra* old = extraOf(code);
     if (old && !old->local && old->inactive == !active && !strcmp(old->titleId, titleId) && !strcmp(old->anthem, anthem) &&
-        !strcmp(old->alias, alias))
+        !strcmp(old->alias, alias) && old->gender == gender)
       return true;
-    if (!old && active && !*titleId && !*anthem && !*alias) return true;
+    if (!old && active && !*titleId && !*anthem && !*alias && !gender) return true;
     Extra* e = extraFor(code);
     if (!e) return false;
     e->inactive = !active;
@@ -157,6 +159,7 @@ class Store {
     snprintf(e->titleId, sizeof(e->titleId), "%s", titleId);
     snprintf(e->anthem, sizeof(e->anthem), "%s", anthem);
     snprintf(e->alias, sizeof(e->alias), "%s", alias);
+    e->gender = gender;
     changed = true;
     return saveExtras();
   }
@@ -480,8 +483,10 @@ class Store {
     char line[128];
     for (uint8_t i = 0; i < nExt; i++) {
       const Extra& e = ext[i];
-      if (!find(e.code) || (!e.inactive && !e.local && !e.titleId[0] && !e.anthem[0] && !e.alias[0])) continue;
-      snprintf(line, sizeof(line), "%08lx %d %s %s %s\n", (unsigned long)e.code, (e.inactive ? 1 : 0) | e.local << 1, e.titleId[0] ? e.titleId : "-",
+      if (!find(e.code) || (!e.inactive && !e.local && !e.titleId[0] && !e.anthem[0] && !e.alias[0] && !e.gender)) continue;
+      // Marcas: bit 0 de baja, bits 1-2 lo cambiado aquí, bits 3-4 chico (1) o chica (2).
+      int marks = (e.inactive ? 1 : 0) | e.local << 1 | (e.gender == 'm' ? 1 : e.gender == 'f' ? 2 : 0) << 3;
+      snprintf(line, sizeof(line), "%08lx %d %s %s %s\n", (unsigned long)e.code, marks, e.titleId[0] ? e.titleId : "-",
                e.anthem[0] ? e.anthem : "-", e.alias);
       f.print(line);
     }
@@ -515,6 +520,8 @@ class Store {
       int marks = atoi(line + 9);
       e->inactive = marks & 1;
       e->local = (uint8_t)((marks >> 1) & 3);
+      int g = (marks >> 3) & 3;
+      e->gender = g == 1 ? 'm' : g == 2 ? 'f' : 0;
       snprintf(e->titleId, sizeof(e->titleId), "%s", strcmp(t, "-") ? t : "");
       snprintf(e->anthem, sizeof(e->anthem), "%s", strcmp(a, "-") ? a : "");
       snprintf(e->alias, sizeof(e->alias), "%s", used ? line + 9 + used : "");

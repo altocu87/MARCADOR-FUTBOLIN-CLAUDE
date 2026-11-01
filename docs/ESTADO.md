@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Chico o chica en la ficha del jugador · Cloud · 01/11/2026
+
+**Código hecho y probado en el PC; sin publicar ni instalar en la placa.** A petición del dueño, para que las voces de los hándicaps digan «congelado» o «congelada». App: en «Editar/Nuevo jugador», dos botones grandes CHICO y CHICA (tocar el elegido lo quita); se guarda en el jugador (`gender`: `m`/`f`) y viaja a la cuenta con lo demás. Una vez por jugador y aparato se ponen solos: Vicky, Victoria, Lucía y María chicas; Alex y José chicos (`initialGenders`; lo cambiado luego en la ficha se respeta). Pantalla: guarda el dato que baja de la cuenta (en las marcas de `jugadores/extras`, compatible con lo guardado) y lo vuelve a subir, para no borrarlo al cambiar un jugador desde la placa; todavía no se ve ni se cambia en la placa. Pruebas: `tests/generos.test.ts`, `hardware/test/jugadores_test.cpp`.
+
 ## Partido Loco: fuera «Mano mala» y equipos de 1 · Cloud · 01/11/2026
 
 **Código hecho y probado en el PC (app y motor de la pantalla); sin publicar ni instalar en la placa.** A petición del dueño: «Mano mala» ya no sale en el sorteo (se conserva para leer partidos antiguos y el número del protocolo no cambia). Con equipos de 1 jugador: «Jugador congelado» nunca congela al que juega solo (en 1 contra 1 no sale; en 2 contra 1 solo al equipo de 2) y «Una sola mano» solo sale con equipos iguales (1 contra 1 o 2 contra 2). «Cambio de posiciones» y «Traspaso» ya lo tenían en cuenta. Pruebas nuevas en `tests/chaos-insights.test.ts` y `hardware/test/engine_test.cpp`; `npm test` (356), `npm run typecheck` y `npm run test:hardware` correctas. Pendiente de decidir: voces de los hándicaps (aviso «en 3 segundos», frase con el nombre del jugador y «todo vuelve a la normalidad»).

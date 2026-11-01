@@ -1764,7 +1764,7 @@ static void nubePlayerExtras(uint32_t code, const nube::Change& c) {
   if (!code) return;
   const jug::Extra* old = jugadores.extraOf(code);
   bool titleChanged = strcmp(old ? old->titleId : "", c.titleId) != 0;
-  jugadores.setExtras(code, c.active, c.titleId, c.anthem, c.alias);
+  jugadores.setExtras(code, c.active, c.titleId, c.anthem, c.alias, c.gender);
   if (titleChanged) refreshPlayerTitle(code);
 }
 // Jugador de la cuenta: se actualiza, se une con el de la placa del mismo nombre o se añade.
