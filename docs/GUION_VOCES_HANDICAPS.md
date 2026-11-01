@@ -96,7 +96,15 @@ CRC**. 20 voces: A1–A3, Q1, Q2, Q4, los 8 nombres y F01–F06. Q1 y Q2 vienen 
 Código de cada voz: FNV-1a de `handicap/<nombre>` (p. ej. `handicap/F01`, `handicap/N_alex`), igual que
 `scripts/preparar-comentarios.py`; la lista con códigos, tamaños y CRC está en `voces-handicaps/codigos.json`.
 Van como archivos sueltos: **no se tocó el catálogo de comentarios** y el programa aún no las reproduce.
-Faltan: Q3, F07–F13 y R1–R5.
+
+Después (01/11/2026), 5 más, también comprobadas: **25 voces en la SD**.
+- **Q3**: el dueño prefiere «¡Equipo blanco! y ¡equipo azul!» en vez de «¡Los dos equipos!». Montada con Q1 + Q4 + Q2
+  (0,12 s entre trozos).
+- **F07a–F07d**: el dueño grabó «¡Congelado!», «¡Congelada!» y «15 segundos sin moverte» en un audio, y «¡Congelados!»,
+  «¡Congeladas!» y «15 segundos sin moveros» en otro, con pausas. Se cortaron (trozos en `frases/trozos/`) y se montó
+  cada frase con la palabra + 0,3 s + su final.
+
+Faltan: F08–F13 y R1–R5.
 
 ## Notas
 
