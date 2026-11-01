@@ -113,7 +113,10 @@ podéis mover la barra». El orden de los trozos se confirmó con el reconocedor
 Luego **F09a, F09b** (penaltis: un audio con los dos, cortado por la pausa; blanco/azul confirmado con el
 reconocedor de voz), **F10a, F10b** (traspaso) y **F11** (molinillo), también comprobadas: **38 voces en la SD**.
 
-Faltan: F12, F13 y R1–R5.
+Luego **F12** (solo desde lejos) y **F13** (una sola mano), también comprobadas: **40 voces en la SD**. Ya están
+todas las frases de los hándicaps.
+
+Faltan: R1–R5 (finales).
 
 ## Notas
 
