@@ -205,6 +205,24 @@ describe('Partido Loco: hándicaps', () => {
     expect(kinds.has('transfer')).toBe(true);
   });
 
+  it('sorteo: sin «mano mala» y respetando al que juega solo (1 contra 1 y 2 contra 1)', () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+    const uno = Array.from({ length: 300 }, (_, i) => pickHandicap(loco(), `u${i}`, rnd));
+    for (const h of uno) expect(['weak_hand', 'frozen_player', 'swap_positions', 'transfer']).not.toContain(h.kind);
+    const P3 = [...P4.filter((p) => p.team === 'white'), P4.find((p) => p.team === 'blue')!];
+    const dos = Array.from({ length: 300 }, (_, i) => pickHandicap(loco(P3), `d${i}`, rnd));
+    const kinds = new Set(dos.map((h) => h.kind));
+    expect(kinds.has('frozen_player')).toBe(true);
+    for (const h of dos) {
+      expect(['weak_hand', 'one_hand', 'transfer']).not.toContain(h.kind);
+      if (h.kind === 'frozen_player') expect(h.team).toBe('white');
+    }
+    const cuatro = new Set(Array.from({ length: 300 }, (_, i) => pickHandicap(loco(P4), `c${i}`, rnd).kind));
+    expect(cuatro.has('one_hand')).toBe(true);
+    expect(cuatro.has('weak_hand')).toBe(false);
+  });
+
   it('los textos llevan los nombres de los jugadores', () => {
     const t = handicapText({ id: 'h', kind: 'frozen_player', team: 'both', players: ['a', 'b'], durationMs: 15_000 }, P4);
     expect(t.detail).toBe('Ana y Bea no se pueden mover durante 15 segundos.');
