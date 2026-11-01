@@ -110,7 +110,10 @@ podéis mover la barra». El orden de los trozos se confirmó con el reconocedor
 = inicio (puedes/podéis) + posición + «durante 15 segundos», con 0,15 s entre trozos. Las de «No puedes» duran
 8–9 s porque ese inicio dura 4,8 s.
 
-Faltan: F09–F13 y R1–R5.
+Luego **F09a, F09b** (penaltis: un audio con los dos, cortado por la pausa; blanco/azul confirmado con el
+reconocedor de voz), **F10a, F10b** (traspaso) y **F11** (molinillo), también comprobadas: **38 voces en la SD**.
+
+Faltan: F12, F13 y R1–R5.
 
 ## Notas
 
