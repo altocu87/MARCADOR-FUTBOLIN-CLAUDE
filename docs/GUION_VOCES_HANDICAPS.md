@@ -25,6 +25,14 @@ Ejemplo: «¡Atentos, hándicap en 3 segundos!» … «¡Vicky!» + «¡Congelad
 |---|---|
 | A1–A3 | «¡Atentos! Hándicap en 3 segundos» (las 3 recibidas el 01/11/2026) |
 
+Preparadas el 01/11/2026 (WAV mono 16 kHz, 16 bits, pico −1 dB, silencio final recortado), fuera del repositorio en `FUTBOLIN ESP30/voces-handicaps/avisos/`. Aún no copiadas a la SD ni programadas.
+
+| Código | Voz (ElevenLabs) | Duración |
+|---|---|---|
+| A1 | Theo | 3,4 s |
+| A2 | Ana Alice | 5,1 s (la más larga: retrasa más la cuenta atrás) |
+| A3 | Guillermo Brazález | 3,9 s |
+
 ## N · Nombres (uno por jugador)
 
 Con energía y signos de exclamación: «¡Vicky!», «¡Victoria!», «¡Lucía!», «¡María!», «¡Alex!», «¡José!»… (lista completa por confirmar con el dueño). Si entra un jugador nuevo, solo hace falta su nombre.
