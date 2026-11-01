@@ -88,6 +88,16 @@ Sadia (chica) y Álvaro (chico) son jugadores nuevos: el dueño tiene que crearl
 | R4 | Fin del cambio de posiciones | «¡Fin del cambio! Cada uno a su sitio.» |
 | R5 | Fin del traspaso | «¡Fin del traspaso! Cada uno a su equipo.» |
 
+## Qué hay ya en la SD de la placa (01/11/2026)
+
+Preparadas en `FUTBOLIN ESP30/voces-handicaps/` (`preparar.sh`: WAV mono 16 kHz, 16 bits, pico −1 dB, sin silencios
+en los bordes) y subidas por USB (COM6) con `subir-sd.py` (`SONIDO_SUBIR sd`), **comprobadas una a una por tamaño y
+CRC**. 20 voces: A1–A3, Q1, Q2, Q4, los 8 nombres y F01–F06. Q1 y Q2 vienen de un solo audio del dueño.
+Código de cada voz: FNV-1a de `handicap/<nombre>` (p. ej. `handicap/F01`, `handicap/N_alex`), igual que
+`scripts/preparar-comentarios.py`; la lista con códigos, tamaños y CRC está en `voces-handicaps/codigos.json`.
+Van como archivos sueltos: **no se tocó el catálogo de comentarios** y el programa aún no las reproduce.
+Faltan: Q3, F07–F13 y R1–R5.
+
 ## Notas
 
 - Las duraciones van dentro de la frase. Si se cambia la duración de un hándicap, hay que volver a grabar su frase.
