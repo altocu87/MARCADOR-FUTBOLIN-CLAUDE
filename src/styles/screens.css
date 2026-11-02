@@ -6988,3 +6988,47 @@ div > .name-clash:first-child {
   padding: 8px 12px;
   font-size: 22px;
 }
+
+/* Sonidos de la pantalla (bajados de la nube): cuántos hay, barra de la descarga y cómo va. */
+.snd-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.snd-cloud .snd-head {
+  margin-bottom: 0;
+}
+.snd-cloud-count {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.snd-cloud-track {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.snd-cloud-track span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.snd-cloud-track.ok span {
+  background: var(--ok);
+}
+.snd-cloud-line {
+  font-size: 15px;
+  color: var(--text-2);
+}
+.snd-cloud-line.ok {
+  color: var(--ok);
+  font-weight: 700;
+}
+.snd-cloud-line.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+.snd-cloud-track.bad span {
+  background: var(--danger);
+}
