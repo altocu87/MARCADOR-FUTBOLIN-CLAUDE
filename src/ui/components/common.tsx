@@ -230,7 +230,7 @@ export function HelpButton({ title, text, className }: { title: string; text: Re
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className={`cr-help ${className ?? ''}${open ? ' is-open' : ''}`} aria-label={`¿Qué es «${title}»?`} onClick={() => setOpen((x) => !x)}>
+      <button type="button" className={`cr-help ${className ?? ''}${open ? ' is-open' : ''}`} aria-label={`¿Qué es «${title}»?`} onClick={() => setOpen((x) => !x)}>
         ?
       </button>
       {open && (

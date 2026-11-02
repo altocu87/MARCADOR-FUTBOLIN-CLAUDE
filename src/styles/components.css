@@ -1414,3 +1414,213 @@ span.qp-icon {
   height: 28px;
   cursor: pointer;
 }
+
+/* ---------------------------------------------------------------- Entrar en la cuenta (LoginSheet.tsx)
+   Pantalla aparte, en vertical y fuera del lienzo del marcador: teclado del propio móvil. Letra de 18 px en los
+   campos (con menos, el iPhone hace zoom al escribir). */
+.login-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: radial-gradient(120% 70% at 50% 0%, #15305a 0%, var(--bg-deep) 70%);
+  color: var(--text);
+  font-family: var(--font);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.login-body {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+.login-top {
+  display: flex;
+  margin-bottom: 18px;
+}
+.login-close {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: 700 18px var(--font);
+  padding: 10px 4px;
+  min-height: 48px;
+  cursor: pointer;
+}
+.login-title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 900;
+}
+.login-sub {
+  margin: 8px 0 22px;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.login-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.login-tabs button {
+  min-height: 48px;
+  border-radius: 12px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: 800 17px var(--font);
+  cursor: pointer;
+}
+.login-tabs button.is-on {
+  background: var(--accent);
+  color: #04121f;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.login-field > span {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.login-field input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: #0b1a30;
+  color: var(--text);
+  font: 500 18px var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.login-field input::placeholder {
+  color: var(--text-3);
+}
+.login-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.login-pass {
+  position: relative;
+}
+.login-pass input {
+  padding-right: 96px;
+}
+.login-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 44px;
+  min-width: 82px;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--accent);
+  font: 700 15px var(--font);
+  cursor: pointer;
+}
+.login-remember {
+  font-size: 16px;
+}
+.login-msg {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.login-msg.bad {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.login-msg.ok {
+  background: rgba(61, 220, 151, 0.14);
+  color: var(--ok);
+}
+.login-submit {
+  min-height: 60px;
+  border-radius: 16px;
+  border: 0;
+  background: var(--accent);
+  color: #04121f;
+  font: 900 20px var(--font);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.login-submit:disabled {
+  opacity: 0.6;
+}
+.login-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+.login-links button {
+  background: none;
+  border: 0;
+  color: var(--text-2);
+  font: 600 16px var(--font);
+  text-decoration: underline;
+  min-height: 48px;
+  cursor: pointer;
+}
+/* Móvil en horizontal (si no se ha podido poner en vertical solo): aviso arriba y la página se desplaza. */
+.login-turn {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .login-turn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .login-turn-icon {
+    display: inline-block;
+    transform: rotate(-90deg);
+  }
+}
+/* Ajustes → Cuenta sin entrar: dos botones grandes que abren LoginSheet. */
+.account-out-title {
+  font-size: 24px;
+  font-weight: 900;
+  margin: 8px 0 6px;
+}
+.account-out-text {
+  margin: 0 0 16px;
+  font-size: 15px;
+}
+.account-out-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.account-out-actions .btn {
+  min-height: 64px;
+  font-size: 20px;
+}
