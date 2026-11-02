@@ -92,6 +92,7 @@ static void fetchVersionsWork() {
   // Los dos modelos (unos cientos de bytes): cambiar de modelo no obliga a volver a buscar.
   for (uint8_t m = mfv3::ota::MODEL_SUPER_MINI; m <= mfv3::ota::MODEL_C3_ZERO; m++) s3net::fetchPublished(mandoId(m), fetchedMando[m]);
   fetchedClockOk = reloj::internetClock(fetchedClock);
+  pitido::downloadWork();  // si a la SD le falta el pitido, de la web (lo guarda loop() en finishVersions)
   versionsDone.store(true);
 }
 #ifdef ARDUINO
@@ -104,6 +105,7 @@ static bool beginVersions() {
   for (auto& m : fetchedMando) m = mfv3::ota::Published();
   versionsDone = false;
   versionsRunning = true;
+  pitido::want = pitidoNeeded();
 #ifdef ARDUINO
   // Pila interna: esta tarea corta no depende de poder usar PSRAM durante escrituras de flash.
   if (xTaskCreatePinnedToCore(versionsTask, "versiones", 8192, nullptr, 1, nullptr, 0) != pdPASS) {
@@ -120,6 +122,7 @@ static void finishVersions() {
   versionsRunning = false;
   // La hora obtenida sigue siendo útil aunque se cancelase la búsqueda al empezar a jugar.
   if (fetchedClockOk) rtc.set(fetchedClock);
+  pitidoInstall();
   if (checkState != CheckState::Running) return;  // cancelada al entrar en partido
   if (versionsOk) {
     pubScreen = fetchedScreen;
