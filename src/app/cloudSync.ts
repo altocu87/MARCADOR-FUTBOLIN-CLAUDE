@@ -57,6 +57,8 @@ export interface CloudSync {
   setPendingBoard(code: string | null): void;
   /** Conecta la placa del QR a esta cuenta. */
   linkBoard(code: string): Promise<void>;
+  /** Para bajar archivos privados de la nube (los sonidos): dirección, clave pública y token vigente; null sin cuenta. */
+  fileAccess(): Promise<{ url: string; anonKey: string; token: string } | null>;
 }
 
 interface Data {
@@ -153,6 +155,16 @@ export function useCloudSync(d: Data): CloudSync {
     refreshing.current = job;
     try { return await job; } finally { if (refreshing.current === job) refreshing.current = null; }
   }, [conn, keep, temporary]);
+
+  const fileAccess = useCallback(async () => {
+    if (!conn || !sessionRef.current) return null;
+    try {
+      const s = await currentSession();
+      return { url: conn.url, anonKey: conn.anonKey, token: s.accessToken };
+    } catch {
+      return null;
+    }
+  }, [conn, currentSession]);
 
   useEffect(() => {
     const changed = (e: StorageEvent) => {
@@ -359,5 +371,6 @@ export function useCloudSync(d: Data): CloudSync {
     pendingBoard,
     setPendingBoard,
     linkBoard,
+    fileAccess,
   };
 }

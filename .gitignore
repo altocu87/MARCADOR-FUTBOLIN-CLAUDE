@@ -13,3 +13,7 @@ build/
 
 # Fase 3 (pio): copia temporal del .ino que crea PlatformIO al compilar; no subir (arduino-cli la compilaría dos veces)
 hardware/esp32s3_pantalla7/*.ino.cpp
+
+# Clave de Supabase para subir los sonidos (scripts/subir-sonidos-nube.py): nunca a GitHub
+.env.sonidos
+__pycache__/

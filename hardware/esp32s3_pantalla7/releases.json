@@ -1,7 +1,17 @@
 {
-  "version": "0.27",
+  "version": "0.28",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.28",
+      "date": "2026-11-02",
+      "title": "Equipos y nombres en voz alta",
+      "changes": [
+        "Al elegir jugadores se oye «¡Equipo blanco!» o «¡Equipo azul!» cuando le toca a cada uno, y el nombre de quien eliges.",
+        "Usa las voces de los nombres que ya hay en la SD; si un jugador no tiene su nombre grabado, no dice nada.",
+        "Conserva todo lo de la 0.27."
+      ]
+    },
     {
       "version": "0.27",
       "date": "2026-11-02",

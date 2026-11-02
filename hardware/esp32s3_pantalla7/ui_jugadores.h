@@ -29,6 +29,8 @@ struct Teams {
 struct Hooks {
   void (*back)() = nullptr;                 // volver a la configuración
   void (*done)(const Teams& t) = nullptr;   // CONTINUAR con los dos equipos
+  void (*turn)(uint8_t team) = nullptr;     // le toca elegir a un equipo (0 Blanco, 1 Azul): «¡Equipo blanco!»
+  void (*picked)(uint32_t code) = nullptr;  // jugador metido en un equipo: dice su nombre
 };
 static Hooks hooks;
 
@@ -103,6 +105,13 @@ static void onPick(lv_event_t* e) {
   }
   teams.code[step][teams.n[step]++] = code;
   update();
+  if (hooks.picked) hooks.picked(code);
+}
+
+static void setStep(uint8_t t) {
+  step = t;
+  update();
+  if (hooks.turn) hooks.turn(t);
 }
 
 static void onRemove(lv_event_t* e) {
@@ -117,18 +126,13 @@ static void onRemove(lv_event_t* e) {
 
 static void onCol(lv_event_t* e) {
   int t = (int)(intptr_t)lv_event_get_user_data(e);
-  if (t != step && (t == 0 || teams.n[0] > 0)) {
-    step = (uint8_t)t;
-    update();
-  }
+  if (t != step && (t == 0 || teams.n[0] > 0)) setStep((uint8_t)t);
 }
 
 static void onBack(lv_event_t* e) {
   if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-  if (step == 1) {
-    step = 0;
-    update();
-  } else if (hooks.back) hooks.back();
+  if (step == 1) setStep(0);
+  else if (hooks.back) hooks.back();
 }
 
 static bool valid() { return teams.n[0] > 0 && teams.n[1] > 0; }
@@ -136,8 +140,7 @@ static bool valid() { return teams.n[0] > 0 && teams.n[1] > 0; }
 static void onNext(lv_event_t*) {
   if (step == 0) {
     if (teams.n[0] == 0) return;
-    step = 1;
-    update();
+    setStep(1);
   } else if (valid() && hooks.done) hooks.done(teams);
 }
 
@@ -569,6 +572,7 @@ static void show(jug::Store* s, const char* mode, const Teams* previous = nullpt
   build();
   ui::show(scr);
   refresh();
+  if (hooks.turn) hooks.turn(0);
 }
 
 }  // namespace elegir

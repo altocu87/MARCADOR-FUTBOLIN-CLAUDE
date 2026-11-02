@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.27";
+static const char VERSION[] = "0.28";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.28", "2026-11-02", "Equipos y nombres en voz alta\n\n• Al elegir jugadores se oye «¡Equipo blanco!» o «¡Equipo azul!» cuando le toca a cada uno, y el nombre de quien eliges.\n\n• Usa las voces de los nombres que ya hay en la SD; si un jugador no tiene su nombre grabado, no dice nada.\n\n• Conserva todo lo de la 0.27."},
   {"0.27", "2026-11-02", "El pitido se instala solo\n\n• Si a la tarjeta le falta el pitido del árbitro, la pantalla lo baja sola por Wi-Fi al encender y lo guarda.\n\n• Comprueba que llega entero antes de guardarlo. Conserva todo lo de la 0.26."},
   {"0.26", "2026-11-02", "Pitido, pronóstico y lo que gana cada jugador\n\n• Antes de un clasificatorio sale el pronóstico: el % de cada equipo y sus últimos enfrentamientos.\n\n• Al acabar, cada jugador ve su experiencia ganada, su nivel (dorado si sube) y el ELO del clasificatorio.\n\n• Suena el pitido del árbitro al acabar la 1.ª parte, la 2.ª, la prórroga y el partido (no al acabar los penaltis).\n\n• Primero el pitido y después la voz del descanso, de la prórroga o de la victoria.\n\n• La prórroga dura 30 segundos (antes 1 minuto).\n\n• Cambiar de pestaña en el Ranking es más rápido: solo se repinta la parte de abajo.\n\n• En el reloj de reposo, cada segundo se repinta mucho menos (solo los dos puntos, no la columna entera).\n\n• El pitido va en la tarjeta SD; sin él, todo suena como antes. Conserva todo lo de la 0.25."},
   {"0.25", "2026-11-01", "El Partido Loco habla\n\n• Al salir un hándicap suena «¡Atentos! Hándicap en 3 segundos» y después la cuenta atrás «¡Tres! ¡Dos! ¡Uno!».\n\n• Luego dice a quién le toca (jugador o equipo) y qué pasa: «¡Vicky! ¡Congelada! 15 segundos sin moverte».\n\n• Al acabar: «¡Todo vuelve a la normalidad!» (o el final del cambio de posiciones o del traspaso).\n\n• Tocar la pantalla o un pulsador durante el aviso lo salta y va directo al hándicap.\n\n• «Mano mala» ya no sale y, con equipos de un jugador, tampoco los hándicaps que no se pueden jugar.\n\n• Las voces van en la tarjeta SD; sin ellas, todo suena como antes. Conserva todo lo de la 0.24."},
