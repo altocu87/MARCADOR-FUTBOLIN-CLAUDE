@@ -68,6 +68,7 @@
 #include "ui_cargando.h"
 #include "s3_loco.h"
 #include "s3_voces_hc.h"
+#include "s3_pitido.h"
 #include "s3_partidos.h"
 #include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
@@ -222,6 +223,7 @@ static void saveChoices() {
 // Toca los momentos de un cambio: el primero ya (corta lo que sonara) y los demás, en cola.
 static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
 static bool introCommentary=false,ambientCommentary=false,commentaryHasFallback=true;
+static bool whistleLead=false;  // suena el pitido (s3_pitido.h): el comentario que venga va detrás, en la cola
 static comentarios::AmbienceClock ambienceClock;
 static bool shootoutPreviewPending=false,shootoutPreviewVoice=false;
 static uint32_t ambienceCheckedAt=0,ambienceQuietAt=0;
@@ -260,7 +262,8 @@ static bool soundManagementBusy(){return sndCmd.receiving() || comentarios::stag
 #endif
 static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=shootoutPreviewVoice=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
 
-static void playEvents(const mfv3snd::EventList& list) {
+// queueFirst: el primero también en la cola (detrás del pitido).
+static void playEvents(const mfv3snd::EventList& list, bool queueFirst = false) {
 #if HAS_AUDIO
   for (uint8_t i = 0; i < list.n; i++) {
     const mfv3snd::Choice& c = sndChoices.c[(uint8_t)list.ev[i]];
@@ -275,10 +278,11 @@ static void playEvents(const mfv3snd::EventList& list) {
         if (sndStore.find(c.codes[j], where)) have[k++] = c.codes[j];
       if (k) it = {false, have[esp_random() % k], mfv3snd::Tune{nullptr, 0}};
     }
-    player.play(it, i > 0);
+    player.play(it, queueFirst || i > 0);
   }
 #else
   (void)list;
+  (void)queueFirst;
 #endif
 }
 
@@ -379,7 +383,8 @@ static const char* phaseName(Phase p) {
 // ---------------------------------------------------------------- estado de la interfaz
 static bool inMatch = false;       // false = pantalla de inicio
 static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
-static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
+static bool choosingPlayers = false;
+static bool prematchOn = false;  // PRONÓSTICO antes de un clasificatorio (ui_prevision.h), tras elegir jugadores  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
 static elegir::Teams chosenTeams;
 static bool haveTeams = false;        // equipos ya elegidos (para REVANCHA o al volver a elegir sin pasar por inicio)
 
@@ -648,7 +653,20 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       if(code){player.stop();queueCommentary(code);commentaryFallback=fallback;spoken=true;}
     }
   }
-  if(!spoken)playEvents(sounds); // sin catálogo/audio contextual: comportamiento anterior
+  // Pitido del árbitro (s3_pitido.h): primero él y lo demás detrás. Sustituye al «fin de la parte» de siempre.
+  bool whistle=pitido::due(sndBefore.phase,eng.phase(),eng.period()) && player.ok && player.volume() && hcHas(pitido::code());
+  if(whistle){
+    player.stop();
+    player.play(audio::Item{false,pitido::code(),mfv3snd::Tune{nullptr,0}},false);
+    player.pump(millis());
+    whistleLead=player.busy();
+    if(sndChoices.c[(uint8_t)mfv3snd::Event::PeriodEnd].kind==mfv3snd::Kind::Default){
+      mfv3snd::EventList rest;
+      for(uint8_t i=0;i<sounds.n;i++)if(sounds.ev[i]!=mfv3snd::Event::PeriodEnd)rest.add(sounds.ev[i]);
+      sounds=rest;
+    }
+  }
+  if(!spoken)playEvents(sounds,whistle); // sin catálogo/audio contextual: comportamiento anterior
 #else
   playEvents(sounds);
 #endif
@@ -676,6 +694,7 @@ static void hcSkipIntro(uint32_t now) {
   hcIntroUntil = now;
 }
 static void prepareMatchNetwork();
+static void rewardsClear();  // ui_premios.h (incluido más abajo)
 static void startMatch() {
   if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
@@ -699,6 +718,8 @@ static void startMatch() {
   hcRevealSeq = hcEndVoiceSeq = 0;
   hcCountSaid = 0;
   hcSoundSeq=0;
+  whistleLead=false;
+  rewardsClear();
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
   resultSaveFailed = false;
@@ -740,6 +761,7 @@ static void goHome() {
   inMatch = false;
   homeCards = true;
   choosingPlayers = false;
+  prematchOn = false;
   screen = Screen::Home;
   confirmAbandon = false;
   sendEvent("STATE idle");
@@ -1308,6 +1330,17 @@ static void onProfileMatchBack() {
   profileFresh = false;
 }
 #include "ui_duelo.h"     // CARA A CARA (desde RIVALES de la ficha)
+#include "ui_prevision.h"  // PRONÓSTICO antes de un clasificatorio
+#include "ui_premios.h"    // XP, nivel y ELO de cada jugador en la pantalla de victoria
+static void rewardsClear() { premios::clear(); }
+static void onPrematchBack() {
+  prematchOn = false;
+  choosingPlayers = true;
+}
+static void onPrematchStart() {
+  prematchOn = false;
+  startMatch();
+}
 // Contra quién; lo abre render(). Volver lleva a la ficha como estaba; tocar al rival abre la suya (y volver de ella
 // lleva a donde se abrió la primera ficha).
 static uint32_t duelCode = 0;
@@ -1941,6 +1974,11 @@ static void onPlayersDone(const elegir::Teams& t) {
   chosenTeams = t;
   haveTeams = true;
   choosingPlayers = false;
+  // Clasificatorio con jugadores en los dos lados: antes, el pronóstico (como la app).
+  if (chosenMode == inicio::RANKED && chosenTeams.n[0] && chosenTeams.n[1]) {
+    prematchOn = true;
+    return;
+  }
   startMatch();
 }
 // ---------------------------------------------------------------- torneos (ui_torneo*.h)
@@ -2097,9 +2135,10 @@ static void prepareMatchFixed() {
   if (c.endCondition == mfv3::EndCondition::Goals) snprintf(v.cond, sizeof(v.cond), "Gana quien llegue a %s", g);
   else if (c.endCondition == mfv3::EndCondition::Time) snprintf(v.cond, sizeof(v.cond), "2 partes de %u min", c.minutesPerPeriod);
   else snprintf(v.cond, sizeof(v.cond), "A %s o 2 partes de %u min", g, c.minutesPerPeriod);
+  char golden[32] = "";
+  if (overtime) snprintf(golden, sizeof(golden), " · GOL DE ORO · %u s", (unsigned)c.overtimeSeconds);
   snprintf(v.countdownTitle, sizeof(v.countdownTitle), "%s%s",
-           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()],
-           overtime ? " · GOL DE ORO · 60 s" : "");
+           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()], golden);
   // Fichas de los jugadores elegidos (con su foto si la app la pasó).
   for (int t = 0; haveTeams && t < 2; t++) {
     for (uint8_t i = 0; i < chosenTeams.n[t] && v.nPlayers[t] < 4; i++) {
@@ -2150,7 +2189,7 @@ static void matchView(partido::View& v, uint32_t now) {
     if (eng.period() == Period::Second) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 2ª PARTE #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PRÓRROGA");
-      snprintf(v.endNote, sizeof(v.endNote), "Empate: 60 s con gol de oro. Pulsa cualquier pulsador.");
+      snprintf(v.endNote, sizeof(v.endNote), "Empate: %u s con gol de oro. Pulsa cualquier pulsador.", (unsigned)eng.config().overtimeSeconds);
     } else if (overtime) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FIN DE LA PRÓRROGA #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PENALTIS");
@@ -2356,6 +2395,11 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Home && prematchOn && !sleepClock()) {
+    if (!pronostico::active()) pronostico::show(&jugadores, chosenTeams.code, chosenTeams.n);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Home && !sleepClock()) {
     config::show(configState());
     config::tickClock(rtc.clockOk, rtc.now.hour, rtc.now.minute, rtc.now.second);
@@ -2425,6 +2469,7 @@ static void render() {
     victoria::View v;
     victoryView(v);
     victoria::update(v);
+    premios::attach(&jugadores);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2723,6 +2768,8 @@ void setup() {
   nube::wifiDown = nubeWifiDown;
 #endif
   elegir::hooks.done = onPlayersDone;
+  pronostico::hooks.back = onPrematchBack;
+  pronostico::hooks.start = onPrematchStart;
   victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());
   initColors();
@@ -2909,11 +2956,12 @@ void loop() {
     commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
     if(player.volume()==0)commentaryOutcome="silencio";
     else {
-      player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},false);
+      bool afterWhistle=whistleLead && player.busy();whistleLead=false;
+      player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},afterWhistle);
       bool fallback=!player.requestAccepted();
-      if(fallback && player.ok && commentaryHasFallback)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},false);
+      if(fallback && player.ok && commentaryHasFallback)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},afterWhistle);
       player.pump(millis());
-      bool started=player.lastStartSucceeded();
+      bool started=afterWhistle?player.requestAccepted():player.lastStartSucceeded();
       commentaryOutcome=started?(fallback?"respaldo":"iniciado"):"fallo";
       if(started){commentaryStartedAt=millis();if(!fallback)commentaryLastCode=code;}
     }
@@ -2929,7 +2977,9 @@ void loop() {
 #endif
   // Primero el fotograma y el arranque del audio; después guardar sin sustituir el motor.
   if(resultPending && ((resultBeforeRender && !pendingCommentary && uiport::presented!=resultFrame) || (uint32_t)(millis()-resultQueuedAt)>=250)){
-    resultSaving=true;saveResult();resultSaving=false;resultPending=false;
+    resultSaving=true;bool saved=saveResult();resultSaving=false;resultPending=false;
+    // Lo que se lleva cada jugador (debajo de la victoria): la progresión, rehecha con el partido ya guardado.
+    if(saved && !tourMatch && !resultSaveFailed){premios::compute(&jugadores,partidos::count-1);}
   }
   delay(2);
 }

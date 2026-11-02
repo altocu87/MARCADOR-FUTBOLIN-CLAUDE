@@ -379,9 +379,9 @@ function toOvertime(): Sim {
 }
 
 describe('A10 · prórroga', () => {
-  it('empate lleva a 60 s de prórroga y el primer gol gana', () => {
+  it('empate lleva a 30 s de prórroga y el primer gol gana', () => {
     const s = toOvertime();
-    expect(getClock(s.state, s.t).remainingMs).toBe(60_000);
+    expect(getClock(s.state, s.t).remainingMs).toBe(30_000);
     s.scoreAfterLock('blue');
     expect(s.state.phase).toBe('finished');
     expect(s.state.result).toMatchObject({ winner: 'blue', reason: 'golden_goal', score: { white: 1, blue: 2 } });

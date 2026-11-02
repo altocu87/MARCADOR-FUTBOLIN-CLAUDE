@@ -370,6 +370,28 @@ static void setText(lv_obj_t* o, const char* text, bool colonDim = false) {
   lv_obj_invalidate(o);
 }
 
+// Latido de los dos puntos (reloj de reposo, texto «:»): repinta solo los dos círculos con su halo, no toda la
+// columna de 250 px (cada segundo: ~13 000 px en vez de ~37 000, menos trabajo con la PSRAM mientras se ve).
+static void setColonDim(lv_obj_t* o, bool dim) {
+  Data* d = (Data*)lv_obj_get_user_data(o);
+  if (d->colonDim == dim) return;
+  d->colonDim = dim;
+  if (strcmp(d->text, ":")) {
+    lv_obj_invalidate(o);
+    return;
+  }
+  lv_area_t co;
+  lv_obj_get_coords(o, &co);
+  float scale = (float)lv_area_get_height(&co) / 100.0f, skew = tanf(6.0f * 3.14159265f / 180.0f);
+  // Radio del punto (5) más el halo: tres pasadas de media móvil de 3,2 unidades (ver blurGlow) y un poco de margen.
+  int half = (int)ceilf((5 + 3 * 3.2f) * scale) + 3;
+  for (float y : {32.0f, 68.0f}) {
+    float px = co.x1 + 4 * scale + (10 - (y - 50) * skew) * scale, py = co.y1 + y * scale;
+    lv_area_t a = {(int32_t)px - half, (int32_t)py - half, (int32_t)px + half, (int32_t)py + half};
+    lv_obj_invalidate_area(o, &a);
+  }
+}
+
 static void setColor(lv_obj_t* o, uint32_t color) {
   Data* d = (Data*)lv_obj_get_user_data(o);
   if (d->color == color) return;

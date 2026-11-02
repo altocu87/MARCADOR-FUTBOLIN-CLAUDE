@@ -13,6 +13,8 @@
   python scripts/placa.py probar <programa.bin>  -> graba un programa de prueba (el «-ota.bin») en el hueco que NO
                                                     está en uso y arranca con él: el de ahora se queda intacto
   python scripts/placa.py volver                 -> vuelve a arrancar con el programa del otro hueco (el anterior)
+  python scripts/placa.py pitido <audio>         -> prepara el pitido del árbitro (mp3/wav: recorta silencios, mono
+                                                    16 kHz) y lo deja en la SD; lo comprueba por tamaño y CRC
 
 Usa arduino-cli con su propia carpeta de bibliotecas (LVGL 9.5, LovyanGFX, WebSockets) y copia lv_conf.h junto a lvgl.
 """
@@ -296,6 +298,64 @@ def jugadores(path):
     print(f"{len(lines)} órdenes en {time.time() - t:.1f} s")
 
 
+PITIDO = "arbitro/pitido_final"  # mismo código que hardware/esp32s3_pantalla7/s3_pitido.h
+
+
+def fnv1a(text):
+    h = 2166136261
+    for b in text.encode("utf-8"):
+        h = ((h ^ b) * 16777619) & 0xFFFFFFFF
+    return h
+
+
+def preparar_wav(src):
+    """WAV mono 16 kHz, 16 bits, sin silencio al principio ni al final y pico a −1 dB (como las voces)."""
+    if not shutil.which("ffmpeg"):
+        sys.exit("Falta ffmpeg para preparar el audio")
+    trim = "silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.02"
+    chain = f"{trim},areverse,{trim},areverse"
+    cmd = ["ffmpeg", "-v", "error", "-i", src, "-af", chain, "-ar", "16000", "-ac", "1", "-f", "s16le", "-"]
+    raw = subprocess.run(cmd, capture_output=True, check=True).stdout
+    if len(raw) < 3200:
+        sys.exit("El audio queda vacío al quitar los silencios")
+    samples = struct.unpack(f"<{len(raw) // 2}h", raw[: len(raw) // 2 * 2])
+    peak = max(1, max(abs(v) for v in samples))
+    gain = 32767 * 10 ** (-1 / 20) / peak
+    pcm = struct.pack(f"<{len(samples)}h", *(max(-32768, min(32767, round(v * gain))) for v in samples))
+    head = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16)
+    return head + b"data" + struct.pack("<I", len(pcm)) + pcm
+
+
+def subir_sd(code, data):
+    """SONIDO_SUBIR sd → SONIDO_DATOS (trozos de 192 bytes, cada uno espera su SONIDO_OK) → SONIDO_FIN, como la app."""
+    import base64
+
+    crc = zlib.crc32(data) & 0xFFFFFFFF
+    hexcode = f"{code:08x}"
+    with open_serial(timeout=5) as s:
+        s.reset_input_buffer()
+
+        def ask(line, want):
+            s.write((line + "\n").encode())
+            end = time.time() + 8
+            while time.time() < end:
+                r = s.readline().decode("utf-8", "replace").strip()
+                if r.startswith("SONIDO_ERROR"):
+                    sys.exit(f"La placa dice: {r} (¿partido en juego? sal al menú)")
+                if r.startswith(want):
+                    return r
+            sys.exit(f"La placa no contestó a {line.split()[0]}")
+
+        ask(f"SONIDO_SUBIR sd {hexcode} {len(data)}", "SONIDO_LISTO")
+        for i in range(0, len(data), 192):
+            ask("SONIDO_DATOS " + base64.b64encode(data[i : i + 192]).decode(), "SONIDO_OK")
+        ask(f"SONIDO_FIN {crc:08x}", "SONIDO_GUARDADO")
+        info = ask(f"SONIDO_INFO {hexcode}", "SONIDO_INFO")
+    if f"tam={len(data)}" not in info or f"crc32={crc:08x}" not in info:
+        sys.exit(f"Comprobación fallida: {info}")
+    print(f"Pitido en la SD ({hexcode}, {len(data)} bytes, {len(data) / 32000:.2f} s, CRC {crc:08x}) comprobado")
+
+
 def main(argv):
     if not argv:
         print(__doc__)
@@ -323,6 +383,8 @@ def main(argv):
         probar(rest[0])
     elif cmd == "volver":
         volver()
+    elif cmd == "pitido" and rest:
+        subir_sd(fnv1a(PITIDO), preparar_wav(rest[0]))
     elif cmd == "captura":
         captura(rest[0] if rest else "captura")
     else:

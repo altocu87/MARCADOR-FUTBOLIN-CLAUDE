@@ -1,5 +1,13 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Pitido, prórroga de 30 s, Ranking y reloj · 0.26 · Cloud · 02/11/2026
+
+Pitido: `s3_pitido.h` (`pitido::due`: entrar en PeriodEnd, o en Finished salvo en la tanda). En `afterChange`, al final de lo de audio: `player.stop()`, el pitido sin cola y `whistleLead`; lo que venga detrás va en la cola (`playEvents(…, queueFirst)` y el comentario pendiente con `afterWhistle`). Con el pitido, el «fin de la parte» de siempre (tono) no suena si está en «el de siempre». El audio del dueño no va al repositorio: `scripts/placa.py pitido` lo convierte (ffmpeg, silencios a −55 dB, mono 16 kHz, pico −1 dB) y lo sube con `SONIDO_SUBIR sd`. Con el gol que gana un partido a goles, el pitido (1,5 s) suena antes que la voz del gol; la victoria se ve al momento.
+
+Pronóstico: `onPlayersDone` con clasificatorio y jugadores en los dos lados pone `prematchOn` (render → `pronostico::show`); volver → elegir jugadores; EMPEZAR → `startMatch`. `prevision::predict` y `lastMeetings` copian la app (prueba cruzada en `progresion_test.cpp`). Premios: tras `saveResult` (no en torneo), `premios::compute(&jugadores, partidos::count-1)` rehace la progresión y lee `progresion::all.entries` de esa fila; `premios::attach` pone el panel (un objeto con DRAW_MAIN) en la victoria, también si se rehace. Prueba: `s3_prevision_test.cpp` (modo prueba, con letras reales para las capturas).
+
+Ranking: `host` empieza en `HOST_TOP` = 126 (bajo las pestañas) con `pad_top` negativo, así las piezas siguen con la y de la pantalla; `rebuildContent` lo rehace oculto y lo enseña colocado (como la ficha en la 0.24). Reposo: `sevenseg::setColonDim` marca solo dos cuadrados alrededor de los puntos (radio 5 + 3 × 3,2 de halo); comparado píxel a píxel con el pintado entero.
+
 ## Voces de los hándicaps · 0.25 · Cloud · 01/11/2026
 
 Audios del dueño (ElevenLabs, MP3) → `FUTBOLIN ESP30/voces-handicaps/` (fuera del repositorio): `preparar.sh` (WAV mono 16 kHz, 16 bits, sin silencio en los bordes, pico −1 dB) y `subir-sd.py` (`SONIDO_SUBIR sd` con el código FNV-1a de `handicap/<voz>`, salta las que ya están y comprueba con `SONIDO_INFO`; `codigos.json`). Los audios con varias frases se cortaron por sus pausas; el orden se comprobó con el reconocedor de voz de Windows (System.Speech es-ES, gramática cerrada con las frases posibles). Montadas en el PC: Q3 (Q1 + Q4 + Q2), F07a–d (palabra + 0,3 s + final) y F08a–h (inicio + posición + «durante 15 segundos», 0,15 s).

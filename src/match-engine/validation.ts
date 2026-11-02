@@ -13,7 +13,7 @@ export const DEFAULT_CONFIG: MatchConfig = {
   endCondition: 'goals',
   goalsPerPeriod: 5,
   minutesPerPeriod: 5,
-  overtimeSeconds: 60,
+  overtimeSeconds: 30,
   penaltyRounds: 5,
   penaltyFirstTeam: 'white',
   testMode: true,

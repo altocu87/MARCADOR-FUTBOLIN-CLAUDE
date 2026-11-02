@@ -1,7 +1,22 @@
 {
-  "version": "0.25",
+  "version": "0.26",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.26",
+      "date": "2026-11-02",
+      "title": "Pitido, pronóstico y lo que gana cada jugador",
+      "changes": [
+        "Antes de un clasificatorio sale el pronóstico: el % de cada equipo y sus últimos enfrentamientos.",
+        "Al acabar, cada jugador ve su experiencia ganada, su nivel (dorado si sube) y el ELO del clasificatorio.",
+        "Suena el pitido del árbitro al acabar la 1.ª parte, la 2.ª, la prórroga y el partido (no al acabar los penaltis).",
+        "Primero el pitido y después la voz del descanso, de la prórroga o de la victoria.",
+        "La prórroga dura 30 segundos (antes 1 minuto).",
+        "Cambiar de pestaña en el Ranking es más rápido: solo se repinta la parte de abajo.",
+        "En el reloj de reposo, cada segundo se repinta mucho menos (solo los dos puntos, no la columna entera).",
+        "El pitido va en la tarjeta SD; sin él, todo suena como antes. Conserva todo lo de la 0.25."
+      ]
+    },
     {
       "version": "0.25",
       "date": "2026-11-01",

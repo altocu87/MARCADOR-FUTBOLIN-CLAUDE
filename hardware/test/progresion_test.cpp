@@ -24,6 +24,7 @@ static void* countedCalloc(size_t n, size_t size) {
 #define calloc countedCalloc
 #include "s3_progresion.h"
 #undef calloc
+#include "s3_prevision.h"
 
 static std::string readFile(const char* p) {
   FILE* f = fopen(p, "rb");
@@ -205,6 +206,40 @@ static int compareChallenges() {
   return bad;
 }
 
+// Pronóstico antes de un clasificatorio (s3_prevision.h) contra esperado-prevision.txt. Usa progresion::all.
+static int comparePrediction() {
+  std::istringstream w(readFile("../tests/fixtures/progresion/esperado-prevision.txt"));
+  std::string line;
+  int bad = 0, lines = 0;
+  while (std::getline(w, line)) {
+    uint32_t side[2][4];
+    uint8_t n[2] = {0, 0};
+    size_t sp = line.find(' ');
+    std::string teams = line.substr(0, sp);
+    int s = 0;
+    for (size_t i = 0; i < teams.size();) {
+      size_t j = teams.find_first_of(",|", i);
+      if (j == std::string::npos) j = teams.size();
+      side[s][n[s]++] = (uint32_t)strtoul(teams.substr(i, j - i).c_str(), nullptr, 16);
+      if (j < teams.size() && teams[j] == '|') s = 1;
+      i = j + 1;
+    }
+    prevision::Result r = prevision::predict(side[0], n[0], side[1], n[1]);
+    prevision::Meeting m[3];
+    int nm = prevision::lastMeetings(side[0], n[0], side[1], n[1], m, 3);
+    char b[256];
+    int k = snprintf(b, sizeof(b), "%s %d %u %d %u,%u,%u", teams.c_str(), r.available ? 1 : 0, r.available ? r.whitePct : 50, r.direct,
+                     r.wElo, r.wH2h, r.wForm);
+    for (int i = 0; i < nm; i++)
+      k += snprintf(b + k, sizeof(b) - k, " %u-%u%c", m[i].white, m[i].blue, m[i].winner == 0 ? 'w' : m[i].winner == 1 ? 'b' : '-');
+    if (!nm) snprintf(b + k, sizeof(b) - k, " -");
+    lines++;
+    if (line != b && bad++ < 8) std::printf("pronóstico distinto\n  app:   %s\n  placa: %s\n", line.c_str(), b);
+  }
+  if (!bad) std::printf("pronóstico de la placa igual que la app (%d alineaciones)\n", lines);
+  return bad;
+}
+
 // OPCIONES → TÍTULO Y MELODÍA (ui_jugador_opciones.h): títulos que tiene, el que se ve solo, eligiendo el primero
 // y con «Sin título», contra esperado-titulos.txt.
 static int compareTitles(const progresion::Snapshot& s) {
@@ -258,6 +293,10 @@ int main() {
   auto* cached = progresion::all.p;
   int beforeCalc = calcAllocations;
   for (int j = 0; j < 20; ++j) progresion::refresh(codes.data(), (int)codes.size());
+  if (comparePrediction()) {
+    std::printf("pronóstico de la placa: distinto de la app\n");
+    return 1;
+  }
   assert(progresion::all.p == cached && calcAllocations == beforeCalc);
   for (uint32_t c : codes) {
     const auto& a = s.p[s.find(c)];

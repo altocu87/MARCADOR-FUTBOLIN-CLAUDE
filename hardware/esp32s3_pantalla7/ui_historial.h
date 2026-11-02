@@ -1,8 +1,7 @@
 // MARCADOR FUTBOLÍN V3 · RANKING → HISTORIAL y detalle de un partido, como la app.
 // -------------------------------------------------------------------------------------------------
 // Copia de RankingScreen.tsx (pestaña Historial) y MatchDetailScreen / MatchReport (pestaña Resumen):
-//   - Arriba, volver y RANKING; las pestañas de la app (de momento solo funciona HISTORIAL: las demás llegan con
-//     los cálculos de ELO y niveles).
+//   - Arriba, volver y RANKING; las seis pestañas de la app. Cambiar de pestaña repinta solo lo de debajo.
 //   - Filtros TODOS / RÁPIDO / LOCO / CLASIFICATORIO, «Jugador: todos» (elegir de quién) y páginas ‹ 1/8 ›.
 //   - Cinco partidos por página (la app pone 20 con desplazamiento; aquí caben cinco sin desplazar y cambiar de
 //     página solo repinta las filas).
@@ -35,6 +34,7 @@ static lv_obj_t* host = nullptr;          // lo que hay debajo de las pestañas 
 static lv_obj_t* tabPill[6];
 
 const int PAGE = 5;
+const int HOST_TOP = 126;  // donde acaban las pestañas (y = 80 + 42) y empieza lo que cambia con ellas
 enum Tab : uint8_t { STANDINGS, PLAYERS, HISTORY, FAME, DIGEST, PAIRS };
 static uint8_t tab = STANDINGS;
 static bool seasonScope = true;  // CLASIFICACIÓN: la temporada (true) o el histórico
@@ -293,10 +293,15 @@ static void restyle(lv_obj_t* b, bool on) {
   lv_color_t tc = ui::hex(on ? ui::color::TEXT : ui::color::TEXT2);
   if (l && !lv_color_eq(lv_obj_get_style_text_color(l, LV_PART_MAIN), tc)) lv_obj_set_style_text_color(l, tc, 0);
 }
+// Cambiar de pestaña repinta solo la zona de debajo de las pestañas: se rehace oculta y se enseña ya colocada
+// (LVGL marca cada caja nueva en 0,0 antes de moverla y se unía con la zona de abajo: pantalla entera).
 static void rebuildContent() {
   if (!host) return go(false);
+  lv_obj_add_flag(host, LV_OBJ_FLAG_HIDDEN);
   while (lv_obj_get_child_count(host)) lv_obj_delete(lv_obj_get_child(host, 0));
   buildContent();
+  lv_obj_update_layout(host);
+  lv_obj_remove_flag(host, LV_OBJ_FLAG_HIDDEN);
 }
 static void onTab(lv_event_t* e) {
   int t = (int)(intptr_t)lv_event_get_user_data(e);
@@ -560,7 +565,9 @@ static void buildList() {
     tabPill[i] = pill(scr, x, 80, TW[i], 42, TABS[i], 800, 12, i == tab, onTab, (void*)(intptr_t)i);
     x += TW[i] + 6;
   }
-  host = ui::box(scr, 0, 0, 800, 480);
+  // Debajo de las pestañas. Las piezas se siguen colocando con la y de la pantalla (relleno negativo arriba).
+  host = ui::box(scr, 0, HOST_TOP, 800, 480 - HOST_TOP);
+  lv_obj_set_style_pad_top(host, -HOST_TOP, 0);
   buildContent();
 }
 
