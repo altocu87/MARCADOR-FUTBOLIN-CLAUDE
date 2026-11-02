@@ -854,6 +854,18 @@ static bool hcPlay(const voceshc::Seq& s) {
   player.pump(millis());
   return player.busy();
 }
+// Elegir jugadores: «¡Equipo blanco!»/«¡Equipo azul!» al tocarle a un equipo y el nombre de quien se elige. Cada voz
+// corta la anterior (si se eligen varios deprisa, se oye el último). Sin la voz en la SD o sin volumen, nada.
+static void sayNow(uint32_t c) {
+  if (!c || !player.ok || !player.volume()) return;
+  player.play(audio::Item{false, c, mfv3snd::Tune{nullptr, 0}}, false);
+  player.pump(millis());
+}
+static void onPlayersTurn(uint8_t team) { sayNow(voceshc::turnVoice(team, hcHas)); }
+static void onPlayerPicked(uint32_t code) {
+  const jug::Player* p = jugadores.find(code);
+  if (p) sayNow(voceshc::nameOnly(p->name, hcHas));
+}
 // Al salir un hándicap nuevo: el final del que sustituye (si lo lleva) y el aviso. false sin voces en la SD.
 static bool hcVoiceAviso() {
   uint32_t a = voceshc::aviso(hcHas, esp_random());
@@ -2768,6 +2780,10 @@ void setup() {
   nube::wifiDown = nubeWifiDown;
 #endif
   elegir::hooks.done = onPlayersDone;
+#if HAS_AUDIO
+  elegir::hooks.turn = onPlayersTurn;
+  elegir::hooks.picked = onPlayerPicked;
+#endif
   pronostico::hooks.back = onPrematchBack;
   pronostico::hooks.start = onPrematchStart;
   victoria::hooks.rematch = startMatch;

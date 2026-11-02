@@ -228,8 +228,24 @@ static void match() {
   player.stop();
 }
 
+// Elegir jugadores: «¡Equipo blanco!»/«¡Equipo azul!» al cambiar de turno y el nombre del elegido (sin nombre, nada).
+static void choosing() {
+  all();
+  assert(voceshc::turnVoice(0, has) == C("Q1"));
+  assert(voceshc::turnVoice(1, has) == C("Q2"));
+  assert(voceshc::turnVoice(2, has) == 0);
+  assert(voceshc::nameOnly("Álvaro", has) == C("N_alvaro"));
+  assert(voceshc::nameOnly("  Lucía", has) == C("N_lucia"));
+  assert(voceshc::nameOnly("José", has) == 0);  // sin grabar: ni nombre ni equipo
+  assert(voceshc::nameOnly("", has) == 0 && voceshc::nameOnly(nullptr, has) == 0);
+  present.clear();
+  assert(voceshc::turnVoice(0, has) == 0);
+  assert(elegir::hooks.turn == onPlayersTurn && elegir::hooks.picked == onPlayerPicked);
+}
+
 int main() {
   units();
   match();
-  puts("Voces de los hándicaps: códigos, quién + frase, chico/chica, dos jugadores, finales y aviso → 3·2·1 → frase OK");
+  choosing();
+  puts("Voces de los hándicaps: códigos, quién + frase, chico/chica, dos jugadores, finales, aviso → 3·2·1 → frase y voces al elegir jugadores OK");
 }

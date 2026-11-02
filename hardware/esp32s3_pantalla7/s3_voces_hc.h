@@ -110,6 +110,16 @@ inline uint32_t personVoice(const Who& w, uint8_t team, HasFn has) {
   return teamVoice(team, has);
 }
 
+// Elegir jugadores (ui_jugadores.h): al tocarle a un equipo, «¡Equipo blanco!» o «¡Equipo azul!»; al elegir a
+// un jugador, su nombre. Si no está grabado, nada (no se dice el equipo: ya se acaba de oír). 0 = nada.
+inline uint32_t turnVoice(uint8_t team, HasFn has) { return team <= 1 ? teamVoice(team, has) : 0; }
+inline uint32_t nameOnly(const char* name, HasFn has) {
+  if (!name || !name[0]) return 0;
+  char v[40];
+  nameVoice(name, v, sizeof(v));
+  return has(code(v)) ? code(v) : 0;
+}
+
 // Al enseñar el hándicap: quién + la frase («¡Vicky!» + «y» + «¡Alex!» + «¡Congelados! 15 segundos sin moveros.»).
 inline Seq reveal(const Handicap& h, const Who& white, const Who& blue, HasFn has) {
   Seq s;
