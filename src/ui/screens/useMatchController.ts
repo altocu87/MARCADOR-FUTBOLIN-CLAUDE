@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { cloudVoices } from '../../services/sound/cloudSounds';
+import { AmbienceClock, CommentaryDeck, P, commentMoment, previewDue, shootoutBeforeMask } from '../../services/sound/commentary';
 import { affected, avisoVoice, endingVoice, pitidoCode, pitidoDue, revealVoices } from '../../services/sound/handicapVoices';
 import { makeSnapshot } from '../../app/recovery';
 import type { MatchExtras } from '../../app/routes';
@@ -177,6 +178,18 @@ export function useMatchController(
     };
   }, []);
   const stateRef = useRef(state);
+  // Comentarios del locutor (commentary.ts): la baraja de los que hay en el aparato, el reloj del ambiente y si lo
+  // que suena es un comentario de ambiente o la intro (lo corta cualquier cosa que pase).
+  const deckRef = useRef<{ version: number; deck: CommentaryDeck | null }>({ version: -1, deck: null });
+  const ambienceRef = useRef<AmbienceClock | null>(null);
+  ambienceRef.current ??= (() => {
+    const a = new AmbienceClock();
+    a.reset();
+    return a;
+  })();
+  const ambientOn = useRef(false);
+  const introOn = useRef(false);
+  const quietSince = useRef(0);
   const lastSnapshotAt = useRef(0);
   const matchPointKey = useRef('');
   const bannerTimer = useRef<number | undefined>(undefined);
@@ -196,6 +209,27 @@ export function useMatchController(
     },
     [],
   );
+
+  /** La baraja de comentarios (null si en este aparato no hay ninguno o no suena nada). */
+  const deck = useCallback((): CommentaryDeck | null => {
+    if (!sound.audible) return null;
+    if (deckRef.current.version !== cloudVoices.version) {
+      const d = new CommentaryDeck((c) => cloudVoices.has(c));
+      deckRef.current = { version: cloudVoices.version, deck: d.empty ? null : d };
+    }
+    return deckRef.current.deck;
+  }, []);
+
+  // Intro del locutor durante la primera cuenta atrás (sigue sonando al empezar a jugar; un gol la corta).
+  const introTried = useRef(false);
+  useEffect(() => {
+    const s = stateRef.current;
+    if (introTried.current || resume || s.phase !== 'countdown' || s.events.some((e) => e.type === 'GOAL')) return;
+    introTried.current = true;
+    const code = soundPlayer.isDefault('matchStart') ? deck()?.pick(new Set([P.Intro])) : null;
+    if (code && cloudVoices.say([code])) introOn.current = true;
+    // Solo al abrir el partido (una vez, aunque React monte la pantalla dos veces en desarrollo).
+  }, []);
 
   // Revelar el hándicap: fin de la cuenta atrás (sola o al tocar) y anuncio por voz.
   const reveal = useCallback((at: number) => {
@@ -243,7 +277,46 @@ export function useMatchController(
       setState(next);
       // Pitido del árbitro (si está en este aparato): primero el pitido y después lo demás.
       const whistleMs = pitidoDue(prev, next) && cloudVoices.playNow(pitidoCode()) ? cloudVoices.durationMs(pitidoCode()) : 0;
-      const sayAfterWhistle = (text: string) => (whistleMs ? window.setTimeout(() => voice.say(text), whistleMs) : voice.say(text));
+      // Bola de partido: aviso al aparecer.
+      const mp = matchPointTeams(next);
+      const key = mp.length ? `${next.period}:${getScore(next).white}-${getScore(next).blue}` : '';
+      const matchPointNew = !!key && key !== matchPointKey.current && next.period !== 'overtime';
+      matchPointKey.current = key;
+      const soundIds = soundsForCommit(prev, next, events, matchPointNew);
+      // Comentario del locutor (como la placa): anulado, penalti, gol o el de la fase. Si un momento tiene un sonido
+      // elegido a mano, no habla. Si habla, sustituye a los sonidos y a la voz del navegador de este cambio.
+      const scoreMoved = getScore(prev).white !== getScore(next).white || getScore(prev).blue !== getScore(next).blue;
+      const happened = scoreMoved || prev.phase !== next.phase || events.some((e) => e.type === 'GOAL' || e.type === 'PENALTY' || e.type === 'HANDICAP_PENALTY');
+      if (scoreMoved) ambienceRef.current?.score(getClock(next, t).totalElapsedMs);
+      if (ambientOn.current && happened) {
+        sound.stopClip();
+        ambientOn.current = false;
+      }
+      const d = deck();
+      let spoken = false;
+      if (d && soundIds.every((id) => id === 'matchPoint' || soundPlayer.isDefault(id))) {
+        const moment = commentMoment(prev, next, events);
+        const code = moment
+          ? moment.kind === 'annulled'
+            ? d.pick(new Set([P.Anulado]))
+            : d.pick(moment.mask, moment.kind === 'goal' ? P.Comodin : moment.generic)
+          : null;
+        if (code) {
+          if (moment?.kind === 'annulled' || moment?.kind === 'goal' || moment?.kind === 'penalty') introOn.current = false;
+          spoken = cloudVoices.say([code], { queue: whistleMs > 0 });
+        }
+        // La intro sigue al empezar a jugar: no suena encima el «empieza el partido» de siempre.
+        if (!spoken && introOn.current && soundIds.includes('matchStart')) spoken = true;
+        // Tanda: después de cada tiro (y al empezarla), lo que se juega el siguiente.
+        if (previewDue(next, events)) {
+          const pre = d.pick(shootoutBeforeMask(next));
+          if (pre) spoken = cloudVoices.say([pre], { queue: spoken || whistleMs > 0 }) || spoken;
+        }
+      }
+      const say = (text: string) => {
+        if (!spoken) voice.say(text);
+      };
+      const sayAfterWhistle = (text: string) => (whistleMs ? window.setTimeout(() => say(text), whistleMs) : say(text));
       // Gol anulado: el marcador de un equipo baja en la misma parte (−1 o deshacer un gol).
       // Un gol «robo» o la ardilla del Partido Loco también bajan al rival, pero no es una anulación.
       if (prev.period === next.period && !events.some((e) => (e.type === 'GOAL' && e.steal) || e.type === 'VISIT')) {
@@ -262,7 +335,7 @@ export function useMatchController(
           setGoalLabel(bonusLabel(e) ?? (moment ? MOMENT_LABEL[moment] : null));
           if (next.phase !== 'finished') {
             const sc = e.scoreAfter;
-            voice.say(`¡Gol del ${TEAM_VOICE[e.team]}! ${moment ? MOMENT_LABEL[moment].replace(/[¡!]/g, '') + '. ' : ''}${sc.white} a ${sc.blue}.`);
+            say(`¡Gol del ${TEAM_VOICE[e.team]}! ${moment ? MOMENT_LABEL[moment].replace(/[¡!]/g, '') + '. ' : ''}${sc.white} a ${sc.blue}.`);
           }
         } else if (e.type === 'MATCH_END' && e.team) {
           sayAfterWhistle(`¡Final del partido! Gana el ${TEAM_VOICE[e.team]}.`);
@@ -300,29 +373,25 @@ export function useMatchController(
         } else if (e.type === 'HANDICAP_END' && e.handicap && e.reason === 'used') {
           showBanner({ text: 'FIN DEL HÁNDICAP', sub: handicapText(e.handicap, next.participants).short, tone: 'chaos' }, 1500);
         } else if (e.type === 'HANDICAP_PENALTY') {
-          if (!e.scored) voice.say('¡Falla el penalti!');
+          if (!e.scored) say('¡Falla el penalti!');
         } else if (e.type === 'SHOOTOUT_START') {
           showBanner({ text: 'PENALTIS', sub: 'TANDA', tone: 'gold' });
-          voice.say('Tanda de penaltis.');
+          say('Tanda de penaltis.');
         } else if (e.type === 'PENALTY') {
-          voice.say(e.scored ? '¡Gol!' : '¡Falla!');
+          say(e.scored ? '¡Gol!' : '¡Falla!');
           if (!isSuddenDeath(prev) && isSuddenDeath(next) && next.phase === 'penalties') {
             showBanner({ text: 'MUERTE SÚBITA', tone: 'danger' });
           }
         }
       }
-      // Bola de partido: aviso al aparecer.
-      const mp = matchPointTeams(next);
-      const key = mp.length ? `${next.period}:${getScore(next).white}-${getScore(next).blue}` : '';
-      const matchPointNew = !!key && key !== matchPointKey.current && next.period !== 'overtime';
-      if (matchPointNew) voice.say('¡Bola de partido!', { interrupt: false });
-      matchPointKey.current = key;
-      // Sonidos de los momentos (el de la mesa o el de siempre): el primero ya, los demás en cola.
-      soundsForCommit(prev, next, events, matchPointNew).forEach((id, i) => soundPlayer.play(id, { queue: i > 0 || whistleMs > 0 }));
+      if (matchPointNew && !spoken) voice.say('¡Bola de partido!', { interrupt: false });
+      // Sonidos de los momentos (el de la mesa o el de siempre): el primero ya, los demás en cola. Si ha hablado el
+      // locutor, no (como en la placa).
+      if (!spoken) soundIds.forEach((id, i) => soundPlayer.play(id, { queue: i > 0 || whistleMs > 0 }));
       hardwareHub.notifyMatch(next, events);
       saveSnapshot(next, t);
     },
-    [saveSnapshot, showBanner, reveal],
+    [saveSnapshot, showBanner, reveal, deck],
   );
 
   const send = useCallback(
@@ -349,6 +418,24 @@ export function useMatchController(
       if (r.events.length || r.state !== stateRef.current) commit(r.state, r.events, t);
       else if (stateRef.current.runningSince !== undefined && t - lastSnapshotAt.current > SNAPSHOT_EVERY_MS) {
         saveSnapshot(stateRef.current, t);
+      }
+      // Ambiente del locutor: con el partido en juego y sin sonar nada desde hace 250 ms.
+      {
+        const s = stateRef.current;
+        const busy = sound.busy || (typeof window !== 'undefined' && !!window.speechSynthesis?.speaking);
+        if (busy || s.phase !== 'playing') quietSince.current = 0;
+        else if (!quietSince.current) quietSince.current = t;
+        else if (t - quietSince.current >= 250) {
+          ambientOn.current = false;
+          introOn.current = false;
+          const d = deck();
+          const pool = d ? ambienceRef.current!.due(getClock(s, t).totalElapsedMs, s.period === 'first', true) : null;
+          const code = pool === null || (pool === P.Opening20 && !soundPlayer.isDefault('matchStart')) ? null : d!.pick(new Set([pool]));
+          if (code && cloudVoices.say([code])) {
+            ambientOn.current = true;
+            quietSince.current = 0;
+          }
+        }
       }
       // Partido Loco: ¿toca hándicap? Cada 30–60 s de juego, nunca en la prórroga ni en plena
       // celebración de un gol.

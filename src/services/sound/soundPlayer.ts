@@ -75,6 +75,11 @@ export class SoundPlayer {
     this.choices = choices ?? {};
   }
 
+  /** ¿Ese momento tiene «el de siempre»? (si se eligió uno propio o «nada», el locutor no habla, como en la placa) */
+  isDefault(id: SoundEventId): boolean {
+    return choiceFor(this.choices, id).kind === 'default';
+  }
+
   /** Qué sonaría en ese momento y de dónde (elige al azar entre los propios que existan). */
   plan(id: SoundEventId): SoundPlan {
     const c = choiceFor(this.choices, id);

@@ -156,6 +156,11 @@ class SoundService {
     }
   }
 
+  /** ¿Está sonando algo (un sonido propio o unas notas)? */
+  get busy(): boolean {
+    return !!this.ctx && this.ctx.currentTime < this.busyUntil;
+  }
+
   /** ¿Sonaría algo ahora mismo? (sin silencio ni volumen a 0). */
   get audible(): boolean {
     return !this.muted && this.volume > 0;
@@ -216,6 +221,7 @@ class SoundService {
     } catch {
       /* ya parado */
     }
+    if (this.clip && this.ctx) this.busyUntil = Math.min(this.busyUntil, this.ctx.currentTime);
     this.clip = null;
   }
 

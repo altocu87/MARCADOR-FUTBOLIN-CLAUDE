@@ -477,19 +477,20 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   const idle = useIdleMonitor(inMatchRoute || activeSaved);
 
   const cloud = useCloudSync({ enabled: !injected && !demoMode, store, repos, players, matches, tournaments, prefs, loaded, refresh, idle });
-  // Sonidos de la SD desde la nube (cloudSounds.ts): se cargan los de este aparato y, con cuenta, se baja lo que falte.
+  // Sonidos de la SD desde la nube (cloudSounds.ts): se cargan los de este aparato y, con cuenta (fuera del modo
+  // prueba), se baja lo que falte.
   const playerNames = useMemo(() => players.map((p) => p.name).join('\n'), [players]);
   const cloudUser = cloud.session?.userId ?? null;
   const fileAccess = cloud.fileAccess;
   useEffect(() => {
-    if (injected || demoMode) return;
+    if (injected) return;
     let alive = true;
     const repo = clipRepo();
     const preload = shortVoiceCodes(playerNames.split('\n'));
     void (async () => {
       try {
         await cloudVoices.load(repo, preload);
-        const access = cloudUser ? await fileAccess() : null;
+        const access = cloudUser && !demoMode ? await fileAccess() : null;
         if (!access || !alive) return;
         const r = await syncCloudSounds({ ...access, repo });
         if (alive && (r.downloaded || r.removed)) await cloudVoices.load(repo, preload);

@@ -100,7 +100,10 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
 
   // Voces grabadas (si están en este aparato): «¡Equipo blanco!»/«¡Equipo azul!» al tocarle a cada equipo y el nombre
   // de quien se elige, como la pantalla. Sin ellas, nada.
+  const saidTurn = useRef<Team | null>(null);
   useEffect(() => {
+    if (saidTurn.current === step) return; // una vez por cambio de turno
+    saidTurn.current = step;
     const c = turnVoice(step, (x) => cloudVoices.has(x));
     if (c) cloudVoices.say([c]);
   }, [step]);
