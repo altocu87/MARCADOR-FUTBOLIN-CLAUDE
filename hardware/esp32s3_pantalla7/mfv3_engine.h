@@ -3,7 +3,7 @@
 // Mismas reglas que el MatchEngine de la app (src/match-engine/engine.ts), sin memoria dinámica:
 //   - POR GOLES / POR TIEMPO / AMBAS: final de cada parte por goles totales del periodo o tiempo.
 //   - Cuenta atrás 3 s antes de cada parte y de la prórroga (se puede saltar).
-//   - Empate tras la 2ª parte → prórroga de 60 s con gol de oro → penaltis (5 + muerte súbita).
+//   - Empate tras la 2ª parte → prórroga de 30 s con gol de oro → penaltis (5 + muerte súbita).
 //     Con Config::allowDraw (liga de un torneo a tiempo o «ambas»), igualados al acabar la 2ª parte es empate: se
 //     acaba ahí, sin prórroga ni penaltis (draw() = true; winner() no vale nada).
 //   - Bloqueo global de 3.000 ms tras cada gol; deshacer, −1, pausa o cambio de parte no lo eluden.
@@ -69,7 +69,7 @@ struct Config {
   EndCondition endCondition = EndCondition::Goals;
   uint8_t goalsPerPeriod = 5;     // 1–20
   uint8_t minutesPerPeriod = 5;   // 1–30
-  uint16_t overtimeSeconds = 60;
+  uint16_t overtimeSeconds = 30;
   uint8_t penaltyRounds = 5;
   Team penaltyFirst = Team::White;
   bool chaos = false;             // Partido Loco: hándicaps y visitas

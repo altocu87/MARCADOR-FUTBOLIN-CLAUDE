@@ -60,7 +60,7 @@ static const char* const TPL_PEND = "/jugadores/tipos.pend";  // cambios de aqu�
 static const char* const TPL_GONE = "/jugadores/tipos.del";   // ids borrados aquí sin subir, uno por línea
 static bool templatesDirty = false;
 // Lo que pone la app en «config» y la placa no elige al crear un torneo (DEFAULT_CONFIG y las preferencias).
-static uint16_t defaultOvertime = 60;
+static uint16_t defaultOvertime = 30;
 static uint8_t defaultPenaltyRounds = 5;
 static bool defaultPenaltyBlue = false;
 

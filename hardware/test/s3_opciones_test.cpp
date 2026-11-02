@@ -560,5 +560,29 @@ int main() {
   tapBtn(ui::BACK);
   assert(screen == Screen::Home && !opciones::active());
 
-  std::printf("Ajustes: menu, partido, sonido, pantalla, mando por modelo, equipos y nube, QR, modo prueba, copias y pantalla con Wi-Fi OK\n");
+  // RANKING: cambiar de pestaña repinta solo lo de debajo de las pestañas, y cada una enseña algo.
+  {
+    screen = Screen::Ranking;
+    rankingFresh = true;
+    run(300);
+    assert(historial::active());
+    lv_display_add_event_cb(lv_display_get_default(), onInvalidate, LV_EVENT_INVALIDATE_AREA, nullptr);
+    for (int t = 0; t < 6; t++) {
+      historial::tab = (uint8_t)((t + 1) % 6);  // empieza por JUGADORES y acaba en CLASIFICACIÓN
+      invTop = 480;
+      historial::rebuildContent();
+      assert(invTop >= historial::HOST_TOP);
+      run(50);
+      assert(lv_obj_get_child_count(historial::host) > 0);
+      char n[32];
+      snprintf(n, sizeof n, "ranking-tab-%d", historial::tab);
+      shot(n);
+    }
+    std::string txt;
+    collectText(historial::host, txt);
+    assert(txt.find("ELO") != std::string::npos || txt.find("Sin partidos clasificatorios") != std::string::npos);
+    lv_display_remove_event_cb_with_user_data(lv_display_get_default(), onInvalidate, nullptr);
+  }
+
+  std::printf("Ajustes: menu, partido, sonido, pantalla, mando por modelo, equipos y nube, QR, modo prueba, copias, pantalla con Wi-Fi y pestañas del Ranking OK\n");
 }

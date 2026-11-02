@@ -6,7 +6,7 @@
 // segundos a la derecha, la fecha y el último partido. El primer toque solo despierta. Mientras se sincroniza con la
 // nube (solo en reposo), abajo pone que no se toque: tocar la corta.
 // Ligero a propósito (se ve muchas horas): nada se crea ni se borra mientras está a la vista. Cada segundo solo se
-// repintan los dos puntos, las dos marcas que cambian y el número de los segundos; las cifras de la hora, ya
+// repintan los dos puntos (sus dos círculos, no la columna entera), las dos marcas que cambian y el número de los segundos; las cifras de la hora, ya
 // pintadas una vez (sevenseg::glyph), una vez por minuto.
 
 #ifndef MFV3_UI_REPOSO_H
@@ -148,7 +148,7 @@ static void update(uint8_t hour, uint8_t minute, uint8_t second, uint8_t weekday
       invalidateTick(s);
     }
     lastSec = s;
-    sevenseg::setText(colon, ":", s % 2);  // pares encendidos, impares tenues
+    sevenseg::setColonDim(colon, s % 2);  // pares encendidos, impares tenues (solo se repintan los dos puntos)
     snprintf(b, sizeof(b), "%02u", s);
     lv_label_set_text(sec, b);
     ui::place(sec, 760, 306, 31, ui::Align::Right);

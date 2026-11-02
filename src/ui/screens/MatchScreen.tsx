@@ -480,7 +480,7 @@ function CountdownOverlay({ ctl, rivalry }: { ctl: MatchController; rivalry: { p
     <button className="overlay overlay-countdown" onClick={() => send({ type: 'SKIP_COUNTDOWN' })} autoFocus>
       <span className="overlay-sub">
         {periodLabel(state)}
-        {state.period === 'overtime' ? ' · GOL DE ORO · 60 s' : ''}
+        {state.period === 'overtime' ? ` · GOL DE ORO · ${state.config.overtimeSeconds} s` : ''}
       </span>
       <span className="countdown-stack">
         <CountdownRing progress={remaining / COUNTDOWN_MS} size={250} />
@@ -509,7 +509,7 @@ function PeriodEndOverlay({ ctl }: { ctl: MatchController }) {
   if (state.period === 'second') {
     title = 'FINAL 2ª PARTE';
     cta = 'IR A PRÓRROGA';
-    note = 'Empate: prórroga de 60 segundos con gol de oro.';
+    note = `Empate: prórroga de ${state.config.overtimeSeconds} segundos con gol de oro.`;
   } else if (state.period === 'overtime') {
     title = 'FIN DE LA PRÓRROGA';
     cta = 'IR A PENALTIS';

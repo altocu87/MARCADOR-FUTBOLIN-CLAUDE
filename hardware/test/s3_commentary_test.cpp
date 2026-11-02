@@ -175,10 +175,10 @@ int main(){
       assert(mask&(1u<<VaGanando));assert(bool(mask&(1u<<Ultimos20))==(elapsed>=40000));
     }
     second();e.tick(128000);e.next(129000);e.tick(132000);
-    e.tick(172000);b=mfv3snd::before(e);assert(e.goal(team,172000)==mfv3::Result::Accepted);
+    e.tick(152000);b=mfv3snd::before(e);assert(e.goal(team,152000)==mfv3::Result::Accepted);
     assert(e.phase()==Phase::Finished && (goalMask(e,b,team)&(1u<<Ultimos20))); // gol de oro
     second();e.tick(128000);e.next(129000);e.tick(132000);
-    e.tick(171999);b=mfv3snd::before(e);assert(e.goal(team,171999)==mfv3::Result::Accepted);
+    e.tick(141999);b=mfv3snd::before(e);assert(e.goal(team,141999)==mfv3::Result::Accepted);
     assert(e.phase()==Phase::Finished && !(goalMask(e,b,team)&(1u<<Ultimos20)));
     for(unsigned elapsed:{10000u,40000u}){
       second(mfv3::EndCondition::Both);uint32_t at=68000+elapsed;b=mfv3snd::before(e);

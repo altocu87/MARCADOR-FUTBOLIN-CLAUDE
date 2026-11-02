@@ -68,6 +68,7 @@
 #include "ui_cargando.h"
 #include "s3_loco.h"
 #include "s3_voces_hc.h"
+#include "s3_pitido.h"
 #include "s3_partidos.h"
 #include "s3_equipos.h"  // equipos fijos (parejas con nombre)
 #include "s3_types.h"
@@ -222,6 +223,7 @@ static void saveChoices() {
 // Toca los momentos de un cambio: el primero ya (corta lo que sonara) y los demás, en cola.
 static uint32_t pendingCommentary = 0, commentaryGeneration = 0;
 static bool introCommentary=false,ambientCommentary=false,commentaryHasFallback=true;
+static bool whistleLead=false;  // suena el pitido (s3_pitido.h): el comentario que venga va detrás, en la cola
 static comentarios::AmbienceClock ambienceClock;
 static bool shootoutPreviewPending=false,shootoutPreviewVoice=false;
 static uint32_t ambienceCheckedAt=0,ambienceQuietAt=0;
@@ -260,7 +262,8 @@ static bool soundManagementBusy(){return sndCmd.receiving() || comentarios::stag
 #endif
 static void queueCommentary(uint32_t code) { introCommentary=ambientCommentary=shootoutPreviewVoice=false;commentaryHasFallback=true;pendingCommentary=code;commentaryQueuedAt=millis();commentaryFallback=mfv3snd::Event::Goal;commentaryGeneration++; }
 
-static void playEvents(const mfv3snd::EventList& list) {
+// queueFirst: el primero también en la cola (detrás del pitido).
+static void playEvents(const mfv3snd::EventList& list, bool queueFirst = false) {
 #if HAS_AUDIO
   for (uint8_t i = 0; i < list.n; i++) {
     const mfv3snd::Choice& c = sndChoices.c[(uint8_t)list.ev[i]];
@@ -275,10 +278,11 @@ static void playEvents(const mfv3snd::EventList& list) {
         if (sndStore.find(c.codes[j], where)) have[k++] = c.codes[j];
       if (k) it = {false, have[esp_random() % k], mfv3snd::Tune{nullptr, 0}};
     }
-    player.play(it, i > 0);
+    player.play(it, queueFirst || i > 0);
   }
 #else
   (void)list;
+  (void)queueFirst;
 #endif
 }
 
@@ -648,7 +652,20 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
       if(code){player.stop();queueCommentary(code);commentaryFallback=fallback;spoken=true;}
     }
   }
-  if(!spoken)playEvents(sounds); // sin catálogo/audio contextual: comportamiento anterior
+  // Pitido del árbitro (s3_pitido.h): primero él y lo demás detrás. Sustituye al «fin de la parte» de siempre.
+  bool whistle=pitido::due(sndBefore.phase,eng.phase(),eng.period()) && player.ok && player.volume() && hcHas(pitido::code());
+  if(whistle){
+    player.stop();
+    player.play(audio::Item{false,pitido::code(),mfv3snd::Tune{nullptr,0}},false);
+    player.pump(millis());
+    whistleLead=player.busy();
+    if(sndChoices.c[(uint8_t)mfv3snd::Event::PeriodEnd].kind==mfv3snd::Kind::Default){
+      mfv3snd::EventList rest;
+      for(uint8_t i=0;i<sounds.n;i++)if(sounds.ev[i]!=mfv3snd::Event::PeriodEnd)rest.add(sounds.ev[i]);
+      sounds=rest;
+    }
+  }
+  if(!spoken)playEvents(sounds,whistle); // sin catálogo/audio contextual: comportamiento anterior
 #else
   playEvents(sounds);
 #endif
@@ -699,6 +716,7 @@ static void startMatch() {
   hcRevealSeq = hcEndVoiceSeq = 0;
   hcCountSaid = 0;
   hcSoundSeq=0;
+  whistleLead=false;
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
   resultSaveFailed = false;
@@ -2097,9 +2115,10 @@ static void prepareMatchFixed() {
   if (c.endCondition == mfv3::EndCondition::Goals) snprintf(v.cond, sizeof(v.cond), "Gana quien llegue a %s", g);
   else if (c.endCondition == mfv3::EndCondition::Time) snprintf(v.cond, sizeof(v.cond), "2 partes de %u min", c.minutesPerPeriod);
   else snprintf(v.cond, sizeof(v.cond), "A %s o 2 partes de %u min", g, c.minutesPerPeriod);
+  char golden[32] = "";
+  if (overtime) snprintf(golden, sizeof(golden), " · GOL DE ORO · %u s", (unsigned)c.overtimeSeconds);
   snprintf(v.countdownTitle, sizeof(v.countdownTitle), "%s%s",
-           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()],
-           overtime ? " · GOL DE ORO · 60 s" : "");
+           eng.period() == Period::First && v.singlePeriod ? "PARTIDO" : PERIOD_LABEL[(int)eng.period()], golden);
   // Fichas de los jugadores elegidos (con su foto si la app la pasó).
   for (int t = 0; haveTeams && t < 2; t++) {
     for (uint8_t i = 0; i < chosenTeams.n[t] && v.nPlayers[t] < 4; i++) {
@@ -2150,7 +2169,7 @@ static void matchView(partido::View& v, uint32_t now) {
     if (eng.period() == Period::Second) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FINAL 2ª PARTE #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PRÓRROGA");
-      snprintf(v.endNote, sizeof(v.endNote), "Empate: 60 s con gol de oro. Pulsa cualquier pulsador.");
+      snprintf(v.endNote, sizeof(v.endNote), "Empate: %u s con gol de oro. Pulsa cualquier pulsador.", (unsigned)eng.config().overtimeSeconds);
     } else if (overtime) {
       snprintf(v.endTitle, sizeof(v.endTitle), "FIN DE LA PRÓRROGA #6f84a3 · %s#", reason);
       snprintf(v.endCta, sizeof(v.endCta), "IR A PENALTIS");
@@ -2909,11 +2928,12 @@ void loop() {
     commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
     if(player.volume()==0)commentaryOutcome="silencio";
     else {
-      player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},false);
+      bool afterWhistle=whistleLead && player.busy();whistleLead=false;
+      player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},afterWhistle);
       bool fallback=!player.requestAccepted();
-      if(fallback && player.ok && commentaryHasFallback)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},false);
+      if(fallback && player.ok && commentaryHasFallback)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},afterWhistle);
       player.pump(millis());
-      bool started=player.lastStartSucceeded();
+      bool started=afterWhistle?player.requestAccepted():player.lastStartSucceeded();
       commentaryOutcome=started?(fallback?"respaldo":"iniciado"):"fallo";
       if(started){commentaryStartedAt=millis();if(!fallback)commentaryLastCode=code;}
     }

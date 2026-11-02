@@ -139,7 +139,7 @@ static Sim toOvertime() {
 
 static void a10_golden_goal() {
   Sim s = toOvertime();
-  assert(s.e.clockMs(s.t) == 60000);
+  assert(s.e.clockMs(s.t) == 30000);  // prórroga de 30 s (02/11/2026)
   s.goalLater(Team::Blue);
   assert(s.e.phase() == Phase::Finished && s.e.winner() == Team::Blue && s.e.reason() == Reason::GoldenGoal);
 }
@@ -184,7 +184,7 @@ static void kicks(Sim& s, const char* seq) {
 
 static Sim toShootout() {
   Sim s = toOvertime();
-  s.wait(60000);
+  s.wait(30000);
   assert(s.e.phase() == Phase::PeriodEnd);
   s.e.next(s.t);
   assert(s.e.phase() == Phase::Penalties);

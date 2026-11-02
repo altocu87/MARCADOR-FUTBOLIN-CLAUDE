@@ -86,7 +86,7 @@ static void both_goal_win_has_no_invented_second_period() {
 
 static void shootout_timestamps_follow_overtime() {
   Store store;
-  Config cfg; cfg.endCondition = EndCondition::Time; cfg.minutesPerPeriod = 1;
+  Config cfg; cfg.endCondition = EndCondition::Time; cfg.minutesPerPeriod = 1; cfg.overtimeSeconds = 60;  // tres tramos de 60 s
   Engine e; assert(e.start(cfg, 0));
   for (uint32_t t = 0; t < 180000; t += 60000) {
     assert(e.skipCountdown(t) == Result::Accepted);
