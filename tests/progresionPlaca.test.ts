@@ -22,7 +22,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { generateDemoData } from '../src/services/demo/demoData';
 import { DEFAULT_PROGRESSION, type StoredMatch, type Tournament } from '../src/services/persistence';
-import { ACHIEVEMENTS, activeChallenges, availableTitles, categoryFor, challengeProgress, computeProgression, displayTitle } from '../src/services/progression';
+import { ACHIEVEMENTS, activeChallenges, availableTitles, categoryFor, challengeProgress, computeProgression, displayTitle, predict } from '../src/services/progression';
+import { lastMeetings } from '../src/services/statistics/statistics';
 
 const DIR = join(__dirname, 'fixtures', 'progresion');
 const MATCHES = join(DIR, 'partidos.jsonl');
@@ -33,6 +34,7 @@ const T_FULL = join(DIR, 'torneos-app.json');
 const T_EXPECTED = join(DIR, 'esperado-torneos.txt');
 const R_EXPECTED = join(DIR, 'esperado-retos.txt');
 const TITLES_EXPECTED = join(DIR, 'esperado-titulos.txt');
+const P_EXPECTED = join(DIR, 'esperado-prevision.txt');
 
 /** Código de un jugador en la placa: FNV-1a de su id (como soundCode). */
 function code(id: string): string {
@@ -143,8 +145,43 @@ function titlesText(matches: StoredMatch[]): string {
   );
 }
 
+/**
+ * Pronóstico antes de un clasificatorio (s3_prevision.h): por alineación, si hay pronóstico, el % del Blanco, los
+ * enfrentamientos directos, los pesos y los 3 últimos enfrentamientos (Blanco-Azul y quién ganó: w, b o -).
+ */
+function predictionText(matches: StoredMatch[]): string {
+  const ids = [...new Set(matches.flatMap((m) => m.participants.map((p) => p.playerId)))];
+  const snap = computeProgression(ids, matches, DEFAULT_PROGRESSION);
+  const side = (m: StoredMatch, t: 'white' | 'blue') => m.participants.filter((p) => p.team === t).map((p) => p.playerId);
+  const seen = new Set<string>();
+  const pairs: [string[], string[]][] = [];
+  const add = (w: string[], b: string[]) => {
+    const k = `${w.map(code).sort().join(',')}|${b.map(code).sort().join(',')}`;
+    if (!seen.has(k)) seen.add(k), pairs.push([w, b]);
+  };
+  for (const m of matches) add(side(m, 'white'), side(m, 'blue'));
+  for (const a of ids.slice(0, 5)) for (const b of ids.slice(0, 5)) if (a !== b) add([a], [b]);
+  return (
+    pairs
+      .map(([w, b]) => {
+        const p = predict(w, b, matches, snap);
+        const pct = (x: number) => Math.round(x * 100);
+        const meet = lastMeetings(matches, w, b, 3).map((x) => `${x.white}-${x.blue}${x.winner === 'white' ? 'w' : x.winner === 'blue' ? 'b' : '-'}`);
+        return `${w.map(code).join(',')}|${b.map(code).join(',')} ${p.available ? 1 : 0} ${p.whitePct} ${p.directMatches} ${pct(p.weights.elo)},${pct(p.weights.h2h)},${pct(p.weights.form)} ${meet.join(' ') || '-'}`;
+      })
+      .join('\n') + '\n'
+  );
+}
+
 describe('progresión de la placa', () => {
   const matches = loadMatches();
+
+  it('pronóstico: lo esperado coincide con lo que calcula hoy la app', () => {
+    const text = predictionText(matches);
+    if (process.env.ACTUALIZAR_PROGRESION || !existsSync(P_EXPECTED)) writeFileSync(P_EXPECTED, text);
+    expect(readFileSync(P_EXPECTED, 'utf8')).toBe(text);
+    expect(text.split('\n').some((l) => l.split(' ')[1] === '1' && l.split(' ')[3] !== '0')).toBe(true);
+  });
 
   it('títulos: lo esperado coincide con lo que calcula hoy la app', () => {
     const text = titlesText(matches);

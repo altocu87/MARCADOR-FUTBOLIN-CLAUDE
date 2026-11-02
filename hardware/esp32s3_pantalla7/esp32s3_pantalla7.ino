@@ -383,7 +383,8 @@ static const char* phaseName(Phase p) {
 // ---------------------------------------------------------------- estado de la interfaz
 static bool inMatch = false;       // false = pantalla de inicio
 static bool homeCards = true;      // Inicio nuevo (tarjetas de modo, igual que la app) antes de la configuración
-static bool choosingPlayers = false;  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
+static bool choosingPlayers = false;
+static bool prematchOn = false;  // PRONÓSTICO antes de un clasificatorio (ui_prevision.h), tras elegir jugadores  // pantalla de elegir jugadores (ui_jugadores.h) tras la configuración
 static elegir::Teams chosenTeams;
 static bool haveTeams = false;        // equipos ya elegidos (para REVANCHA o al volver a elegir sin pasar por inicio)
 
@@ -693,6 +694,7 @@ static void hcSkipIntro(uint32_t now) {
   hcIntroUntil = now;
 }
 static void prepareMatchNetwork();
+static void rewardsClear();  // ui_premios.h (incluido más abajo)
 static void startMatch() {
   if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
@@ -717,6 +719,7 @@ static void startMatch() {
   hcCountSaid = 0;
   hcSoundSeq=0;
   whistleLead=false;
+  rewardsClear();
   uint32_t startedAt = millis();
   if (!eng.start(cfg, startedAt)) return;
   resultSaveFailed = false;
@@ -758,6 +761,7 @@ static void goHome() {
   inMatch = false;
   homeCards = true;
   choosingPlayers = false;
+  prematchOn = false;
   screen = Screen::Home;
   confirmAbandon = false;
   sendEvent("STATE idle");
@@ -1326,6 +1330,17 @@ static void onProfileMatchBack() {
   profileFresh = false;
 }
 #include "ui_duelo.h"     // CARA A CARA (desde RIVALES de la ficha)
+#include "ui_prevision.h"  // PRONÓSTICO antes de un clasificatorio
+#include "ui_premios.h"    // XP, nivel y ELO de cada jugador en la pantalla de victoria
+static void rewardsClear() { premios::clear(); }
+static void onPrematchBack() {
+  prematchOn = false;
+  choosingPlayers = true;
+}
+static void onPrematchStart() {
+  prematchOn = false;
+  startMatch();
+}
 // Contra quién; lo abre render(). Volver lleva a la ficha como estaba; tocar al rival abre la suya (y volver de ella
 // lleva a donde se abrió la primera ficha).
 static uint32_t duelCode = 0;
@@ -1959,6 +1974,11 @@ static void onPlayersDone(const elegir::Teams& t) {
   chosenTeams = t;
   haveTeams = true;
   choosingPlayers = false;
+  // Clasificatorio con jugadores en los dos lados: antes, el pronóstico (como la app).
+  if (chosenMode == inicio::RANKED && chosenTeams.n[0] && chosenTeams.n[1]) {
+    prematchOn = true;
+    return;
+  }
   startMatch();
 }
 // ---------------------------------------------------------------- torneos (ui_torneo*.h)
@@ -2375,6 +2395,11 @@ static void render() {
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
+  if (!test.active && !inMatch && screen == Screen::Home && prematchOn && !sleepClock()) {
+    if (!pronostico::active()) pronostico::show(&jugadores, chosenTeams.code, chosenTeams.n);
+    lastKey = lastSleepKey = 0xFFFFFFFF;
+    return;
+  }
   if (!test.active && !inMatch && screen == Screen::Home && !sleepClock()) {
     config::show(configState());
     config::tickClock(rtc.clockOk, rtc.now.hour, rtc.now.minute, rtc.now.second);
@@ -2444,6 +2469,7 @@ static void render() {
     victoria::View v;
     victoryView(v);
     victoria::update(v);
+    premios::attach(&jugadores);
     lastKey = lastSleepKey = 0xFFFFFFFF;
     return;
   }
@@ -2742,6 +2768,8 @@ void setup() {
   nube::wifiDown = nubeWifiDown;
 #endif
   elegir::hooks.done = onPlayersDone;
+  pronostico::hooks.back = onPrematchBack;
+  pronostico::hooks.start = onPrematchStart;
   victoria::hooks.rematch = startMatch;
   lcd.backlight(backlightLevel());
   initColors();
@@ -2949,7 +2977,9 @@ void loop() {
 #endif
   // Primero el fotograma y el arranque del audio; después guardar sin sustituir el motor.
   if(resultPending && ((resultBeforeRender && !pendingCommentary && uiport::presented!=resultFrame) || (uint32_t)(millis()-resultQueuedAt)>=250)){
-    resultSaving=true;saveResult();resultSaving=false;resultPending=false;
+    resultSaving=true;bool saved=saveResult();resultSaving=false;resultPending=false;
+    // Lo que se lleva cada jugador (debajo de la victoria): la progresión, rehecha con el partido ya guardado.
+    if(saved && !tourMatch && !resultSaveFailed){premios::compute(&jugadores,partidos::count-1);}
   }
   delay(2);
 }
