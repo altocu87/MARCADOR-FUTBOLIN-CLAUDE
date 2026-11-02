@@ -1309,6 +1309,58 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
   gfx.drawFastHLine(0, 44, ui::W, C_LINE);
 }
 
+// Pitido del árbitro (s3_pitido.h): si falta en la SD, se baja de la web al buscar actualizaciones.
+static bool pitidoNeeded() {
+#if HAS_AUDIO
+  return sndStore.sdOk && pitido::tries < 3 && !hcHas(pitido::code());
+#else
+  return false;
+#endif
+}
+// Lo bajado y comprobado, a la SD (fuera de partido). Si no se puede, se suelta y se reintenta en otra búsqueda.
+static bool pitidoInstall() {
+  if (!pitido::got) return false;
+  bool ok = false;
+#if HAS_AUDIO
+  if (!inMatch && !soundManagementBusy() && sndStore.begin(mfv3snd::Place::Sd, pitido::code())) {
+    ok = sndStore.write(pitido::got, pitido::FILE_SIZE) && sndStore.commit();
+    if (!ok) sndStore.abort();
+  }
+#endif
+  free(pitido::got);
+  pitido::got = nullptr;
+  if (ok) pitido::tries = 0;
+  return ok;
+}
+#ifdef ARDUINO
+static bool pitidoFetch(const char* url, uint8_t* out, size_t cap, size_t& n) {
+  n = 0;
+  NetworkClientSecure client;
+  client.useBuiltinCACertBundle();
+  HTTPClient http;
+  http.setTimeout(10000);
+  http.setReuse(false);
+  if (!http.begin(client, url)) return false;
+  int len = http.GET() == 200 ? http.getSize() : 0;
+  if (len != (int)cap && len != -1) {  // -1: sin tamaño (se lee hasta tener el archivo y el CRC lo confirma)
+    http.end();
+    return false;
+  }
+  NetworkClient* st = http.getStreamPtr();
+  uint32_t last = millis();
+  while (n < cap && millis() - last < 10000) {
+    size_t av = st->available();
+    if (!av) {
+      delay(2);
+      continue;
+    }
+    int r = st->readBytes(out + n, av < cap - n ? av : cap - n);
+    if (r > 0) n += (size_t)r, last = millis();
+  }
+  http.end();
+  return n == cap;
+}
+#endif
 #include "s3_ajustes.h"  // AJUSTES: Wi-Fi y actualizar (usa lo de arriba)
 #include "s3_datos.h"     // AJUSTES → DATOS: modo prueba y copias de seguridad
 #include "s3_perfil.h"    // el QR del perfil de cada jugador
@@ -2776,6 +2828,7 @@ void setup() {
   };
 #ifdef ARDUINO
   nube::http = nubeHttp;
+  pitido::fetch = pitidoFetch;
   nube::wifiUp = nubeWifiUp;
   nube::wifiDown = nubeWifiDown;
 #endif

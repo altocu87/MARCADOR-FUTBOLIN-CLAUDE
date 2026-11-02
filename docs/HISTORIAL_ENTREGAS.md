@@ -1,5 +1,9 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## El pitido se instala solo · 0.27 · Cloud · 02/11/2026
+
+`pitido::downloadWork()` va en `fetchVersionsWork` (tarea «versiones», núcleo 0) si `beginVersions` puso `pitido::want = pitidoNeeded()`; `finishVersions` (loop) llama a `pitidoInstall()`, que escribe con `sndStore.begin/write/commit` (como `SONIDO_SUBIR sd`). Tamaño y CRC fijos en `s3_pitido.h`: si se cambia el audio de la web hay que cambiarlos. La descarga (`pitidoFetch`) exige `Content-Length` igual al tamaño esperado (o sin tamaño); el CRC decide.
+
 ## Pitido, prórroga de 30 s, Ranking y reloj · 0.26 · Cloud · 02/11/2026
 
 Pitido: `s3_pitido.h` (`pitido::due`: entrar en PeriodEnd, o en Finished salvo en la tanda). En `afterChange`, al final de lo de audio: `player.stop()`, el pitido sin cola y `whistleLead`; lo que venga detrás va en la cola (`playEvents(…, queueFirst)` y el comentario pendiente con `afterWhistle`). Con el pitido, el «fin de la parte» de siempre (tono) no suena si está en «el de siempre». El audio del dueño no va al repositorio: `scripts/placa.py pitido` lo convierte (ffmpeg, silencios a −55 dB, mono 16 kHz, pico −1 dB) y lo sube con `SONIDO_SUBIR sd`. Con el gol que gana un partido a goles, el pitido (1,5 s) suena antes que la voz del gol; la victoria se ve al momento.

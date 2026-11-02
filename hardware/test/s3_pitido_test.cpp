@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdio>
 #include <vector>
+#include <string>
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
 
@@ -36,6 +37,16 @@ static void drop(uint32_t code) {
   char path[40];
   snprintf(path, sizeof path, "/sonidos/%08lx.wav", (unsigned long)code);
   SD_MMC.disk.files.erase(path);
+}
+// La web simulada: sirve `web` (o nada).
+static std::vector<uint8_t> web;
+static int fetches = 0;
+static bool fakeFetch(const char* url, uint8_t* out, size_t cap, size_t& n) {
+  fetches++;
+  assert(std::string(url).find("/sonidos/pitido.wav") != std::string::npos);
+  n = web.size() < cap ? web.size() : cap;
+  memcpy(out, web.data(), n);
+  return !web.empty();
 }
 static int first(int16_t s) {
   for (size_t i = 0; i < sim::heard.size(); i++)
@@ -135,5 +146,37 @@ int main() {
   run(2000);
   assert(first(PITA) < 0 && first(DESC) >= 0);
 
-  puts("Pitido: fin de parte, prórroga y partido; primero el pitido y después la voz; sin archivo, como antes OK");
+  // 0.27: sin el pitido en la SD, la placa lo baja de la web al buscar actualizaciones y lo guarda comprobado.
+  goHome();
+  FILE* f = fopen("../web/public/sonidos/pitido.wav", "rb");
+  assert(f);
+  web.resize(pitido::FILE_SIZE + 10);
+  web.resize(fread(web.data(), 1, web.size(), f));
+  fclose(f);
+  assert(web.size() == pitido::FILE_SIZE && pitido::crc32(web.data(), web.size()) == pitido::FILE_CRC);
+  pitido::fetch = fakeFetch;
+  // Llega dañado: no se guarda nada.
+  std::vector<uint8_t> good = web;
+  web[100] ^= 0x55;
+  pitido::want = pitidoNeeded();
+  assert(pitido::want);
+  pitido::downloadWork();
+  assert(!pitido::got && !pitidoInstall() && !hcHas(pitido::code()) && fetches == 1);
+  // Llega bien: a la SD.
+  web = good;
+  pitido::want = pitidoNeeded();
+  pitido::downloadWork();
+  assert(pitido::got && pitidoInstall() && hcHas(pitido::code()) && !pitido::got);
+  // Ya está: no se vuelve a pedir.
+  assert(!pitidoNeeded());
+  // Como mucho tres intentos por encendido si la web no lo da.
+  assert(sndStore.remove(pitido::code()) && !hcHas(pitido::code()));
+  web.clear();
+  for (int i = 0; i < 5; i++) {
+    pitido::want = pitidoNeeded();
+    pitido::downloadWork();
+  }
+  assert(pitido::tries == 3 && !pitidoNeeded());
+
+  puts("Pitido: fin de parte, prórroga y partido; primero el pitido y después la voz; sin archivo, como antes; se baja solo de la web OK");
 }

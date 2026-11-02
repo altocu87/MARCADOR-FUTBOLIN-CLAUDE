@@ -58,6 +58,6 @@ Equipo A = Cloud (Claude); equipo B = esta rama. «master» significa la rama `m
 - Perfil del QR (`s3_perfil.h`) igual que `buildProfileSnapshot` (`tests/perfil-placa.test.ts`).
 - Equipos fijos en la nube: al subir, cambiar solo `prefs`/`mesa`.`clubs` y unir con los de la cuenta.
 - Mando C3-Zero del dueño: elegir C3-ZERO en AJUSTES → MANDO antes de actualizar; no instalarle el firmware del mando publicado hasta que haya variante con LED RGB.
-- No subir al repositorio los WAV del dueño.
+- No subir al repositorio los WAV del dueño. Única excepción autorizada (02/11/2026): el pitido del árbitro, `web/public/sonidos/pitido.wav`, que la placa se baja sola.
 - Sonidos: antes de tocarlos, leer las secciones de sonidos de `docs/HISTORIAL_ENTREGAS.md` (reglas de grupos, victoria inmediata, etc.).
 - Torneos (`s3_torneos*.h`, `ui_torneo*.h`): las reglas de la placa = las de la app (`tests/torneosPlaca.test.ts` ↔ `hardware/test/torneos_test.cpp`); si cambia una regla en la app, cambiar las dos. Historial en la SD sin tope: en memoria solo lo en juego y 10 ediciones por competición.
