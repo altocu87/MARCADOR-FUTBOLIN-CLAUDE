@@ -14,6 +14,8 @@ import {
   handicapText,
   type Handicap,
 } from '../../match-engine';
+import { cloudVoices } from '../../services/sound/cloudSounds';
+import { countVoice } from '../../services/sound/handicapVoices';
 import { sound } from '../../services/sound/sound';
 import type { MatchController } from '../screens/useMatchController';
 
@@ -92,14 +94,18 @@ export function HandicapOverlay({ ctl }: { ctl: MatchController }) {
 /** Cuenta atrás 3 · 2 · 1 antes de revelar el hándicap, con uno de los 12 estilos. */
 function HandicapCountdown({ spec, left, replaced, onSkip }: { spec: Handicap; left: number; replaced?: Handicap; onSkip: () => void }) {
   const n = Math.min(3, Math.max(1, Math.ceil(left / 1000)));
+  // Mientras suena el aviso grabado («¡Atentos! Hándicap en 3 segundos») se ve el 3 sin contar; luego cada número
+  // se dice con su voz («¡Tres!», «¡Dos!», «¡Uno!») o, sin voces, con el pitido de siempre.
+  const step = left > 3000 ? 0 : n;
   const style = countdownStyle(spec.id);
   const last = useRef(0);
   useEffect(() => {
-    if (n !== last.current) {
-      last.current = n;
-      sound.play('countdown');
+    if (step && step !== last.current) {
+      last.current = step;
+      const c = countVoice(step, (x) => cloudVoices.has(x));
+      if (!c || !cloudVoices.say([c])) sound.play('countdown');
     }
-  }, [n]);
+  }, [step]);
   return (
     <button className={`overlay hc-overlay hc-count hc-v${style}`} onClick={onSkip} aria-label="Saltar la cuenta atrás">
       <span className="hc-bg" aria-hidden="true" />

@@ -5,6 +5,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
+import { cloudVoices } from '../../services/sound/cloudSounds';
+import { affected, avisoVoice, endingVoice, pitidoCode, pitidoDue, revealVoices } from '../../services/sound/handicapVoices';
 import { makeSnapshot } from '../../app/recovery';
 import type { MatchExtras } from '../../app/routes';
 import { hardwareHub } from '../../inputs/hardware/hub';
@@ -146,7 +148,9 @@ export function useMatchController(
   resume?: MatchState,
   extras?: MatchExtras,
 ): MatchController {
-  const { repos } = useApp();
+  const { repos, players } = useApp();
+  const playersRef = useRef(players);
+  playersRef.current = players;
   const [state, setState] = useState<MatchState>(
     // En un torneo, antes del 3·2·1 se ve el cartel de la fase (semifinal, final…).
     () => resume ?? createMatch(newId('m'), config, participants, Date.now(), extras?.tournament ? PHASE_POSTER_MS : 0),
@@ -205,7 +209,10 @@ export function useMatchController(
       if (!cur || cur.spec.id !== h.spec.id) return;
       const t = handicapText(cur.spec, stateRef.current.participants);
       sound.play('whoosh');
-      voice.say(`${t.title.replace(/[¡!]/g, '')}. ${t.detail}`);
+      // Con las voces grabadas (nube): quién + la frase, como la pantalla; si no, la voz del navegador.
+      const who = affected(cur.spec, stateRef.current, (id) => playersRef.current.find((p) => p.id === id)?.gender);
+      const has = (c: string) => cloudVoices.has(c);
+      if (!cloudVoices.say(revealVoices(cur.spec, who.white, who.blue, has))) voice.say(`${t.title.replace(/[¡!]/g, '')}. ${t.detail}`);
     };
     const wait = at - Date.now();
     if (wait > 0) revealTimer.current = window.setTimeout(say, wait);
@@ -234,6 +241,9 @@ export function useMatchController(
       const prev = stateRef.current;
       stateRef.current = next;
       setState(next);
+      // Pitido del árbitro (si está en este aparato): primero el pitido y después lo demás.
+      const whistleMs = pitidoDue(prev, next) && cloudVoices.playNow(pitidoCode()) ? cloudVoices.durationMs(pitidoCode()) : 0;
+      const sayAfterWhistle = (text: string) => (whistleMs ? window.setTimeout(() => voice.say(text), whistleMs) : voice.say(text));
       // Gol anulado: el marcador de un equipo baja en la misma parte (−1 o deshacer un gol).
       // Un gol «robo» o la ardilla del Partido Loco también bajan al rival, pero no es una anulación.
       if (prev.period === next.period && !events.some((e) => (e.type === 'GOAL' && e.steal) || e.type === 'VISIT')) {
@@ -255,9 +265,9 @@ export function useMatchController(
             voice.say(`¡Gol del ${TEAM_VOICE[e.team]}! ${moment ? MOMENT_LABEL[moment].replace(/[¡!]/g, '') + '. ' : ''}${sc.white} a ${sc.blue}.`);
           }
         } else if (e.type === 'MATCH_END' && e.team) {
-          voice.say(`¡Final del partido! Gana el ${TEAM_VOICE[e.team]}.`);
+          sayAfterWhistle(`¡Final del partido! Gana el ${TEAM_VOICE[e.team]}.`);
         } else if (e.type === 'PERIOD_END' && next.phase !== 'finished') {
-          voice.say(`Final de la ${PERIOD_VOICE[e.period]}.`);
+          sayAfterWhistle(`Final de la ${PERIOD_VOICE[e.period]}.`);
         } else if (e.type === 'PERIOD_START') {
           // El del arranque del partido es un momento con sonido propio (soundsForCommit).
           if (e.period !== 'first') sound.play('countdownGo');
@@ -269,16 +279,24 @@ export function useMatchController(
           );
         } else if (e.type === 'HANDICAP_START' && e.handicap) {
           // Partido Loco: cuenta atrás y, al terminar, el hándicap a pantalla completa.
+          // Con las voces grabadas: el final del que sustituye y «¡Atentos! Hándicap en 3 segundos»; la cuenta
+          // atrás empieza al acabar el aviso (HandicapCountdown dice «¡Tres!», «¡Dos!», «¡Uno!»).
           const replaced = next.handicap?.replaced;
-          if (replaced) voice.say(handicapEndText(replaced));
-          sound.play('countdown');
-          reveal(t + HANDICAP_INTRO_MS);
+          const has = (c: string) => cloudVoices.has(c);
+          const end = replaced ? endingVoice(replaced, has) : null;
+          const aviso = avisoVoice(has);
+          if (replaced && !end) voice.say(handicapEndText(replaced));
+          if (end || aviso) cloudVoices.say([end, aviso].filter((x): x is string => !!x));
+          else sound.play('countdown');
+          const avisoMs = (end ? cloudVoices.durationMs(end) : 0) + (aviso ? cloudVoices.durationMs(aviso) : 0);
+          reveal(t + avisoMs + HANDICAP_INTRO_MS);
         } else if (e.type === 'VISIT' && e.visitor) {
           sound.play(e.visitor.animal === 'squirrel' ? 'error' : 'whoosh');
           voice.say(visitorText(e.visitor).detail, { interrupt: false });
         } else if (e.type === 'HANDICAP_END' && e.handicap && e.reason === 'time') {
           sound.play('countdownGo');
-          voice.say('¡Vuelta a la normalidad!');
+          const end = endingVoice(e.handicap, (c) => cloudVoices.has(c));
+          if (!end || !cloudVoices.say([end], { queue: true })) voice.say('¡Vuelta a la normalidad!');
         } else if (e.type === 'HANDICAP_END' && e.handicap && e.reason === 'used') {
           showBanner({ text: 'FIN DEL HÁNDICAP', sub: handicapText(e.handicap, next.participants).short, tone: 'chaos' }, 1500);
         } else if (e.type === 'HANDICAP_PENALTY') {
@@ -300,7 +318,7 @@ export function useMatchController(
       if (matchPointNew) voice.say('¡Bola de partido!', { interrupt: false });
       matchPointKey.current = key;
       // Sonidos de los momentos (el de la mesa o el de siempre): el primero ya, los demás en cola.
-      soundsForCommit(prev, next, events, matchPointNew).forEach((id, i) => soundPlayer.play(id, { queue: i > 0 }));
+      soundsForCommit(prev, next, events, matchPointNew).forEach((id, i) => soundPlayer.play(id, { queue: i > 0 || whistleMs > 0 }));
       hardwareHub.notifyMatch(next, events);
       saveSnapshot(next, t);
     },

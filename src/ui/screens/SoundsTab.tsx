@@ -2,7 +2,7 @@
  * Ajustes → Sonidos: los sonidos propios de la mesa (subir, escuchar, borrar) y qué suena en cada momento.
  * Cada sonido sabe dónde está guardado (este aparato, chip o tarjeta SD de la placa) y se toca desde allí.
  */
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { useApp } from '../../app/AppContext';
 import { useHardware } from '../../inputs/hardware/useHardware';
 import type { BoardPlace } from '../../inputs/hardware/boardSounds';
@@ -12,6 +12,7 @@ import { decodeFile } from '../../services/sound/prepare';
 import { sound } from '../../services/sound/sound';
 import { choiceFor, SOUND_EVENTS, withoutSound, type SoundChoice, type SoundEventDef } from '../../services/sound/soundEvents';
 import { soundPlayer } from '../../services/sound/soundPlayer';
+import { cloudVoices } from '../../services/sound/cloudSounds';
 import { HelpButton, Modal } from '../components/common';
 
 export const LOCATION_LABEL: Record<SoundLocation, string> = {
@@ -32,6 +33,28 @@ function summary(c: SoundChoice, sounds: StoredSound[]): string {
 }
 
 const pct = (f: number) => `${Math.round(f * 100)} %`;
+
+/** Voces y sonidos de la pantalla bajados de la nube (cloudSounds.ts): cuántos hay en este aparato. */
+function CloudVoicesCard() {
+  const { cloud } = useApp();
+  const count = useSyncExternalStore(
+    (fn) => cloudVoices.subscribe(fn),
+    () => cloudVoices.count,
+  );
+  return (
+    <div className="card snd-cloud">
+      <span className="label">
+        Voces de la pantalla
+        <HelpButton
+          title="Voces de la pantalla"
+          text="Los comentarios, las voces del Partido Loco y el pitido de la pantalla. Se bajan de tu cuenta una vez a este aparato y luego suenan sin internet. Si no hay, suena lo de siempre."
+          className="snd-help"
+        />
+      </span>
+      <strong>{count ? `${count} en este aparato` : cloud.session ? 'Ninguna todavía' : 'Entra en tu cuenta para bajarlas'}</strong>
+    </div>
+  );
+}
 
 export function SoundsTab() {
   const { sounds, soundRepo, reloadSounds, prefs, savePrefs, toast } = useApp();
@@ -116,6 +139,7 @@ export function SoundsTab() {
 
   return (
     <div className="snd">
+      <CloudVoicesCard />
       <div className="card">
         <div className="snd-head">
           <span className="label">Sonidos de la mesa</span>

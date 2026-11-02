@@ -58,10 +58,15 @@ import {
 import { applyCatalogIcons } from './catalogIcons';
 import { useProfileSync } from './profileSync';
 import { useCloudSync, type CloudSync } from './cloudSync';
+import { browserClipRepository, cloudVoices, syncCloudSounds, type CloudClipRepository } from '../services/sound/cloudSounds';
+import { shortVoiceCodes } from '../services/sound/handicapVoices';
 import { activeMatchInProgress } from './idle';
 import { useIdleMonitor } from './useIdle';
 import { credentialsFor, profileUrl } from '../services/profiles';
 import type { Route } from './routes';
+
+let clipRepoCache: CloudClipRepository | null = null;
+const clipRepo = () => (clipRepoCache ??= browserClipRepository());
 
 /** Días en que se ha abierto la app en este aparato (para los premios por entrar en un evento). */
 const VISITS_KEY = 'mfv3:visitas';
@@ -472,6 +477,30 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   const idle = useIdleMonitor(inMatchRoute || activeSaved);
 
   const cloud = useCloudSync({ enabled: !injected && !demoMode, store, repos, players, matches, tournaments, prefs, loaded, refresh, idle });
+  // Sonidos de la SD desde la nube (cloudSounds.ts): se cargan los de este aparato y, con cuenta, se baja lo que falte.
+  const playerNames = useMemo(() => players.map((p) => p.name).join('\n'), [players]);
+  const cloudUser = cloud.session?.userId ?? null;
+  const fileAccess = cloud.fileAccess;
+  useEffect(() => {
+    if (injected || demoMode) return;
+    let alive = true;
+    const repo = clipRepo();
+    const preload = shortVoiceCodes(playerNames.split('\n'));
+    void (async () => {
+      try {
+        await cloudVoices.load(repo, preload);
+        const access = cloudUser ? await fileAccess() : null;
+        if (!access || !alive) return;
+        const r = await syncCloudSounds({ ...access, repo });
+        if (alive && (r.downloaded || r.removed)) await cloudVoices.load(repo, preload);
+      } catch {
+        /* sin conexión o sin sonidos en la nube: se queda lo que haya */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [injected, demoMode, cloudUser, fileAccess, playerNames]);
   const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards, idle });
   const profileLink = useCallback(
     (playerId: string) => {

@@ -1,3 +1,5 @@
+import { cloudVoices } from '../../services/sound/cloudSounds';
+import { nameOnly, turnVoice } from '../../services/sound/handicapVoices';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../app/AppContext';
 import { MAX_PER_TEAM, validateParticipants, type MatchConfig, type ParticipantRef, type Slot, type Team } from '../../match-engine';
@@ -96,6 +98,13 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
     });
   }, [teams]);
 
+  // Voces grabadas (si están en este aparato): «¡Equipo blanco!»/«¡Equipo azul!» al tocarle a cada equipo y el nombre
+  // de quien se elige, como la pantalla. Sin ellas, nada.
+  useEffect(() => {
+    const c = turnVoice(step, (x) => cloudVoices.has(x));
+    if (c) cloudVoices.say([c]);
+  }, [step]);
+
   // Tocar un jugador libre: entra en el equipo que elige.
   const pick = (playerId: string) => {
     const current = teams[step];
@@ -105,6 +114,8 @@ export function SelectPlayersScreen({ config, initial }: { config: MatchConfig; 
       return;
     }
     updateTeams({ ...teams, [step]: [...current, playerId] });
+    const c = nameOnly(byId.get(playerId)?.name, (x) => cloudVoices.has(x));
+    if (c) cloudVoices.say([c]);
   };
 
   // Tocar una ficha de un equipo: vuelve a la lista de libres.
