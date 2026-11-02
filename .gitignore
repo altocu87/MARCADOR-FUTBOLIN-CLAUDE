@@ -16,3 +16,4 @@ hardware/esp32s3_pantalla7/*.ino.cpp
 
 # Clave de Supabase para subir los sonidos (scripts/subir-sonidos-nube.py): nunca a GitHub
 .env.sonidos
+__pycache__/
