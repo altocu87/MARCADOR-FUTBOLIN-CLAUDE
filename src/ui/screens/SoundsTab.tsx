@@ -13,6 +13,7 @@ import { sound } from '../../services/sound/sound';
 import { choiceFor, SOUND_EVENTS, withoutSound, type SoundChoice, type SoundEventDef } from '../../services/sound/soundEvents';
 import { soundPlayer } from '../../services/sound/soundPlayer';
 import { cloudVoices } from '../../services/sound/cloudSounds';
+import { LoginSheet } from '../components/LoginSheet';
 import { HelpButton, Modal } from '../components/common';
 
 export const LOCATION_LABEL: Record<SoundLocation, string> = {
@@ -46,6 +47,7 @@ function CloudVoicesCard() {
     () => cloudVoices.status,
   );
   const busy = st.state === 'checking' || st.state === 'downloading';
+  const [login, setLogin] = useState(false);
   const hour = (at: number) => new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   let line: string;
   let tone = '';
@@ -62,7 +64,7 @@ function CloudVoicesCard() {
     line = st.message;
     tone = 'bad';
   } else if (st.state === 'demo') line = 'En el modo prueba no se bajan';
-  else if (!cloud.session || st.state === 'noAccount') line = 'Entra en tu cuenta (Ajustes → Cuenta) para bajarlos';
+  else if (!cloud.session || st.state === 'noAccount') line = 'Entra en tu cuenta para bajarlos';
   else line = '';
   const pct =
     st.state === 'downloading' && st.todo
@@ -81,15 +83,22 @@ function CloudVoicesCard() {
             className="snd-help"
           />
         </span>
-        <button className="btn btn-primary" disabled={busy || !cloud.session} onClick={() => cloudVoices.requestSync?.()}>
-          {busy ? 'Bajando…' : 'Bajar sonidos'}
-        </button>
+        {cloud.session || !cloud.available ? (
+          <button className="btn btn-primary" disabled={busy || !cloud.session} onClick={() => cloudVoices.requestSync?.()}>
+            {busy ? 'Bajando…' : 'Bajar sonidos'}
+          </button>
+        ) : (
+          <button className="btn btn-primary" onClick={() => setLogin(true)}>
+            Entrar en la cuenta
+          </button>
+        )}
       </div>
       <strong className="snd-cloud-count">{count} en este aparato</strong>
       <div className={`snd-cloud-track ${tone}`} aria-hidden="true">
         <span style={{ width: `${pct}%` }} />
       </div>
       {line && <span className={`snd-cloud-line ${tone}`}>{line}</span>}
+      {login && <LoginSheet onClose={() => setLogin(false)} />}
     </div>
   );
 }
