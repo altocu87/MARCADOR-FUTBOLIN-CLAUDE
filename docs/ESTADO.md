@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Sonidos en la nube · subidos · PC del dueño · 02/11/2026
+
+**Subidos y comprobados: 926 MP3 en el almacén privado `sonidos` del Supabase del marcador (`qhoaetqjpyxgqfpimbbi`), con `indice.json`; «Todo correcto».** Siguiendo [la guía](SONIDOS_NUBE.md): almacén creado por el dueño con `20261102120000_sonidos_nube.sql` (el Supabase conectado a Claude es otra cuenta). Origen: la SD de la placa (925 WAV, 206,4 MB) más el pitido `web/public/sonidos/pitido.wav` de la 0.27 (main). En MP3: 26,3 MB. Sin avisos de sonidos que falten en la SD. `.env.sonidos` borrado al acabar. El pitido sigue sin estar en la SD de la placa. La app que los usa sigue en preparación en esta rama.
+
 ## Voces al elegir jugadores y sonidos en la nube · 0.26 · Cloud · 02/11/2026
 
 **Código hecho y probado en el PC; sin instalar en la placa ni publicar.** (1) A petición del dueño, en ELEGIR JUGADORES la placa dice «¡Equipo blanco!» (Q1) o «¡Equipo azul!» (Q2) al abrirse y al cambiar de turno, y el nombre del jugador al elegirlo (`N_<nombre>`), con las voces de los hándicaps que ya están en la SD; cada voz corta la anterior; sin la voz grabada (p. ej. un jugador sin nombre grabado), nada. `elegir::hooks.turn/picked` (`ui_jugadores.h`), `voceshc::turnVoice/nameOnly` (`s3_voces_hc.h`); prueba en `s3_voces_hc_test.cpp`. Va en la 0.26 (sin publicar). (2) Sonidos de la SD en la nube para la app: almacén privado `sonidos` (`supabase/migrations/20261102120000_sonidos_nube.sql`, sin aplicar: la cuenta de Supabase conectada en la nube es la de Logística Pro, no la del marcador), `scripts/subir-sonidos-nube.py` (probado con audios y servidor simulados) y la guía `docs/SONIDOS_NUBE.md` para la sesión del PC del dueño. Falta: subirlos y que la app los use. Pruebas: `npm test` (360), `npm run typecheck` y `npm run test:hardware`.
