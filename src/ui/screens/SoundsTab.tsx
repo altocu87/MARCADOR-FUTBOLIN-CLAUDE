@@ -34,24 +34,62 @@ function summary(c: SoundChoice, sounds: StoredSound[]): string {
 
 const pct = (f: number) => `${Math.round(f * 100)} %`;
 
-/** Voces y sonidos de la pantalla bajados de la nube (cloudSounds.ts): cuántos hay en este aparato. */
+/** Voces y sonidos de la pantalla bajados de la nube (cloudSounds.ts): cuántos hay, cómo va la descarga y bajarlos. */
 function CloudVoicesCard() {
   const { cloud } = useApp();
   const count = useSyncExternalStore(
     (fn) => cloudVoices.subscribe(fn),
     () => cloudVoices.count,
   );
+  const st = useSyncExternalStore(
+    (fn) => cloudVoices.subscribe(fn),
+    () => cloudVoices.status,
+  );
+  const busy = st.state === 'checking' || st.state === 'downloading';
+  const hour = (at: number) => new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  let line: string;
+  let tone = '';
+  if (st.state === 'checking') line = 'Comprobando…';
+  else if (st.state === 'downloading') line = `Bajando ${st.done} de ${st.todo}…`;
+  else if (st.state === 'done' && st.failed) {
+    line = `No se pudieron bajar ${st.failed} · pulsa BAJAR SONIDOS otra vez`;
+    tone = 'bad';
+  } else if (st.state === 'done' && st.total === 0) line = 'En la nube no hay sonidos todavía';
+  else if (st.state === 'done') {
+    line = `Al día · comprobado a las ${hour(st.at)}`;
+    tone = 'ok';
+  } else if (st.state === 'error') {
+    line = st.message;
+    tone = 'bad';
+  } else if (st.state === 'demo') line = 'En el modo prueba no se bajan';
+  else if (!cloud.session || st.state === 'noAccount') line = 'Entra en tu cuenta (Ajustes → Cuenta) para bajarlos';
+  else line = '';
+  const pct =
+    st.state === 'downloading' && st.todo
+      ? Math.round((st.done / st.todo) * 100)
+      : st.state === 'done' && st.total
+        ? Math.round(((st.total - st.failed) / st.total) * 100)
+        : 0;
   return (
     <div className="card snd-cloud">
-      <span className="label">
-        Voces de la pantalla
-        <HelpButton
-          title="Voces de la pantalla"
-          text="Los comentarios, las voces del Partido Loco y el pitido de la pantalla. Se bajan de tu cuenta una vez a este aparato y luego suenan sin internet. Si no hay, suena lo de siempre."
-          className="snd-help"
-        />
-      </span>
-      <strong>{count ? `${count} en este aparato` : cloud.session ? 'Ninguna todavía' : 'Entra en tu cuenta para bajarlas'}</strong>
+      <div className="snd-head">
+        <span className="label">
+          Sonidos de la pantalla
+          <HelpButton
+            title="Sonidos de la pantalla"
+            text="Los comentarios del locutor, las voces del Partido Loco y el pitido de la pantalla. Se bajan de tu cuenta una vez a este aparato y luego suenan sin internet. Si no hay, suena lo de siempre."
+            className="snd-help"
+          />
+        </span>
+        <button className="btn btn-primary" disabled={busy || !cloud.session} onClick={() => cloudVoices.requestSync?.()}>
+          {busy ? 'Bajando…' : 'Bajar sonidos'}
+        </button>
+      </div>
+      <strong className="snd-cloud-count">{count} en este aparato</strong>
+      <div className={`snd-cloud-track ${tone}`} aria-hidden="true">
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      {line && <span className={`snd-cloud-line ${tone}`}>{line}</span>}
     </div>
   );
 }

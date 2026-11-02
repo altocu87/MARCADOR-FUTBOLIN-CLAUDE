@@ -134,6 +134,8 @@ export async function syncCloudSounds(opts: {
   repo: CloudClipRepository;
   http?: typeof fetch;
   onProgress?: (done: number, todo: number) => void;
+  /** Uno que no se pudo bajar (antes de contarlo en onProgress). */
+  onFail?: (code: string) => void;
   parallel?: number;
 }): Promise<SyncResult> {
   const http = opts.http ?? fetch;
@@ -141,7 +143,8 @@ export async function syncCloudSounds(opts: {
   const headers = { Authorization: `Bearer ${opts.token}`, apikey: opts.anonKey };
   const res = await http(`${base}/${CLOUD_INDEX}`, { headers, cache: 'no-store' });
   if (res.status === 400 || res.status === 404) return { total: 0, downloaded: 0, removed: 0, failed: 0 }; // aún no se ha subido nada
-  if (!res.ok) throw new Error(`La nube no deja ver los sonidos (${res.status})`);
+  if (res.status === 401 || res.status === 403) throw new Error('La cuenta no deja ver los sonidos: sal y vuelve a entrar');
+  if (!res.ok) throw new Error(`La nube no contesta bien (error ${res.status})`);
   const index = (await res.json()) as CloudIndex;
   const files = index.files ?? {};
   const have = await opts.repo.codes();
@@ -155,6 +158,7 @@ export async function syncCloudSounds(opts: {
   const todo = Object.entries(files).filter(([code, f]) => have.get(code) !== f.mp3Sha256);
   let done = 0;
   let failed = 0;
+  if (todo.length) opts.onProgress?.(0, todo.length);
   const queue = [...todo];
   const worker = async () => {
     for (let item = queue.shift(); item; item = queue.shift()) {
@@ -163,9 +167,13 @@ export async function syncCloudSounds(opts: {
         const r = await http(`${base}/${code}.mp3`, { headers });
         const data = r.ok ? await r.arrayBuffer() : null;
         if (data && data.byteLength === f.bytes) await opts.repo.put({ code, sha: f.mp3Sha256, data });
-        else failed += 1;
+        else {
+          failed += 1;
+          opts.onFail?.(code);
+        }
       } catch {
         failed += 1;
+        opts.onFail?.(code);
       }
       done += 1;
       opts.onProgress?.(done, todo.length);
@@ -173,6 +181,22 @@ export async function syncCloudSounds(opts: {
   };
   await Promise.all(Array.from({ length: Math.max(1, opts.parallel ?? 4) }, worker));
   return { total: Object.keys(files).length, downloaded: todo.length - failed, removed, failed };
+}
+
+/** Cómo va la comprobación con la nube (para enseñarlo en Ajustes → Sonidos). */
+export type CloudSyncStatus =
+  | { state: 'idle' }
+  | { state: 'noAccount' }
+  | { state: 'demo' }
+  | { state: 'checking' }
+  | { state: 'downloading'; done: number; todo: number; failed: number }
+  | { state: 'done'; at: number; total: number; downloaded: number; failed: number }
+  | { state: 'error'; at: number; message: string };
+
+/** Mensaje claro de un fallo al comprobar o bajar. */
+export function syncErrorText(err: unknown): string {
+  if (err instanceof TypeError) return 'Sin conexión a internet';
+  return err instanceof Error && err.message ? err.message : 'No se pudo comprobar';
 }
 
 interface Decoded {
@@ -206,6 +230,15 @@ export class CloudVoices {
   /** Cambia al cargar o actualizar (para la pantalla de Ajustes). */
   version = 0;
   private listeners = new Set<() => void>();
+  /** Cómo va la comprobación con la nube. */
+  status: CloudSyncStatus = { state: 'idle' };
+  /** Vuelve a comprobar con la nube ya (lo pone AppContext; null sin cuenta). */
+  requestSync: (() => void) | null = null;
+
+  setStatus(s: CloudSyncStatus): void {
+    this.status = s;
+    this.listeners.forEach((fn) => fn());
+  }
 
   get count(): number {
     return this.codes.size;
@@ -283,3 +316,5 @@ export class CloudVoices {
 }
 
 export const cloudVoices = new CloudVoices();
+// Solo en desarrollo: ver la tarjeta de Ajustes en cada estado desde la consola (window.marcadorSonidos).
+if (import.meta.env?.DEV && typeof window !== 'undefined') (window as unknown as { marcadorSonidos: CloudVoices }).marcadorSonidos = cloudVoices;

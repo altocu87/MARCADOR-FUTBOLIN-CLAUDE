@@ -58,7 +58,7 @@ import {
 import { applyCatalogIcons } from './catalogIcons';
 import { useProfileSync } from './profileSync';
 import { useCloudSync, type CloudSync } from './cloudSync';
-import { browserClipRepository, cloudVoices, syncCloudSounds, type CloudClipRepository } from '../services/sound/cloudSounds';
+import { browserClipRepository, cloudVoices, syncCloudSounds, syncErrorText, type CloudClipRepository } from '../services/sound/cloudSounds';
 import { shortVoiceCodes } from '../services/sound/handicapVoices';
 import { activeMatchInProgress } from './idle';
 import { useIdleMonitor } from './useIdle';
@@ -485,21 +485,52 @@ export function AppProvider({ children, repos: injected }: { children: ReactNode
   useEffect(() => {
     if (injected) return;
     let alive = true;
+    let running = false;
     const repo = clipRepo();
     const preload = shortVoiceCodes(playerNames.split('\n'));
+    // Comprobar con la nube y bajar lo que falte, enseñando cómo va (Ajustes → Sonidos).
+    const run = async () => {
+      if (running) return;
+      if (demoMode) return cloudVoices.setStatus({ state: 'demo' });
+      if (!cloudUser) return cloudVoices.setStatus({ state: 'noAccount' });
+      running = true;
+      cloudVoices.setStatus({ state: 'checking' });
+      try {
+        const access = await fileAccess();
+        if (!alive) return;
+        if (!access) return cloudVoices.setStatus({ state: 'error', at: Date.now(), message: 'La cuenta no responde: sal y vuelve a entrar' });
+        let failedSoFar = 0;
+        const r = await syncCloudSounds({
+          ...access,
+          repo,
+          onProgress: (done, todo) => {
+            if (alive) cloudVoices.setStatus({ state: 'downloading', done, todo, failed: failedSoFar });
+          },
+          onFail: () => {
+            failedSoFar += 1;
+          },
+        });
+        if (!alive) return;
+        if (r.downloaded || r.removed) await cloudVoices.load(repo, preload);
+        cloudVoices.setStatus({ state: 'done', at: Date.now(), total: r.total, downloaded: r.downloaded, failed: r.failed });
+      } catch (err) {
+        if (alive) cloudVoices.setStatus({ state: 'error', at: Date.now(), message: syncErrorText(err) });
+      } finally {
+        running = false;
+      }
+    };
+    cloudVoices.requestSync = () => void run();
     void (async () => {
       try {
         await cloudVoices.load(repo, preload);
-        const access = cloudUser && !demoMode ? await fileAccess() : null;
-        if (!access || !alive) return;
-        const r = await syncCloudSounds({ ...access, repo });
-        if (alive && (r.downloaded || r.removed)) await cloudVoices.load(repo, preload);
       } catch {
-        /* sin conexión o sin sonidos en la nube: se queda lo que haya */
+        /* sin almacenamiento en este aparato */
       }
+      if (alive) await run();
     })();
     return () => {
       alive = false;
+      cloudVoices.requestSync = null;
     };
   }, [injected, demoMode, cloudUser, fileAccess, playerNames]);
   const sync = useProfileSync({ enabled: !injected && !demoMode, store, players, matches, tournaments, progression, catalog, rewards, idle });

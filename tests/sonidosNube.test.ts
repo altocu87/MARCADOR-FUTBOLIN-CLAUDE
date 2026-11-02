@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Handicap } from '../src/match-engine';
-import { CloudVoices, memoryClipRepository, syncCloudSounds } from '../src/services/sound/cloudSounds';
+import { CloudVoices, memoryClipRepository, syncCloudSounds, syncErrorText } from '../src/services/sound/cloudSounds';
 import {
   affected,
   avisoVoice,
@@ -152,6 +152,30 @@ describe('sonidos de la nube en el aparato', () => {
     const c = cloud({ bbbbbbbb: files.bbbbbbbb });
     expect(await syncCloudSounds({ ...opts, repo, http: c.http })).toEqual({ total: 1, downloaded: 0, removed: 1, failed: 0 });
     expect([...(await repo.codes()).keys()]).toEqual(['bbbbbbbb']);
+  });
+
+  it('cuenta el avance (para la barra) y los que fallan', async () => {
+    const repo = memoryClipRepository();
+    const files = { aaaaaaaa: { bytes: 10, ms: 1, mp3Sha256: 'a' }, bbbbbbbb: { bytes: 20, ms: 1, mp3Sha256: 'b' }, cccccccc: { bytes: 5, ms: 1, mp3Sha256: 'c' } };
+    const steps: string[] = [];
+    const fails: string[] = [];
+    const r = await syncCloudSounds({
+      ...opts,
+      repo,
+      http: cloud(files, new Set(['bbbbbbbb'])).http,
+      parallel: 1,
+      onProgress: (d, t) => steps.push(`${d}/${t}`),
+      onFail: (c) => fails.push(c),
+    });
+    expect(steps).toEqual(['0/3', '1/3', '2/3', '3/3']);
+    expect(fails).toEqual(['bbbbbbbb']);
+    expect(r).toEqual({ total: 3, downloaded: 2, removed: 0, failed: 1 });
+  });
+
+  it('errores claros: cuenta sin permiso y sin conexión', async () => {
+    const denied = (async () => new Response('{}', { status: 403 })) as unknown as typeof fetch;
+    await expect(syncCloudSounds({ ...opts, repo: memoryClipRepository(), http: denied })).rejects.toThrow('sal y vuelve a entrar');
+    expect(syncErrorText(new TypeError('Failed to fetch'))).toBe('Sin conexión a internet');
   });
 
   it('sin nada subido todavía, no es un error', async () => {
