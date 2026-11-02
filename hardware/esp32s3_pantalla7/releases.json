@@ -1,7 +1,16 @@
 {
-  "version": "0.26",
+  "version": "0.27",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.27",
+      "date": "2026-11-02",
+      "title": "El pitido se instala solo",
+      "changes": [
+        "Si a la tarjeta le falta el pitido del árbitro, la pantalla lo baja sola por Wi-Fi al encender y lo guarda.",
+        "Comprueba que llega entero antes de guardarlo. Conserva todo lo de la 0.26."
+      ]
+    },
     {
       "version": "0.26",
       "date": "2026-11-02",
