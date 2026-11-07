@@ -345,6 +345,24 @@ static void prewarm(jug::Store* s, void (*tick)() = nullptr) {
   lv_obj_delete(tmp);
 }
 
+// Lo mismo, de una ficha en una (tras enseñar Inicio). `i`: por dónde va. Devuelve false cuando ha acabado.
+static bool prewarmStep(jug::Store* s, uint8_t& i) {
+  static lv_obj_t* tmp = nullptr;
+  store = s;
+  while (store && i < store->count) {
+    uint8_t k = i++;
+    if (!store->isActive(store->list[k].code)) continue;
+    if (!tmp) tmp = lv_obj_create(nullptr);
+    cardImage(k, tmp);
+    return true;
+  }
+  if (tmp) {
+    lv_obj_delete(tmp);
+    tmp = nullptr;
+  }
+  return false;
+}
+
 static void makeCards() {
   lv_obj_clean(grid);
   memset(freeCard, 0, sizeof(freeCard));

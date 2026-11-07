@@ -658,9 +658,11 @@ static void afterChange(bool goalAccepted, Team goalTeam) {
   if(whistle){
     player.stop();
     player.play(audio::Item{false,pitido::code(),mfv3snd::Tune{nullptr,0}},false);
+    // Un pitido que está en la SD pero no se puede tocar (dañado) no quita el sonido de siempre: suena ese.
+    whistle=player.requestAccepted();
     player.pump(millis());
-    whistleLead=player.busy();
-    if(sndChoices.c[(uint8_t)mfv3snd::Event::PeriodEnd].kind==mfv3snd::Kind::Default){
+    whistleLead=whistle && player.busy();
+    if(whistle && sndChoices.c[(uint8_t)mfv3snd::Event::PeriodEnd].kind==mfv3snd::Kind::Default){
       mfv3snd::EventList rest;
       for(uint8_t i=0;i<sounds.n;i++)if(sounds.ev[i]!=mfv3snd::Event::PeriodEnd)rest.add(sounds.ev[i]);
       sounds=rest;
@@ -695,6 +697,8 @@ static void hcSkipIntro(uint32_t now) {
 }
 static void prepareMatchNetwork();
 static void rewardsClear();  // ui_premios.h (incluido más abajo)
+static bool warmDone();
+static bool warmStep();
 static void startMatch() {
   if (tourSavePending) { ui::toast("Vuelve para guardar el torneo pendiente"); return; }
   if(resultPending || resultSaving){ui::toast("Guardando el partido");return;}
@@ -708,6 +712,9 @@ static void startMatch() {
     return;
   }
   prepareMatchNetwork();
+  // Si se empieza a jugar antes de acabar de cargar (muy poco después de encender): lo que falta, ahora, para que
+  // el partido no se pare la primera vez que use una letra o una pantalla.
+  while (!warmDone()) warmStep();
   // Partido Loco: hándicaps y visitas; algunos dependen de cuántos juegan en cada equipo.
   cfg.chaos = chosenMode == inicio::CHAOS;
   cfg.players[0] = haveTeams && chosenTeams.n[0] ? chosenTeams.n[0] : 1;
@@ -812,6 +819,13 @@ static void inputButtonGoal(Team t) {
     eng.next(now);
     afterChange(false, t);
     return;  // esta pulsación solo continúa: ni gol ni primer penalti
+  }
+  // Tanda de penaltis: el pulsador del equipo que tira es gol; el del portero, fallo del que tira (como el
+  // penalti del Partido Loco). Los sensores no cuentan fallos: un balón solo dice gol.
+  if (eng.phase() == Phase::Penalties && t != eng.nextKicker()) {
+    Team kicker = eng.nextKicker();
+    if (eng.penalty(kicker, false, now) == mfv3::Result::Accepted) afterChange(false, kicker);
+    return;
   }
   inputGoal(t);
 }
@@ -1034,6 +1048,7 @@ static bool boardCommand(const char* line,const char* command){
 }
 
 // Línea del protocolo MFV3 recibida de una placa auxiliar.
+static void tactilReport();
 static void handleBoardLine(const char* line) {
   if (test.active) test.usbSeen = true;
 #if HAS_AUDIO
@@ -1060,6 +1075,7 @@ static void handleBoardLine(const char* line) {
   if((inMatch && (soundMutation || soundScan || soundPreview)) ||
      (soundInspection.active && (soundMutation || soundScan || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
   if((comentarios::staging && (soundMutation || soundPreview)) || (sndCmd.receiving() && (boardCommand(line,"SONIDO_BORRAR") || soundPreview))){sendLine("SONIDO_ERROR - ocupado");return;}
+  if(!strcmp(line,"AUDIO?")){char b[64];snprintf(b,sizeof b,"AUDIO hueco_max_ms=%lu dma_lleno=%lu",(unsigned long)player.takePumpGapMaxLocked(),(unsigned long)player.writeTimeoutCount());sendLine(b);return;}
   if(!strcmp(line,"COMENTARIO_ESTADO?")){char b[350];snprintf(b,sizeof b,"COMENTARIO_ESTADO pendiente=%08lx ultimo=%08lx espera_ms=%lu inicio_ms=%lu solicitado=%08lx resultado=%s reproductor=%s fallo=%s error=%ld errores=%lu frame_error=%lu vsync_timeout=%lu resync_error=%lu",(unsigned long)pendingCommentary,(unsigned long)commentaryLastCode,(unsigned long)commentaryWaitMs,(unsigned long)commentaryStartedAt,(unsigned long)commentaryRequestedCode,commentaryOutcome,player.statusName(),player.failureName(),(long)player.lastError(),(unsigned long)player.errorCount(),(unsigned long)uiport::presentFailures,(unsigned long)uiport::vsyncTimeouts,(unsigned long)uiport::resyncFailures);sendLine(b);return;}
   if(!strcmp(line,"SDINFO?")){uint64_t total,free;bool ok=sndStore.sdSpace(total,free);char b[140];snprintf(b,sizeof b,"SDINFO disponible=%u partido=%u total=%llu usado=%llu libre=%llu",(unsigned)ok,(unsigned)inMatch,(unsigned long long)total,(unsigned long long)(total-free),(unsigned long long)free);sendLine(b);return;}
 #endif
@@ -1087,6 +1103,7 @@ static void handleBoardLine(const char* line) {
     }
     return;
   }
+  if (!strcmp(line, "TACTIL?")) return tactilReport();  // diagnóstico del táctil y del Wi-Fi (solo lectura)
   if (!strcmp(line, "NUBE_QR?")) {  // pruebas: la dirección que enseña el QR
     char b[200];
     nube::qrUrl(b, sizeof(b));
@@ -1236,7 +1253,9 @@ static void radioPush(const uint8_t* mac, const uint8_t* data, int len) {
     return;
   }
   mfv3::RadioMsg m = mfv3::radioDecode(data, len, GRUPO_MESA);
-  if (!m.ok || !radioDedup.fresh(mac, m.seq)) return;
+  // Con la cola llena se descarta sin apuntar su número: así la repetición del mando sí entra.
+  if (!m.ok || (m.cmd != mfv3::RadioCmd::Hello && (uint8_t)((radioHead + 1) % 8) == radioTail)) return;
+  if (!radioDedup.fresh(mac, m.seq)) return;
   lastRadioAt = millis();
   if (!firstRadioAt) firstRadioAt = lastRadioAt ? lastRadioAt : 1;
   if (m.cmd == mfv3::RadioCmd::Hello) return;
@@ -1312,7 +1331,11 @@ static void drawHeader(const char* left, const char* right, uint16_t rightColor)
 // Pitido del árbitro (s3_pitido.h): si falta en la SD, se baja de la web al buscar actualizaciones.
 static bool pitidoNeeded() {
 #if HAS_AUDIO
-  return sndStore.sdOk && pitido::tries < 3 && !hcHas(pitido::code());
+  if (!sndStore.sdOk || pitido::tries >= 3) return false;
+  // Falta o está dañado (no se puede tocar): se vuelve a bajar. Uno propio que sí suena se respeta.
+  auto f = sndStore.open(pitido::code());
+  mfv3snd::WavInfo w;
+  return !f || !audio::validWavFile(f, w);
 #else
   return false;
 #endif
@@ -1337,6 +1360,7 @@ static bool pitidoFetch(const char* url, uint8_t* out, size_t cap, size_t& n) {
   n = 0;
   NetworkClientSecure client;
   client.useBuiltinCACertBundle();
+  client.setHandshakeTimeout(15);
   HTTPClient http;
   http.setTimeout(10000);
   http.setReuse(false);
@@ -1456,6 +1480,7 @@ static void onOptionsRedo() { profileRedo = true; }
 // Buscar actualizaciones después de presentar Inicio, sin competir con la precarga.
 static bool bootCheckPending = true;
 static void prepareMatchNetwork() {
+  if (versionsRunning) versionsCancel = true;  // la tarea de versiones no pide nada más (ni baja el pitido)
   if (checkState == CheckState::Running) checkState = CheckState::Never;
   if (s3net::link != s3net::Link::Off) s3net::stop();
 }
@@ -1887,6 +1912,7 @@ static nube::Resp nubeHttp(const char* method, const char* url, const char* bear
   nube::Resp r;
   NetworkClientSecure client;
   client.useBuiltinCACertBundle();
+  client.setHandshakeTimeout(15);
   HTTPClient http;
   http.setTimeout(15000);
   // Una conexión por petición: con «keep-alive», leer una respuesta sin tamaño (204 de publicar_perfil_jugador)
@@ -2727,7 +2753,65 @@ static bool onTouchDown() {
 // desbordaba y la placa se reiniciaba. 32 KB, como el ejemplo de Waveshare (20 KB) con margen.
 // (Aquí y no arriba: la macro define una función y el IDE de Arduino pone sus declaraciones antes de la primera.)
 SET_LOOP_TASK_STACK_SIZE(32 * 1024);
+// ---------------------------------------------------------------- carga tras enseñar Inicio
+// Antes todo se descomprimía con «Cargando…» (13 s, de ellos ~7 de capas, letras y fichas) y nada respondía. Ahora
+// solo lo de Inicio va antes; lo demás, una pieza por vuelta de loop() fuera de partido (cada una, ~0,1–0,3 s).
+// Empezar un partido termina lo que falte (startMatch).
+static const capas::Capa* const BOOT_INICIO[] = {
+    &capas::INICIO,
+    // tarjetas y botones de inicio encendidos y pulsados: al tocarlos responden al momento
+    &capas::INICIO_SEL_RAPIDO, &capas::INICIO_SEL_LOCO, &capas::INICIO_SEL_CLASIFICATORIO,
+    &capas::INICIO_PUL_RAPIDO, &capas::INICIO_PUL_LOCO, &capas::INICIO_PUL_CLASIFICATORIO,
+    &capas::INICIO_PUL_TORNEO, &capas::INICIO_PUL_RANKING, &capas::INICIO_PUL_RETOS};
+static const capas::Capa* const WARM_LAYERS[] = {&capas::CONFIG, &capas::PARTIDO,
+                                                 &capas::CONFIG_IZQ_PUL_MAS, &capas::CONFIG_IZQ_PUL_MENOS,
+                                                 &capas::CONFIG_DER_PUL_MAS, &capas::CONFIG_DER_PUL_MENOS,
+                                                 &capas::CONFIG_PUL_CONTINUAR, &capas::CONFIG_AMBAS,
+                                                 &capas::CONFIG_IZQ_APAGADA};
+// La pausa ya pegada sobre su fondo opaco (ui_partido.h).
+static const capas::Capa* const WARM_FLAT[] = {&capas::PAUSA, &capas::PAUSA_PUL_CONTINUAR, &capas::PAUSA_PUL_ABANDONAR,
+                                               &capas::PAUSA_ABANDONAR};
+static const uint16_t WARM_DONE = 0xFFFF;
+static uint16_t warmAt = WARM_DONE;  // setup() lo pone a 0
+static uint8_t warmCard = 0;
+static int warmPhoto = 0;
+static uint32_t warmT0 = 0;
+static bool warmDone() { return warmAt == WARM_DONE; }
+// Una pieza. Devuelve false cuando ya no queda nada.
+static bool warmStep() {
+  const uint16_t nL = sizeof(WARM_LAYERS) / sizeof(WARM_LAYERS[0]), nF = sizeof(WARM_FLAT) / sizeof(WARM_FLAT[0]);
+  if (warmDone()) return false;
+  if (warmAt < nL) {
+    assets::preload(*WARM_LAYERS[warmAt++], true);
+    return true;
+  }
+  if (warmAt < nL + nF) {
+    assets::flat(*WARM_FLAT[warmAt++ - nL], partido::OVERLAY_BG, true);
+    return true;
+  }
+  if (warmAt == nL + nF) {  // todas las letras (la primera vez que se usaba una grande, el partido se paraba)
+    if (assets::preloadNextFont()) return true;
+    warmAt++;
+  }
+  if (warmAt == nL + nF + 1) {  // fichas de la lista de jugadores ya pintadas
+    if (elegir::prewarmStep(&jugadores, warmCard)) return true;
+    warmAt++;
+  }
+  if (historial::prewarmStep(&jugadores, warmPhoto)) return true;  // sus fotos en los tamaños del ranking
+  warmAt = WARM_DONE;
+  LV_LOG_WARN("CARGADO resto_ms=%lu", (unsigned long)(millis() - warmT0));  // al registro: sin esperar al USB
+  return false;
+}
+
 void setup() {
+  // Hitos del arranque en ms, para saber en qué se va el tiempo antes de la primera pantalla.
+  char bootLine[160];
+  int bootLen = 0;
+  auto bootMark = [&](const char* what) {
+    bootLen += snprintf(bootLine + bootLen, sizeof(bootLine) - bootLen, " %s=%lu", what, (unsigned long)millis());
+    if (bootLen >= (int)sizeof(bootLine)) bootLen = sizeof(bootLine) - 1;
+  };
+  bootLine[0] = 0;
 #ifdef ARDUINO
   mbedtls_platform_set_calloc_free(tlsCalloc, tlsFree);
 #endif
@@ -2755,6 +2839,7 @@ void setup() {
   // Capas de la app y letras (scripts/placa_recursos.py), jugadores y fotos; también la usa el sonido.
   if (FFat.begin(false)) jugadores.begin(&FFat);
   uiport::begin(lcd);
+  bootMark("panel");
   uiport::touchDownHook = onTouchDown;
   gfx.tapCb = onTap;
   inicio::hooks.mode = onModeChosen;
@@ -2851,7 +2936,10 @@ void setup() {
 #if HAS_AUDIO
   sndStore.begin();
   player.begin(lcd, sndStore, sndVolume);
+  player.startTask();  // el sonido sigue aunque una pantalla tarde en dibujarse
+  bootMark("audio");
   comentarios::load(sndStore);
+  bootMark("voces");
 #endif
 #if HAS_AUDIO
   partidos::begin(sndStore.sdOk);  // todos los partidos, en la tarjeta (sin ella, en el chip)
@@ -2880,35 +2968,20 @@ void setup() {
   nube::clubsDone = equipos::pushed;
   s3flash::hook = []() { uiport::needResync = true; };  // escrituras en la memoria del chip (s3_flash.h)
   radioBegin();
+  bootMark("datos");
   lastActivity = millis();
-  // Pantallas de cada partido ya descomprimidas en la PSRAM: así al tocar salen al momento. Mientras, «Cargando…»
-  // con su porcentaje (unos 7 s al encender).
-  static const capas::Capa* const BOOT_LAYERS[] = {&capas::INICIO, &capas::CONFIG, &capas::PARTIDO,
-                               // tarjetas y botones de inicio y configuración encendidos y pulsados: al tocarlos
-                               // responden al momento (antes la primera vez tardaban ~0,2 s en descomprimirse)
-                               &capas::INICIO_SEL_RAPIDO, &capas::INICIO_SEL_LOCO, &capas::INICIO_SEL_CLASIFICATORIO,
-                               &capas::INICIO_PUL_RAPIDO, &capas::INICIO_PUL_LOCO, &capas::INICIO_PUL_CLASIFICATORIO,
-                               &capas::INICIO_PUL_TORNEO, &capas::INICIO_PUL_RANKING, &capas::INICIO_PUL_RETOS,
-                               &capas::CONFIG_IZQ_PUL_MAS, &capas::CONFIG_IZQ_PUL_MENOS, &capas::CONFIG_DER_PUL_MAS,
-                               &capas::CONFIG_DER_PUL_MENOS, &capas::CONFIG_PUL_CONTINUAR,
-                               &capas::CONFIG_AMBAS, &capas::CONFIG_IZQ_APAGADA};
-  static const capas::Capa* const BOOT_FLAT[] = {&capas::PAUSA, &capas::PAUSA_PUL_CONTINUAR, &capas::PAUSA_PUL_ABANDONAR,
-                                                 &capas::PAUSA_ABANDONAR};
-  const int nLayers = sizeof(BOOT_LAYERS) / sizeof(BOOT_LAYERS[0]), nFlat = sizeof(BOOT_FLAT) / sizeof(BOOT_FLAT[0]);
-  cargando::show(nLayers + nFlat + 38 /* letras */ + jugadores.count);
-  for (const capas::Capa* c : BOOT_LAYERS) {
+  // Solo lo de Inicio antes de enseñarlo (con «Cargando…»); lo demás (configuración, partido, pausa, letras,
+  // fichas y fotos) lo carga warmStep() después, una pieza por vuelta del programa, sin dejar de atender el táctil.
+  cargando::show(sizeof(BOOT_INICIO) / sizeof(BOOT_INICIO[0]));
+  for (const capas::Capa* c : BOOT_INICIO) {
     assets::preload(*c, true);
     cargando::step();
   }
-  // La pausa ya pegada sobre su fondo opaco (ui_partido.h).
-  for (const capas::Capa* c : BOOT_FLAT) {
-    assets::flat(*c, partido::OVERLAY_BG, true);
-    cargando::step();
-  }
-  assets::preloadFonts(cargando::step);  // todas las letras (la primera vez que se usaba una grande, el partido se paraba)
-  elegir::prewarm(&jugadores, cargando::step);  // fichas de la lista de jugadores ya pintadas
-  historial::prewarm(&jugadores);               // sus fotos en los tamaños del ranking
   cargando::finish();
+  bootMark("inicio");
+  LV_LOG_WARN("ARRANQUE%s", bootLine);
+  warmAt = 0;
+  warmT0 = millis();
   sendHello();
   sendEvent("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba
@@ -2916,6 +2989,7 @@ void setup() {
 
 void loop() {
   uint32_t now = millis();
+  if (!warmDone() && !inMatch) warmStep();  // lo que no hacía falta para enseñar Inicio, poco a poco
 
   // Entradas de placas auxiliares (UART) y del USB.
   for(unsigned bytes=0;bytes<512 && Serial.available()>0;bytes++)
@@ -2929,6 +3003,7 @@ void loop() {
   rtc.poll(now);
 #if HAS_AUDIO
   comentarios::tick(millis(),inMatch);
+  comentarios::checkTick(sndStore,player.busy() || soundManagementBusy());  // una voz por vuelta, tras arrancar
   sndCmd.tick(millis(), sendLine);
   player.pump(millis());
   inspectSoundTick();
@@ -2955,7 +3030,7 @@ void loop() {
               ((screen == Screen::Home && !choosingPlayers) || screen == Screen::Settings || screen == Screen::Account);
   if (calm) nube::apply();
   // Aviso de «no toques» mientras sube en reposo (en el reloj lo pone el propio reloj, sleepView).
-  reposo::syncBanner(nube::background && nube::networking() && !reposo::active());
+  reposo::syncBanner(nube::background && nube::networking() && !nube::abortJob.load() && !reposo::active());
   bool resting = calm && (dimmed || (!sleepAfterMs() && now - lastActivity > 3u * 60u * 1000u));
   if (resting && nube::loggedIn() && wifiSsid[0] && nube::phase != nube::BUSY && !versionsRunning && !s3net::scanning && checkState != CheckState::Running &&
       s3net::link == s3net::Link::Off && (int32_t)(now - nextCloudSync) >= 0) {
@@ -2977,7 +3052,8 @@ void loop() {
 
   // La app ha pasado jugadores o fotos y no se está eligiendo: se preparan ya sus fichas (eligiendo, se rehace
   // la pantalla en render()).
-  if (jugadores.changed && !elegir::active()) {
+  // Durante una sincronización se espera al final: rehacerlas por cada foto nueva bloquea la pantalla.
+  if (jugadores.changed && !elegir::active() && nube::phase != nube::BUSY) {
     matchFixedDirty = true;
     elegir::prewarm(&jugadores);
     historial::prewarm(&jugadores);
@@ -3014,6 +3090,7 @@ void loop() {
   uint32_t generationBeforeRender=commentaryGeneration,frameBefore=uiport::presented;
   bool resultBeforeRender=resultPending;
   render();
+  sevenseg::work();  // cifras del reloj de reposo, a trozos (sin parar el programa)
   uiport::step();
   if (bootCheckPending && !test.active && !inMatch && inicio::active() && uiport::presented != frameBefore) {
     bootCheckPending = false;
@@ -3025,7 +3102,8 @@ void loop() {
     commentaryRequestedCode=code;commentaryLastCode=0;commentaryStartedAt=0;
     if(player.volume()==0)commentaryOutcome="silencio";
     else {
-      bool afterWhistle=whistleLead && player.busy();whistleLead=false;
+      // El aviso de la tanda entra en cola: stop() tiraría el final de la voz del resultado, aún en DMA.
+      bool afterWhistle=(whistleLead && player.busy()) || shootoutPreviewVoice;whistleLead=false;
       player.play(audio::Item{false,code,mfv3snd::Tune{nullptr,0}},afterWhistle);
       bool fallback=!player.requestAccepted();
       if(fallback && player.ok && commentaryHasFallback)player.play(audio::Item{true,0,mfv3snd::defaultTune(commentaryFallback)},afterWhistle);
@@ -3051,4 +3129,14 @@ void loop() {
     if(saved && !tourMatch && !resultSaveFailed){premios::compute(&jugadores,partidos::count-1);}
   }
   delay(2);
+}
+
+// Orden TACTIL?: aquí, después de los ajustes (checkState) y del Wi-Fi.
+static void tactilReport() {
+  char b[160];
+  snprintf(b, sizeof(b), "TACTIL lecturas=%lu fallos=%lu datos=%lu pulsaciones=%lu wifi=%u busqueda=%u versiones=%d hora=%d",
+           (unsigned long)uiport::touchReads, (unsigned long)uiport::touchErrors, (unsigned long)uiport::touchFresh,
+           (unsigned long)uiport::touchPresses, (unsigned)s3net::link, (unsigned)checkState, (int)versionsRunning,
+           (int)rtc.clockOk);
+  sendLine(b);
 }

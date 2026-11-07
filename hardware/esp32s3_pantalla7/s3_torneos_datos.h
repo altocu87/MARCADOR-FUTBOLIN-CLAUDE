@@ -1303,8 +1303,9 @@ bool save(Tournament& t) {
 bool discard(const char* id) {
   using namespace guardado;
   if (!id || !id[0]) return false;
-  // Sus partidos primero (como discardTournament de la app), también de la cuenta.
-  partidos::removeTournament(id, matchGone);
+  // Sus partidos primero (como discardTournament de la app), también de la cuenta. Si la tarjeta no deja quitarlos
+  // del índice, el torneo no se descarta: así no queda ningún partido suelto de un torneo que ya no existe.
+  if (partidos::removeTournament(id, matchGone) < 0) return false;
   char path[112];
   jsonPath(id, path, sizeof(path));
   bool had = findSummary(id) >= 0;

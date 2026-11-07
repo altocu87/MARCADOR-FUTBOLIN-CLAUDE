@@ -49,6 +49,12 @@ int main() {
         const auto next=eng.nextKicker();
         packet(next==Team::White?mfv3::RadioCmd::GoalWhite:mfv3::RadioCmd::GoalBlue,++sequence);
         assert(eng.kickCount()==1); // solo una pulsación NUEVA tira el penalti
+        assert(eng.kick(0).team==next && eng.kick(0).scored);
+        // El pulsador del portero = fallo del que tira; el sensor del portero no apunta nada.
+        const auto kicker=eng.nextKicker();
+        inputGoal(kicker==Team::White?Team::Blue:Team::White);assert(eng.kickCount()==1);
+        packet(kicker==Team::White?mfv3::RadioCmd::GoalBlue:mfv3::RadioCmd::GoalWhite,++sequence);
+        assert(eng.kickCount()==2 && eng.kick(1).team==kicker && !eng.kick(1).scored);
       }
     }
   }
@@ -65,5 +71,5 @@ int main() {
   assert(eng.phase()==Phase::Finished);
   packet(mfv3::RadioCmd::GoalWhite,++sequence);packet(mfv3::RadioCmd::GoalBlue,++sequence);
   assert(eng.phase()==Phase::Finished && eng.score().white==1 && eng.score().blue==0);
-  puts("Pulsadores: ambos continúan 1a/2a/prórroga sin goles, sin penalti ni duplicados; sensores y táctil OK");
+  puts("Pulsadores: ambos continúan 1a/2a/prórroga sin goles, sin penalti ni duplicados; portero = fallo; sensores y táctil OK");
 }

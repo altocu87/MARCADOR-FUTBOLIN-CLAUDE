@@ -277,9 +277,229 @@ static lv_draw_buf_t* glyph(char ch, int h, uint32_t color, uint8_t glow, bool g
   return buf;
 }
 
+// ---------------------------------------------------------------- cifras de reposo, por partes
+// Las cifras del reloj de reposo (250 px, con el halo difuminado) costaban ~1 s cada una en la placa y se pintaban en
+// mitad de un dibujado: 3,65 s parado al entrar en reposo y otro segundo en cada cifra nueva (medido el 02/11), sin
+// leer el táctil. Ahora se piden (want) y se pintan a trozos de ~8 000 puntos por vuelta del programa (work); hasta
+// que están, no se ve esa cifra. Mismo dibujo y mismas cuentas que glyph(): el resultado es idéntico punto a punto.
+struct SoftSpec {
+  char ch;
+  int16_t h;
+  uint32_t color;
+  uint8_t glow;
+  bool ghost;
+  bool operator==(const SoftSpec& o) const {
+    return ch == o.ch && h == o.h && color == o.color && glow == o.glow && ghost == o.ghost;
+  }
+};
+static void (*onSoftReady)() = nullptr;  // quien enseña las cifras: repintarlas
+static SoftSpec softQueue[8];
+static uint8_t softQueued = 0;
+static const uint32_t SOFT_STEP_PX = 8192;  // ~10 ms por trozo en la placa (deducido de ~1 s por cifra)
+struct SoftJob {
+  bool on = false;
+  SoftSpec spec = {};
+  lv_draw_buf_t* buf = nullptr;
+  uint8_t *a = nullptr, *t = nullptr;
+  uint8_t stage = 0, it = 0;
+  int line = 0, r = 0;
+};
+static SoftJob job;
+
+static Glyph* findGlyph(char ch, int h, uint32_t color, uint8_t glow, bool ghost, bool soft) {
+  for (Glyph& g : glyphs)
+    if (g.buf && g.ch == ch && g.h == h && g.color == color && g.glow == glow && g.ghost == ghost && g.soft == soft)
+      return &g;
+  return nullptr;
+}
+static void dropJob() {
+  if (job.buf) lv_draw_buf_destroy(job.buf);
+  free(job.a);
+  free(job.t);
+  job = SoftJob();
+}
+static bool softPending(const SoftSpec& sp) {
+  if (job.on && job.spec == sp) return true;
+  for (uint8_t i = 0; i < softQueued; i++)
+    if (softQueue[i] == sp) return true;
+  return false;
+}
+// Pide una cifra de reposo. Devuelve la imagen si ya está pintada; si no, la pone en cola y devuelve nullptr.
+static lv_draw_buf_t* want(char ch, int h, uint32_t color, uint8_t glow, bool ghost) {
+  if (Glyph* g = findGlyph(ch, h, color, glow, ghost, true)) {
+    g->used = ++glyphUse;
+    return g->buf;
+  }
+  SoftSpec sp = {ch, (int16_t)h, color, glow, ghost};
+  if (!softPending(sp) && softQueued < sizeof(softQueue) / sizeof(softQueue[0])) softQueue[softQueued++] = sp;
+  return nullptr;
+}
+static bool softBusy() { return job.on || softQueued; }
+
+// Un trozo del trabajo (lo llama el bucle principal). Devuelve true si ha terminado una cifra.
+static bool work() {
+  if (!job.on) {
+    if (!softQueued) return false;
+    job = SoftJob();
+    job.on = true;
+    job.spec = softQueue[0];
+    softQueued--;
+    memmove(softQueue, softQueue + 1, softQueued * sizeof(SoftSpec));
+  }
+  const SoftSpec sp = job.spec;
+  float scale = sp.h / 100.0f;
+  static lv_obj_t* canvas = nullptr;
+  if (!canvas) {
+    canvas = lv_canvas_create(lv_layer_sys());
+    lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+  }
+  const char* on = sp.ch == ':' ? "abcdefg" : segsOf(sp.ch);
+  auto paint = [&](bool lit, lv_opa_t opa) {  // los segmentos encendidos (o los apagados) en la imagen
+    lv_canvas_set_draw_buf(canvas, job.buf);
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas, &layer);
+    Ctx c = {&layer, scale, CELL_MARGIN * scale, CELL_MARGIN * scale, tanf(6.0f * 3.14159265f / 180.0f)};
+    if (sp.ch == ':') {
+      if (lit) {
+        dot(c, 10, 32, lv_color_hex(sp.color), 255, 5);
+        dot(c, 10, 68, lv_color_hex(sp.color), 255, 5);
+      }
+    } else
+      for (const char* sg = "abcdefg"; *sg; sg++) {
+        if ((strchr(on, *sg) != nullptr) != lit) continue;
+        float xs[6], ys[6];
+        segPoly(*sg, xs, ys);
+        hexa(c, xs, ys, lv_color_hex(sp.color), opa, 0);
+      }
+    lv_canvas_finish_layer(canvas, &layer);
+  };
+  int w = 0, h = 0, stride = 0;
+  if (job.buf) w = job.buf->header.w, h = job.buf->header.h, stride = job.buf->header.stride;
+  uint8_t* px = job.buf ? job.buf->data : nullptr;
+  // Filas (o columnas) por trozo: cuantas quepan en SOFT_STEP_PX puntos, al menos una.
+  auto lines = [](int len) {
+    int n = (int)(SOFT_STEP_PX / (uint32_t)(len > 0 ? len : 1));
+    return n > 0 ? n : 1;
+  };
+  switch (job.stage) {
+    case 0: {  // imagen vacía y lo encendido, macizo
+      w = (int)ceilf((60 + 2 * CELL_MARGIN) * scale), h = (int)ceilf((100 + 2 * CELL_MARGIN) * scale);
+      job.buf = lv_draw_buf_create((uint32_t)w, (uint32_t)h, LV_COLOR_FORMAT_ARGB8888, 0);
+      if (!job.buf) {
+        dropJob();
+        return false;
+      }
+      lv_draw_buf_clear(job.buf, nullptr);
+      paint(true, 255);
+      job.stage = sp.glow ? 1 : 6;
+      job.line = 0;
+      return false;
+    }
+    case 1:    // transparencia de lo encendido (como blurGlow)
+    case 3: {  // y otra vez, tras tapar las rayas
+      if (!job.a) {
+        job.a = (uint8_t*)malloc((size_t)w * h);
+        job.t = (uint8_t*)malloc((size_t)(w > h ? w : h));
+        job.r = (int)lroundf(3.2f * scale);
+        if (!job.a || !job.t) {  // sin memoria: sin halo, como glyph()
+          job.stage = 6;
+          return false;
+        }
+      }
+      int end = job.line + lines(w);
+      for (; job.line < h && job.line < end; job.line++)
+        for (int x = 0; x < w; x++) job.a[job.line * w + x] = px[job.line * stride + x * 4 + 3];
+      if (job.line >= h) {
+        job.stage = job.stage == 1 ? 2 : 4;
+        job.line = 0;
+        job.it = 0;
+      }
+      return false;
+    }
+    case 2: {  // tapar las rayas de los bordes suavizados (mira la copia, cambia la imagen)
+      uint8_t* a = job.a;
+      auto solid = [&](int x, int y) { return x >= 0 && y >= 0 && x < w && y < h && a[y * w + x] == 255; };
+      int end = job.line + lines(w);
+      for (; job.line < h && job.line < end; job.line++) {
+        int y = job.line;
+        for (int x = 0; x < w; x++) {
+          uint8_t& q = px[y * stride + x * 4 + 3];
+          if (q && q < 255)
+            for (int d = 1; d <= 2; d++)
+              if ((solid(x - d, y) && solid(x + d, y)) || (solid(x, y - d) && solid(x, y + d))) q = 255;
+        }
+      }
+      if (job.line >= h) job.stage = 3, job.line = 0;
+      return false;
+    }
+    case 4: {  // difuminado: 3 vueltas de filas (it par) y columnas (it impar)
+      bool rows = job.it % 2 == 0;
+      int n = rows ? w : h, step = rows ? 1 : w, count = rows ? h : w, lineStep = rows ? w : 1, r = job.r;
+      int end = job.line + lines(n);
+      for (; job.line < count && job.line < end; job.line++) {
+        uint8_t* p = job.a + job.line * lineStep;
+        uint8_t* t = job.t;
+        for (int i = 0; i < n; i++) t[i] = p[i * step];
+        int sum = 0;
+        for (int i = -r; i <= r; i++) sum += (i >= 0 && i < n) ? t[i] : 0;
+        for (int i = 0; i < n; i++) {
+          p[i * step] = (uint8_t)(sum / (2 * r + 1));
+          int out = i - r, in = i + r + 1;
+          sum += (in < n ? t[in] : 0) - (out >= 0 ? t[out] : 0);
+        }
+      }
+      if (job.line >= count) {
+        job.line = 0;
+        if (++job.it >= 6) job.stage = 5;
+      }
+      return false;
+    }
+    case 5: {  // halo por debajo de lo encendido
+      const uint8_t cb = sp.color & 0xff, cg = (sp.color >> 8) & 0xff, cr = (sp.color >> 16) & 0xff;
+      int end = job.line + lines(w);
+      for (; job.line < h && job.line < end; job.line++)
+        for (int x = 0; x < w; x++) {
+          uint8_t* q = px + job.line * stride + x * 4;
+          int glow = job.a[job.line * w + x] * sp.glow / 255, core = q[3];
+          int out = core + (255 - core) * glow / 255;  // lo encendido por encima del halo
+          if (!out) continue;
+          q[0] = cb;
+          q[1] = cg;
+          q[2] = cr;
+          q[3] = (uint8_t)out;
+        }
+      if (job.line >= h) job.stage = 6, job.line = 0;
+      return false;
+    }
+    default: {  // los segmentos apagados («fantasma») y a la caché
+      if (sp.ghost && sp.ch != ':') paint(false, 18);
+      int lru = -1;
+      for (int i = 0; i < (int)(sizeof(glyphs) / sizeof(glyphs[0])); i++) {
+        Glyph& g = glyphs[i];
+        if (lru < 0 || (glyphs[lru].buf && (!g.buf || g.used < glyphs[lru].used))) lru = i;
+      }
+      Glyph& g = glyphs[lru];
+      if (g.buf) {
+        lv_image_cache_drop(g.buf);
+        lv_draw_buf_destroy(g.buf);
+      }
+      g = {sp.ch, sp.h, sp.color, sp.glow, sp.ghost, true, job.buf, ++glyphUse};
+      job.buf = nullptr;
+      dropJob();
+      if (onSoftReady) onSoftReady();
+      return true;
+    }
+  }
+}
+
 // Suelta las cifras ya pintadas de alto `h` salvo las de `keep` (las del reloj de reposo ocupan ~260 KB cada una:
 // solo se guardan las que se ven, y fuera del reposo ninguna).
 static void forget(int h, const char* keep = "") {
+  uint8_t k = 0;  // también lo pedido y lo que se está pintando, si ya no hace falta
+  for (uint8_t i = 0; i < softQueued; i++)
+    if (softQueue[i].h != h || strchr(keep, softQueue[i].ch)) softQueue[k++] = softQueue[i];
+  softQueued = k;
+  if (job.on && job.spec.h == h && !strchr(keep, job.spec.ch)) dropJob();
   for (Glyph& g : glyphs)
     if (g.buf && g.h == h && !strchr(keep, g.ch)) {
       lv_image_cache_drop(g.buf);
@@ -316,7 +536,8 @@ static void drawCb(lv_event_t* e) {
       x += 20;
       continue;
     }
-    lv_draw_buf_t* g = glyph(*ch, h, d->color, d->glow, d->ghost, d->soft);
+    // Las de reposo, solo si ya están pintadas (si no, se piden y salen en cuanto estén).
+    lv_draw_buf_t* g = d->soft ? want(*ch, h, d->color, d->glow, d->ghost) : glyph(*ch, h, d->color, d->glow, d->ghost);
     if (g) {
       lv_draw_image_dsc_t id;
       lv_draw_image_dsc_init(&id);

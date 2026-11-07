@@ -89,7 +89,10 @@ static void confetti(lv_obj_t* parent) {
   }
 }
 
-static void onDelete(lv_event_t*) {
+static void onDelete(lv_event_t* e) {
+  // Al rehacerla (p. ej. al pasar a «VER CAMPEÓN») se borra la anterior cuando ya hay otra: no olvidar la nueva,
+  // o se rehace en cada vuelta y no atiende los toques.
+  if (lv_event_get_target_obj(e) != scr) return;
   scr = nullptr;
   builtFor = 255;
 }

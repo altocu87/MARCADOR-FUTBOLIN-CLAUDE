@@ -547,6 +547,35 @@ static void preloadFonts(void (*tick)() = nullptr) {
   closedir(d);
 }
 
+// Lo mismo, de una en una (para cargarlas tras enseñar Inicio, una por vuelta del programa). Devuelve false
+// cuando ya no quedan.
+static bool preloadNextFont() {
+  static DIR* d = nullptr;
+  static bool done = false;
+  if (done) return false;
+  if (!d) {
+    char dirPath[300];
+    snprintf(dirPath, sizeof(dirPath), "%s/fuentes", ROOT);
+    d = opendir(dirPath);
+    if (!d) {
+      done = true;
+      return false;
+    }
+  }
+  while (struct dirent* e = readdir(d)) {
+    unsigned w = 0, sz = 0;
+    char it = 0;
+    if (sscanf(e->d_name, "inter-%u-%u.bin", &w, &sz) == 2) font((uint16_t)w, (uint16_t)sz);
+    else if (sscanf(e->d_name, "inter-%u%c-%u.bin", &w, &it, &sz) == 3 && it == 'i') font((uint16_t)w, (uint16_t)sz, true);
+    else continue;
+    return true;
+  }
+  closedir(d);
+  d = nullptr;
+  done = true;
+  return false;
+}
+
 // Tamaño (en px) con el que se pidió una letra; 0 si no es de las nuestras. Hace falta para colocar el texto en
 // la línea base del navegador: las letras de solo cifras no traen ascendente y descendente de la letra entera.
 static uint16_t fontSize(const lv_font_t* f) {

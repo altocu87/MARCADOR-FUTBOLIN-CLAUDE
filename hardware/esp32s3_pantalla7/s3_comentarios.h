@@ -229,11 +229,45 @@ static void availableOnly(audio::FsStore& store,Catalog& c) {
     c.counts[p]=kept;c.remaining[p]=0;}
   c.n=write;
 }
-static void load(audio::FsStore& store){
+// Comprobación de las voces después de arrancar: abrir los ~800 archivos uno a uno costaba ~5,5 s antes de enseñar
+// nada. Ahora se carga la lista tal cual y checkTick() abre una por vuelta del programa cuando no suena nada; la que
+// no vale se quita del catálogo. Se recorre una copia de los códigos porque elegir una frase los baraja.
+static uint32_t* pendingCheck=nullptr;
+static uint16_t pendingCount=0,pendingAt=0;
+static void stopCheck(){delete[] pendingCheck;pendingCheck=nullptr;pendingCount=pendingAt=0;}
+static bool checking(){return pendingCheck!=nullptr;}
+static void removeCode(Catalog& c,uint32_t code){
+  uint16_t at=0;
+  for(uint8_t p=0;p<PoolCount;p++){
+    for(uint16_t i=0;i<c.counts[p];i++,at++){
+      if(c.codes[at]!=code)continue;
+      memmove(c.codes+at,c.codes+at+1,(c.n-at-1)*sizeof(uint32_t));
+      c.n--;c.counts[p]--;c.remaining[p]=0;c.started&=~(PoolMask(1)<<p);
+      return;
+    }
+  }
+}
+// Devuelve true mientras quede trabajo. `busy`: suena algo o se está recibiendo sonido: no se toca la SD.
+static bool checkTick(audio::FsStore& store,bool busy){
+  if(!pendingCheck)return false;
+  if(busy)return true;
+  uint32_t code=pendingCheck[pendingAt++];
+  if(!validAudio(store,code))removeCode(catalog,code);
+  if(pendingAt>=pendingCount)stopCheck();
+  return pendingCheck!=nullptr;
+}
+static void load(audio::FsStore& store,bool deferCheck=true){
+  stopCheck();
   if(!store.sdOk)return;
   Catalog* tmp=new(std::nothrow) Catalog;
   if(!tmp)return;
-  if(readCatalog(store,CAT,*tmp) || readCatalog(store,BAK,*tmp)){availableOnly(store,*tmp);catalog=*tmp;}delete tmp;
+  if(readCatalog(store,CAT,*tmp) || readCatalog(store,BAK,*tmp)){
+    uint32_t* list=deferCheck && tmp->n?new(std::nothrow) uint32_t[tmp->n]:nullptr;
+    if(list){memcpy(list,tmp->codes,tmp->n*sizeof(uint32_t));pendingCheck=list;pendingCount=tmp->n;pendingAt=0;}
+    else availableOnly(store,*tmp);  // sin memoria para la copia (o sin aplazar): como antes, todas ahora
+    catalog=*tmp;
+  }
+  delete tmp;
 }
 static bool save(audio::FsStore& store,const Catalog& c,uint32_t crc){
   auto& fs=store.fsOf(mfv3snd::Place::Sd);auto f=fs.open(TEMP,FILE_WRITE);if(!f)return false;
@@ -278,7 +312,7 @@ static bool handle(const char* line,audio::FsStore& store,bool busy,mfv3snd::Rep
       if((i&15u)==15u)delay(1);
     }
     if(ok)ok=save(store,*staging,crc);
-    if(ok)catalog=*staging;
+    if(ok){stopCheck();catalog=*staging;}  // recién comprobadas todas: la comprobación pendiente sobra
     delete staging;
     staging=nullptr;
     reply(ok?"COMENTARIOS_GUARDADO":"COMENTARIOS_ERROR validar_o_guardar");

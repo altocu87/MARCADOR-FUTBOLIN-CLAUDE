@@ -52,7 +52,11 @@ static void onUndo(lv_event_t*) {
   if (shown.kicks && hooks.undo) hooks.undo();
 }
 
-static void spotCb(void* o, int32_t v) { lv_obj_set_style_bg_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+// El foco late a saltos de 32: cada cambio repinta media columna y comparte bucle con el audio.
+static void spotCb(void* o, int32_t v) {
+  lv_opa_t opa = (lv_opa_t)(v & ~31);
+  if (lv_obj_get_style_bg_opa((lv_obj_t*)o, LV_PART_MAIN) != opa) lv_obj_set_style_bg_opa((lv_obj_t*)o, opa, 0);
+}
 
 // Botón GOL / FALLO: verde o rojo cuando le toca a esa columna; apagado (gris al 40 %) si no.
 static lv_obj_t* kickButton(lv_obj_t* parent, int x, const char* txt, bool goal, intptr_t code) {
@@ -249,6 +253,9 @@ static void update(const View& v) {
   }
   bool first = fresh;
   fresh = false;
+  // Sin cambios no se toca nada: LVGL invalida con cada estilo aunque sea igual, y un repintado
+  // continuo deja sin alimentar el audio, que se oye a cortes. penaltyView() pone la vista a cero.
+  if (!first && !memcmp(&v, &shown, sizeof v)) return;
   char b[48];
   for (int t = 0; t < 2; t++) {
     bool turn = v.active && v.turn == t;

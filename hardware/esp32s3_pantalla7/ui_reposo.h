@@ -7,7 +7,8 @@
 // nube (solo en reposo), abajo pone que no se toque: tocar la corta.
 // Ligero a propósito (se ve muchas horas): nada se crea ni se borra mientras está a la vista. Cada segundo solo se
 // repintan los dos puntos (sus dos círculos, no la columna entera), las dos marcas que cambian y el número de los segundos; las cifras de la hora, ya
-// pintadas una vez (sevenseg::glyph), una vez por minuto.
+// pintadas una vez (sevenseg::want, a trozos sin parar el programa), una vez por minuto. Las del minuto siguiente
+// se piden con antelación, para que el cambio de minuto no espere a pintarlas.
 
 #ifndef MFV3_UI_REPOSO_H
 #define MFV3_UI_REPOSO_H
@@ -36,7 +37,14 @@ const int TICKS_X = 40, TICKS_Y = 311, TICKS_W = 662, TICKS_H = 22, TICK_W = 6;
 
 static void onDelete(lv_event_t*) {
   scr = nullptr;
+  sevenseg::onSoftReady = nullptr;
   sevenseg::forget(CLOCK_H);
+}
+
+// Una cifra de reposo ya pintada: repintar la hora (sale en cuanto está).
+static void softReady() {
+  if (!scr) return;
+  for (lv_obj_t* o : {hours, colon, minutes}) lv_obj_invalidate(o);
 }
 
 static int tickX(int i) { return (int)lroundf(i * (TICKS_W - TICK_W) / 59.0f); }  // relativo a la línea
@@ -91,6 +99,7 @@ static void build() {
   colon = sevenseg::create(scr, 372, CLOCK_Y, CLOCK_H, ":", CYAN, 255);
   minutes = sevenseg::create(scr, 422, CLOCK_Y, CLOCK_H, "00", CYAN, 255);
   for (lv_obj_t* o : {hours, colon, minutes}) ((sevenseg::Data*)lv_obj_get_user_data(o))->soft = true;
+  sevenseg::onSoftReady = softReady;
 
   ticks = lv_obj_create(scr);
   lv_obj_remove_style_all(ticks);
@@ -130,8 +139,16 @@ static void update(uint8_t hour, uint8_t minute, uint8_t second, uint8_t weekday
   }
   char b[64];
   if (minute != lastMinute) {
+    // Lo que se ve y lo del minuto siguiente; el resto de cifras, fuera.
+    unsigned nm = (minute + 1) % 60, nh = nm ? hour : (hour + 1) % 24;
+    char next[8], keep[16];
+    snprintf(next, sizeof(next), "%02u%02u", nh, nm);
     snprintf(b, sizeof(b), "%02u:%02u", hour, minute);
-    sevenseg::forget(CLOCK_H, b);  // las cifras que ya no se ven
+    snprintf(keep, sizeof(keep), "%s%s", b, next);
+    sevenseg::forget(CLOCK_H, keep);
+    // Primero lo que se ve (al entrar en reposo se pinta en el siguiente dibujado); luego, lo del minuto siguiente.
+    for (const char* c = b; *c; c++) sevenseg::want(*c, CLOCK_H, CYAN, 255, true);
+    for (const char* c = next; *c; c++) sevenseg::want(*c, CLOCK_H, CYAN, 255, true);
     b[2] = 0;
     sevenseg::setText(hours, b);
     sevenseg::setText(minutes, b + 3);

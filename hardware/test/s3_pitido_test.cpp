@@ -146,6 +146,23 @@ int main() {
   run(2000);
   assert(first(PITA) < 0 && first(DESC) >= 0);
 
+  // Pitido dañado (está en la SD pero no se puede tocar): suena el tono de siempre del fin de parte, no silencio,
+  // y la próxima búsqueda lo vuelve a bajar.
+  {
+    char path[40];
+    snprintf(path, sizeof path, "/sonidos/%08lx.wav", (unsigned long)pitido::code());
+    SD_MMC.disk.files[path] = std::vector<uint8_t>(60, 0x33);
+    reset(mfv3::EndCondition::Time);
+    begin();
+    run(60000);
+    run(2000);
+    bool tone = false;
+    for (int16_t v : sim::heard) tone |= v != 0;
+    assert(first(PITA) < 0 && tone);
+    assert(pitidoNeeded());
+    drop(pitido::code());
+  }
+
   // 0.27: sin el pitido en la SD, la placa lo baja de la web al buscar actualizaciones y lo guarda comprobado.
   goHome();
   FILE* f = fopen("../web/public/sonidos/pitido.wav", "rb");
@@ -177,6 +194,16 @@ int main() {
     pitido::downloadWork();
   }
   assert(pitido::tries == 3 && !pitidoNeeded());
+  // Empezar un partido corta la búsqueda: la tarea ya no baja el pitido (48 KB y otra conexión).
+  pitido::tries = 0;
+  web = good;
+  int before = fetches;
+  pitido::want = pitidoNeeded();
+  assert(pitido::want);
+  versionsCancel = true;
+  fetchVersionsWork();
+  assert(fetches == before && !pitido::got && versionsDone.load());
+  versionsCancel = false;
 
-  puts("Pitido: fin de parte, prórroga y partido; primero el pitido y después la voz; sin archivo, como antes; se baja solo de la web OK");
+  puts("Pitido: fin de parte, prórroga y partido; primero el pitido y después la voz; sin archivo, como antes; se baja solo de la web; dañado, suena el tono de siempre y se vuelve a bajar; al empezar a jugar no se baja OK");
 }

@@ -753,9 +753,10 @@ static bool takeRow(const char* o) {
     }
     if (!datos || *datos != '{') return false;
     FILE* test = fopen(path, "rb");
-    if (test) {  // ya lo tenemos (los partidos no cambian)
-      fclose(test);
-      return true;
+    if (test) {  // ya lo tenemos (los partidos no cambian): se ofrece igual; addFromFile no lo repite y lo apunta en
+      fclose(test);  // el índice si faltaba (p. ej. tras un fallo al escribirlo)
+      c.kind = 'm';
+      return pushChange(c);
     }
     const char* end = partidos::closeOf(datos);
     if (!end || *end != '}') return false;
@@ -855,45 +856,129 @@ static bool stopped() {
   return true;
 }
 
-// Baja lo cambiado desde `since` de los tipos dados, de `page` en `page` filas (los torneos pesan más: menos por vez).
-static bool pull(const char* since, const char* tipos = "player,match,prefs", int page = 20) {
-  for (int offset = 0;; offset += page) {
-    if (stopped()) return false;
-    char url[400];
-    snprintf(url, sizeof(url),
-             "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(%s)&order=actualizado.asc,tipo.asc,id.asc&limit=%d&offset=%d%s%s",
-             URL, tipos, page, offset, since[0] ? "&actualizado=gt." : "", since);
-    // «+» de la hora (zona) en la dirección: %2B
-    char enc[480];
-    size_t k = 0;
-    for (const char* p = url; *p && k < sizeof(enc) - 4; p++) {
-      if (*p == '+') enc[k++] = '%', enc[k++] = '2', enc[k++] = 'B';
-      else enc[k++] = *p;
+// Cursor de la paginación: la última fila recibida (en el orden actualizado, tipo, id).
+struct PullCursor {
+  char act[40], tipo[16], id[96];  // id: hasta 80 en la nube (los de los cambios se recortan, este no)
+};
+
+// Añade `v` como valor entre comillas de un filtro de PostgREST («\» delante de «"» y «\»), con lo que no sea
+// letra, cifra o «-._~» en %XX. Devuelve false si no cabe.
+static bool encQuoted(char* out, size_t cap, size_t& k, const char* v) {
+  static const char* HEXD = "0123456789ABCDEF";
+  auto put = [&](unsigned char c) {
+    bool plain = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~';
+    if (k + 4 > cap) return false;
+    if (plain) out[k++] = (char)c;
+    else out[k++] = '%', out[k++] = HEXD[c >> 4], out[k++] = HEXD[c & 15];
+    return true;
+  };
+  if (!put('"')) return false;
+  for (const unsigned char* p = (const unsigned char*)v; *p; p++)
+    if (((*p == '"' || *p == '\\') && !put('\\')) || !put(*p)) return false;
+  if (!put('"')) return false;
+  out[k] = 0;
+  return true;
+}
+static bool encRaw(char* out, size_t cap, size_t& k, const char* s) {
+  size_t n = strlen(s);
+  if (k + n + 1 > cap) return false;
+  memcpy(out + k, s, n + 1);
+  k += n;
+  return true;
+}
+
+// Dirección de una página: lo cambiado desde `since` y, si hay `after`, solo lo que va detrás de esa fila
+// (or=(actualizado.gt.A,and(actualizado.eq.A,tipo.gt.T),and(actualizado.eq.A,tipo.eq.T,id.gt.I))).
+static bool pullUrl(char* out, size_t cap, const char* since, const char* tipos, int page, const PullCursor* after) {
+  int n = snprintf(out, cap, "%s/rest/v1/mesa_datos?select=tipo,id,datos,borrado,actualizado&tipo=in.(%s)&order=actualizado.asc,tipo.asc,id.asc&limit=%d",
+                   URL, tipos, page);
+  if (n < 0 || (size_t)n >= cap) return false;
+  size_t k = (size_t)n;
+  if (since[0]) {
+    if (!encRaw(out, cap, k, "&actualizado=gt.")) return false;
+    for (const char* p = since; *p; p++) {  // «+» de la hora (zona) en la dirección: %2B
+      char one[2] = {*p, 0};
+      if (!encRaw(out, cap, k, *p == '+' ? "%2B" : one)) return false;
     }
-    enc[k] = 0;
+  }
+  if (!after) return true;
+  return encRaw(out, cap, k, "&or=(actualizado.gt.") && encQuoted(out, cap, k, after->act) &&
+         encRaw(out, cap, k, ",and(actualizado.eq.") && encQuoted(out, cap, k, after->act) &&
+         encRaw(out, cap, k, ",tipo.gt.") && encQuoted(out, cap, k, after->tipo) &&
+         encRaw(out, cap, k, "),and(actualizado.eq.") && encQuoted(out, cap, k, after->act) &&
+         encRaw(out, cap, k, ",tipo.eq.") && encQuoted(out, cap, k, after->tipo) &&
+         encRaw(out, cap, k, ",id.gt.") && encQuoted(out, cap, k, after->id) && encRaw(out, cap, k, "))");
+}
+
+// Baja lo cambiado desde `since` de los tipos dados, de `page` en `page` filas (los torneos pesan más: menos por vez).
+// Página a página con el cursor de la última fila recibida, no con «offset»: si otra mesa cambia una fila ya leída,
+// pasa al final (se vuelve a recibir) sin desplazar a las demás, que con «offset» se saltaban y la marca de la
+// última bajada las dejaba fuera para siempre (auditoría MD-05 / NC01). (tipo, id) es único en las filas de un dueño.
+static bool pull(const char* since, const char* tipos = "player,match,prefs", int page = 20) {
+  const size_t CAP = 1024;  // la dirección más larga (id de 80 con todo escapado) cabe de sobra
+  char* enc = (char*)malloc(CAP);
+  PullCursor* cur = (PullCursor*)malloc(sizeof(PullCursor));
+  if (!enc || !cur) {
+    free(enc);
+    free(cur);
+    snprintf(jobError, sizeof(jobError), "Sin memoria para bajar; se reintentará");
+    return false;
+  }
+  bool haveCursor = false, ok = false;
+  for (;;) {
+    if (stopped()) break;
+    if (!pullUrl(enc, CAP, since, tipos, page, haveCursor ? cur : nullptr)) {
+      snprintf(jobError, sizeof(jobError), "No se pudo bajar (dirección larga)");
+      break;
+    }
     Resp r = http("GET", enc, access, nullptr, nullptr);
     if (r.code != 200 || !r.body) {
       snprintf(jobError, sizeof(jobError), r.code ? "No se pudo bajar (%d)" : "Sin conexión con la nube", r.code);
       free(r.body);
-      return false;
+      break;
     }
     int rows = 0;
+    bool rowsOk = true;
     const char* arr = r.body;
+    const char* last = nullptr;
     while (*arr && *arr != '[') arr++;
     for (const char* o = partidos::nextIn(arr, nullptr); o; o = partidos::nextIn(arr, o)) {
       rows++;
+      last = o;
       if (!takeRow(o)) {
         snprintf(jobError, sizeof(jobError), "No se pudo guardar lo recibido; se reintentará");
-        free(r.body);
-        return false;
+        rowsOk = false;
+        break;
       }
       char a[40];
       partidos::strOf(partidos::keyIn(o, "actualizado"), a, sizeof(a));
       if (strcmp(a, newLastPull) > 0) snprintf(newLastPull, sizeof(newLastPull), "%s", a);
     }
+    if (rowsOk && rows >= page && last) {
+      PullCursor next;
+      partidos::strOf(partidos::keyIn(last, "actualizado"), next.act, sizeof(next.act));
+      partidos::strOf(partidos::keyIn(last, "tipo"), next.tipo, sizeof(next.tipo));
+      partidos::strOf(partidos::keyIn(last, "id"), next.id, sizeof(next.id));
+      // Sin cursor válido (o el mismo de antes) se pediría lo mismo otra vez: mejor cortar y reintentar luego.
+      if (!next.act[0] || !next.tipo[0] || !next.id[0] ||
+          (haveCursor && !strcmp(next.act, cur->act) && !strcmp(next.tipo, cur->tipo) && !strcmp(next.id, cur->id))) {
+        snprintf(jobError, sizeof(jobError), "No se pudo bajar (página repetida)");
+        rowsOk = false;
+      } else {
+        *cur = next;
+        haveCursor = true;
+      }
+    }
     free(r.body);
-    if (rows < page) return true;
+    if (!rowsOk) break;
+    if (rows < page) {
+      ok = true;
+      break;
+    }
   }
+  free(enc);
+  free(cur);
+  return ok;
 }
 
 static void runJob() {

@@ -19,6 +19,7 @@
 Usa arduino-cli con su propia carpeta de bibliotecas (LVGL 9.5, LovyanGFX, WebSockets) y copia lv_conf.h junto a lvgl.
 """
 import glob
+import hashlib
 import os
 import shutil
 import struct
@@ -107,6 +108,8 @@ def otadata_entries(raw):
     for k in (0, 0x1000):
         seq, label, state, crc = struct.unpack_from("<I20sII", raw, k)
         valid = seq != 0xFFFFFFFF and crc == (zlib.crc32(struct.pack("<I", seq), 0xFFFFFFFF) & 0xFFFFFFFF)
+        # Como el arranque de ESP-IDF: una entrada INVALID (3) o ABORTED (4) no cuenta.
+        valid = valid and state not in (3, 4)
         out.append((seq, valid))
     return out
 
@@ -168,10 +171,47 @@ def cambiar_hueco(port, raw, slot):
     os.remove(tmp)
 
 
+def check_image(data):
+    """None si `data` es un programa de ESP32-S3 entero y sano; si no, por qué no.
+
+    Mira lo mismo que el arranque del chip antes de grabar nada: cabecera, chip, segmentos, suma de control,
+    resumen SHA-256 y el descriptor de la aplicación (así no pasa un cargador ni una imagen «merged»)."""
+    if len(data) < 24 + 8 + 256 or data[0] != 0xE9:
+        return "no empieza como un programa de ESP32"
+    if len(data) > SLOT_SIZE:
+        return "no cabe en un hueco"
+    segments, chip, hash_appended = data[1], struct.unpack_from("<H", data, 12)[0], data[23]
+    if chip != 9:
+        return f"es para otro chip (id {chip}, la pantalla es ESP32-S3 = 9)"
+    if not 1 <= segments <= 16:
+        return "número de segmentos imposible"
+    if struct.unpack_from("<I", data, 32)[0] != 0xABCD5432:
+        return "no es una aplicación (¿un cargador o una imagen entera?)"
+    at, check = 24, 0xEF
+    for _ in range(segments):
+        if at + 8 > len(data):
+            return "cortado en mitad de un segmento"
+        _addr, size = struct.unpack_from("<II", data, at)
+        at += 8
+        if at + size > len(data):
+            return "cortado en mitad de un segmento"
+        for b in data[at : at + size]:
+            check ^= b
+        at += size
+    at = (at + 16) & ~15  # la suma va en el último byte de un bloque de 16
+    if at > len(data) or data[at - 1] != check:
+        return "suma de control incorrecta"
+    if hash_appended:
+        if at + 32 > len(data) or hashlib.sha256(data[:at]).digest() != data[at : at + 32]:
+            return "resumen SHA-256 incorrecto (archivo dañado)"
+    return None
+
+
 def probar(path):
     data = open(path, "rb").read()
-    if not data or data[0] != 0xE9 or len(data) > SLOT_SIZE:
-        sys.exit("Eso no es un programa de la pantalla (usa el «-ota.bin», no el «.bin» entero)")
+    why = check_image(data)
+    if why:
+        sys.exit(f"Eso no es un programa de la pantalla: {why} (usa el «-ota.bin», no el «.bin» entero)")
     port = need_port()
     raw, slot = ranuras(port)
     other = 1 - slot

@@ -25,4 +25,5 @@ class NetworkClientSecure : public NetworkClient {
  public:
   bool bundle = false;
   void useBuiltinCACertBundle() { bundle = true; }
+  void setHandshakeTimeout(unsigned long) {}
 };

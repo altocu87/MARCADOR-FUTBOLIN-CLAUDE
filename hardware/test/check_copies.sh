@@ -19,6 +19,8 @@ g++ -std=c++11 -Wall -Wextra -Icommon test/sound_test.cpp -o /tmp/mfv3_sound_tes
 g++ -std=c++17 -Wall -Wno-unused-function -Itest/mock_s3 -Iesp32s3_pantalla7 test/jugadores_test.cpp -o /tmp/mfv3_jug_test && /tmp/mfv3_jug_test
 # Cola y coordinaciÃ³n de la nube: transporte falso, fallos de memoria y dos tareas reales del PC.
 g++ -std=c++17 -pthread -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_memory_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_nube_test && /tmp/mfv3_nube_test
+# Bajar por páginas con cursor: una fila cambiada entre páginas no hace saltarse otra (MD-05 / NC01).
+g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/nube_paginacion_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_nube_pag_test && /tmp/mfv3_nube_pag_test
 # Torneos: JSON igual que la app, Ã­ndice, tipos de torneo, partidos de torneo, descartar y nube simulada.
 g++ -std=c++17 -Wall -Wno-unused-function -Wno-unused-variable -Itest/mock_s3 -Iesp32s3_pantalla7 test/torneos_datos_test.cpp -x c esp32s3_pantalla7/fotojpg.c -o /tmp/mfv3_torneos_datos_test && /tmp/mfv3_torneos_datos_test
 
@@ -45,6 +47,7 @@ sh test/s3_build.sh 4 test/s3_button_transitions_test.cpp
 sh test/s3_build.sh 4 test/s3_history_dates_test.cpp
 sh test/s3_build.sh 4 test/s3_history_storage_test.cpp
 sh test/s3_build.sh 4 test/s3_history_save_feedback_test.cpp
+sh test/s3_build.sh 4 test/s3_history_index_failure_test.cpp
 sh test/s3_build.sh 4 test/s3_torneo_storage_failure_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_test.cpp
 sh test/s3_build.sh 4 test/s3_commentary_events_test.cpp

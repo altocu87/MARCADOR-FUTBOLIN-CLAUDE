@@ -1,5 +1,26 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Mejoras del plan 1, 6–10 (menos la 5) · sobre 0.28 · 07/11/2026
+
+- Inicio primero: `BOOT_INICIO` (solo capas de Inicio) en `setup`; `warmStep()` en `loop()` fuera de partido: `WARM_LAYERS`, `WARM_FLAT`, `assets::preloadNextFont`, `elegir::prewarmStep`, `historial::prewarmStep`; `startMatch` llama a `warmStep` hasta acabar. Registro `CARGADO resto_ms=` (por LV_LOG, no por USB: con el USB lleno no debe esperar). `ARRANQUE` lleva ahora la marca `inicio`.
+- MD-02/MD-03 (`s3_partidos.h`): `rewriteIndex` devuelve bool y puede omitir filas; `indexStale` obliga a reescribir entero; `revisar.txt` (`+id` falta en el índice, `-id` borrado a medias con `<id>.json.del`), se aplica en `begin()`. `remove` y `removeTournament`: todo o nada; `gone()` solo tras confirmar. `torneos::discard` devuelve false si falla. `s3_nube.h::takeRow` vuelve a ofrecer un partido ya bajado (addFromFile no lo repite). Prueba `s3_history_index_failure_test.cpp`.
+- MD-05 (`s3_nube.h` `pull`, `src/services/cloud/sync.ts`): cursor por (actualizado, tipo, id) con `or=(…)` entrecomillado; error si una página no avanza. Pruebas `nube_paginacion_test.cpp` y `tests/nube-paginacion.test.ts`. Sin probar con el servidor real (comillas de PostgREST, URLs de unos cientos de bytes).
+- MA02: el pitido solo retira el «fin de parte» si `requestAccepted()`; `pitidoNeeded()` también si el WAV no es válido (uno propio válido se respeta).
+- PA01: `versionsCancel` (lo pone `prepareMatchNetwork`): la tarea no pide más mandos, hora ni pitido. PA02: `uiport::needResync` tras `downloadToSlot`.
+- TO02: `placa.check_image()` (chip 9, magia del descriptor, segmentos, suma, SHA-256); rechaza cargador e imagen «merged».
+
+## Rendimiento: penaltis, arranque, voces, reposo y sonido aparte · sobre 0.28 · 07/11/2026
+
+Rama `claude/rendimiento-penaltis-arranque` (sin fusionar). Plan y pendientes: [PLAN_MEJORA_20261107.md](PLAN_MEJORA_20261107.md).
+
+Primera parte (auditoría): `ui_penaltis.h` solo repinta si cambia la vista y el foco late a saltos de 32; el aviso de la tanda va en cola (`afterWhistle` con `shootoutPreviewVoice`); `ui_victoria.h` `onDelete` mira que la borrada sea la suya; `setHandshakeTimeout(15)` en versiones, pitido y nube (no al bajar el programa); `ARRANQUE` (hitos de `setup`), `AUDIO?` (`hueco_max_ms`, `dma_lleno`) y `TACTIL?` (lecturas, fallos, datos, pulsaciones, Wi-Fi, búsqueda de versiones, hora). Medido en la placa en frío: 13,1 s de «Cargando» y táctil al instante.
+
+Segunda parte, a petición del dueño:
+- Penaltis con el mando: `inputButtonGoal` (mando, USB, UART) y `useMatchController` (pulsadores que no son sensor): en `Phase::Penalties`, el del equipo que no tira → `penalty(nextKicker, false)`. `inputGoal` (sensores, táctil del partido) sigue igual. Prueba en `s3_button_transitions_test.cpp`. La app no tiene prueba de este camino (el gancho de React no se prueba).
+- Voces: `comentarios::load(store, deferCheck=true)` copia los códigos (`pendingCheck`, en PSRAM) y `checkTick` abre uno por vuelta si no suena nada ni se reciben sonidos (`removeCode` lo quita del grupo). Se recorre la copia porque `draw` baraja `codes`. Recibir un catálogo nuevo (ya comprobado entero) para la comprobación. `load(store,false)` = como antes.
+- Reposo: `sevenseg::want` / `work` (ui_sevenseg.h) pintan las cifras `soft` en etapas de ~8.192 puntos (segmentos, transparencia, rayas, 6 pasadas de media móvil, halo, fantasma) con las mismas cuentas que `glyph()`; la prueba compara byte a byte. `drawCb` no pinta la cifra hasta que está; `onSoftReady` repinta la hora. `reposo::update` pide lo visible y el minuto siguiente; `forget` suelta también lo pedido. `sevenseg::work()` va en `loop()` antes de `uiport::step()`. En el PC una cifra entera son 2,5 ms; en la placa ~1 s (sin medir aún por trozos).
+- Sonido aparte: `Player::startTask` (tarea «sonido», pila en PSRAM, prioridad 3, núcleo 1) llama a `taskStep` cada 8 ms bajo un mutex recursivo; `play`, `stop`, `setVolume`, `begin` y `pump` toman el mismo mutex, así que el bucle sigue funcionando igual (incluido `lastStartSucceeded` tras `pump`). Desde la tarea `amp()` solo apunta (`ampDirty_`): el I2C es del bucle (táctil, RTC, expansor). Prueba en `s3_audio_resilience_test.cpp`. `AUDIO?` mide ahora el hueco entre bucle y tarea.
+
 ## El pitido se instala solo · 0.27 · Cloud · 02/11/2026
 
 `pitido::downloadWork()` va en `fetchVersionsWork` (tarea «versiones», núcleo 0) si `beginVersions` puso `pitido::want = pitidoNeeded()`; `finishVersions` (loop) llama a `pitidoInstall()`, que escribe con `sndStore.begin/write/commit` (como `SONIDO_SUBIR sd`). Tamaño y CRC fijos en `s3_pitido.h`: si se cambia el audio de la web hay que cambiarlos. La descarga (`pitidoFetch`) exige `Content-Length` igual al tamaño esperado (o sin tamaño); el CRC decide.

@@ -35,6 +35,7 @@ import {
   VISIT_TIMING,
   isSuddenDeath,
   matchPointTeams,
+  nextPenaltyTeam,
   type CommandOutcome,
   type EngineCommand,
   type MatchConfig,
@@ -528,7 +529,10 @@ export function useMatchController(
           return;
         }
         if (team && s.phase === 'penalties') {
-          send({ type: 'PENALTY', team, scored: true, source });
+          // El pulsador del equipo que tira = gol; el del portero = fallo del que tira (los sensores solo dan gol).
+          const kicker = nextPenaltyTeam(s);
+          if (team !== kicker && source !== 'sensor') send({ type: 'PENALTY', team: kicker, scored: false, source });
+          else send({ type: 'PENALTY', team, scored: true, source });
           return;
         }
         if (team) {

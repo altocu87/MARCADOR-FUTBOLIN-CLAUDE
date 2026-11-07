@@ -403,15 +403,56 @@ static const size_t LINE = 1024;  // una línea del índice (con nombres largos 
 static void indexPath(char* out, size_t n) { snprintf(out, n, "%s/indice.txt", dir); }
 static void jsonPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json", dir, id); }
 
+// El índice de la tarjeta no coincide con la lista en memoria (falló una escritura): la próxima vez se escribe
+// entero en vez de añadir una línea (una línea a medias tampoco se queda pegada a la siguiente).
+static bool indexStale = false;
+// Un borrado dejó el JSON con el nombre de retirada y no se pudo devolver (lo arregla el arranque).
+static bool retiredLeft = false;
+
 static bool appendIndex(const Row& r) {
   char ip[96], line[LINE];
   indexPath(ip, sizeof(ip));
   FILE* x = fopen(ip, "ab");
-  if (!x) return false;
+  if (!x) return (indexStale = true, false);
   lineOf(r, line, sizeof(line));
   bool written = fprintf(x, "%s\n", line) >= 0 && !ferror(x);
   bool closed = fclose(x) == 0;
+  if (!written || !closed) indexStale = true;
   return written && closed;
+}
+
+// ---------------------------------------------------------------- notas de reparación (revisar.txt)
+// Si el índice no acepta un cambio, se apunta aquí qué partido revisar al encender (pocas líneas; se borra en cuanto
+// todo vuelve a cuadrar). Repetirlas no estropea nada:
+//   +<id>  su JSON está en la tarjeta y tiene que salir en la lista
+//   -<id>  se estaba borrando: «<id>.json.del» se recupera si el índice aún lo tiene; si no, se borra del todo
+static void notesPath(char* out, size_t n) { snprintf(out, n, "%s/revisar.txt", dir); }
+static void retiredPath(const char* id, char* out, size_t n) { snprintf(out, n, "%s/%s.json.del", dir, id); }
+static FILE* notesOpen() {
+  char p[96];
+  notesPath(p, sizeof(p));
+  return fopen(p, "ab");
+}
+static bool notesClose(FILE* f, bool ok) {
+  ok = !ferror(f) && ok;
+  return fclose(f) == 0 && ok;
+}
+static bool note(char op, const char* id) {
+  FILE* f = notesOpen();
+  if (!f) return false;
+  return notesClose(f, fprintf(f, "%c%s\n", op, id) >= 0);
+}
+// Todo cuadra (índice = memoria y ningún JSON a medio borrar): las notas sobran.
+static void settle() {
+  if (indexStale || retiredLeft) return;
+  char p[96];
+  notesPath(p, sizeof(p));
+  ::remove(p);
+}
+static bool exists(const char* path) {
+  FILE* f = fopen(path, "rb");
+  if (f) fclose(f);
+  return f != nullptr;
 }
 
 // Cambia `path` por `tmp` sin dejar nunca la mesa sin ninguno de los dos (FAT no sustituye al renombrar): el viejo
@@ -443,19 +484,83 @@ static bool replaceFile(const char* tmp, const char* path) {
   return true;
 }
 
-static void rewriteIndex() {
+// Escribe el índice entero desde la memoria, sin las filas de `skipId` ni las del torneo `skipTournament` (así se
+// confirma un borrado antes de tocar la lista). Si falla, el índice anterior sigue en su sitio.
+static bool rewriteIndex(const char* skipId = nullptr, const char* skipTournament = nullptr) {
   char ip[96], tmp[100], line[LINE];
   indexPath(ip, sizeof(ip));
   snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
   FILE* out = fopen(tmp, "wb");
-  if (!out) return;
+  if (!out) return (indexStale = true, false);
   bool ok = true;
   for (int i = 0; i < count && ok; i++) {
+    if (skipId && !strcmp(rows[i].id, skipId)) continue;
+    if (skipTournament && !strcmp(rows[i].tournament, skipTournament)) continue;
     lineOf(rows[i], line, sizeof(line));
     ok = fprintf(out, "%s\n", line) >= 0;
   }
+  ok = !ferror(out) && ok;
   ok = fclose(out) == 0 && ok;
-  if (!ok || !replaceFile(tmp, ip)) ::remove(tmp);
+  if (!ok || !replaceFile(tmp, ip)) {
+    ::remove(tmp);
+    indexStale = true;
+    return false;
+  }
+  // Sin filas saltadas, el índice ya es la lista; con ellas, quien borra las quita de la memoria a continuación.
+  indexStale = false;
+  return true;
+}
+
+// Fila nueva al índice y a la lista. Con el índice atrasado se escribe entero (incluida la nueva).
+static bool indexNew(const Row& r) {
+  if (!reserveRow()) return false;
+  if (!indexStale) {
+    if (!appendIndex(r)) return false;
+    push(r);
+    return true;
+  }
+  push(r);
+  if (rewriteIndex()) return true;
+  count--;
+  ++revision;
+  return false;
+}
+
+static int find(const char* id) {
+  for (int i = 0; i < count; i++)
+    if (!strcmp(rows[i].id, id)) return i;
+  return -1;
+}
+
+// Al encender, tras leer el índice: aplica revisar.txt. Devuelve si la lista cambió (hay que reescribir el índice).
+static bool replayNotes() {
+  char p[96];
+  notesPath(p, sizeof(p));
+  FILE* f = fopen(p, "rb");
+  if (!f) return false;
+  bool changed = false;
+  char l[64];
+  while (fgets(l, sizeof(l), f)) {
+    l[strcspn(l, "\r\n")] = 0;
+    const char* id = l + 1;
+    if (!*id) continue;
+    char jp[112], dp[120];
+    jsonPath(id, jp, sizeof(jp));
+    retiredPath(id, dp, sizeof(dp));
+    if (l[0] == '+') {
+      Row r;
+      if (find(id) < 0 && rowFromJson(jp, r) && push(r)) changed = true;
+    } else if (l[0] == '-' && exists(dp)) {
+      // El índice decide: si aún lo tiene, el borrado no llegó a confirmarse y el JSON vuelve.
+      if (find(id) >= 0 && !exists(jp)) {
+        if (rename(dp, jp) != 0) retiredLeft = true;
+      } else {
+        ::remove(dp);
+      }
+    }
+  }
+  fclose(f);
+  return changed;
 }
 
 // Al encender: dónde se guardan y la lista de los que ya hay.
@@ -474,11 +579,18 @@ static void begin(bool sd) {
 #endif
   count = 0;
   ++revision;
+  indexStale = false;
+  retiredLeft = false;
   char path[96];
   indexPath(path, sizeof(path));
   recoverFile(path);
   FILE* f = fopen(path, "rb");
-  if (!f) return;
+  if (!f) {
+    // Sin índice todavía: las notas pueden traer partidos que no llegaron a apuntarse.
+    if (replayNotes() && !rewriteIndex()) return;
+    settle();
+    return;
+  }
   static char line[LINE];
   bool dirty = false;
   while (fgets(line, sizeof(line), f)) {
@@ -507,7 +619,9 @@ static void begin(bool sd) {
     }
   }
   fclose(f);
-  if (dirty) rewriteIndex();
+  if (replayNotes()) dirty = true;
+  if (dirty && !rewriteIndex()) return;  // se queda revisar.txt para el próximo arranque
+  settle();
 }
 
 // ---------------------------------------------------------------- hora
@@ -782,10 +896,10 @@ static bool save(const mfv3::Engine& e, const Match& m, void (*service)()=nullpt
   if (!rowFromJson(path, r)) return false;
   cooperate();
   // Conservar el JSON recuperable si falla el índice, sin comunicar éxito.
-  bool indexed = appendIndex(r);
+  bool indexed = indexNew(r);
   cooperate();
   if (!indexed) return false;
-  push(r);
+  settle();
   s3flash::wroteTo(dir);  // sin tarjeta, los partidos van a la memoria del chip
   return true;
 }
@@ -960,70 +1074,112 @@ static int replacePlayerId(uint32_t oldCode, const char* oldId, const char* newI
   return changed;
 }
 
-// Partido que ha llegado de la nube (su JSON ya está en la tarjeta): a la lista.
+// Partido que ha llegado de la nube (su JSON ya está en la tarjeta): a la lista. Repetirlo con el mismo id no lo
+// duplica (y reintenta el índice si se había quedado atrás). Devuelve false si el índice de la tarjeta no lo tiene:
+// entonces sale igualmente en la lista y queda apuntado en revisar.txt para que el arranque no lo pierda.
 static bool addFromFile(const char* id) {
-  for (int i = 0; i < count; i++)
-    if (!strcmp(rows[i].id, id)) return false;
+  if (find(id) >= 0) {
+    bool ok = !indexStale || rewriteIndex();
+    if (ok) settle();
+    return ok;
+  }
   char path[112];
   jsonPath(id, path, sizeof(path));
   Row r;
   if (!rowFromJson(path, r)) return false;
-  appendIndex(r);
-  return push(r);
+  if (!reserveRow()) return false;
+  if (indexNew(r)) {
+    settle();
+    return true;
+  }
+  // El índice no lo admite: a la lista igualmente (el JSON está bien) y apuntado para el próximo arranque.
+  indexStale = true;
+  push(r);
+  note('+', id);
+  return false;
 }
 
-// Borra un partido (su JSON y su línea del índice).
+// Borra un partido (su JSON y su línea del índice). Solo devuelve true con el índice nuevo ya en la tarjeta; si algo
+// falla, el partido sigue en la lista, en el índice y con su JSON. Orden: el JSON pasa a «.json.del» (apuntado en
+// revisar.txt por si se va la luz), se confirma el índice sin la fila y solo entonces se borra de verdad.
 static bool remove(const char* id) {
-  int k = -1;
-  for (int i = 0; i < count; i++)
-    if (!strcmp(rows[i].id, id)) k = i;
+  int k = find(id);
   if (k < 0) return false;
-  char path[112];
+  char path[112], retired[120];
   jsonPath(id, path, sizeof(path));
-  ::remove(path);
-  char ip[96], tmp[100];
-  indexPath(ip, sizeof(ip));
-  snprintf(tmp, sizeof(tmp), "%s.tmp", ip);
-  FILE* in = fopen(ip, "rb");
-  FILE* out = fopen(tmp, "wb");
-  if (!in || !out) {
-    if (in) fclose(in);
-    if (out) fclose(out);
+  retiredPath(id, retired, sizeof(retired));
+  if (!note('-', id)) return false;  // sin poder apuntarlo no se toca nada
+  ::remove(retired);                 // resto de un intento anterior
+  bool had = exists(path);
+  if (had && rename(path, retired) != 0) return false;
+  if (!rewriteIndex(id)) {
+    if (had && rename(retired, path) != 0) retiredLeft = true;
     return false;
   }
-  static char line[LINE];
-  size_t idl = strlen(id);
-  while (fgets(line, sizeof(line), in))
-    if (strncmp(line, id, idl) || line[idl] != '|') fputs(line, out);
-  fclose(in);
-  if (fclose(out) != 0 || !replaceFile(tmp, ip)) ::remove(tmp);
+  if (had) ::remove(retired);  // si no se puede, el arranque lo termina (ya no está en el índice)
   memmove(&rows[k], &rows[k + 1], (size_t)(count - k - 1) * sizeof(Row));
   count--;
   ++revision;
+  settle();
   return true;
 }
 
 // Borra todos los partidos de un torneo (se descarta, como discardTournament de la app). `gone(id)` recibe cada uno
-// (para borrarlo también de la cuenta). El índice se escribe una sola vez. Devuelve cuántos.
+// (para borrarlo también de la cuenta), solo cuando el índice ya está escrito sin ellos. El índice se escribe una sola
+// vez. Devuelve cuántos, o -1 si no se pudo (entonces siguen todos, con sus JSON, en la lista y en el índice).
 static int removeTournament(const char* tournamentId, void (*gone)(const char* id)) {
   if (!tournamentId || !tournamentId[0]) return 0;
-  int k = 0, removed = 0;
+  int removed = 0;
+  for (int i = 0; i < count; i++)
+    if (!strcmp(rows[i].tournament, tournamentId)) removed++;
+  if (!removed) return 0;
+  // 1) Apuntarlos todos (revisar.txt) y retirar sus JSON.
+  FILE* nf = notesOpen();
+  if (!nf) return -1;
+  bool noted = true;
+  for (int i = 0; i < count && noted; i++)
+    if (!strcmp(rows[i].tournament, tournamentId)) noted = fprintf(nf, "-%s\n", rows[i].id) >= 0;
+  if (!notesClose(nf, noted)) return -1;
+  int moved = 0;  // los primeros `moved` del torneo ya están retirados (para deshacer)
+  bool ok = true;
+  for (int i = 0; i < count && ok; i++) {
+    if (strcmp(rows[i].tournament, tournamentId)) continue;
+    char path[112], retired[120];
+    jsonPath(rows[i].id, path, sizeof(path));
+    retiredPath(rows[i].id, retired, sizeof(retired));
+    ::remove(retired);
+    if (exists(path) && rename(path, retired) != 0) ok = false;
+    else moved++;
+  }
+  // 2) El índice sin ellos; si falla, cada JSON vuelve a su nombre.
+  if (ok) ok = rewriteIndex(nullptr, tournamentId);
+  if (!ok) {
+    for (int i = 0; i < count && moved > 0; i++) {
+      if (strcmp(rows[i].tournament, tournamentId)) continue;
+      moved--;
+      char path[112], retired[120];
+      jsonPath(rows[i].id, path, sizeof(path));
+      retiredPath(rows[i].id, retired, sizeof(retired));
+      if (exists(retired) && rename(retired, path) != 0) retiredLeft = true;
+    }
+    return -1;
+  }
+  // 3) Confirmado: fuera de la tarjeta, de la cuenta y de la lista.
+  int k = 0;
   for (int i = 0; i < count; i++) {
     if (!strcmp(rows[i].tournament, tournamentId)) {
-      char path[112];
-      jsonPath(rows[i].id, path, sizeof(path));
-      ::remove(path);
+      char retired[120];
+      retiredPath(rows[i].id, retired, sizeof(retired));
+      ::remove(retired);
       if (gone) gone(rows[i].id);
-      removed++;
       continue;
     }
     if (k != i) rows[k] = rows[i];
     k++;
   }
-  if (!removed) return 0;
   count = k;
   ++revision;
-  rewriteIndex();
+  settle();
   return removed;
 }
 

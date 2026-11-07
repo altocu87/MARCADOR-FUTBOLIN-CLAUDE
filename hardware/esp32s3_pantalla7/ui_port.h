@@ -16,6 +16,8 @@
 #include <lvgl.h>
 
 namespace uiport {
+// Diagnóstico (orden TACTIL?): lecturas del chip, fallos del bus, pulsaciones y lecturas con datos nuevos.
+static uint32_t touchReads = 0, touchErrors = 0, touchFresh = 0, touchPresses = 0;
 
 const int W = 800, H = 480;
 
@@ -134,13 +136,19 @@ static bool gt911Read(int16_t& x, int16_t& y) {
   }
   lastPoll = now;
   uint8_t reg[2] = {0x81, 0x4E}, st = 0;
-  if (lgfx::i2c::transactionWriteRead(touchPort, touchAddr, reg, 2, &st, 1).has_error()) return down = false;
+  touchReads++;
+  if (lgfx::i2c::transactionWriteRead(touchPort, touchAddr, reg, 2, &st, 1).has_error()) {
+    touchErrors++;
+    return down = false;
+  }
   if (st & 0x80) {
+    touchFresh++;
     if ((st & 0x0F) > 0) {
       uint8_t r2[2] = {0x81, 0x50}, p[4];
       if (!lgfx::i2c::transactionWriteRead(touchPort, touchAddr, r2, 2, p, 4).has_error()) {
         lx = (int16_t)(p[0] | (p[1] << 8));
         ly = (int16_t)(p[2] | (p[3] << 8));
+        if (!down) touchPresses++;
         down = true;
       }
     } else {
@@ -248,7 +256,7 @@ static bool beginDisplay(LGFX&, lv_display_t*& disp) {
 static void indevCb(lv_indev_t*, lv_indev_data_t* d) {
   int16_t x = 0, y = 0;
   bool down;
-  if ((int32_t)(fakeUntil - millis()) > 0) {
+  if (fakeUntil && (int32_t)(fakeUntil - millis()) > 0) {
     x = fakeX;
     y = fakeY;
     if (fakeMove) {

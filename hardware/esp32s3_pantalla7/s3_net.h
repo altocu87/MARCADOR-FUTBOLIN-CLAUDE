@@ -125,6 +125,7 @@ inline String url(const char* board, const char* file) { return String(BASE_URL)
 inline bool fetchPublished(const char* board, mfv3::ota::Published& out, updateInfo::Release* release = nullptr) {
   NetworkClientSecure client;
   client.useBuiltinCACertBundle();
+  client.setHandshakeTimeout(15);  // por defecto 120 s: con red mala, minutos de radio fuera del canal del mando
   HTTPClient http;
   http.setTimeout(8000);
   if (!http.begin(client, url(board, "ota.json"))) return false;

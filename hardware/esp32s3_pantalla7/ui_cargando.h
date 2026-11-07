@@ -36,13 +36,13 @@ static void show(int steps) {
   lv_refr_now(nullptr);
 }
 
-// Un paso más hecho: si el porcentaje cambia, se repinta (la barra y el número).
+// Un paso más hecho: se repinta (la barra y el número) cada 5 %; cada repintado espera al panel.
 static void step() {
   if (!scr) return;
   done++;
   int p = done * 100 / total;
   if (p > 100) p = 100;
-  if (p == shownPct) return;
+  if (p < 100 ? p < shownPct + 5 : p == shownPct) return;
   shownPct = p;
   lv_bar_set_value(bar, p, LV_ANIM_OFF);
   char b[32];

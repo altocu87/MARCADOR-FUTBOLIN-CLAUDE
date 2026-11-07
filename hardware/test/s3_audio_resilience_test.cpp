@@ -112,6 +112,17 @@ int main(){
   assert(!enable.ok && enable.lastError()==-24 && enable.failure()==audio::Player::Failure::I2SEnable);sim::i2sEnableResult=ESP_OK;
   audio::Player disable;assert(disable.begin(lcd,reboot,80));sim::failI2sStop=true;disable.stop();
   assert(!disable.ok && disable.failure()==audio::Player::Failure::I2SDisable);sim::failI2sStop=false;
+  // Tarea del sonido: rellena el DMA aunque el bucle no llame a pump(), y nunca toca el I2C del amplificador
+  // (lo comparte con el táctil): lo apaga el siguiente pump() del bucle.
+  audio::Player task;assert(task.begin(lcd,reboot,80));sim::heard.clear();
+  task.play({false,code,{nullptr,0}},false);task.pump(1000);assert(task.lastStartSucceeded() && (sim::exioOut&(1u<<exio::SPEAKER_AMP)));
+  sim::advanceI2sFrames(1000);assert(sim::i2sDma.size()==1000);
+  task.taskStep(1050);assert(sim::i2sDma.size()==2000);  // la tarea sola vuelve a llenarlo
+  for(uint32_t t=1100;task.busy() && t<5000;t+=60){sim::advanceI2sFrames(960);task.taskStep(t);}
+  assert(!task.busy());sim::advanceI2sFrames(2000);
+  task.taskStep(6000);assert(sim::exioOut&(1u<<exio::SPEAKER_AMP));  // silencio largo: lo apunta, no lo hace
+  task.pump(6001);assert(!(sim::exioOut&(1u<<exio::SPEAKER_AMP)));    // lo hace el bucle
+  task.stop();
   sim::i2sRealtime=false;
-  puts("Audio resilience: replacement/recovery, bad WAV/read errors, DMA clock/stop, timeout/fatal diagnostics OK");
+  puts("Audio resilience: replacement/recovery, bad WAV/read errors, DMA clock/stop, timeout/fatal diagnostics, sound task OK");
 }

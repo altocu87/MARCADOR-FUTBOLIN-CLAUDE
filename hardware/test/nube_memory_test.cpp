@@ -43,7 +43,7 @@ static nube::Resp http(const char* method, const char* url, const char*, const c
       insideGet = true;
       while (!releaseGet) std::this_thread::yield();
     }
-    return reply(200, strstr(url, "offset=0") ? pulled : "[]");
+    return reply(200, strstr(url, "&or=") ? "[]" : pulled);  // solo la primera página (sin cursor)
   }
   if (appendDuringUpload) { nube::playerChanged(1); appendDuringUpload = false; }
   if (body) posted = body;

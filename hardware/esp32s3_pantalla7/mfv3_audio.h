@@ -309,6 +309,8 @@ class Player {
   esp_err_t lastError() const{return lastError_;}
   uint32_t errorCount() const{return errorCount_;}
   uint32_t writeTimeoutCount() const{return writeTimeoutCount_;}
+  // Mayor espera entre dos pump con voz sonando: con más de ~110 ms el DMA se vacía y se oye un corte.
+  uint32_t takePumpGapMax(){uint32_t g=pumpGapMax_;pumpGapMax_=0;return g;}
   bool lastStartSucceeded() const{return lastStartSucceeded_;}
   bool requestAccepted() const{return requestAccepted_;}
   const char* statusName() const{
@@ -325,7 +327,31 @@ class Player {
       case Failure::QueueFull:return "queue_full";default:return "none";
     }
   }
+  // Sonido con su propia tarea (solo en la placa): cada ~8 ms rellena el DMA aunque el bucle principal esté
+  // dibujando una pantalla lenta (con más de ~110 ms sin rellenar, la voz sale a trozos). El bucle sigue llamando a
+  // pump() como siempre (la misma cuenta, bajo el mismo cerrojo); la tarea solo cubre los huecos. Lo que va por el
+  // bus I2C compartido con el táctil (el amplificador) nunca se hace desde la tarea: lo aplica el siguiente pump().
+  void startTask(){
+#ifdef ARDUINO
+    if(task_ || !ok)return;
+    if(!mu_)mu_=xSemaphoreCreateRecursiveMutex();
+    if(!mu_)return;
+    // Pila en la PSRAM (solo lee la SD y escribe en el I2S): la memoria interna se queda para el Wi-Fi.
+    if(xTaskCreatePinnedToCoreWithCaps(taskMain,"sonido",6144,this,3,&task_,1,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT)!=pdPASS)
+      task_=nullptr;
+#endif
+  }
+  bool taskRunning() const{
+#ifdef ARDUINO
+    return task_!=nullptr;
+#else
+    return false;
+#endif
+  }
+  // Lo que haría la tarea en una vuelta (también lo usan las pruebas del PC para imitarla).
+  void taskStep(uint32_t now){Lock l(*this);inTask_=true;pumpCore(now);inTask_=false;}
   bool begin(LGFX& lcd,FsStore& store,uint8_t volume){
+    Lock l(*this);
     lcd_=&lcd;store_=&store;
     if(tx_)return false; // no reinicializar un canal vivo desde el partido
     i2s_chan_config_t cc=I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1,I2S_ROLE_MASTER);
@@ -347,6 +373,7 @@ class Player {
     return ok;
   }
   void setVolume(uint8_t v){
+    Lock l(*this);
     volume_=v>100?100:v;
     if(!ok)return;
     if(!codecWrite(0x46,volumeReg(volume_)) || !codecWrite(0x47,volumeReg(volume_)))fail(Failure::CodecWrite,ESP_FAIL,true);
@@ -355,6 +382,7 @@ class Player {
   // Estado del productor, NO confirmación de que el último descriptor DMA ya sonó.
   bool busy() const{return playing_ || qn_ || pendingFrames_>pendingAt_;}
   void play(const Item& it,bool queue){
+    Lock l(*this);
     requestAccepted_=lastStartSucceeded_=false;
     if(!ok)return;
     if(!volume_){failure_=Failure::Muted;lastError_=ESP_OK;return;}
@@ -364,6 +392,7 @@ class Player {
     else{failure_=Failure::QueueFull;lastError_=ESP_FAIL;errorCount_++;}
   }
   void stop(){
+    Lock l(*this);
     if(file_)file_.close();
     playing_=false;pendingFrames_=pendingAt_=0;qn_=0;
     requestAccepted_=lastStartSucceeded_=false;
@@ -374,7 +403,16 @@ class Player {
     state_=ok?State::Idle:State::Error;
   }
   void pump(uint32_t now){
+    Lock l(*this);
+    if(ampDirty_){ampDirty_=false;ampHw(ampOn_);}  // lo que pidió la tarea
+    pumpCore(now);
+  }
+  uint32_t takePumpGapMaxLocked(){Lock l(*this);return takePumpGapMax();}
+ private:
+  void pumpCore(uint32_t now){
     if(!ok)return;
+    uint32_t gap=now-lastPumpAt_;lastPumpAt_=now;
+    if((playing_ || pendingFrames_) && gap>pumpGapMax_)pumpGapMax_=gap;
     if(playing_ || pendingFrames_)quietSince_=now;
     else if(ampOn_ && now-quietSince_>800)amp(false);
     if(!txRunning_ && playing_){
@@ -414,9 +452,31 @@ class Player {
       if(written<bytes)return; // timeout/colchón lleno no equivale a fallo permanente
     }
   }
- private:
   static const size_t BLOCK=256;
-  void amp(bool on){ampOn_=on;if(lcd_)lcd_->exioWrite(exio::SPEAKER_AMP,on);}
+  struct Lock{
+    Player& p;
+    explicit Lock(Player& pl):p(pl){
+#ifdef ARDUINO
+      if(p.mu_)xSemaphoreTakeRecursive(p.mu_,portMAX_DELAY);
+#endif
+    }
+    ~Lock(){
+#ifdef ARDUINO
+      if(p.mu_)xSemaphoreGiveRecursive(p.mu_);
+#endif
+    }
+  };
+#ifdef ARDUINO
+  static void taskMain(void* arg){
+    Player* p=(Player*)arg;
+    for(;;){p->taskStep(millis());vTaskDelay(pdMS_TO_TICKS(8));}
+  }
+  SemaphoreHandle_t mu_=nullptr;TaskHandle_t task_=nullptr;
+#endif
+  bool inTask_=false,ampDirty_=false;
+  void ampHw(bool on){if(lcd_)lcd_->exioWrite(exio::SPEAKER_AMP,on);}
+  // Desde la tarea no se toca el I2C (lo comparte con el táctil, que lee el bucle): se apunta y lo hace pump().
+  void amp(bool on){ampOn_=on;if(inTask_)ampDirty_=true;else{ampDirty_=false;ampHw(on);}}
   void fail(Failure why,esp_err_t error,bool hardware){
     if(file_)file_.close();
     playing_=false;qn_=0;pendingFrames_=pendingAt_=0;
@@ -476,7 +536,7 @@ class Player {
   bool playing_=false,fromFile_=false,ampOn_=false,txRunning_=false;
   bool lastStartSucceeded_=false,requestAccepted_=false;
   State state_=State::Idle;Failure failure_=Failure::None;
-  esp_err_t lastError_=ESP_OK;uint32_t errorCount_=0,writeTimeoutCount_=0,quietSince_=0;
+  esp_err_t lastError_=ESP_OK;uint32_t errorCount_=0,writeTimeoutCount_=0,quietSince_=0,lastPumpAt_=0,pumpGapMax_=0;
   Item q_[3];uint8_t qn_=0;
   mfv3snd::ToneGen tone_;mfv3snd::Resampler rs_;mfv3snd::WavInfo wav_;
   fs::File file_;uint32_t left_=0;

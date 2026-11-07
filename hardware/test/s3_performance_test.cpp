@@ -95,5 +95,32 @@ int main() {
     }
     printf("Equipo B: %d capas existentes leidas y descomprimidas correctamente\n", layers);
   }
+  // Penaltis: sin cambios no se invalida nada (el repintado continuo dejaba sin alimentar el audio).
+  penaltis::View pv;
+  memset(&pv, 0, sizeof(pv));
+  pv.active = true; pv.rounds = 5;
+  penaltis::update(pv);
+  penaltis::update(pv);
+  lv_display_add_event_cb(lv_display_get_default(), onStyle, LV_EVENT_INVALIDATE_AREA, nullptr);
+  styleChanges = 0;
+  for (int i = 0; i < 100; ++i) penaltis::update(pv);
+  assert(styleChanges == 0);
+  pv.turn = 1; penaltis::update(pv);
+  assert(styleChanges > 0);
+  // El foco late a saltos: dentro del mismo escalón no repinta.
+  penaltis::spotCb(penaltis::spot[1], 200);
+  styleChanges = 0;
+  penaltis::spotCb(penaltis::spot[1], 205); assert(styleChanges == 0);
+  penaltis::spotCb(penaltis::spot[1], 230); assert(styleChanges > 0);
+  // Victoria: pasar a «VER CAMPEÓN» con la pantalla ya enseñada la rehace una sola vez (antes, en cada vuelta).
+  victoria::View vv;
+  memset(&vv, 0, sizeof(vv));
+  victoria::update(vv);
+  vv.tour = 2;
+  victoria::update(vv);
+  lv_obj_t* champion = victoria::scr;
+  assert(champion && lv_screen_active() == champion);
+  victoria::update(vv);
+  assert(victoria::scr == champion && lv_screen_active() == champion);
   printf("Equipo B: LZ4, cache activa, repintados, busqueda asincrona y cancelacion de versiones OK\n");
 }

@@ -112,6 +112,20 @@ static void prewarm(jug::Store* s, void (*tick)() = nullptr) {
   }
 }
 
+// Una foto (en todos sus tamaños) por llamada; false cuando ha acabado.
+static bool prewarmStep(jug::Store* s, int& k) {
+  static const int SIZES[4] = {24, 32, 44, 64};
+  char rel[40];
+  while (s && k < s->count) {
+    int i = k++;
+    if (!s->photoRel(s->list[i].code, rel, sizeof(rel))) continue;
+    for (int z : SIZES) assets::photo(rel, z, z / 2);
+    assets::photo(rel, 72, 10);
+    return true;
+  }
+  return false;
+}
+
 static const char* modeName(char m) { return m == 'c' ? "LOCO" : m == 'r' ? "CLASIFICATORIO" : "RÁPIDO"; }
 static uint32_t modeColor(char m) { return m == 'c' ? ui::color::CHAOS : m == 'r' ? ui::color::RANKED : ui::color::ACCENT; }
 

@@ -230,7 +230,7 @@ int main(){
   assert(!validAudio(sndStore,0x1002));
   crc=putCatalog({{0,0x1002}});commit(crc);
   assert(replies.back().find("ERROR")!=std::string::npos && catalog.n==2 && SD_MMC.disk.files[CAT]==original);
-  catalog.clear();load(sndStore);assert(catalog.n==1 && !catalog.counts[2]);
+  catalog.clear();load(sndStore,false);assert(catalog.n==1 && !catalog.counts[2]); // sin aplazar: como antes
   SD_MMC.disk.files["/sonidos/00/00001002.wav"]=validSecond;
   catalog.clear();load(sndStore);assert(catalog.n==2 && catalog.counts[2]==1);
   crc=putCatalog({{0,0x1001}});commit(crc^1);assert(replies.back().find("ERROR")!=std::string::npos && catalog.n==2 && SD_MMC.disk.files[CAT]==original);
@@ -241,13 +241,15 @@ int main(){
   command("COMENTARIOS_INICIO 1");tick(millis()+30001,false);assert(!staging);
   crc=putCatalog({{0,0x1001}});commit(crc);assert(catalog.n==1 && SD_MMC.disk.files.count(BAK));
   SD_MMC.disk.files[CAT][0]='X';catalog=Catalog();load(sndStore);assert(catalog.n==2); // recupera copia previa
-  SD_MMC.disk.files.erase("/sonidos/00/00001002.wav");catalog=Catalog();load(sndStore);assert(catalog.n==1); // excluye fichero perdido en arranque
+  SD_MMC.disk.files.erase("/sonidos/00/00001002.wav");catalog=Catalog();load(sndStore);assert(catalog.n==2 && checking()); // arranque: sin abrir cada voz
+  assert(checkTick(sndStore,true) && catalog.n==2); // sonando algo, espera
+  for(int i=0;i<4 && checkTick(sndStore,false);i++){}assert(!checking() && catalog.n==1); // después excluye el fichero perdido
   // La sustitución fallida conserva la copia recuperable, incluso con el principal corrupto.
   auto backup=SD_MMC.disk.files[BAK];
   SD_MMC.disk.failRenameTo=CAT;
   crc=putCatalog({{0,0x1001}});commit(crc);
   assert(replies.back().find("ERROR")!=std::string::npos && SD_MMC.disk.files[BAK]==backup);
-  SD_MMC.disk.failRenameTo.clear();catalog.clear();load(sndStore);assert(catalog.n==1); // el segundo WAV sigue ausente
+  SD_MMC.disk.failRenameTo.clear();catalog.clear();load(sndStore,false);assert(catalog.n==1); // el segundo WAV sigue ausente
   // DMA: sustituir pista detiene el canal y precarga únicamente audio nuevo.
   SD_MMC.disk.files["/sonidos/00001002.wav"]=wav(2222);sim::i2sRoom=1000000;
   player.play({false,0x1001,{nullptr,0}},false);player.pump(millis());sim::heard.clear();auto stops=sim::i2sStops;

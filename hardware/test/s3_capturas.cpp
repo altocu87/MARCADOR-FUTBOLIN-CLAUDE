@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <tuple>
 #include "Arduino.h"
 #include "../esp32s3_pantalla7/esp32s3_pantalla7.ino"
 
@@ -143,13 +144,36 @@ static nube::Resp http(const char* method, const char* url, const char* bearer, 
     if (a != std::string::npos) since = since.substr(0, a);
     for (size_t k; (k = since.find("%2B")) != std::string::npos;) since.replace(k, 3, "+");
   }
-  int offset = atoi(u.substr(u.find("offset=") + 7).c_str()), limit = atoi(u.substr(u.find("limit=") + 6).c_str());
+  int limit = atoi(u.substr(u.find("limit=") + 6).c_str());
+  // Cursor de la placa (&or=(actualizado.gt."A",…,id.gt."I")): solo lo que va detrás de (A, T, I).
+  auto key = [](const Row* r) { return std::make_tuple(r->actualizado, r->tipo, r->id); };
+  std::string ca, ct, ci;
+  bool cursor = u.find("&or=") != std::string::npos;
+  if (cursor) {
+    std::string d;  // el filtro, con los %XX deshechos
+    for (size_t i = u.find("&or=") + 4; i < u.size() && u[i] != '&'; i++)
+      if (u[i] == '%' && i + 2 < u.size()) d += (char)strtol(u.substr(i + 1, 2).c_str(), nullptr, 16), i += 2;
+      else d += u[i];
+    auto val = [&](const char* k) {
+      std::string v;
+      size_t p = d.find(k);
+      if (p == std::string::npos) return v;
+      for (p += strlen(k) + 1; p < d.size() && d[p] != '"'; p++) {
+        if (d[p] == '\\') p++;
+        v += d[p];
+      }
+      return v;
+    };
+    ca = val("actualizado.gt."), ct = val("tipo.gt."), ci = val("id.gt.");
+  }
   std::vector<const Row*> list;
   for (auto& kv : rows)
-    if ((kv.second.tipo == "player" || kv.second.tipo == "match") && kv.second.actualizado > since) list.push_back(&kv.second);
-  std::sort(list.begin(), list.end(), [](const Row* a, const Row* b) { return a->actualizado < b->actualizado; });
+    if ((kv.second.tipo == "player" || kv.second.tipo == "match") && kv.second.actualizado > since &&
+        (!cursor || key(&kv.second) > std::make_tuple(ca, ct, ci)))
+      list.push_back(&kv.second);
+  std::sort(list.begin(), list.end(), [&](const Row* a, const Row* b) { return key(a) < key(b); });
   std::string out = "[";
-  for (int i = offset; i < (int)list.size() && i < offset + limit; i++) {
+  for (int i = 0; i < (int)list.size() && i < limit; i++) {
     const Row& r = *list[i];
     if (out.size() > 1) out += ",";
     out += "{\"tipo\":\"" + r.tipo + "\",\"id\":\"" + r.id + "\",\"datos\":" + r.datos + ",\"borrado\":" + (r.borrado ? "true" : "false") +

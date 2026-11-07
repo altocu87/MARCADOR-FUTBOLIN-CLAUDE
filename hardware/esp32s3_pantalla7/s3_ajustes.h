@@ -83,6 +83,8 @@ static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUp
 
 // Solo los resultados cruzan de la tarea de red a loop(); LVGL y el reloj quedan en loop().
 static std::atomic<bool> versionsDone{false};
+// Empezar a jugar corta la búsqueda: la tarea no pide nada más (ni el pitido, que reserva 48 KB y abre otra conexión).
+static std::atomic<bool> versionsCancel{false};
 static bool versionsRunning = false, versionsOk = false;
 static mfv3::ota::Published fetchedScreen, fetchedMando[3];
 static reloj::Clock fetchedClock;
@@ -90,9 +92,10 @@ static bool fetchedClockOk = false;
 static void fetchVersionsWork() {
   versionsOk = s3net::fetchPublished(S3_BOARD_ID, fetchedScreen, &fetchedRelease);
   // Los dos modelos (unos cientos de bytes): cambiar de modelo no obliga a volver a buscar.
-  for (uint8_t m = mfv3::ota::MODEL_SUPER_MINI; m <= mfv3::ota::MODEL_C3_ZERO; m++) s3net::fetchPublished(mandoId(m), fetchedMando[m]);
-  fetchedClockOk = reloj::internetClock(fetchedClock);
-  pitido::downloadWork();  // si a la SD le falta el pitido, de la web (lo guarda loop() en finishVersions)
+  for (uint8_t m = mfv3::ota::MODEL_SUPER_MINI; m <= mfv3::ota::MODEL_C3_ZERO && !versionsCancel.load(); m++)
+    s3net::fetchPublished(mandoId(m), fetchedMando[m]);
+  fetchedClockOk = !versionsCancel.load() && reloj::internetClock(fetchedClock);
+  if (!versionsCancel.load()) pitido::downloadWork();  // si a la SD le falta el pitido, de la web (lo guarda loop() en finishVersions)
   versionsDone.store(true);
 }
 #ifdef ARDUINO
@@ -104,6 +107,7 @@ static bool beginVersions() {
   fetchedScreen = mfv3::ota::Published();
   for (auto& m : fetchedMando) m = mfv3::ota::Published();
   versionsDone = false;
+  versionsCancel = false;
   versionsRunning = true;
   pitido::want = pitidoNeeded();
 #ifdef ARDUINO
@@ -250,6 +254,8 @@ static void installPoll(uint32_t now) {
       if (!instStepDrawn) return;  // primero se dibuja la pantalla de «descargando»; después, a descargar
       bool ok = s3net::downloadToSlot(mandoId(instMandoModel), pubMando, instProgress);
       s3net::stop();  // la radio vuelve a su canal para hablar con el mando
+      // Se borró la flash aunque fallara antes del primer bloque (sin avance no se realineó): realinear la imagen.
+      uiport::needResync = true;
       uint8_t md5[16];
       if (!ok || !mfv3::ota::md5FromHex(pubMando.md5, md5)) {
         instFail("No se pudo descargar el programa del mando");

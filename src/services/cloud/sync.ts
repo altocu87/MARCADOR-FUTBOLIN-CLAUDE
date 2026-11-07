@@ -72,6 +72,16 @@ export function abortableHttp(base: Http, { signal, timeoutMs = REQUEST_TIMEOUT_
   };
 }
 
+/** Valor entre comillas para un filtro lógico de PostgREST (comas, puntos, paréntesis… sin romper el filtro). */
+const quoted = (v: string) => `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+/** Filtro «filas después de esta» en el orden actualizado, tipo, id (para el parámetro `or`). */
+export function afterCursor(r: Pick<CloudRow, 'actualizado' | 'tipo' | 'id'>): string {
+  const a = quoted(r.actualizado), t = quoted(r.tipo), i = quoted(r.id);
+  return `(actualizado.gt.${a},and(actualizado.eq.${a},tipo.gt.${t}),and(actualizado.eq.${a},tipo.eq.${t},id.gt.${i}))`;
+}
+const cursorKey = (r: CloudRow) => `${r.actualizado}\n${r.tipo}\n${r.id}`;
+
 /** API REST de Supabase (PostgREST) con la sesión del dueño. */
 export function restApi(conn: SupabaseConn, token: () => Promise<string>, http: Http = (...a) => fetch(...a), opts: RequestOptions = {}): CloudApi {
   const send = abortableHttp(http, opts);
@@ -93,9 +103,14 @@ export function restApi(conn: SupabaseConn, token: () => Promise<string>, http: 
     async pull(since) {
       const out: CloudRow[] = [];
       const PAGE = 500;
-      for (let offset = 0; ; offset += PAGE) {
-        const q = new URLSearchParams({ select: 'tipo,id,datos,borrado,actualizado', order: 'actualizado.asc,tipo.asc,id.asc', limit: String(PAGE), offset: String(offset) });
+      // Página a página con un cursor (actualizado, tipo, id) de la última fila recibida, no con «offset»: si otra
+      // mesa cambia una fila ya leída, esa fila pasa al final (se vuelve a recibir) y no desplaza a las demás, que
+      // con «offset» se saltaban (auditoría MD-05 / NC01). (tipo, id) es único en las filas de un dueño.
+      let after: CloudRow | null = null;
+      for (;;) {
+        const q = new URLSearchParams({ select: 'tipo,id,datos,borrado,actualizado', order: 'actualizado.asc,tipo.asc,id.asc', limit: String(PAGE) });
         if (since) q.set('actualizado', `gt.${since}`);
+        if (after) q.set('or', afterCursor(after));
         let res: Response;
         try {
           res = await send(`${conn.url}/rest/v1/mesa_datos?${q}`, { headers: await headers() });
@@ -111,6 +126,9 @@ export function restApi(conn: SupabaseConn, token: () => Promise<string>, http: 
         }
         out.push(...page);
         if (page.length < PAGE) return out;
+        const last: CloudRow = page[page.length - 1];
+        if (after && cursorKey(last) === cursorKey(after)) throw new CloudError('Bajar datos: la nube repite la misma página', 'pagina');
+        after = last;
       }
     },
     async push(rows) {

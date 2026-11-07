@@ -53,7 +53,7 @@ static nube::Resp http(const char* method, const char* url, const char*, const c
   if (strstr(url, "/auth/")) return reply(200, R"({"access_token":"a","refresh_token":"r","user":{"id":"u","email":"e@x.test"}})");
   if (!strcmp(method, "GET")) {
     if (strstr(url, "tipo=eq.prefs")) return reply(200, cloudPrefs);
-    if (!strstr(url, "offset=0")) return reply(200, "[]");
+    if (strstr(url, "&or=")) return reply(200, "[]");  // solo la primera página (sin cursor)
     if (strstr(url, "tipo=in.(tournament)")) return reply(200, cloudTournaments);
     if (strstr(url, "tipo=in.(player,match,prefs)")) return reply(200, cloudRows);
     return reply(200, "[]");

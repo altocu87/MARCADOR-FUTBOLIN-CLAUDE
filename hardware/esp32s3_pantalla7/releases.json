@@ -1,7 +1,22 @@
 {
-  "version": "0.28",
+  "version": "0.29",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.29",
+      "date": "2026-11-07",
+      "title": "Más rápida y sin cortes de sonido",
+      "changes": [
+        "Enciende antes: Inicio sale en unos segundos y lo demás se carga después sin dejar de responder al dedo.",
+        "En la tanda de penaltis las voces ya no salen a trozos, y el sonido sigue aunque una pantalla tarde en dibujarse.",
+        "En la tanda, el pulsador del equipo que está de portero apunta fallo del que tira.",
+        "El reloj de reposo ya no deja la pantalla parada al entrar ni al cambiar el minuto.",
+        "Si la tarjeta falla al guardar o borrar un partido, no se pierde ni se da por hecho.",
+        "Al sincronizar con la nube no se salta ningún dato aunque otro aparato cambie algo a la vez.",
+        "Si el pitido del árbitro está dañado, suena el tono de siempre y se vuelve a bajar.",
+        "Al empezar a jugar se deja de usar el Wi-Fi para buscar versiones. Conserva todo lo de la 0.28."
+      ]
+    },
     {
       "version": "0.28",
       "date": "2026-11-02",
