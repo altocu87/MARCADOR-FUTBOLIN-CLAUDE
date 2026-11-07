@@ -78,7 +78,18 @@ static MandoUpd mandoUpd() {
   return pubMando.ok() && pubMando.build > mandoBuild ? MandoUpd::Outdated : MandoUpd::UpToDate;
 }
 static updateInfo::Release publishedRelease, fetchedRelease;
-static bool screenOutdated() { return pubScreen.ok() && pubScreen.build > (uint32_t)MFV3_BUILD && !updateInfo::olderVersion(publishedRelease.version,FW_VERSION); }
+// Hay pantalla nueva si la versión publicada es mayor que la instalada. Con la misma versión, solo si este programa
+// lo compiló GitHub (MFV3_BUILD distinto de 0) y el publicado es posterior: grabado por cable lleva 0 y antes avisaba
+// de «0.30» estando ya en la 0.30 (Alex, 07/11/2026). Sin versión legible en la web, como antes: por el número.
+static bool screenOutdated() {
+  if (!pubScreen.ok()) return false;
+  const char* pub = publishedRelease.version;
+  if (updateInfo::olderVersion(FW_VERSION, pub)) return true;
+  if (updateInfo::olderVersion(pub, FW_VERSION)) return false;
+  unsigned parts[3];
+  if (!updateInfo::versionParts(pub, parts)) return pubScreen.build > (uint32_t)MFV3_BUILD;
+  return MFV3_BUILD && pubScreen.build > (uint32_t)MFV3_BUILD;  // misma versión
+}
 static bool updateAvailable() { return screenOutdated() || mandoUpd() == MandoUpd::Outdated; }
 
 // Solo los resultados cruzan de la tarea de red a loop(); LVGL y el reloj quedan en loop().

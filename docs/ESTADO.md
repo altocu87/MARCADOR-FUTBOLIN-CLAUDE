@@ -1,5 +1,9 @@
 # Estado del proyecto
 
+## Aviso de actualización con la misma versión · sobre 0.30 · 07/11/2026
+
+**Código hecho y probado en el PC; sin publicar ni instalar (irá en la próxima versión).** El dueño veía «hay actualización a la 0.30» estando en la 0.30: grabada por cable, la placa lleva número de compilación 0 y el de GitHub es mayor. Ahora `screenOutdated()` solo avisa si la versión publicada es mayor; con la misma versión, solo si el programa instalado lo compiló GitHub y el publicado es posterior. Prueba en `s3_updates_test.cpp`. Mientras tanto, en la placa basta con instalar la 0.30 desde la pantalla para que el aviso se quite.
+
 ## Pantalla 0.30: todo cargado detrás de «Cargando» (10 s) · 07/11/2026
 
 **En `main` como 0.30 e instalada en su placa (app0; app1 sigue con la 0.28), con autorización del dueño.** Petición: «quiero que todo se cargue detrás de la barra» y «ponme 10 s de carga inicial que le dé tiempo bien a todo». La barra va por tiempo (10 s desde que sale) y debajo se carga todo: Inicio, configuración, partido, pausa, letras, fichas y fotos; el tiempo que sobra se usa para comprobar voces (las que falten, después, una por vuelta cuando no suena nada). Si algún día tardara más, la barra se queda en 99 % hasta acabar. Medido en la placa: `ARRANQUE … datos=933 inicio=2325 todo=8546 barra=10973` (todo listo a los 8,5 s; Inicio sale a los 11 s del encendido), 806 voces, memoria interna mínima 27,5 KB, sin cortes de sonido (`hueco_max_ms=0`). Falta que el dueño lo vea en la mesa.

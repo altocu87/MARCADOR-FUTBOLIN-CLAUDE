@@ -66,6 +66,8 @@ int main() {
   strcpy(publishedRelease.version,"0.9");assert(!screenOutdated()); // incluso con build mayor
   strcpy(publishedRelease.version,"0.10");assert(!screenOutdated());
   strcpy(publishedRelease.version,"0.99");assert(screenOutdated());  // una versión siempre futura
+  strcpy(publishedRelease.version,FW_VERSION);assert(!screenOutdated());  // la misma, grabada por cable (build 0)
+  publishedRelease.version[0]=0;assert(screenOutdated());  // sin versión en la web: por el número, como antes
   assert(updateInfo::olderVersion("0.9","0.11") && !updateInfo::olderVersion("0.11","0.9"));
   assert(updateInfo::olderVersion("0.11","0.11.1") && !updateInfo::olderVersion("0.11.0","0.11"));
   assert(!updateInfo::olderVersion("","0.11") && !updateInfo::olderVersion("0..9","0.11"));
