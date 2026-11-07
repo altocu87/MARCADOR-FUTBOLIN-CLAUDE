@@ -52,6 +52,20 @@ static void step() {
   lv_refr_now(nullptr);
 }
 
+// La barra en un porcentaje dado (para la que va por tiempo); solo repinta si cambia.
+static void at(int p) {
+  if (!scr) return;
+  if (p > 100) p = 100;
+  if (p <= shownPct) return;
+  shownPct = p;
+  lv_bar_set_value(bar, p, LV_ANIM_OFF);
+  char b[32];
+  snprintf(b, sizeof(b), "Cargando… %d %%", p);
+  lv_label_set_text(pct, b);
+  ui::place(pct, 400, 266, 22);
+  lv_refr_now(nullptr);
+}
+
 // Fin: la pantalla de carga se borra al enseñarse la primera de verdad.
 static void finish() {
   scr = bar = pct = nullptr;

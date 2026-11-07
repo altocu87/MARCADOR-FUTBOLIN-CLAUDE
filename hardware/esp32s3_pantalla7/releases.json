@@ -1,7 +1,16 @@
 {
-  "version": "0.29",
+  "version": "0.30",
   "majorOneAuthorized": false,
   "releases": [
+    {
+      "version": "0.30",
+      "date": "2026-11-07",
+      "title": "Todo cargado al encender",
+      "changes": [
+        "Al encender, la barra «Cargando» dura 10 segundos y deja todo listo: pantallas, letras, fichas y fotos.",
+        "Después ya no se carga nada en segundo plano, así que nada se nota al usarla."
+      ]
+    },
     {
       "version": "0.29",
       "date": "2026-11-07",

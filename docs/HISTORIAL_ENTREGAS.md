@@ -1,5 +1,9 @@
 # Historial de entregas (sacado del CLAUDE.md el 23/10/2026)
 
+## Todo detrás de la barra · 0.30 · 07/11/2026
+
+- `setup()`: `BOOT_INICIO` y después `while (warmStep())` con «Cargando…» delante; `loop()` ya no llama a `warmStep` (`startMatch` lo sigue llamando por si acaso). Barra por tiempo: `BOOT_MIN_MS` = 10 000 en la placa y 0 en el PC; `cargando::at(p)` nuevo. Con el tiempo sobrante, `comentarios::checkTick(sndStore,false)`. `ARRANQUE` lleva las marcas `todo` y `barra`. En la placa: todo a los 8,5 s, barra hasta los 11,0 s.
+
 ## Mejoras del plan 1, 6–10 (menos la 5) · sobre 0.28 · 07/11/2026
 
 - Inicio primero: `BOOT_INICIO` (solo capas de Inicio) en `setup`; `warmStep()` en `loop()` fuera de partido: `WARM_LAYERS`, `WARM_FLAT`, `assets::preloadNextFont`, `elegir::prewarmStep`, `historial::prewarmStep`; `startMatch` llama a `warmStep` hasta acabar. Registro `CARGADO resto_ms=` (por LV_LOG, no por USB: con el USB lleno no debe esperar). `ARRANQUE` lleva ahora la marca `inicio`.

@@ -3,9 +3,10 @@
 #define MFV3_S3_RELEASE_H
 #include <stddef.h>
 namespace nativeRelease {
-static const char VERSION[] = "0.29";
+static const char VERSION[] = "0.30";
 struct Entry { const char* version; const char* date; const char* notes; };
 static const Entry HISTORY[] = {
+  {"0.30", "2026-11-07", "Todo cargado al encender\n\n• Al encender, la barra «Cargando» dura 10 segundos y deja todo listo: pantallas, letras, fichas y fotos.\n\n• Después ya no se carga nada en segundo plano, así que nada se nota al usarla."},
   {"0.29", "2026-11-07", "Más rápida y sin cortes de sonido\n\n• Enciende antes: Inicio sale en unos segundos y lo demás se carga después sin dejar de responder al dedo.\n\n• En la tanda de penaltis las voces ya no salen a trozos, y el sonido sigue aunque una pantalla tarde en dibujarse.\n\n• En la tanda, el pulsador del equipo que está de portero apunta fallo del que tira.\n\n• El reloj de reposo ya no deja la pantalla parada al entrar ni al cambiar el minuto.\n\n• Si la tarjeta falla al guardar o borrar un partido, no se pierde ni se da por hecho.\n\n• Al sincronizar con la nube no se salta ningún dato aunque otro aparato cambie algo a la vez.\n\n• Si el pitido del árbitro está dañado, suena el tono de siempre y se vuelve a bajar.\n\n• Al empezar a jugar se deja de usar el Wi-Fi para buscar versiones. Conserva todo lo de la 0.28."},
   {"0.28", "2026-11-02", "Equipos y nombres en voz alta\n\n• Al elegir jugadores se oye «¡Equipo blanco!» o «¡Equipo azul!» cuando le toca a cada uno, y el nombre de quien eliges.\n\n• Usa las voces de los nombres que ya hay en la SD; si un jugador no tiene su nombre grabado, no dice nada.\n\n• Conserva todo lo de la 0.27."},
   {"0.27", "2026-11-02", "El pitido se instala solo\n\n• Si a la tarjeta le falta el pitido del árbitro, la pantalla lo baja sola por Wi-Fi al encender y lo guarda.\n\n• Comprueba que llega entero antes de guardarlo. Conserva todo lo de la 0.26."},

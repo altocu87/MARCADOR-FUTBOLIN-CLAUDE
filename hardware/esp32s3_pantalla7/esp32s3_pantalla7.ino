@@ -2753,10 +2753,9 @@ static bool onTouchDown() {
 // desbordaba y la placa se reiniciaba. 32 KB, como el ejemplo de Waveshare (20 KB) con margen.
 // (Aquí y no arriba: la macro define una función y el IDE de Arduino pone sus declaraciones antes de la primera.)
 SET_LOOP_TASK_STACK_SIZE(32 * 1024);
-// ---------------------------------------------------------------- carga tras enseñar Inicio
-// Antes todo se descomprimía con «Cargando…» (13 s, de ellos ~7 de capas, letras y fichas) y nada respondía. Ahora
-// solo lo de Inicio va antes; lo demás, una pieza por vuelta de loop() fuera de partido (cada una, ~0,1–0,3 s).
-// Empezar un partido termina lo que falte (startMatch).
+// ---------------------------------------------------------------- carga con «Cargando…»
+// Lo que se descomprime al encender, por piezas: setup() las hace todas detrás de la barra (ver BOOT_MIN_MS).
+// startMatch termina lo que faltara (no debería faltar nada).
 static const capas::Capa* const BOOT_INICIO[] = {
     &capas::INICIO,
     // tarjetas y botones de inicio encendidos y pulsados: al tocarlos responden al momento
@@ -2970,18 +2969,42 @@ void setup() {
   radioBegin();
   bootMark("datos");
   lastActivity = millis();
-  // Solo lo de Inicio antes de enseñarlo (con «Cargando…»); lo demás (configuración, partido, pausa, letras,
-  // fichas y fotos) lo carga warmStep() después, una pieza por vuelta del programa, sin dejar de atender el táctil.
-  cargando::show(sizeof(BOOT_INICIO) / sizeof(BOOT_INICIO[0]));
+  // Todo detrás de «Cargando…» (petición del dueño, 07/11/2026: «10 s de carga inicial que le dé tiempo bien a
+  // todo»): Inicio, configuración, partido, pausa, letras, fichas y fotos. La barra va por tiempo, BOOT_MIN_MS; si
+  // sobra, se aprovecha para comprobar voces (lo que no dé tiempo, después, una por vuelta cuando no suena nada).
+  // Si la carga tardara más, la barra se queda en 99 % hasta acabar.
+#ifdef ARDUINO
+  static const uint32_t BOOT_MIN_MS = 10000;
+#else
+  static const uint32_t BOOT_MIN_MS = 0;  // en las pruebas del PC, sin esperar
+#endif
+  const uint32_t barT0 = millis();
+  auto barTick = [&](bool all) {
+    uint32_t el = millis() - barT0;
+    int p = el >= BOOT_MIN_MS ? 100 : (int)(el * 100 / (BOOT_MIN_MS + !BOOT_MIN_MS));
+    cargando::at(all ? p : (p > 99 ? 99 : p));
+  };
+  cargando::show(1);
   for (const capas::Capa* c : BOOT_INICIO) {
     assets::preload(*c, true);
-    cargando::step();
+    barTick(false);
   }
-  cargando::finish();
   bootMark("inicio");
-  LV_LOG_WARN("ARRANQUE%s", bootLine);
   warmAt = 0;
   warmT0 = millis();
+  while (warmStep()) barTick(false);
+  bootMark("todo");
+#if HAS_AUDIO
+  while (millis() - barT0 < BOOT_MIN_MS && comentarios::checkTick(sndStore, false)) barTick(false);
+#endif
+  while (millis() - barT0 < BOOT_MIN_MS) {
+    barTick(false);
+    delay(20);
+  }
+  barTick(true);
+  cargando::finish();
+  bootMark("barra");
+  LV_LOG_WARN("ARRANQUE%s", bootLine);
   sendHello();
   sendEvent("STATE idle");
   if (!prefs.getBool("tested", false)) enterTest();  // primer arranque: asistente de prueba
@@ -2989,7 +3012,6 @@ void setup() {
 
 void loop() {
   uint32_t now = millis();
-  if (!warmDone() && !inMatch) warmStep();  // lo que no hacía falta para enseñar Inicio, poco a poco
 
   // Entradas de placas auxiliares (UART) y del USB.
   for(unsigned bytes=0;bytes<512 && Serial.available()>0;bytes++)
